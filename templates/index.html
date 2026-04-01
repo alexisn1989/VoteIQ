@@ -336,9 +336,18 @@
       <input type="text" id="address" placeholder="e.g. 2000 Atlantic Ave, Virginia Beach, VA 23451" />
       <button onclick="lookup()">Find My District →</button>
     </div>
+<p class="search-note">🔒 Your address is never stored &nbsp;·&nbsp; Free for all registered Virginia voters</p>
 
-  <p class="search-note">🔒 Your address is never stored &nbsp;·&nbsp; Free for all registered Virginia voters</p>
-  <p class="search-note" style="margin-top:8px;">📋 Want to see the proposed new map? <a href="https://www.vpap.org/redistricting/2026/" target="_blank" style="color:#c8102e;text-decoration:underline;">View it on VPAP →</a></p>
+<p class="search-note" style="margin-top:8px;">📋 Want to see the proposed new map? <a href="https://www.vpap.org/redistricting/2026/" target="_blank" style="color:#c8102e;text-decoration:underline;">View it on VPAP →</a></p>
+
+  <div id="result" style="max-width:600px; margin:20px auto; font-size:1rem; color:#0d1b2a; text-align:left;"></div>
+  <iframe id="map" style="width:100%; height:400px; border:none; margin-top:20px;"></iframe>
+
+</section>
+```
+  <div id="result" style="max-width:600px; margin:20px auto; font-size:1rem; color:#0d1b2a; text-align:left;"></div>
+  <iframe id="map" style="width:100%; height:400px; border:none; margin-top:20px;"></iframe>
+
 </section>
 
 <div class="divider"><span>How it works</span></div>
@@ -470,6 +479,11 @@
         <p style="margin-top:16px; font-size:0.85rem;"><a href="https://vpap.org/redistricting/2026" target="_blank" style="color:#c8102e;">See proposed district changes at VPAP →</a></p>
     </div>
 `;
+        document.getElementById('result').scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+});
+```
             const mapResponse = await fetch(`/map?address=${encodeURIComponent(address)}`);
             const mapHTML = await mapResponse.text();
             document.getElementById('map').srcdoc = mapHTML;
