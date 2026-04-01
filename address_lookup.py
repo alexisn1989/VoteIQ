@@ -1,21 +1,19 @@
 from geopy.geocoders import Nominatim
 import geopandas as gpd
 from shapely.geometry import Point
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Load Virginia Congressional Districts
-va_cd = gpd.read_file(
-    r"C:\Users\Alexis\OneDrive\Desktop\Vriginia_api_election\tl_2023_51_cd118.shp")
+va_cd = gpd.read_file(os.path.join(BASE_DIR, "tl_2023_51_cd118.shp"))
 va_cd = va_cd.to_crs(epsg=4326)
 va_cd = va_cd[['NAMELSAD', 'CD118FP', 'geometry']]
 
 # Load Virginia Beach local data
-vb_local = gpd.read_file(
-    r"C:\Users\Alexis\OneDrive\Desktop\Vriginia_api_election\va_senate_distrcits.json\VIRGINIA_BEACH_CITY.shp")
+vb_local = gpd.read_file(os.path.join(BASE_DIR, "va_senate_distrcits.json", "VIRGINIA_BEACH_CITY.shp"))
 vb_local = vb_local.to_crs(epsg=4326)
 vb_local = vb_local[['LocalityNa', 'PrecinctNa', 'geometry']]
-
-
-
 def find_district(address):
     try:
         geolocator = Nominatim(user_agent="voteiq", timeout=15)
@@ -26,8 +24,6 @@ def find_district(address):
 
         point = Point(location.longitude, location.latitude)
 
-        print(f"Point: {point}")
-
         # Get congressional district
         district = None
         district_number = None
@@ -37,8 +33,6 @@ def find_district(address):
                 district_number = row['CD118FP']
                 break
 
-        print(f"District found: {district}")
-
         # Get locality and precinct
         locality = None
         precinct = None
@@ -47,9 +41,6 @@ def find_district(address):
                 locality = row['LocalityNa']
                 precinct = row['PrecinctNa']
                 break
-
-        print(f"Locality found: {locality}")
-        print(f"Precinct found: {precinct}")
 
         return {
             "locality": locality or "Virginia Beach",
@@ -63,7 +54,3 @@ def find_district(address):
     except Exception as e:
         print(f"Error: {e}")
         return {"error": str(e)}
-
-if __name__ == "__main__":
-    result = find_district("2000 Atlantic Ave Virginia Beach VA")
-    print(result)
