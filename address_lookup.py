@@ -2,6 +2,9 @@ from geopy.geocoders import Nominatim
 import geopandas as gpd
 from shapely.geometry import Point
 import os
+import time
+
+
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -17,9 +20,9 @@ vb_local = vb_local[['LocalityNa', 'PrecinctNa', 'geometry']]
 
 def find_district(address):
     try:
-        geolocator = Nominatim(user_agent="voteiq", timeout=15)
+        geolocator = Nominatim(user_agent="voteiq_civic_platform_v1", timeout=15)
+        time.sleep(1)
         location = geolocator.geocode(address)
-
         if not location:
             return {"error": "Address not found"}
 
