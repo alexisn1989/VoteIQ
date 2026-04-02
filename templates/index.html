@@ -480,44 +480,37 @@
             const response = await fetch(`/api/lookup?address=${encodeURIComponent(address)}`);
             const data = await response.json();
 
+            const reps = {
+                "02": "Jennifer Kiggans (R)",
+                "03": "Bobby Scott (D)"
+            };
 
-const reps = {
-    "02": { name: "Jennifer Kiggans", party: "R", party_color: "#c8102e" },
-    "03": { name: "Bobby Scott", party: "D", party_color: "#1a3a6b" }
-};
+            const repDisplay = reps[data.district.district_number] || "Not found";
 
-const reps = {
-    "02": "Jennifer Kiggans (R)",
-    "03": "Bobby Scott (D)"
-};
+            document.getElementById('result').innerHTML =
+                '<div style="background:white; border:1px solid #ddd8cc; border-top:4px solid #c8102e; padding:24px; margin-top:20px;">' +
+                '<h3 style="font-family:Barlow Condensed,sans-serif; font-size:0.8rem; color:#c8102e; margin-bottom:16px;">Your District Information</h3>' +
+                '<p style="margin-bottom:8px;">📍 Locality: <strong>' + data.district.locality + '</strong></p>' +
+                '<p style="margin-bottom:8px;">🏛️ District: <strong>' + data.district.district + '</strong></p>' +
+                '<p style="margin-bottom:8px;">🔢 District Number: <strong>' + data.district.district_number + '</strong></p>' +
+                '<p style="margin-bottom:8px;">👤 Representative: <strong>' + repDisplay + '</strong></p>' +
+                '<p style="margin-bottom:8px;">🗳️ Precinct: <strong>' + data.district.precinct + '</strong></p>' +
+                '<p style="margin-top:16px; font-size:0.85rem;"><a href="https://vpap.org/redistricting/2026" target="_blank" style="color:#c8102e;">See proposed district changes at VPAP →</a></p>' +
+                '</div>';
 
-const repDisplay = reps[data.district.district_number] || "Not found";
+            document.getElementById('result').scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
 
-document.getElementById('result').innerHTML =
-    '<div style="background:white; border:1px solid #ddd8cc; border-top:4px solid #c8102e; padding:24px; margin-top:20px;">' +
-    '<h3 style="font-family:Barlow Condensed,sans-serif; font-size:0.8rem; color:#c8102e; margin-bottom:16px;">Your District Information</h3>' +
-    '<p style="margin-bottom:8px;">📍 Locality: <strong>' + data.district.locality + '</strong></p>' +
-    '<p style="margin-bottom:8px;">🏛️ District: <strong>' + data.district.district + '</strong></p>' +
-    '<p style="margin-bottom:8px;">🔢 District Number: <strong>' + data.district.district_number + '</strong></p>' +
-    '<p style="margin-bottom:8px;">👤 Representative: <strong>' + repDisplay + '</strong></p>' +
-    '<p style="margin-bottom:8px;">🗳️ Precinct: <strong>' + data.district.precinct + '</strong></p>' +
-    '<p style="margin-top:16px; font-size:0.85rem;"><a href="https://vpap.org/redistricting/2026" target="_blank" style="color:#c8102e;">See proposed district changes at VPAP →</a></p>' +
-    '</div>';
-`;
-`;
-      document.getElementById('result').scrollIntoView({
-            behavior: 'smooth',
-            block: 'start'
-        });
+            const mapResponse = await fetch(`/map?address=${encodeURIComponent(address)}`);
+            const mapHTML = await mapResponse.text();
+            document.getElementById('map').srcdoc = mapHTML;
 
-        const mapResponse = await fetch(`/map?address=${encodeURIComponent(address)}`);
-        const mapHTML = await mapResponse.text();
-        document.getElementById('map').srcdoc = mapHTML;
-
-    } catch (error) {
-        document.getElementById('result').innerHTML = '<p style="color:red;">Error loading results.</p>';
+        } catch (error) {
+            document.getElementById('result').innerHTML = '<p style="color:red;">Error loading results.</p>';
+        }
     }
-}
 </script>
   <script>
   function updateCountdown() {
