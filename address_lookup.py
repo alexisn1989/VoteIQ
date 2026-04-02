@@ -14,6 +14,7 @@ va_cd = va_cd[['NAMELSAD', 'CD118FP', 'geometry']]
 vb_local = gpd.read_file(os.path.join(BASE_DIR, "va_senate_distrcits.json", "VIRGINIA_BEACH_CITY.shp"))
 vb_local = vb_local.to_crs(epsg=4326)
 vb_local = vb_local[['LocalityNa', 'PrecinctNa', 'geometry']]
+
 def find_district(address):
     try:
         geolocator = Nominatim(user_agent="voteiq", timeout=15)
@@ -42,8 +43,17 @@ def find_district(address):
                 precinct = row['PrecinctNa']
                 break
 
+        # Extract city from geocoded address if locality not found
+        if not locality:
+            display_name = location.raw.get('display_name', '')
+            parts = display_name.split(',')
+            if len(parts) >= 3:
+                locality = parts[2].strip()
+            else:
+                locality = parts[0].strip()
+
         return {
-            "locality": locality or "Virginia Beach",
+            "locality": locality or "Virginia",
             "district": district or "Not found",
             "district_number": district_number or "N/A",
             "precinct": precinct or "Not found",
