@@ -486,6 +486,31 @@
     }
 }
 </script>
+  <script>
+  function updateCountdown() {
+    const election = new Date('2026-04-21T06:00:00');
+    const now = new Date();
+    const diff = election - now;
+
+    if (diff <= 0) {
+      document.getElementById('days-left').innerHTML = `<span style="font-size:1rem">TODAY!</span>`;
+      return;
+    }
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+    document.getElementById('days-left').innerHTML = `${days}<span>days</span>`;
+    document.getElementById('hours-left').innerHTML = `${hours}<span>hrs</span>`;
+    document.getElementById('mins-left').innerHTML = `${mins}<span>min</span>`;
+  }
+
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+</script>
 
 </body>
 </html>
+
+
