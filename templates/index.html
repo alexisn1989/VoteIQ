@@ -328,6 +328,7 @@
     padding: 12px 18px;
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 10px;
   }
   .viq-chat-title {
@@ -450,11 +451,11 @@
 
   <!-- ── VoteIQ District Q&A Chatbox ── -->
   <div class="viq-chat-panel" id="viqChatPanel">
-   <div class="viq-chat-title" style="display:flex;align-items:center;gap:10px;">
-      <img src="/static/logo.png" alt="VoteIQ" style="width:32px;height:32px;object-fit:contain;border-radius:4px;" />
-      District Q&amp;A
-    </div>
+ <div class="viq-chat-title" style="display:flex;align-items:center;gap:8px;">
+  <img src="/static/logo.png" alt="VoteIQ" style="width:28px;height:28px;object-fit:contain;border-radius:4px;flex-shrink:0;" />
+  <span>District Q&amp;A</span>
 </div>
+
       <span class="viq-chat-district-badge" id="viqDistrictBadge">—</span>
     </div>
     <div class="viq-chat-msgs" id="viqMsgList"></div>
