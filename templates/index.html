@@ -6,300 +6,73 @@
 <title>VoteIQ — Civic Intelligence Platform</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet"/>
 <style>
-  :root {
-    --navy:   #0d1b2a;
-    --red:    #c8102e;
-    --blue:   #1a3a6b;
-    --gold:   #b8960c;
-    --light:  #f4f1eb;
-    --mid:    #ddd8cc;
-    --muted:  #7a7468;
-  }
-
+  :root { --navy:#0d1b2a; --red:#c8102e; --blue:#1a3a6b; --gold:#b8960c; --light:#f4f1eb; --mid:#ddd8cc; --muted:#7a7468; }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: var(--light);
-    color: var(--navy);
-    font-family: 'Barlow', sans-serif;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f4f1eb'/%3E%3Crect width='1' height='1' fill='%23e8e4dc' opacity='0.4'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .topbar {
-    background: var(--navy);
-    color: var(--mid);
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    text-align: center;
-    padding: 7px 16px;
-    position: relative;
-    z-index: 10;
-  }
+  body { background: var(--light); color: var(--navy); font-family: 'Barlow', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f4f1eb'/%3E%3Crect width='1' height='1' fill='%23e8e4dc' opacity='0.4'/%3E%3C/svg%3E"); pointer-events: none; z-index: 0; }
+  .topbar { background: var(--navy); color: var(--mid); font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; text-align: center; padding: 7px 16px; position: relative; z-index: 10; }
   .topbar span { color: var(--red); margin: 0 6px; }
-
-  header {
-    position: relative;
-    z-index: 10;
-    border-bottom: 3px double var(--navy);
-    padding: 28px 48px 22px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: var(--light);
-  }
-
+  header { position: relative; z-index: 10; border-bottom: 3px double var(--navy); padding: 28px 48px 22px; display: flex; align-items: center; justify-content: space-between; background: var(--light); }
   .logo-wrap { display: flex; align-items: center; gap: 16px; }
-
-  .election-badge {
-    display: inline-block;
-    background: var(--red);
-    color: white;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    padding: 5px 12px;
-    margin-bottom: 6px;
-  }
-
-  .header-date {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.78rem;
-    color: var(--muted);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    text-align: right;
-  }
-
-  .hero {
-    position: relative;
-    z-index: 10;
-    max-width: 860px;
-    margin: 0 auto;
-    padding: 56px 32px 48px;
-    text-align: center;
-  }
-
-  .hero-eyebrow {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--red);
-    margin-bottom: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-  }
-  .hero-eyebrow::before, .hero-eyebrow::after {
-    content: ''; flex: 1; max-width: 60px; height: 1px; background: var(--red);
-  }
-
-  .hero h2 {
-    font-family: 'Playfair Display', serif;
-    font-size: clamp(2rem, 5vw, 3.2rem);
-    font-weight: 900;
-    line-height: 1.1;
-    color: var(--navy);
-    margin-bottom: 18px;
-    letter-spacing: -0.02em;
-  }
+  .election-badge { display: inline-block; background: var(--red); color: white; font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; padding: 5px 12px; margin-bottom: 6px; }
+  .header-date { font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; text-align: right; }
+  .hero { position: relative; z-index: 10; max-width: 860px; margin: 0 auto; padding: 56px 32px 48px; text-align: center; }
+  .hero-eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--red); margin-bottom: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .hero-eyebrow::before, .hero-eyebrow::after { content: ''; flex: 1; max-width: 60px; height: 1px; background: var(--red); }
+  .hero h2 { font-family: 'Playfair Display', serif; font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 900; line-height: 1.1; color: var(--navy); margin-bottom: 18px; letter-spacing: -0.02em; }
   .hero h2 em { font-style: italic; color: var(--red); }
-
-  .hero-sub {
-    font-size: 1.05rem;
-    color: var(--muted);
-    max-width: 540px;
-    margin: 0 auto 40px;
-    line-height: 1.6;
-  }
-
-  .search-wrap { max-width: 600px; margin: 0 auto 16px; }
-
-  .search-box {
-    display: flex;
-    border: 2px solid var(--navy);
-    background: white;
-    overflow: hidden;
-    box-shadow: 4px 4px 0 var(--navy);
-    transition: box-shadow 0.2s;
-  }
+  .hero-sub { font-size: 1.05rem; color: var(--muted); max-width: 540px; margin: 0 auto 40px; line-height: 1.6; }
+  .search-box { display: flex; border: 2px solid var(--navy); background: white; overflow: hidden; box-shadow: 4px 4px 0 var(--navy); transition: box-shadow 0.2s; }
   .search-box:focus-within { box-shadow: 6px 6px 0 var(--red); border-color: var(--red); }
-  .search-box input {
-    flex: 1; border: none; outline: none;
-    padding: 16px 20px;
-    font-family: 'Barlow', sans-serif;
-    font-size: 0.95rem; color: var(--navy); background: transparent;
-  }
+  .search-box input { flex: 1; border: none; outline: none; padding: 16px 20px; font-family: 'Barlow', sans-serif; font-size: 0.95rem; color: var(--navy); background: transparent; }
   .search-box input::placeholder { color: #aaa8a2; }
-  .search-box button {
-    background: var(--navy); border: none; color: white; cursor: pointer;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.9rem; font-weight: 700; letter-spacing: 0.12em;
-    text-transform: uppercase; padding: 16px 28px;
-    transition: background 0.2s; white-space: nowrap;
-  }
+  .search-box button { background: var(--navy); border: none; color: white; cursor: pointer; font-family: 'Barlow Condensed', sans-serif; font-size: 0.9rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; padding: 16px 28px; transition: background 0.2s; white-space: nowrap; }
   .search-box button:hover { background: var(--red); }
-
   .search-note { font-size: 0.78rem; color: var(--muted); text-align: center; }
-
-  .divider {
-    position: relative; z-index: 10;
-    display: flex; align-items: center; gap: 16px;
-    max-width: 860px; margin: 0 auto; padding: 0 32px;
-  }
+  .divider { position: relative; z-index: 10; display: flex; align-items: center; gap: 16px; max-width: 860px; margin: 0 auto; padding: 0 32px; }
   .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--mid); }
-  .divider span {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.2em;
-    text-transform: uppercase; color: var(--muted); white-space: nowrap;
-  }
-
-  .features {
-    position: relative; z-index: 10;
-    max-width: 860px; margin: 0 auto; padding: 40px 32px;
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
-  }
-
-  .feature-card {
-    background: white; border: 1px solid var(--mid);
-    border-top: 3px solid var(--navy); padding: 22px 20px;
-    transition: border-top-color 0.2s, transform 0.2s;
-    animation: riseIn 0.5s ease both;
-  }
+  .divider span { font-family: 'Barlow Condensed', sans-serif; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .features { position: relative; z-index: 10; max-width: 860px; margin: 0 auto; padding: 40px 32px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .feature-card { background: white; border: 1px solid var(--mid); border-top: 3px solid var(--navy); padding: 22px 20px; transition: border-top-color 0.2s, transform 0.2s; animation: riseIn 0.5s ease both; }
   .feature-card:nth-child(1) { animation-delay: 0.1s; }
   .feature-card:nth-child(2) { animation-delay: 0.2s; border-top-color: var(--red); }
   .feature-card:nth-child(3) { animation-delay: 0.3s; }
   .feature-card:hover { border-top-color: var(--red); transform: translateY(-3px); }
-
-  @keyframes riseIn {
-    from { opacity: 0; transform: translateY(16px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
+  @keyframes riseIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
   .feature-icon { font-size: 1.6rem; margin-bottom: 10px; }
-  .feature-card h3 {
-    font-family: 'Playfair Display', serif;
-    font-size: 1rem; font-weight: 700; color: var(--navy); margin-bottom: 6px;
-  }
+  .feature-card h3 { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
   .feature-card p { font-size: 0.85rem; color: var(--muted); line-height: 1.5; }
-
-  .countdown-bar {
-    position: relative; z-index: 10;
-    background: var(--navy); color: white;
-    padding: 20px 48px;
-    display: flex; align-items: center; justify-content: center;
-    gap: 40px; flex-wrap: wrap;
-  }
-  .countdown-label {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.75rem; font-weight: 700; letter-spacing: 0.2em;
-    text-transform: uppercase; color: var(--mid); margin-bottom: 3px;
-  }
-  .countdown-num {
-    font-family: 'Playfair Display', serif;
-    font-size: 2rem; font-weight: 900; color: white; line-height: 1;
-  }
-  .countdown-num span {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.8rem; color: var(--mid); margin-left: 3px;
-  }
+  .countdown-bar { position: relative; z-index: 10; background: var(--navy); color: white; padding: 20px 48px; display: flex; align-items: center; justify-content: center; gap: 40px; flex-wrap: wrap; }
+  .countdown-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--mid); margin-bottom: 3px; }
+  .countdown-num { font-family: 'Playfair Display', serif; font-size: 2rem; font-weight: 900; color: white; line-height: 1; }
+  .countdown-num span { font-family: 'Barlow Condensed', sans-serif; font-size: 0.8rem; color: var(--mid); margin-left: 3px; }
   .countdown-divider { width: 1px; height: 40px; background: rgba(255,255,255,0.15); }
-  .countdown-cta {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.85rem; font-weight: 700; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--red);
-    text-decoration: none; border: 1px solid var(--red);
-    padding: 8px 18px; transition: all 0.2s;
-  }
+  .countdown-cta { font-family: 'Barlow Condensed', sans-serif; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--red); text-decoration: none; border: 1px solid var(--red); padding: 8px 18px; transition: all 0.2s; }
   .countdown-cta:hover { background: var(--red); color: white; }
-
-  .info-strip {
-    position: relative; z-index: 10;
-    max-width: 860px; margin: 40px auto 0; padding: 0 32px;
-    display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
-  }
-  .info-card {
-    border: 1px solid var(--mid); padding: 24px;
-    background: white; position: relative; overflow: hidden;
-  }
-  .info-card::before {
-    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
-    width: 4px; background: var(--red);
-  }
-  .info-card h4 {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.18em;
-    text-transform: uppercase; color: var(--red); margin-bottom: 8px;
-  }
+  .info-strip { position: relative; z-index: 10; max-width: 860px; margin: 40px auto 0; padding: 0 32px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .info-card { border: 1px solid var(--mid); padding: 24px; background: white; position: relative; overflow: hidden; }
+  .info-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--red); }
+  .info-card h4 { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--red); margin-bottom: 8px; }
   .info-card p { font-size: 0.88rem; color: var(--navy); line-height: 1.7; }
-
-  .vote-box {
-    position: relative; z-index: 10;
-    max-width: 860px; margin: 24px auto 0; padding: 0 32px;
-    display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
-  }
-  .vote-card {
-    padding: 20px 22px; border: 1px solid var(--mid);
-    background: white; position: relative; overflow: hidden;
-  }
+  .vote-box { position: relative; z-index: 10; max-width: 860px; margin: 24px auto 0; padding: 0 32px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .vote-card { padding: 20px 22px; border: 1px solid var(--mid); background: white; position: relative; overflow: hidden; }
   .vote-card.yes { border-top: 4px solid #1a6b1a; }
   .vote-card.no  { border-top: 4px solid var(--red); }
-  .vote-card h4 {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.8rem; font-weight: 700; letter-spacing: 0.15em;
-    text-transform: uppercase; margin-bottom: 10px;
-  }
+  .vote-card h4 { font-family: 'Barlow Condensed', sans-serif; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 10px; }
   .vote-card.yes h4 { color: #1a6b1a; }
   .vote-card.no  h4 { color: var(--red); }
   .vote-card p { font-size: 0.86rem; color: var(--navy); line-height: 1.65; }
-
-  footer {
-    position: relative; z-index: 10;
-    margin-top: 56px; border-top: 3px double var(--navy);
-    padding: 20px 48px;
-    display: flex; align-items: center; justify-content: space-between;
-    flex-wrap: wrap; gap: 12px; background: var(--light);
-  }
-  footer p {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--muted);
-  }
+  footer { position: relative; z-index: 10; margin-top: 56px; border-top: 3px double var(--navy); padding: 20px 48px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: var(--light); }
+  footer p { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
   footer p span { color: var(--red); }
   .footer-links { display: flex; gap: 20px; }
-  .footer-links a {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--muted);
-    text-decoration: none; transition: color 0.2s;
-  }
+  .footer-links a { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); text-decoration: none; transition: color 0.2s; }
   .footer-links a:hover { color: var(--red); }
-
-  .hero-eyebrow, .hero h2, .hero-sub, .search-wrap {
-    animation: riseIn 0.6s ease both;
-  }
+  .live-results-bar { background: #0d1b2a; color: white; padding: 28px 48px; text-align: center; width: 100%; }
+  .hero-eyebrow, .hero h2, .hero-sub { animation: riseIn 0.6s ease both; }
   .hero-eyebrow { animation-delay: 0.05s; }
-  .hero h2      { animation-delay: 0.15s; }
-  .hero-sub     { animation-delay: 0.25s; }
-  .search-wrap  { animation-delay: 0.35s; }
-
+  .hero h2 { animation-delay: 0.15s; }
+  .hero-sub { animation-delay: 0.25s; }
   @media (max-width: 640px) {
     header { padding: 20px 20px 16px; flex-wrap: wrap; gap: 12px; }
     .hero { padding: 40px 20px 32px; }
@@ -307,117 +80,37 @@
     .info-strip, .vote-box { grid-template-columns: 1fr; padding: 0 20px; }
     .countdown-bar { padding: 16px 20px; gap: 20px; }
     footer { padding: 16px 20px; }
+    .live-results-bar { padding: 20px; }
   }
-
-  /* ── VoteIQ District Q&A Chatbox ── */
-  .viq-chat-panel {
-    margin-top: 2rem;
-    border: 1px solid #dde3f0;
-    border-radius: 12px;
-    overflow: hidden;
-    font-family: 'Barlow', sans-serif;
-    display: none;
-    flex-direction: column;
-    max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
-    text-align: left;
-  }
-  .viq-chat-header {
-    background: #0d1b2a;
-    padding: 12px 18px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-  }
-  .viq-chat-title {
-    font-size: 15px;
-    font-weight: 600;
-    color: #fff;
-    letter-spacing: -0.2px;
-    font-family: 'Barlow Condensed', sans-serif;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-  }
-  .viq-chat-title .accent-blue { color: #4A90D9; }
-  .viq-chat-title .accent-red  { color: #c8102e; }
-  .viq-chat-district-badge {
-    margin-left: auto;
-    font-size: 11px;
-    font-weight: 600;
-    background: rgba(255,255,255,0.12);
-    color: rgba(255,255,255,0.85);
-    padding: 3px 10px;
-    border-radius: 20px;
-    letter-spacing: 0.1em;
-    font-family: 'Barlow Condensed', sans-serif;
-    text-transform: uppercase;
-  }
-  .viq-chat-msgs {
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    max-height: 320px;
-    overflow-y: auto;
-    background: #f8f9fc;
-  }
+  /* ── Chatbox ── */
+  .viq-chat-panel { margin: 2rem auto 0; border: 1px solid #dde3f0; border-radius: 12px; overflow: hidden; font-family: 'Barlow', sans-serif; display: none; flex-direction: column; max-width: 600px; text-align: left; }
+  .viq-chat-header { background: #0d1b2a; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .viq-chat-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #fff; font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase; letter-spacing: 0.1em; }
+  .viq-chat-district-badge { font-size: 11px; font-weight: 600; background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.85); padding: 3px 10px; border-radius: 20px; letter-spacing: 0.1em; font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase; white-space: nowrap; }
+  .viq-chat-msgs { padding: 16px; display: flex; flex-direction: column; gap: 12px; max-height: 320px; overflow-y: auto; background: #f8f9fc; }
   .viq-chat-msg { display: flex; gap: 8px; align-items: flex-start; }
   .viq-chat-msg.user { flex-direction: row-reverse; }
-  .viq-chat-avatar {
-    width: 26px; height: 26px; border-radius: 50%;
-    font-size: 10px; font-weight: 700;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; font-family: 'Barlow Condensed', sans-serif;
-  }
-  .viq-chat-msg.bot  .viq-chat-avatar { background: #0d1b2a; color: #fff; }
+  .viq-chat-avatar { width: 26px; height: 26px; border-radius: 50%; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: 'Barlow Condensed', sans-serif; }
+  .viq-chat-msg.bot .viq-chat-avatar { background: #0d1b2a; color: #fff; }
   .viq-chat-msg.user .viq-chat-avatar { background: #c8102e; color: #fff; }
-  .viq-chat-bubble {
-    max-width: 78%; padding: 9px 13px; border-radius: 12px;
-    font-size: 14px; line-height: 1.55;
-  }
-  .viq-chat-msg.bot  .viq-chat-bubble { background: #fff; border: 1px solid #e3e8f0; border-radius: 4px 12px 12px 12px; color: #0d1b2a; }
+  .viq-chat-bubble { max-width: 78%; padding: 9px 13px; border-radius: 12px; font-size: 14px; line-height: 1.55; }
+  .viq-chat-msg.bot .viq-chat-bubble { background: #fff; border: 1px solid #e3e8f0; border-radius: 4px 12px 12px 12px; color: #0d1b2a; }
   .viq-chat-msg.user .viq-chat-bubble { background: #0d1b2a; color: #fff; border-radius: 12px 4px 12px 12px; }
   .viq-chat-typing { display: flex; align-items: center; gap: 4px; padding: 10px 13px; }
   .viq-chat-dot { width: 6px; height: 6px; border-radius: 50%; background: #aaa; animation: viqBounce 1.2s infinite; }
   .viq-chat-dot:nth-child(2) { animation-delay: 0.2s; }
   .viq-chat-dot:nth-child(3) { animation-delay: 0.4s; }
   @keyframes viqBounce { 0%,60%,100% { transform:translateY(0); } 30% { transform:translateY(-5px); } }
-  .viq-chat-chips {
-    padding: 8px 16px; display: flex; flex-wrap: wrap; gap: 6px;
-    background: #f8f9fc; border-top: 1px solid #eaecf4;
-  }
-  .viq-chat-chip {
-    font-size: 12px; padding: 5px 12px;
-    border: 1px solid #0d1b2a; border-radius: 20px;
-    background: transparent; color: #0d1b2a; cursor: pointer;
-    transition: background 0.15s; font-family: 'Barlow', sans-serif;
-  }
+  .viq-chat-chips { padding: 8px 16px; display: flex; flex-wrap: wrap; gap: 6px; background: #f8f9fc; border-top: 1px solid #eaecf4; }
+  .viq-chat-chip { font-size: 12px; padding: 5px 12px; border: 1px solid #0d1b2a; border-radius: 20px; background: transparent; color: #0d1b2a; cursor: pointer; transition: background 0.15s; font-family: 'Barlow', sans-serif; }
   .viq-chat-chip:hover { background: #eef2fb; }
-  .viq-chat-input-row {
-    display: flex; gap: 8px; padding: 12px 16px;
-    border-top: 1px solid #eaecf4; background: #fff;
-  }
-  .viq-chat-input {
-    flex: 1; font-family: 'Barlow', sans-serif; font-size: 14px;
-    padding: 9px 13px; border: 1px solid #c8d0e0; border-radius: 8px;
-    outline: none; color: #0d1b2a; background: #fff;
-  }
+  .viq-chat-input-row { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid #eaecf4; background: #fff; }
+  .viq-chat-input { flex: 1; font-family: 'Barlow', sans-serif; font-size: 14px; padding: 9px 13px; border: 1px solid #c8d0e0; border-radius: 8px; outline: none; color: #0d1b2a; background: #fff; }
   .viq-chat-input:focus { border-color: #0d1b2a; }
-  .viq-chat-send {
-    font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700;
-    letter-spacing: 0.08em; text-transform: uppercase;
-    padding: 9px 18px; background: #0d1b2a; color: #fff;
-    border: none; border-radius: 8px; cursor: pointer; transition: background 0.15s;
-  }
+  .viq-chat-send { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 9px 18px; background: #0d1b2a; color: #fff; border: none; border-radius: 8px; cursor: pointer; transition: background 0.15s; }
   .viq-chat-send:hover { background: #c8102e; }
   .viq-chat-send:disabled { opacity: 0.4; cursor: default; }
-  .viq-chat-footer {
-    font-size: 11px; color: #8892a4; text-align: center;
-    padding: 6px 16px 10px; background: #fff;
-    font-family: 'Barlow', sans-serif;
-  }
+  .viq-chat-footer { font-size: 11px; color: #8892a4; text-align: center; padding: 6px 16px 10px; background: #fff; font-family: 'Barlow', sans-serif; }
 </style>
 </head>
 <body>
@@ -429,6 +122,7 @@
 <header>
   <div class="logo-wrap">
     <img src="/static/logo.png" alt="VoteIQ Logo" style="width:120px;height:120px;object-fit:contain;" />
+  </div>
   <div>
     <div class="election-badge">⚡ Election Alert</div>
     <div class="header-date">Virginia Statewide Special Election &nbsp;·&nbsp; April 21, 2026</div>
@@ -451,11 +145,11 @@
 
   <!-- ── VoteIQ District Q&A Chatbox ── -->
   <div class="viq-chat-panel" id="viqChatPanel">
- <div class="viq-chat-title" style="display:flex;align-items:center;gap:8px;">
-  <img src="/static/logo.png" alt="VoteIQ" style="width:28px;height:28px;object-fit:contain;border-radius:4px;flex-shrink:0;" />
-  <span>District Q&amp;A</span>
-</div>
-
+    <div class="viq-chat-header">
+      <div class="viq-chat-title">
+        <img src="/static/logo.png" alt="VoteIQ" style="width:28px;height:28px;object-fit:contain;border-radius:4px;flex-shrink:0;" />
+        District Q&amp;A
+      </div>
       <span class="viq-chat-district-badge" id="viqDistrictBadge">—</span>
     </div>
     <div class="viq-chat-msgs" id="viqMsgList"></div>
@@ -562,99 +256,63 @@
 </section>
 
 <footer>
-
-  <div style="background:#0d1b2a; color:white; padding:20px 48px; text-align:center; width:100%;">
-  <div style="font-family:'Barlow Condensed',sans-serif; font-size:0.75rem; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; color:#c8102e; margin-bottom:8px;">
-    🔴 LIVE RESULTS
+  <p>© 2026 <span>VoteIQ</span> &nbsp;·&nbsp; voteiq.io &nbsp;·&nbsp; Nonpartisan civic data for Virginia voters</p>
+  <div class="footer-links">
+    <a href="#">About</a>
+    <a href="#">Data Sources</a>
   </div>
-  <div style="font-family:'Playfair Display',serif; font-size:1.3rem; font-weight:700; margin-bottom:8px;">
-    Redistricting Referendum Results
-  </div>
-  <p style="font-family:'Barlow',sans-serif; font-size:0.9rem; color:#ddd8cc; margin-bottom:12px;">
-    Results will appear here after polls close at 7pm on April 21st.
-  </p>
-  <a href="https://results.elections.virginia.gov" target="_blank" style="font-family:'Barlow Condensed',sans-serif; font-size:0.85rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#c8102e; text-decoration:none; border:1px solid #c8102e; padding:8px 18px;">
-    View Official Results →
-  </a>
-</div>
 </footer>
 
-
+<div class="live-results-bar">
+  <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.75rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#c8102e;margin-bottom:8px;">🔴 LIVE RESULTS</div>
+  <div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;margin-bottom:8px;">Redistricting Referendum Results</div>
+  <p style="font-family:'Barlow',sans-serif;font-size:0.9rem;color:#ddd8cc;margin-bottom:12px;">Results will appear here after polls close at 7pm on April 21st.</p>
+  <a href="https://results.elections.virginia.gov" target="_blank" style="font-family:'Barlow Condensed',sans-serif;font-size:0.85rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#c8102e;text-decoration:none;border:1px solid #c8102e;padding:8px 18px;">View Official Results →</a>
+</div>
 
 <script>
-  // ── Address lookup ────────────────────────────────────────────────────────
   async function lookup() {
     const address = document.getElementById('address').value;
-
-    if (address.length < 10) {
-      document.getElementById('result').innerHTML =
-        '<p style="color:red;">⚠️ Please enter your full address including street number, city, state and zip code.</p>';
-      return;
-    }
-
-    if (!address.includes(',')) {
-      document.getElementById('result').innerHTML =
-        '<p style="color:red;">⚠️ Please use full address format: 2000 Atlantic Ave, Virginia Beach, VA 23451</p>';
-      return;
-    }
-
+    if (address.length < 10) { document.getElementById('result').innerHTML = '<p style="color:red;">⚠️ Please enter your full address including street number, city, state and zip code.</p>'; return; }
+    if (!address.includes(',')) { document.getElementById('result').innerHTML = '<p style="color:red;">⚠️ Please use full address format: 2000 Atlantic Ave, Virginia Beach, VA 23451</p>'; return; }
     document.getElementById('result').innerHTML = '<p>Loading...</p>';
     document.getElementById('map').srcdoc = '';
     document.getElementById('viqChatPanel').style.display = 'none';
-
     try {
       const response = await fetch(`/api/lookup?address=${encodeURIComponent(address)}`);
       const data = await response.json();
-
-      const reps = {
-        "02": "Jen Kiggans (R)",
-        "03": "Bobby Scott (D)"
-      };
-
+      const reps = { "02": "Jen Kiggans (R)", "03": "Bobby Scott (D)" };
       const repDisplay = reps[data.district.district_number] || "Not found";
-
       document.getElementById('result').innerHTML =
-        '<div style="background:white; border:1px solid #ddd8cc; border-top:4px solid #c8102e; padding:24px; margin-top:20px;">' +
-        '<h3 style="font-family:Barlow Condensed,sans-serif; font-size:0.8rem; color:#c8102e; margin-bottom:16px;">Your District Information</h3>' +
+        '<div style="background:white;border:1px solid #ddd8cc;border-top:4px solid #c8102e;padding:24px;margin-top:20px;">' +
+        '<h3 style="font-family:Barlow Condensed,sans-serif;font-size:0.8rem;color:#c8102e;margin-bottom:16px;">Your District Information</h3>' +
         '<p style="margin-bottom:8px;">📍 Locality: <strong>' + data.district.locality + '</strong></p>' +
         '<p style="margin-bottom:8px;">🏛️ District: <strong>' + data.district.district + '</strong></p>' +
         '<p style="margin-bottom:8px;">🔢 District Number: <strong>' + data.district.district_number + '</strong></p>' +
         '<p style="margin-bottom:8px;">👤 Representative: <strong>' + repDisplay + '</strong></p>' +
         '<p style="margin-bottom:8px;">🗳️ Precinct: <strong>' + data.district.precinct + '</strong></p>' +
-        '<p style="margin-top:16px; font-size:0.85rem;"><a href="https://vpap.org/redistricting/2026" target="_blank" style="color:#c8102e;">See proposed district changes at VPAP →</a></p>' +
+        '<p style="margin-top:16px;font-size:0.85rem;"><a href="https://vpap.org/redistricting/2026" target="_blank" style="color:#c8102e;">See proposed district changes at VPAP →</a></p>' +
         '</div>';
-
-      // ── Initialize chatbox with the user's district ──────────────────────
       const districtNum = data.district.district_number;
       const districtCode = 'VA-' + (districtNum.startsWith('0') ? districtNum : '0' + districtNum);
       initViqChat(districtCode);
-
       document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
-
       const mapResponse = await fetch(`/map?address=${encodeURIComponent(address)}`);
       const mapHTML = await mapResponse.text();
       document.getElementById('map').srcdoc = mapHTML;
-
     } catch (error) {
       document.getElementById('result').innerHTML = '<p style="color:red;">Error loading results.</p>';
     }
   }
 
-  // ── Countdown ─────────────────────────────────────────────────────────────
   function updateCountdown() {
     const election = new Date('2026-04-21T06:00:00');
     const now = new Date();
     const diff = election - now;
-
-    if (diff <= 0) {
-      document.getElementById('days-left').innerHTML = '<span style="font-size:1rem">TODAY!</span>';
-      return;
-    }
-
+    if (diff <= 0) { document.getElementById('days-left').innerHTML = '<span style="font-size:1rem">TODAY!</span>'; return; }
     const days  = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const mins  = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
     document.getElementById('days-left').innerHTML  = `${days}<span>days</span>`;
     document.getElementById('hours-left').innerHTML = `${hours}<span>hrs</span>`;
     document.getElementById('mins-left').innerHTML  = `${mins}<span>min</span>`;
@@ -662,7 +320,6 @@
   updateCountdown();
   setInterval(updateCountdown, 1000);
 
-  // ── VoteIQ District Q&A Chatbox ───────────────────────────────────────────
   (function () {
     let viqDistrict = null;
     const viqMsgs = [];
@@ -670,20 +327,15 @@
     window.initViqChat = function (districtCode) {
       viqDistrict = districtCode;
       viqMsgs.length = 0;
-
       const panel = document.getElementById('viqChatPanel');
       const badge = document.getElementById('viqDistrictBadge');
       const list  = document.getElementById('viqMsgList');
       const chips = document.getElementById('viqChips');
-
-      badge.textContent     = districtCode;
-      list.innerHTML        = '';
-      chips.style.display   = 'flex';
-      panel.style.display   = 'flex';
-
-      viqAddMsg('assistant',
-        `Hi! I'm your VoteIQ assistant for ${districtCode}. Ask me anything about your representative, district boundaries, or upcoming votes.`
-      );
+      badge.textContent   = districtCode;
+      list.innerHTML      = '';
+      chips.style.display = 'flex';
+      panel.style.display = 'flex';
+      viqAddMsg('assistant', `Hi! I'm your VoteIQ assistant for ${districtCode}. Ask me anything about your representative, district boundaries, or upcoming votes.`);
     };
 
     function viqAddMsg(role, text, isTyping = false) {
@@ -691,56 +343,40 @@
       const wrap = document.createElement('div');
       wrap.className = `viq-chat-msg ${role === 'user' ? 'user' : 'bot'}`;
       if (isTyping) wrap.id = 'viq-typing';
-
       const av = document.createElement('div');
       av.className = 'viq-chat-avatar';
       av.textContent = role === 'user' ? 'YOU' : 'IQ';
-
       const bubble = document.createElement('div');
       bubble.className = 'viq-chat-bubble';
-
       if (isTyping) {
         bubble.innerHTML = '<div class="viq-chat-typing"><div class="viq-chat-dot"></div><div class="viq-chat-dot"></div><div class="viq-chat-dot"></div></div>';
       } else {
         bubble.textContent = text;
         if (role === 'assistant') viqMsgs.push({ role: 'assistant', content: text });
       }
-
       wrap.appendChild(av);
       wrap.appendChild(bubble);
       list.appendChild(wrap);
       list.scrollTop = list.scrollHeight;
     }
 
-    function viqRemoveTyping() {
-      const t = document.getElementById('viq-typing');
-      if (t) t.remove();
-    }
+    function viqRemoveTyping() { const t = document.getElementById('viq-typing'); if (t) t.remove(); }
 
     async function viqSendMessage(override) {
       const input = document.getElementById('viqInput');
       const btn   = document.getElementById('viqSendBtn');
       const text  = override || input.value.trim();
       if (!text || !viqDistrict) return;
-
       input.value = '';
       btn.disabled = true;
       document.getElementById('viqChips').style.display = 'none';
-
       viqAddMsg('user', text);
       viqMsgs.push({ role: 'user', content: text });
       viqAddMsg('assistant', '', true);
-
       try {
-        const res = await fetch('/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ district: viqDistrict, messages: viqMsgs })
-        });
-
+        const res = await fetch('/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ district: viqDistrict, messages: viqMsgs }) });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-
         viqRemoveTyping();
         viqAddMsg('assistant', data.reply);
       } catch (err) {
@@ -748,18 +384,14 @@
         viqAddMsg('assistant', 'Something went wrong — please try again.');
         console.error('VoteIQ chat error:', err);
       }
-
       btn.disabled = false;
       input.focus();
     }
 
     window.viqSendChip    = function (text) { viqSendMessage(text); };
     window.viqSendMessage = viqSendMessage;
-
-    document.getElementById('viqInput')
-      .addEventListener('keydown', e => { if (e.key === 'Enter') viqSendMessage(); });
+    document.getElementById('viqInput').addEventListener('keydown', e => { if (e.key === 'Enter') viqSendMessage(); });
   })();
 </script>
-
 </body>
 </html>
