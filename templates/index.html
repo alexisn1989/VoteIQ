@@ -6,7 +6,7 @@
 <title>VoteIQ — Civic Intelligence Platform</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet"/>
 <style>
-  :root { --navy:#0d1b2a; --red:#c8102e; --blue:#1a3a6b; --gold:#b8960c; --light:#f4f1eb; --mid:#ddd8cc; --muted:#7a7468; }
+  :root { --navy:#0d1b2a; --red:#c8102e; --blue:#1a3a6b; --light:#f4f1eb; --mid:#ddd8cc; --muted:#7a7468; }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--light); color: var(--navy); font-family: 'Barlow', sans-serif; min-height: 100vh; overflow-x: hidden; }
   body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f4f1eb'/%3E%3Crect width='1' height='1' fill='%23e8e4dc' opacity='0.4'/%3E%3C/svg%3E"); pointer-events: none; z-index: 0; }
@@ -34,9 +34,7 @@
   .divider span { font-family: 'Barlow Condensed', sans-serif; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
   .features { position: relative; z-index: 10; max-width: 860px; margin: 0 auto; padding: 40px 32px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
   .feature-card { background: white; border: 1px solid var(--mid); border-top: 3px solid var(--navy); padding: 22px 20px; transition: border-top-color 0.2s, transform 0.2s; animation: riseIn 0.5s ease both; }
-  .feature-card:nth-child(1) { animation-delay: 0.1s; }
-  .feature-card:nth-child(2) { animation-delay: 0.2s; border-top-color: var(--red); }
-  .feature-card:nth-child(3) { animation-delay: 0.3s; }
+  .feature-card:nth-child(2) { border-top-color: var(--red); }
   .feature-card:hover { border-top-color: var(--red); transform: translateY(-3px); }
   @keyframes riseIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
   .feature-icon { font-size: 1.6rem; margin-bottom: 10px; }
@@ -55,12 +53,12 @@
   .info-card h4 { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--red); margin-bottom: 8px; }
   .info-card p { font-size: 0.88rem; color: var(--navy); line-height: 1.7; }
   .vote-box { position: relative; z-index: 10; max-width: 860px; margin: 24px auto 0; padding: 0 32px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-  .vote-card { padding: 20px 22px; border: 1px solid var(--mid); background: white; position: relative; overflow: hidden; }
+  .vote-card { padding: 20px 22px; border: 1px solid var(--mid); background: white; }
   .vote-card.yes { border-top: 4px solid #1a6b1a; }
-  .vote-card.no  { border-top: 4px solid var(--red); }
+  .vote-card.no { border-top: 4px solid var(--red); }
   .vote-card h4 { font-family: 'Barlow Condensed', sans-serif; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 10px; }
   .vote-card.yes h4 { color: #1a6b1a; }
-  .vote-card.no  h4 { color: var(--red); }
+  .vote-card.no h4 { color: var(--red); }
   .vote-card p { font-size: 0.86rem; color: var(--navy); line-height: 1.65; }
   footer { position: relative; z-index: 10; margin-top: 56px; border-top: 3px double var(--navy); padding: 20px 48px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: var(--light); }
   footer p { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
@@ -69,10 +67,6 @@
   .footer-links a { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); text-decoration: none; transition: color 0.2s; }
   .footer-links a:hover { color: var(--red); }
   .live-results-bar { background: #0d1b2a; color: white; padding: 28px 48px; text-align: center; width: 100%; }
-  .hero-eyebrow, .hero h2, .hero-sub { animation: riseIn 0.6s ease both; }
-  .hero-eyebrow { animation-delay: 0.05s; }
-  .hero h2 { animation-delay: 0.15s; }
-  .hero-sub { animation-delay: 0.25s; }
   @media (max-width: 640px) {
     header { padding: 20px 20px 16px; flex-wrap: wrap; gap: 12px; }
     .hero { padding: 40px 20px 32px; }
@@ -82,7 +76,6 @@
     footer { padding: 16px 20px; }
     .live-results-bar { padding: 20px; }
   }
-  /* ── Chatbox ── */
   .viq-chat-panel { margin: 2rem auto 0; border: 1px solid #dde3f0; border-radius: 12px; overflow: hidden; font-family: 'Barlow', sans-serif; display: none; flex-direction: column; max-width: 600px; text-align: left; }
   .viq-chat-header { background: #0d1b2a; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .viq-chat-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #fff; font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase; letter-spacing: 0.1em; }
@@ -143,7 +136,6 @@
 
   <div id="result" style="max-width:600px; margin:20px auto; font-size:1rem; color:#0d1b2a; text-align:left;"></div>
 
-  <!-- ── VoteIQ District Q&A Chatbox ── -->
   <div class="viq-chat-panel" id="viqChatPanel">
     <div class="viq-chat-header">
       <div class="viq-chat-title">
@@ -165,7 +157,6 @@
     </div>
     <div class="viq-chat-footer">Powered by VoteIQ · Verify important info at elections.virginia.gov</div>
   </div>
-  <!-- ── End Chatbox ── -->
 
   <iframe id="map" style="width:100%; height:400px; border:none; margin-top:20px;"></iframe>
 
@@ -193,28 +184,24 @@
     <div class="info-card">
       <h4>What does this referendum do?</h4>
       <p>
-        Republican-led states including Texas, North Carolina, and Missouri redrew congressional maps mid-decade at President Trump's urging, adding several new GOP seats nationally. Florida has held a special legislative session on redistricting but has not yet enacted a new map.<br/><br/>California was the first Democratic state to respond — voters approved a redrawn congressional map through a similar referendum process. Virginia is now following the same approach, putting the question directly to voters.<br/><br/>
-        In response, Virginia's Democrat-controlled General Assembly drew a new congressional map and passed a constitutional amendment. A <strong>YES vote</strong> gives them permission to use it — replacing the bipartisan Redistricting Commission's current map.<br/><br/>
+        Republican-led states including Texas, North Carolina, and Missouri redrew congressional maps mid-decade at President Trump's urging, adding several new GOP seats nationally.<br/><br/>
+        California was the first Democratic state to respond — voters approved a redrawn congressional map through a similar referendum process. Virginia is now following the same approach.<br/><br/>
+        Virginia's Democrat-controlled General Assembly drew a new congressional map and passed a constitutional amendment. A <strong>YES vote</strong> gives them permission to use it — replacing the bipartisan Redistricting Commission's current map.<br/><br/>
         A <strong>NO vote</strong> keeps the existing commission-drawn districts in place for 2026.
       </p>
     </div>
     <div class="info-card">
       <h4>Key dates</h4>
       <p>
-        <strong>Now</strong> — Referendum early voting open (began March 6)<br/>
-        <strong>April 10</strong> — Referendum absentee ballot deadline<br/>
-        <strong>April 18</strong> — Last day of referendum early voting<br/>
-        <strong>April 21</strong> — ⭐ Redistricting Referendum (6am–7pm)<br/>
-        <br/>
+        <strong>April 21</strong> — ⭐ Redistricting Referendum (6am–7pm)<br/><br/>
         <strong>June 19</strong> — Primary early voting begins<br/>
         <strong>July 24</strong> — Primary absentee ballot deadline<br/>
         <strong>August 1</strong> — Last day of primary early voting<br/>
-        <strong>August 4</strong> — Virginia Primary (U.S. House &amp; Senate)<br/>
-        <br/>
+        <strong>August 4</strong> — Virginia Primary (U.S. House &amp; Senate)<br/><br/>
         <strong>Sept 18</strong> — General Election early voting begins<br/>
         <strong>Oct 23</strong> — General Election absentee ballot deadline<br/>
         <strong>Oct 31</strong> — Last day of General Election early voting<br/>
-        <strong>November 3</strong> — General Election (U.S. House &amp; Senate)<br/>
+        <strong>November 3</strong> — General Election (U.S. House &amp; Senate)
       </p>
     </div>
   </div>
@@ -273,13 +260,13 @@
 <script>
   async function lookup() {
     const address = document.getElementById('address').value;
-    if (address.length < 10) { document.getElementById('result').innerHTML = '<p style="color:red;">⚠️ Please enter your full address including street number, city, state and zip code.</p>'; return; }
-    if (!address.includes(',')) { document.getElementById('result').innerHTML = '<p style="color:red;">⚠️ Please use full address format: 2000 Atlantic Ave, Virginia Beach, VA 23451</p>'; return; }
+    if (address.length < 10) { document.getElementById('result').innerHTML = '<p style="color:red;">⚠️ Please enter your full address.</p>'; return; }
+    if (!address.includes(',')) { document.getElementById('result').innerHTML = '<p style="color:red;">⚠️ Please use format: 2000 Atlantic Ave, Virginia Beach, VA 23451</p>'; return; }
     document.getElementById('result').innerHTML = '<p>Loading...</p>';
     document.getElementById('map').srcdoc = '';
     document.getElementById('viqChatPanel').style.display = 'none';
     try {
-      const response = await fetch(`/api/lookup?address=${encodeURIComponent(address)}`);
+      const response = await fetch('/api/lookup?address=' + encodeURIComponent(address));
       const data = await response.json();
       const reps = { "02": "Jen Kiggans (R)", "03": "Bobby Scott (D)" };
       const repDisplay = reps[data.district.district_number] || "Not found";
@@ -297,7 +284,7 @@
       const districtCode = 'VA-' + (districtNum.startsWith('0') ? districtNum : '0' + districtNum);
       initViqChat(districtCode);
       document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
-      const mapResponse = await fetch(`/map?address=${encodeURIComponent(address)}`);
+      const mapResponse = await fetch('/map?address=' + encodeURIComponent(address));
       const mapHTML = await mapResponse.text();
       document.getElementById('map').srcdoc = mapHTML;
     } catch (error) {
@@ -313,9 +300,9 @@
     const days  = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const mins  = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    document.getElementById('days-left').innerHTML  = `${days}<span>days</span>`;
-    document.getElementById('hours-left').innerHTML = `${hours}<span>hrs</span>`;
-    document.getElementById('mins-left').innerHTML  = `${mins}<span>min</span>`;
+    document.getElementById('days-left').innerHTML  = days + '<span>days</span>';
+    document.getElementById('hours-left').innerHTML = hours + '<span>hrs</span>';
+    document.getElementById('mins-left').innerHTML  = mins + '<span>min</span>';
   }
   updateCountdown();
   setInterval(updateCountdown, 1000);
@@ -323,25 +310,19 @@
   (function () {
     let viqDistrict = null;
     const viqMsgs = [];
-
     window.initViqChat = function (districtCode) {
       viqDistrict = districtCode;
       viqMsgs.length = 0;
-      const panel = document.getElementById('viqChatPanel');
-      const badge = document.getElementById('viqDistrictBadge');
-      const list  = document.getElementById('viqMsgList');
-      const chips = document.getElementById('viqChips');
-      badge.textContent   = districtCode;
-      list.innerHTML      = '';
-      chips.style.display = 'flex';
-      panel.style.display = 'flex';
-      viqAddMsg('assistant', `Hi! I'm your VoteIQ assistant for ${districtCode}. Ask me anything about your representative, district boundaries, or upcoming votes.`);
+      document.getElementById('viqDistrictBadge').textContent = districtCode;
+      document.getElementById('viqMsgList').innerHTML = '';
+      document.getElementById('viqChips').style.display = 'flex';
+      document.getElementById('viqChatPanel').style.display = 'flex';
+      viqAddMsg('assistant', "Hi! I'm your VoteIQ assistant for " + districtCode + ". Ask me anything about your representative, district boundaries, or upcoming votes.");
     };
-
-    function viqAddMsg(role, text, isTyping = false) {
+    function viqAddMsg(role, text, isTyping) {
       const list = document.getElementById('viqMsgList');
       const wrap = document.createElement('div');
-      wrap.className = `viq-chat-msg ${role === 'user' ? 'user' : 'bot'}`;
+      wrap.className = 'viq-chat-msg ' + (role === 'user' ? 'user' : 'bot');
       if (isTyping) wrap.id = 'viq-typing';
       const av = document.createElement('div');
       av.className = 'viq-chat-avatar';
@@ -359,13 +340,11 @@
       list.appendChild(wrap);
       list.scrollTop = list.scrollHeight;
     }
-
     function viqRemoveTyping() { const t = document.getElementById('viq-typing'); if (t) t.remove(); }
-
     async function viqSendMessage(override) {
       const input = document.getElementById('viqInput');
-      const btn   = document.getElementById('viqSendBtn');
-      const text  = override || input.value.trim();
+      const btn = document.getElementById('viqSendBtn');
+      const text = override || input.value.trim();
       if (!text || !viqDistrict) return;
       input.value = '';
       btn.disabled = true;
@@ -375,42 +354,21 @@
       viqAddMsg('assistant', '', true);
       try {
         const res = await fetch('/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ district: viqDistrict, messages: viqMsgs }) });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
         viqRemoveTyping();
         viqAddMsg('assistant', data.reply);
       } catch (err) {
         viqRemoveTyping();
         viqAddMsg('assistant', 'Something went wrong — please try again.');
-        console.error('VoteIQ chat error:', err);
       }
       btn.disabled = false;
       input.focus();
     }
-
-    window.viqSendChip    = function (text) { viqSendMessage(text); };
+    window.viqSendChip = function (text) { viqSendMessage(text); };
     window.viqSendMessage = viqSendMessage;
-    document.getElementById('viqInput').addEventListener('keydown', e => { if (e.key === 'Enter') viqSendMessage(); });
+    document.getElementById('viqInput').addEventListener('keydown', function(e) { if (e.key === 'Enter') viqSendMessage(); });
   })();
 </script>
-<$content = Get-Content 'templates\index.html' -Raw
-$idx = $content.LastIndexOf('</script>')
-$fixed = $content.Substring(0, $idx + 9) + @"
-
-<footer style="position:relative;z-index:10;margin-top:56px;border-top:3px double #0d1b2a;padding:20px 48px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;background:#f4f1eb;">
-  <p style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#7a7468;">© 2026 <span style="color:#c8102e;">VoteIQ</span> &nbsp;·&nbsp; voteiq.io &nbsp;·&nbsp; Nonpartisan civic data for Virginia voters</p>
-  <div style="display:flex;gap:20px;"><a href="#" style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;color:#7a7468;text-decoration:none;text-transform:uppercase;letter-spacing:0.12em;font-weight:600;">About</a><a href="#" style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;color:#7a7468;text-decoration:none;text-transform:uppercase;letter-spacing:0.12em;font-weight:600;">Data Sources</a></div>
-</footer>
-<div style="background:#0d1b2a;color:white;padding:28px 48px;text-align:center;width:100%;">
-  <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.75rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#c8102e;margin-bottom:8px;">🔴 LIVE RESULTS</div>
-  <div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;margin-bottom:8px;">Redistricting Referendum Results</div>
-  <p style="font-family:'Barlow',sans-serif;font-size:0.9rem;color:#ddd8cc;margin-bottom:12px;">Results will appear here after polls close at 7pm on April 21st.</p>
-  <a href="https://results.elections.virginia.gov" target="_blank" style="font-family:'Barlow Condensed',sans-serif;font-size:0.85rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#c8102e;text-decoration:none;border:1px solid #c8102e;padding:8px 18px;">View Official Results →</a>
-</div>
 </body>
-</html>
-"@
-$fixed | Set-Content 'templates\index.html' -NoNewline
-Write-Host "Done!"
-
 </html>
