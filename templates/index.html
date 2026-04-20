@@ -6,7 +6,7 @@
 <title>VoteIQ — Civic Intelligence Platform</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet"/>
 <style>
-  :root { --navy:#0d1b2a; --red:#c8102e; --blue:#1a3a6b; --light:#f4f1eb; --mid:#ddd8cc; --muted:#7a7468; }
+  :root { --navy:#0d1b2a; --red:#c8102e; --light:#f4f1eb; --mid:#ddd8cc; --muted:#7a7468; }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--light); color: var(--navy); font-family: 'Barlow', sans-serif; min-height: 100vh; overflow-x: hidden; }
   body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f4f1eb'/%3E%3Crect width='1' height='1' fill='%23e8e4dc' opacity='0.4'/%3E%3C/svg%3E"); pointer-events: none; z-index: 0; }
@@ -33,10 +33,9 @@
   .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--mid); }
   .divider span { font-family: 'Barlow Condensed', sans-serif; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
   .features { position: relative; z-index: 10; max-width: 860px; margin: 0 auto; padding: 40px 32px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-  .feature-card { background: white; border: 1px solid var(--mid); border-top: 3px solid var(--navy); padding: 22px 20px; transition: border-top-color 0.2s, transform 0.2s; animation: riseIn 0.5s ease both; }
+  .feature-card { background: white; border: 1px solid var(--mid); border-top: 3px solid var(--navy); padding: 22px 20px; transition: border-top-color 0.2s, transform 0.2s; }
   .feature-card:nth-child(2) { border-top-color: var(--red); }
   .feature-card:hover { border-top-color: var(--red); transform: translateY(-3px); }
-  @keyframes riseIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
   .feature-icon { font-size: 1.6rem; margin-bottom: 10px; }
   .feature-card h3 { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
   .feature-card p { font-size: 0.85rem; color: var(--muted); line-height: 1.5; }
@@ -260,8 +259,8 @@
 <script>
   async function lookup() {
     const address = document.getElementById('address').value;
-    if (address.length < 10) { document.getElementById('result').innerHTML = '<p style="color:red;">⚠️ Please enter your full address.</p>'; return; }
-    if (!address.includes(',')) { document.getElementById('result').innerHTML = '<p style="color:red;">⚠️ Please use format: 2000 Atlantic Ave, Virginia Beach, VA 23451</p>'; return; }
+    if (address.length < 10) { document.getElementById('result').innerHTML = '<p style="color:red;">Please enter your full address.</p>'; return; }
+    if (!address.includes(',')) { document.getElementById('result').innerHTML = '<p style="color:red;">Please use format: 2000 Atlantic Ave, Virginia Beach, VA 23451</p>'; return; }
     document.getElementById('result').innerHTML = '<p>Loading...</p>';
     document.getElementById('map').srcdoc = '';
     document.getElementById('viqChatPanel').style.display = 'none';
@@ -369,21 +368,6 @@
     window.viqSendMessage = viqSendMessage;
     document.getElementById('viqInput').addEventListener('keydown', function(e) { if (e.key === 'Enter') viqSendMessage(); });
   })();
-
 </script>
-
-<footer>
-  <p>© 2026 <span>VoteIQ</span> &nbsp;·&nbsp; voteiq.io &nbsp;·&nbsp; Nonpartisan civic data for Virginia voters</p>
-  <div class="footer-links">
-    <a href="#">About</a>
-    <a href="#">Data Sources</a>
-  </div>
-</footer>
-<div class="live-results-bar">
-  <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.75rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#c8102e;margin-bottom:8px;">🔴 LIVE RESULTS</div>
-  <div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;margin-bottom:8px;">Redistricting Referendum Results</div>
-  <p style="font-family:'Barlow',sans-serif;font-size:0.9rem;color:#ddd8cc;margin-bottom:12px;">Results will appear here after polls close at 7pm on April 21st.</p>
-  <a href="https://results.elections.virginia.gov" target="_blank" style="font-family:'Barlow Condensed',sans-serif;font-size:0.85rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#c8102e;text-decoration:none;border:1px solid #c8102e;padding:8px 18px;">View Official Results →</a>
-</div>
 </body>
 </html>
