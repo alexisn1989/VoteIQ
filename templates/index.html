@@ -132,6 +132,9 @@
   </div>
   <p class="search-note">🔒 Your address is never stored &nbsp;·&nbsp; Free for all registered Virginia voters</p>
   <p class="search-note" style="margin-top:8px;">📋 Want to see the proposed new map? <a href="https://www.vpap.org/redistricting/2026/" target="_blank" style="color:#c8102e;text-decoration:underline;">View it on VPAP →</a></p>
+  <div style="margin-top:20px;">
+    <a href="https://enr.elections.virginia.gov/results/public/virginia/elections/2026-April-21-Special" target="_blank" style="display:inline-block;background:#c8102e;color:white;font-family:'Barlow Condensed',sans-serif;font-size:0.95rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:14px 32px;text-decoration:none;border:2px solid #c8102e;box-shadow:4px 4px 0 #0d1b2a;transition:all 0.2s;" onmouseover="this.style.background='#0d1b2a';this.style.borderColor='#0d1b2a'" onmouseout="this.style.background='#c8102e';this.style.borderColor='#c8102e'">🗳️ View Tonight's Referendum Results →</a>
+  </div>
 
   <div id="result" style="max-width:600px; margin:20px auto; font-size:1rem; color:#0d1b2a; text-align:left;"></div>
 
@@ -233,13 +236,20 @@
     </div>
     <div class="countdown-divider"></div>
     <div>
-      <div class="countdown-label">Election Day</div>
-      <div class="countdown-num">Apr 21<span></span></div>
+      <div class="countdown-label">Polls Close</div>
+      <div class="countdown-num">7 PM<span></span></div>
     </div>
     <div class="countdown-divider"></div>
     <a href="https://vote.elections.virginia.gov/VoterInformation" target="_blank" class="countdown-cta">Check Registration →</a>
   </div>
 </section>
+
+<div class="live-results-bar">
+  <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.75rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#c8102e;margin-bottom:8px;">🔴 LIVE UPDATES</div>
+  <div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;margin-bottom:8px;">Virginia Redistricting Referendum</div>
+  <p style="font-family:'Barlow',sans-serif;font-size:0.9rem;color:#ddd8cc;margin-bottom:12px;">Polls close at 7:00 PM. Live tallies will begin appearing shortly after.</p>
+  <a href="https://enr.elections.virginia.gov/results/public/virginia/elections/2026-April-21-Special" target="_blank" style="font-family:'Barlow Condensed',sans-serif;font-size:0.85rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#c8102e;text-decoration:none;border:1px solid #c8102e;padding:8px 18px;">View Real-Time Results →</a>
+</div>
 
 <footer>
   <p>© 2026 <span>VoteIQ</span> &nbsp;·&nbsp; voteiq.io &nbsp;·&nbsp; Nonpartisan civic data for Virginia voters</p>
@@ -248,13 +258,6 @@
     <a href="#">Data Sources</a>
   </div>
 </footer>
-
-<div class="live-results-bar">
-  <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.75rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#c8102e;margin-bottom:8px;">🔴 LIVE RESULTS</div>
-  <div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;margin-bottom:8px;">Redistricting Referendum Results</div>
-  <p style="font-family:'Barlow',sans-serif;font-size:0.9rem;color:#ddd8cc;margin-bottom:12px;">Results will appear here after polls close at 7pm on April 21st.</p>
-  <a href="https://results.elections.virginia.gov" target="_blank" style="font-family:'Barlow Condensed',sans-serif;font-size:0.85rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#c8102e;text-decoration:none;border:1px solid #c8102e;padding:8px 18px;">View Official Results →</a>
-</div>
 
 <script>
   async function lookup() {
@@ -292,7 +295,7 @@
   }
 
   function updateCountdown() {
-    const election = new Date('2026-04-21T06:00:00');
+    const election = new Date('2026-04-21T19:00:00');
     const now = new Date();
     const diff = election - now;
     if (diff <= 0) { document.getElementById('days-left').innerHTML = '<span style="font-size:1rem">TODAY!</span>'; return; }
