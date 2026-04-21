@@ -16,9 +16,8 @@
   .logo-wrap { display: flex; align-items: center; gap: 16px; }
   .election-badge { display: inline-block; background: var(--red); color: white; font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; padding: 5px 12px; margin-bottom: 6px; }
   .header-date { font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; text-align: right; }
-
-  .hero-.hero { position: relative; z-index: 10; max-width: 860px; margin: 0 auto; padding: 56px 32px; text-align: center; }
-  eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--red); margin-bottom: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .hero { position: relative; z-index: 10; max-width: 860px; margin: 0 auto; padding: 56px 32px 48px; text-align: center; }
+  .hero-eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--red); margin-bottom: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; }
   .hero-eyebrow::before, .hero-eyebrow::after { content: ''; flex: 1; max-width: 60px; height: 1px; background: var(--red); }
   .hero h2 { font-family: 'Playfair Display', serif; font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 900; line-height: 1.1; color: var(--navy); margin-bottom: 18px; letter-spacing: -0.02em; }
   .hero h2 em { font-style: italic; color: var(--red); }
@@ -60,13 +59,13 @@
   .vote-card.yes h4 { color: #1a6b1a; }
   .vote-card.no h4 { color: var(--red); }
   .vote-card p { font-size: 0.86rem; color: var(--navy); line-height: 1.65; }
-  footer { position: relative; z-index: 10; margin-top: 0px; border-top: 3px double var(--navy); padding: 20px 48px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: var(--light); }
+  footer { position: relative; z-index: 10; margin-top: 56px; border-top: 3px double var(--navy); padding: 20px 48px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: var(--light); }
   footer p { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
   footer p span { color: var(--red); }
   .footer-links { display: flex; gap: 20px; }
   .footer-links a { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); text-decoration: none; transition: color 0.2s; }
   .footer-links a:hover { color: var(--red); }
-  .live-results-bar { background: #0d1b2a; color: white; padding: 28px 48px; text-align: center; width: 100%; display: block; margin-top: 0; }
+  .live-results-bar { background: #0d1b2a; color: white; padding: 28px 48px; text-align: center; width: 100%; }
   @media (max-width: 640px) {
     header { padding: 20px 20px 16px; flex-wrap: wrap; gap: 12px; }
     .hero { padding: 40px 20px 32px; }
@@ -241,6 +240,7 @@
     <a href="https://vote.elections.virginia.gov/VoterInformation" target="_blank" class="countdown-cta">Check Registration →</a>
   </div>
 </section>
+
 <footer>
   <p>© 2026 <span>VoteIQ</span> &nbsp;·&nbsp; voteiq.io &nbsp;·&nbsp; Nonpartisan civic data for Virginia voters</p>
   <div class="footer-links">
@@ -368,7 +368,6 @@
     window.viqSendMessage = viqSendMessage;
     document.getElementById('viqInput').addEventListener('keydown', function(e) { if (e.key === 'Enter') viqSendMessage(); });
   })();
-
 </script>
 </body>
 </html>
