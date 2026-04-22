@@ -49,6 +49,11 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
 
+@app.get("/election-map", response_class=HTMLResponse)
+def election_map():
+    with open(os.path.join(BASE_DIR, "templates", "election_map.html"), "r", encoding="utf-8") as f:
+        return f.read()
+
 @app.get("/", response_class=HTMLResponse)
 def home():
     with open(os.path.join(BASE_DIR, "templates", "index.html"), "r", encoding="utf-8") as f:
@@ -89,4 +94,4 @@ Keep answers 2-4 sentences, factual and nonpartisan. Suggest elections.virginia.
     return ChatResponse(reply=response.content[0].text)
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+    uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("
