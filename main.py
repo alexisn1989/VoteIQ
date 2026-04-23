@@ -94,25 +94,14 @@ def _build_election_map() -> str:
         ),
     ).add_to(m)
 
-    statewide = data.get("results", {}).get("ballotItems", [{}])[0].get("ballotOptions", [])
-    yes_state = next((o["voteCount"] for o in statewide if o["name"].upper() == "YES"), 0)
-    no_state  = next((o["voteCount"] for o in statewide if o["name"].upper() == "NO"),  0)
-
-    m.get_root().html.add_child(folium.Element(f"""
+    m.get_root().html.add_child(folium.Element("""
     <div style="position:fixed;bottom:40px;left:40px;z-index:1000;
-         background:white;padding:14px 20px;border-radius:8px;
-         box-shadow:2px 2px 8px rgba(0,0,0,.3);font-family:Arial;font-size:13px;line-height:1.7">
-      <b>2026 Virginia Special Election</b><br>
-      Proposed Constitutional Amendment<br>
-      <hr style="margin:6px 0">
+         background:white;padding:12px 16px;border-radius:8px;
+         box-shadow:2px 2px 8px rgba(0,0,0,.3);font-family:Arial;font-size:13px;line-height:1.8">
       <span style="background:#1a52c8;color:white;padding:2px 10px;border-radius:3px">Yes</span>
       &nbsp;
-      <span style="background:#ff0000;color:white;padding:2px 10px;border-radius:3px">No</span>
-      <br><small style="color:#666">Deeper = larger margin · Light = close race</small>
-      <hr style="margin:6px 0">
-      <b>Statewide</b><br>
-      Yes: {yes_state:,}<br>
-      No:&nbsp; {no_state:,}
+      <span style="background:#ff4444;color:white;padding:2px 10px;border-radius:3px">No</span>
+      <br><small style="color:#666">Deeper color = larger margin</small>
     </div>
     """))
 
