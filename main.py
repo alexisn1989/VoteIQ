@@ -20,6 +20,110 @@ app = FastAPI()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# ── Election results map (built once at startup) ──────────────────────────────
+_election_map_html: str | None = None
+
+def _build_election_map() -> str:
+    with open(os.path.join(BASE_DIR, "data_2026_special.json"), encoding="utf-8") as f:
+        data = json.load(f)
+
+    county_results, city_results = {}, {}
+    for j in data.get("localResults", []):
+        raw = j["name"].strip().upper()
+        yes_v = no_v = 0
+        for item in j.get("ballotItems", []):
+            for opt in item.get("ballotOptions", []):
+                if opt["name"].upper() == "YES": yes_v += opt["voteCount"]
+                elif opt["name"].upper() == "NO": no_v += opt["voteCount"]
+        total = yes_v + no_v
+        info = {
+            "yes": yes_v, "no": no_v, "total": total,
+            "pct_yes": round(yes_v / total * 100, 1) if total else 50.0,
+            "winner": "Yes" if yes_v >= no_v else "No",
+            "display_name": j["name"].strip(),
+        }
+        if raw.endswith(" COUNTY"):
+            county_results[raw[:-7].strip()] = info
+        elif raw.endswith(" CITY"):
+            city_results[raw[:-5].strip()] = info
+        else:
+            county_results[raw.replace("&", "AND").replace("  ", " ").strip()] = info
+
+    resp = requests.get(
+        "https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json",
+        timeout=60,
+    )
+    resp.raise_for_status()
+    va_features = [f for f in resp.json()["features"] if f["properties"]["STATE"] == "51"]
+
+    for feat in va_features:
+        fips3 = int(feat["properties"]["GEO_ID"][-3:])
+        name_up = feat["properties"]["NAME"].strip().upper()
+        r = (county_results if fips3 <= 199 else city_results).get(name_up)
+        feat["properties"].update(r if r else {
+            "pct_yes": None, "winner": "No data",
+            "yes": 0, "no": 0, "total": 0,
+            "display_name": feat["properties"]["NAME"],
+        })
+
+    m = folium.Map(location=[37.5, -79.0], zoom_start=7, tiles="CartoDB positron")
+
+    def style_fn(feat):
+        pct = feat["properties"].get("pct_yes")
+        if pct is None:
+            return {"fillColor": "#cccccc", "color": "#888", "weight": 0.8, "fillOpacity": 0.5}
+        # Minimum intensity of 80 so even near-50% results are clearly colored
+        if pct >= 50:
+            frac = (pct - 50) / 50
+            intensity = int(80 + frac * 175)
+            color = f"#{255-intensity:02x}{255-intensity:02x}ff"
+        else:
+            frac = (50 - pct) / 50
+            intensity = int(80 + frac * 175)
+            color = f"#ff{255-intensity:02x}{255-intensity:02x}"
+        return {"fillColor": color, "color": "#444", "weight": 0.5, "fillOpacity": 0.85}
+
+    folium.GeoJson(
+        {"type": "FeatureCollection", "features": va_features},
+        style_function=style_fn,
+        tooltip=folium.GeoJsonTooltip(
+            fields=["display_name", "yes", "no", "pct_yes", "winner"],
+            aliases=["Jurisdiction:", "Yes votes:", "No votes:", "Yes %:", "Winner:"],
+            localize=True, sticky=True,
+            style="font-family:Arial;font-size:13px;",
+        ),
+    ).add_to(m)
+
+    statewide = data.get("results", {}).get("ballotItems", [{}])[0].get("ballotOptions", [])
+    yes_state = next((o["voteCount"] for o in statewide if o["name"].upper() == "YES"), 0)
+    no_state  = next((o["voteCount"] for o in statewide if o["name"].upper() == "NO"),  0)
+
+    m.get_root().html.add_child(folium.Element(f"""
+    <div style="position:fixed;bottom:40px;left:40px;z-index:1000;
+         background:white;padding:14px 20px;border-radius:8px;
+         box-shadow:2px 2px 8px rgba(0,0,0,.3);font-family:Arial;font-size:13px;line-height:1.7">
+      <b>2026 Virginia Special Election</b><br>
+      Proposed Constitutional Amendment<br>
+      <hr style="margin:6px 0">
+      <span style="background:#1a52c8;color:white;padding:2px 10px;border-radius:3px">Yes</span>
+      &nbsp;
+      <span style="background:#ff0000;color:white;padding:2px 10px;border-radius:3px">No</span>
+      <br><small style="color:#666">Deeper = larger margin · Light = close race</small>
+      <hr style="margin:6px 0">
+      <b>Statewide</b><br>
+      Yes: {yes_state:,}<br>
+      No:&nbsp; {no_state:,}
+    </div>
+    """))
+
+    return m.get_root().render()
+
+try:
+    _election_map_html = _build_election_map()
+    print("Election results map ready.")
+except Exception as e:
+    print(f"Warning: could not build election map: {e}")
+
 va_cd = gpd.read_file(os.path.join(BASE_DIR, "tl_2023_51_cd118.shp"))
 va_cd = va_cd.to_crs(epsg=4326)
 va_cd = va_cd[['NAMELSAD', 'CD118FP', 'geometry']]
@@ -54,8 +158,9 @@ class ChatResponse(BaseModel):
 @app.get("/election-map", response_class=HTMLResponse)
 @app.get("/results-map", response_class=HTMLResponse)
 def election_map():
-    with open(os.path.join(BASE_DIR, "templates", "election_map.html"), "r", encoding="utf-8") as f:
-        return f.read()
+    if _election_map_html:
+        return _election_map_html
+    return "<p style='font-family:sans-serif;padding:40px'>Map is loading, please refresh in a moment.</p>"
 
 @app.get("/results", response_class=HTMLResponse)
 def results_page():
