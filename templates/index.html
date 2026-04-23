@@ -148,10 +148,11 @@
     </div>
     <div class="viq-chat-msgs" id="viqMsgList"></div>
     <div class="viq-chat-chips" id="viqChips">
+      <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">How did my area vote?</button>
+      <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">What does the Yes result mean?</button>
       <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">Who represents this district?</button>
-      <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">What's on the ballot?</button>
-      <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">How was this district redrawn?</button>
-      <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">Where do I vote?</button>
+      <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">How did early vs election day voting differ?</button>
+      <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">What happens to the district maps now?</button>
     </div>
     <div class="viq-chat-input-row">
       <input class="viq-chat-input" id="viqInput" type="text" placeholder="Ask anything about your district..." />
@@ -275,7 +276,7 @@
         '</div>';
       const districtNum = data.district.district_number;
       const districtCode = 'VA-' + (districtNum.startsWith('0') ? districtNum : '0' + districtNum);
-      initViqChat(districtCode);
+      initViqChat(districtCode, data.district.locality);
       document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
       const mapResponse = await fetch('/map?address=' + encodeURIComponent(address));
       const mapHTML = await mapResponse.text();
@@ -288,15 +289,17 @@
 
   (function () {
     let viqDistrict = null;
+    let viqLocality = '';
     const viqMsgs = [];
-    window.initViqChat = function (districtCode) {
+    window.initViqChat = function (districtCode, locality) {
       viqDistrict = districtCode;
+      viqLocality = locality || '';
       viqMsgs.length = 0;
       document.getElementById('viqDistrictBadge').textContent = districtCode;
       document.getElementById('viqMsgList').innerHTML = '';
       document.getElementById('viqChips').style.display = 'flex';
       document.getElementById('viqChatPanel').style.display = 'flex';
-      viqAddMsg('assistant', "Hi! I'm your VoteIQ assistant for " + districtCode + ". Ask me anything about your representative, district boundaries, or upcoming votes.");
+      viqAddMsg('assistant', "Hi! I'm your VoteIQ assistant for " + districtCode + ". The April 21 referendum results are in — ask me how your area voted, what the outcome means, or anything about your district.");
     };
     function viqAddMsg(role, text, isTyping) {
       const list = document.getElementById('viqMsgList');
@@ -332,7 +335,7 @@
       viqMsgs.push({ role: 'user', content: text });
       viqAddMsg('assistant', '', true);
       try {
-        const res = await fetch('/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ district: viqDistrict, messages: viqMsgs }) });
+        const res = await fetch('/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ district: viqDistrict, locality: viqLocality, messages: viqMsgs }) });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
         viqRemoveTyping();

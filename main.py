@@ -113,6 +113,54 @@ try:
 except Exception as e:
     print(f"Warning: could not build election map: {e}")
 
+# ── Election results cache (for chat context) ─────────────────────────────────
+def _load_election_results():
+    with open(os.path.join(BASE_DIR, "data_2026_special.json"), encoding="utf-8") as f:
+        data = json.load(f)
+
+    def groups(opts, name):
+        o = next((x for x in opts if x["name"].upper() == name), {})
+        g = {x["groupName"]: x["voteCount"] for x in o.get("groupResults", [])}
+        return o.get("voteCount", 0), g.get("Early Voting", 0), g.get("Election Day", 0), g.get("Mailed Absentee", 0)
+
+    sw = data.get("results", {}).get("ballotItems", [{}])[0].get("ballotOptions", [])
+    yes_tot, yes_ev, yes_ed, yes_ml = groups(sw, "YES")
+    no_tot,  no_ev,  no_ed,  no_ml  = groups(sw, "NO")
+    grand = yes_tot + no_tot
+
+    local = {}
+    for j in data.get("localResults", []):
+        raw = j["name"].strip().upper()
+        y = n = 0
+        for item in j.get("ballotItems", []):
+            for opt in item.get("ballotOptions", []):
+                if opt["name"].upper() == "YES": y += opt["voteCount"]
+                elif opt["name"].upper() == "NO": n += opt["voteCount"]
+        t = y + n
+        key = raw[:-7].strip() if raw.endswith(" COUNTY") else raw[:-5].strip() if raw.endswith(" CITY") else raw
+        local[key] = {"yes": y, "no": n, "total": t,
+                      "pct_yes": round(y/t*100,1) if t else 50,
+                      "winner": "Yes" if y >= n else "No",
+                      "display": j["name"].strip()}
+
+    return {
+        "yes": yes_tot, "no": no_tot, "total": grand,
+        "yes_pct": round(yes_tot/grand*100,1) if grand else 50,
+        "no_pct":  round(no_tot /grand*100,1) if grand else 50,
+        "winner": "YES (Approve)" if yes_tot >= no_tot else "NO (Reject)",
+        "early": {"yes": yes_ev, "no": no_ev},
+        "election_day": {"yes": yes_ed, "no": no_ed},
+        "mail": {"yes": yes_ml, "no": no_ml},
+        "local": local,
+    }
+
+try:
+    _results = _load_election_results()
+    print("Election results cache ready.")
+except Exception as e:
+    _results = None
+    print(f"Warning: could not load election results: {e}")
+
 va_cd = gpd.read_file(os.path.join(BASE_DIR, "tl_2023_51_cd118.shp"))
 va_cd = va_cd.to_crs(epsg=4326)
 va_cd = va_cd[['NAMELSAD', 'CD118FP', 'geometry']]
@@ -140,6 +188,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     district: str
     messages: list[ChatMessage]
+    locality: str = ""
 
 class ChatResponse(BaseModel):
     reply: str
@@ -233,12 +282,50 @@ async def chat(req: ChatRequest):
     ctx = DISTRICT_CONTEXT.get(req.district)
     if not ctx:
         return ChatResponse(reply="Unknown district.")
-    system_prompt = f"""You are the VoteIQ District Q&A assistant helping Virginia voters understand their congressional district.
-Current district: {req.district}
+
+    # Build election results context
+    if _results:
+        r = _results
+        statewide_block = (
+            f"STATEWIDE RESULT — April 21, 2026 Special Election:\n"
+            f"  Outcome: {r['winner']}\n"
+            f"  Yes (Approve): {r['yes']:,} votes ({r['yes_pct']}%)\n"
+            f"  No  (Reject):  {r['no']:,} votes ({r['no_pct']}%)\n"
+            f"  Early Voting:  Yes {r['early']['yes']:,} / No {r['early']['no']:,}\n"
+            f"  Election Day:  Yes {r['election_day']['yes']:,} / No {r['election_day']['no']:,}\n"
+            f"  Mail-In:       Yes {r['mail']['yes']:,} / No {r['mail']['no']:,}"
+        )
+        # Try to match the user's locality to a result
+        locality_block = ""
+        if req.locality:
+            raw_key = req.locality.strip().upper()
+            raw_key = raw_key[:-7].strip() if raw_key.endswith(" COUNTY") else \
+                      raw_key[:-5].strip() if raw_key.endswith(" CITY") else raw_key
+            loc = r["local"].get(raw_key)
+            if loc:
+                locality_block = (
+                    f"\nUSER'S LOCALITY — {loc['display']}:\n"
+                    f"  Yes: {loc['yes']:,} ({loc['pct_yes']}%)  |  "
+                    f"No: {loc['no']:,}  |  Winner: {loc['winner']}"
+                )
+        election_context = statewide_block + locality_block
+    else:
+        election_context = "Election results data is currently unavailable."
+
+    system_prompt = f"""You are VoteIQ, a nonpartisan civic assistant helping Virginia voters understand the April 21, 2026 statewide special election.
+
+REFERENDUM: Should Virginia's General Assembly have authority to redraw congressional districts?
+A YES vote lets the Democrat-controlled legislature's new map replace the bipartisan Redistricting Commission's current map for the 2026 elections.
+A NO vote keeps the existing commission-drawn districts in place.
+
+{election_context}
+
+USER'S CONGRESSIONAL DISTRICT: {req.district}
 Representative: {ctx['rep']} ({ctx['party']})
 Region: {ctx['region']}
-Answer questions about the representative, district geography, redistricting, elections, and voter info.
-Keep answers 2-4 sentences, factual and nonpartisan. Suggest elections.virginia.gov if unsure. Never tell people who to vote for."""
+
+Answer questions about the election results, what the amendment means, redistricting, the representative, and voter info.
+Keep answers 2-4 sentences. Be factual and nonpartisan. Suggest elections.virginia.gov for official voter info. Never tell people who to vote for."""
     response = client.messages.create(
         model="claude-sonnet-4-5",
         max_tokens=1000,
