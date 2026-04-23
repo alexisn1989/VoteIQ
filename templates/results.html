@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Election Results — VoteIQ</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root { --navy:#0d1b2a; --red:#c8102e; --light:#f4f1eb; --mid:#ddd8cc; --muted:#7a7468; --yes:#1a52c8; }
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--light); color:var(--navy); font-family:'Barlow',sans-serif; min-height:100vh; }
+  body::before { content:''; position:fixed; inset:0; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f4f1eb'/%3E%3Crect width='1' height='1' fill='%23e8e4dc' opacity='0.4'/%3E%3C/svg%3E"); pointer-events:none; z-index:0; }
+
+  /* ── Topbar ── */
+  .topbar { background:var(--navy); color:var(--mid); font-family:'Barlow Condensed',sans-serif; font-size:0.72rem; font-weight:600; letter-spacing:0.18em; text-transform:uppercase; text-align:center; padding:7px 16px; position:relative; z-index:10; }
+  .topbar span { color:var(--red); margin:0 6px; }
+
+  /* ── Header ── */
+  header { position:relative; z-index:10; border-bottom:3px double var(--navy); padding:20px 48px; display:flex; align-items:center; justify-content:space-between; background:var(--light); }
+  .logo-wrap { display:flex; align-items:center; gap:12px; }
+  .election-badge { display:inline-block; background:var(--red); color:white; font-family:'Barlow Condensed',sans-serif; font-size:0.72rem; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; padding:5px 12px; margin-bottom:5px; }
+  .header-date { font-family:'Barlow Condensed',sans-serif; font-size:0.78rem; color:var(--muted); letter-spacing:0.08em; text-transform:uppercase; text-align:right; }
+  .back-link { font-family:'Barlow Condensed',sans-serif; font-size:0.8rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); text-decoration:none; border:1px solid var(--mid); padding:8px 16px; transition:all .2s; }
+  .back-link:hover { color:var(--red); border-color:var(--red); }
+
+  /* ── Date / status bar ── */
+  .results-datebar { position:relative; z-index:10; background:var(--navy); color:white; padding:14px 48px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; }
+  .datebar-group { display:flex; align-items:center; gap:32px; flex-wrap:wrap; }
+  .datebar-item { }
+  .datebar-label { font-family:'Barlow Condensed',sans-serif; font-size:0.65rem; font-weight:700; letter-spacing:0.22em; text-transform:uppercase; color:var(--mid); margin-bottom:3px; }
+  .datebar-date { font-family:'Playfair Display',serif; font-size:1.3rem; font-weight:900; color:white; line-height:1.1; }
+  .datebar-status { font-family:'Barlow Condensed',sans-serif; font-size:0.95rem; font-weight:700; color:#4caf7d; letter-spacing:0.04em; }
+  .datebar-sub { font-family:'Barlow Condensed',sans-serif; font-size:0.66rem; color:var(--mid); letter-spacing:0.06em; margin-top:2px; }
+  .datebar-divider { width:1px; height:44px; background:rgba(255,255,255,0.15); }
+  .reg-btn { font-family:'Barlow Condensed',sans-serif; font-size:0.8rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--red); text-decoration:none; border:1px solid var(--red); padding:9px 20px; transition:all .2s; white-space:nowrap; }
+  .reg-btn:hover { background:var(--red); color:white; }
+
+  /* ── Main two-column layout ── */
+  .main-layout { position:relative; z-index:10; display:grid; grid-template-columns:360px 1fr; gap:0; min-height:680px; }
+
+  /* Left panel */
+  .left-panel { border-right:2px solid var(--navy); display:flex; flex-direction:column; overflow-y:auto; max-height:800px; background:var(--light); }
+  .panel-section { padding:20px 22px; border-bottom:1px solid var(--mid); }
+  .panel-section:last-child { border-bottom:none; flex:1; }
+  .section-label { font-family:'Barlow Condensed',sans-serif; font-size:0.68rem; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+
+  /* Scoreboard */
+  .scoreboard { display:flex; gap:0; border:2px solid var(--navy); box-shadow:3px 3px 0 var(--navy); overflow:hidden; }
+  .score-col { flex:1; padding:14px 16px; text-align:center; }
+  .score-col.yes { background:#ddeeff; border-right:2px solid var(--navy); }
+  .score-col.no  { background:#fdecea; }
+  .score-label { font-family:'Barlow Condensed',sans-serif; font-size:0.68rem; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; margin-bottom:4px; }
+  .score-col.yes .score-label { color:var(--yes); }
+  .score-col.no  .score-label { color:var(--red); }
+  .score-num { font-family:'Playfair Display',serif; font-size:1.6rem; font-weight:900; line-height:1; }
+  .score-col.yes .score-num { color:var(--yes); }
+  .score-col.no  .score-num { color:var(--red); }
+  .score-pct { font-family:'Barlow Condensed',sans-serif; font-size:0.8rem; font-weight:600; color:var(--muted); margin-top:3px; }
+  .winner-badge { display:inline-block; color:white; font-family:'Barlow Condensed',sans-serif; font-size:0.65rem; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; padding:2px 8px; margin-top:4px; }
+  .winner-badge.yes { background:var(--yes); }
+  .winner-badge.no  { background:var(--red); }
+  .progress-bar { height:10px; border:1.5px solid var(--navy); display:flex; overflow:hidden; margin-top:10px; }
+  .progress-yes { background:var(--yes); transition:width .6s ease; }
+  .progress-no  { background:var(--red); flex:1; }
+
+  /* Vote method cards */
+  .method-grid { display:flex; flex-direction:column; gap:8px; }
+  .method-card { border:1px solid var(--mid); background:white; padding:10px 12px; }
+  .method-card-title { font-family:'Barlow Condensed',sans-serif; font-size:0.66rem; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); margin-bottom:7px; }
+  .method-row { display:flex; justify-content:space-between; font-size:0.82rem; margin-bottom:3px; }
+  .method-yes { color:var(--yes); font-weight:600; }
+  .method-no  { color:var(--red); font-weight:600; }
+  .method-bar { height:5px; border:1px solid var(--mid); display:flex; overflow:hidden; margin-top:6px; }
+  .method-bar-yes { background:var(--yes); }
+  .method-bar-no  { background:var(--red); }
+
+  /* Address search */
+  .search-box { display:flex; border:2px solid var(--navy); background:white; overflow:hidden; box-shadow:3px 3px 0 var(--navy); transition:box-shadow .2s; }
+  .search-box:focus-within { box-shadow:4px 4px 0 var(--red); border-color:var(--red); }
+  .search-box input { flex:1; border:none; outline:none; padding:10px 12px; font-family:'Barlow',sans-serif; font-size:0.85rem; color:var(--navy); background:transparent; min-width:0; }
+  .search-box input::placeholder { color:#aaa8a2; }
+  .search-box button { background:var(--navy); border:none; color:white; cursor:pointer; font-family:'Barlow Condensed',sans-serif; font-size:0.78rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:10px 14px; transition:background .2s; white-space:nowrap; }
+  .search-box button:hover { background:var(--red); }
+  .search-note { font-size:0.72rem; color:var(--muted); margin-top:5px; }
+  .result-card { background:white; border:1px solid var(--mid); border-top:3px solid var(--red); padding:14px; margin-top:10px; font-size:0.84rem; line-height:1.75; display:none; }
+  .result-card p { margin-bottom:2px; }
+
+  /* Chat */
+  .viq-chat-panel { margin-top:10px; border:1px solid var(--mid); overflow:hidden; display:none; flex-direction:column; }
+  .viq-chat-header { background:var(--navy); padding:8px 14px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .viq-chat-title { display:flex; align-items:center; gap:7px; font-size:12px; font-weight:700; color:#fff; font-family:'Barlow Condensed',sans-serif; text-transform:uppercase; letter-spacing:0.1em; }
+  .viq-chat-district-badge { font-size:10px; font-weight:600; background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.85); padding:2px 8px; border-radius:20px; font-family:'Barlow Condensed',sans-serif; text-transform:uppercase; white-space:nowrap; }
+  .viq-chat-msgs { padding:12px; display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto; background:#f8f9fc; }
+  .viq-chat-msg { display:flex; gap:7px; align-items:flex-start; }
+  .viq-chat-msg.user { flex-direction:row-reverse; }
+  .viq-chat-avatar { width:22px; height:22px; border-radius:50%; font-size:8px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:'Barlow Condensed',sans-serif; }
+  .viq-chat-msg.bot .viq-chat-avatar { background:var(--navy); color:#fff; }
+  .viq-chat-msg.user .viq-chat-avatar { background:var(--red); color:#fff; }
+  .viq-chat-bubble { max-width:82%; padding:7px 11px; border-radius:9px; font-size:13px; line-height:1.5; }
+  .viq-chat-msg.bot .viq-chat-bubble { background:#fff; border:1px solid #e3e8f0; border-radius:3px 9px 9px 9px; color:var(--navy); }
+  .viq-chat-msg.user .viq-chat-bubble { background:var(--navy); color:#fff; border-radius:9px 3px 9px 9px; }
+  .viq-chat-typing { display:flex; align-items:center; gap:3px; padding:7px 11px; }
+  .viq-chat-dot { width:5px; height:5px; border-radius:50%; background:#aaa; animation:viqBounce 1.2s infinite; }
+  .viq-chat-dot:nth-child(2) { animation-delay:.2s; }
+  .viq-chat-dot:nth-child(3) { animation-delay:.4s; }
+  @keyframes viqBounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
+  .viq-chat-chips { padding:6px 12px; display:flex; flex-wrap:wrap; gap:5px; background:#f8f9fc; border-top:1px solid #eaecf4; }
+  .viq-chat-chip { font-size:11px; padding:3px 10px; border:1px solid var(--navy); border-radius:20px; background:transparent; color:var(--navy); cursor:pointer; font-family:'Barlow',sans-serif; transition:background .15s; }
+  .viq-chat-chip:hover { background:#eef2fb; }
+  .viq-chat-input-row { display:flex; gap:6px; padding:8px 12px; border-top:1px solid #eaecf4; background:#fff; }
+  .viq-chat-input { flex:1; font-family:'Barlow',sans-serif; font-size:13px; padding:7px 11px; border:1px solid #c8d0e0; border-radius:5px; outline:none; color:var(--navy); }
+  .viq-chat-input:focus { border-color:var(--navy); }
+  .viq-chat-send { font-family:'Barlow Condensed',sans-serif; font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; padding:7px 14px; background:var(--navy); color:#fff; border:none; border-radius:5px; cursor:pointer; transition:background .15s; }
+  .viq-chat-send:hover { background:var(--red); }
+  .viq-chat-send:disabled { opacity:0.4; cursor:default; }
+  .viq-chat-footer { font-size:10px; color:#8892a4; text-align:center; padding:4px 12px 7px; background:#fff; }
+
+  /* Right panel — map */
+  .right-panel { position:relative; }
+  .map-frame { width:100%; height:100%; min-height:680px; border:none; display:block; }
+
+  /* ── Table section ── */
+  .county-table-section { position:relative; z-index:10; padding:28px 32px 56px; border-top:2px solid var(--navy); }
+  .table-header-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:14px; }
+  .table-header-row h3 { font-family:'Barlow Condensed',sans-serif; font-size:0.78rem; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); }
+  .table-tabs { display:flex; gap:0; }
+  .tab-btn { font-family:'Barlow Condensed',sans-serif; font-size:0.74rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:7px 16px; border:1.5px solid var(--mid); border-bottom:none; background:white; color:var(--muted); cursor:pointer; margin-right:3px; transition:all .15s; }
+  .tab-btn.active { background:var(--navy); color:white; border-color:var(--navy); }
+  .tab-btn:hover:not(.active) { color:var(--navy); border-color:var(--navy); }
+  .table-controls { display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap; border-top:2px solid var(--navy); padding-top:12px; }
+  .table-controls input { font-family:'Barlow',sans-serif; font-size:0.86rem; padding:7px 12px; border:1px solid var(--mid); outline:none; color:var(--navy); background:white; flex:1; min-width:160px; max-width:300px; }
+  .table-controls input:focus { border-color:var(--navy); }
+  .table-controls select { font-family:'Barlow Condensed',sans-serif; font-size:0.8rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; padding:7px 12px; border:1px solid var(--mid); background:white; color:var(--navy); cursor:pointer; }
+  table { width:100%; border-collapse:collapse; font-size:0.86rem; background:white; border:1px solid var(--mid); }
+  thead { background:var(--navy); color:white; font-family:'Barlow Condensed',sans-serif; font-size:0.72rem; letter-spacing:0.12em; text-transform:uppercase; }
+  th { padding:9px 13px; text-align:left; cursor:pointer; user-select:none; white-space:nowrap; }
+  th:hover { background:#1a2f45; }
+  td { padding:8px 13px; border-bottom:1px solid #eee; }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:#faf9f6; }
+  .winner-yes { color:var(--yes); font-weight:600; }
+  .winner-no  { color:var(--red); font-weight:600; }
+  .bar-cell { min-width:100px; }
+  .mini-bar { height:7px; border-radius:2px; display:inline-block; vertical-align:middle; }
+
+  /* ── Footer ── */
+  footer { position:relative; z-index:10; border-top:3px double var(--navy); padding:16px 32px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; background:var(--light); }
+  footer p { font-family:'Barlow Condensed',sans-serif; font-size:0.7rem; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
+  footer p span { color:var(--red); }
+  .footer-reg { font-family:'Barlow Condensed',sans-serif; font-size:0.72rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--red); text-decoration:none; border:1px solid var(--red); padding:6px 14px; transition:all .2s; }
+  .footer-reg:hover { background:var(--red); color:white; }
+
+  /* ── Responsive ── */
+  @media(max-width:900px) {
+    .main-layout { grid-template-columns:1fr; }
+    .left-panel { max-height:none; border-right:none; border-bottom:2px solid var(--navy); }
+    .map-frame { min-height:420px; height:420px; }
+    .results-datebar { padding:12px 20px; }
+    header { padding:14px 20px; flex-wrap:wrap; gap:8px; }
+    .county-table-section { padding:20px 16px 40px; }
+    footer { padding:14px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  Virginia Statewide Special Election &nbsp;<span>◆</span>&nbsp; April 21, 2026 &nbsp;<span>◆</span>&nbsp; Free &amp; Nonpartisan
+</div>
+
+<header>
+  <div class="logo-wrap">
+    <img src="/static/logo.png" alt="VoteIQ Logo" style="width:90px;height:90px;object-fit:contain;"/>
+  </div>
+  <div>
+    <div class="election-badge">🗳️ Official Results</div>
+    <div class="header-date">Virginia Statewide Special Election &nbsp;·&nbsp; April 21, 2026</div>
+  </div>
+  <a href="/" class="back-link">← Back to VoteIQ</a>
+</header>
+
+<!-- Election date + status bar -->
+<div class="results-datebar">
+  <div class="datebar-group">
+    <div class="datebar-item">
+      <div class="datebar-label">Election Date</div>
+      <div class="datebar-date">April 21, 2026</div>
+      <div class="datebar-sub">Polls closed · 7:00 PM ET</div>
+    </div>
+    <div class="datebar-divider"></div>
+    <div class="datebar-item">
+      <div class="datebar-label">Results Status</div>
+      <div class="datebar-status">✔ Election Night Complete</div>
+      <div class="datebar-sub">Source: Virginia Dept. of Elections</div>
+    </div>
+    <div class="datebar-divider"></div>
+    <div class="datebar-item">
+      <div class="datebar-label">Referendum</div>
+      <div class="datebar-status" style="color:white;font-size:0.82rem;">Proposed Constitutional Amendment</div>
+      <div class="datebar-sub">General Assembly redistricting authority</div>
+    </div>
+  </div>
+  <a href="https://vote.elections.virginia.gov/VoterInformation" target="_blank" class="reg-btn">Check Voter Registration →</a>
+</div>
+
+<!-- Combined map + results panel -->
+<div class="main-layout">
+
+  <!-- Left: scoreboard, methods, address lookup, chat -->
+  <div class="left-panel">
+
+    <div class="panel-section">
+      <div class="section-label">Statewide Referendum Results</div>
+      <div class="scoreboard" id="scoreboard">
+        <div class="score-col yes">
+          <div class="score-label">Yes — Approve</div>
+          <div class="score-num" id="yes-num">—</div>
+          <div class="score-pct" id="yes-pct">—%</div>
+          <div class="winner-badge yes" id="yes-badge" style="display:none">Leading</div>
+        </div>
+        <div class="score-col no">
+          <div class="score-label">No — Reject</div>
+          <div class="score-num" id="no-num">—</div>
+          <div class="score-pct" id="no-pct">—%</div>
+          <div class="winner-badge no" id="no-badge" style="display:none">Leading</div>
+        </div>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-yes" id="progress-yes" style="width:50%"></div>
+        <div class="progress-no"></div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Results by Vote Method</div>
+      <div class="method-grid">
+        <div class="method-card">
+          <div class="method-card-title">Early Voting</div>
+          <div class="method-row"><span class="method-yes">Yes</span><span id="early-yes-num">—</span></div>
+          <div class="method-row"><span class="method-no">No</span><span id="early-no-num">—</span></div>
+          <div class="method-bar"><div class="method-bar-yes" id="early-bar-yes" style="width:50%"></div><div class="method-bar-no" style="flex:1"></div></div>
+        </div>
+        <div class="method-card">
+          <div class="method-card-title">Election Day</div>
+          <div class="method-row"><span class="method-yes">Yes</span><span id="eday-yes-num">—</span></div>
+          <div class="method-row"><span class="method-no">No</span><span id="eday-no-num">—</span></div>
+          <div class="method-bar"><div class="method-bar-yes" id="eday-bar-yes" style="width:50%"></div><div class="method-bar-no" style="flex:1"></div></div>
+        </div>
+        <div class="method-card">
+          <div class="method-card-title">Mail-In (Absentee)</div>
+          <div class="method-row"><span class="method-yes">Yes</span><span id="mail-yes-num">—</span></div>
+          <div class="method-row"><span class="method-no">No</span><span id="mail-no-num">—</span></div>
+          <div class="method-bar"><div class="method-bar-yes" id="mail-bar-yes" style="width:50%"></div><div class="method-bar-no" style="flex:1"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Find Your District</div>
+      <div class="search-box">
+        <input type="text" id="address" placeholder="123 Main St, City, VA 12345"/>
+        <button onclick="lookup()">Find →</button>
+      </div>
+      <p class="search-note">🔒 Your address is never stored</p>
+      <div class="result-card" id="result-card"></div>
+      <div class="viq-chat-panel" id="viqChatPanel">
+        <div class="viq-chat-header">
+          <div class="viq-chat-title">
+            <img src="/static/logo.png" alt="VoteIQ" style="width:20px;height:20px;object-fit:contain;border-radius:3px;flex-shrink:0;"/>
+            District Q&amp;A
+          </div>
+          <span class="viq-chat-district-badge" id="viqDistrictBadge">—</span>
+        </div>
+        <div class="viq-chat-msgs" id="viqMsgList"></div>
+        <div class="viq-chat-chips" id="viqChips">
+          <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">Who is my rep?</button>
+          <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">What's on the ballot?</button>
+          <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">How was this district redrawn?</button>
+          <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">Where do I vote?</button>
+        </div>
+        <div class="viq-chat-input-row">
+          <input class="viq-chat-input" id="viqInput" type="text" placeholder="Ask about your district…"/>
+          <button class="viq-chat-send" id="viqSendBtn" onclick="viqSendMessage()">Ask →</button>
+        </div>
+        <div class="viq-chat-footer">Powered by VoteIQ · Verify at elections.virginia.gov</div>
+      </div>
+    </div>
+
+  </div><!-- /left-panel -->
+
+  <!-- Right: full interactive map -->
+  <div class="right-panel">
+    <iframe class="map-frame" src="/results-map" title="Election Results Map" loading="lazy"></iframe>
+  </div>
+
+</div><!-- /main-layout -->
+
+<!-- Full jurisdiction table -->
+<div class="county-table-section">
+  <div class="table-header-row">
+    <h3>Full Results by Jurisdiction</h3>
+    <div class="table-tabs">
+      <button class="tab-btn active" onclick="setMode('total',this)">All Votes</button>
+      <button class="tab-btn" onclick="setMode('early',this)">Early Voting</button>
+      <button class="tab-btn" onclick="setMode('eday',this)">Election Day</button>
+      <button class="tab-btn" onclick="setMode('mail',this)">Mail-In</button>
+    </div>
+  </div>
+  <div class="table-controls">
+    <input type="text" id="search" placeholder="Search jurisdiction…" oninput="filterTable()"/>
+    <select id="filter-winner" onchange="filterTable()">
+      <option value="">All jurisdictions</option>
+      <option value="Yes">Yes wins</option>
+      <option value="No">No wins</option>
+    </select>
+  </div>
+  <table id="results-table">
+    <thead>
+      <tr>
+        <th onclick="sortTable(0)">Jurisdiction ↕</th>
+        <th onclick="sortTable(1)">Yes Votes ↕</th>
+        <th onclick="sortTable(2)">No Votes ↕</th>
+        <th onclick="sortTable(3)">Yes % ↕</th>
+        <th onclick="sortTable(4)">Total ↕</th>
+        <th>Winner</th>
+        <th class="bar-cell">Margin</th>
+      </tr>
+    </thead>
+    <tbody id="table-body"></tbody>
+  </table>
+</div>
+
+<footer>
+  <p>© 2026 <span>VoteIQ</span> &nbsp;·&nbsp; voteiq.io &nbsp;·&nbsp; Nonpartisan civic data for Virginia voters</p>
+  <p>Data: Virginia Department of Elections</p>
+  <a href="https://vote.elections.virginia.gov/VoterInformation" target="_blank" class="footer-reg">Check Voter Registration →</a>
+</footer>
+
+<script>
+const DATA_URL = '/api/results-data';
+let allRows = [];
+let sortCol = 3, sortAsc = false;
+let tableMode = 'total';
+
+function setMode(mode, btn) {
+  tableMode = mode;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterTable();
+}
+
+function modeKeys(mode) {
+  if (mode === 'early') return { yes:'early_yes', no:'early_no' };
+  if (mode === 'eday')  return { yes:'eday_yes',  no:'eday_no'  };
+  if (mode === 'mail')  return { yes:'mail_yes',  no:'mail_no'  };
+  return { yes:'yes', no:'no' };
+}
+
+function pctYes(r, mode) {
+  const k = modeKeys(mode), y = r[k.yes], n = r[k.no], t = y + n;
+  return t ? +(y / t * 100).toFixed(1) : 50;
+}
+
+function winner(r, mode) {
+  const k = modeKeys(mode);
+  return r[k.yes] >= r[k.no] ? 'Yes' : 'No';
+}
+
+function fillMethodCard(prefix, yes, no) {
+  const total = yes + no, pct = total ? yes / total * 100 : 50;
+  document.getElementById(prefix+'-yes-num').textContent = yes.toLocaleString();
+  document.getElementById(prefix+'-no-num').textContent  = no.toLocaleString();
+  document.getElementById(prefix+'-bar-yes').style.width = pct.toFixed(1)+'%';
+}
+
+async function loadData() {
+  const res = await fetch(DATA_URL);
+  const data = await res.json();
+
+  const yesTotal = data.statewide.yes, noTotal = data.statewide.no, total = yesTotal + noTotal;
+  const yesPct = total ? (yesTotal/total*100).toFixed(1) : '—';
+  const noPct  = total ? (noTotal /total*100).toFixed(1) : '—';
+
+  document.getElementById('yes-num').textContent = yesTotal.toLocaleString();
+  document.getElementById('no-num').textContent  = noTotal.toLocaleString();
+  document.getElementById('yes-pct').textContent = yesPct+'%';
+  document.getElementById('no-pct').textContent  = noPct+'%';
+  document.getElementById('progress-yes').style.width = yesPct+'%';
+  document.getElementById((yesTotal >= noTotal ? 'yes' : 'no')+'-badge').style.display = 'inline-block';
+
+  fillMethodCard('early', data.statewide.early.yes, data.statewide.early.no);
+  fillMethodCard('eday',  data.statewide.election_day.yes, data.statewide.election_day.no);
+  fillMethodCard('mail',  data.statewide.mail.yes, data.statewide.mail.no);
+
+  allRows = data.local;
+  renderTable(allRows);
+}
+
+function renderTable(rows) {
+  const tbody = document.getElementById('table-body');
+  const k = modeKeys(tableMode);
+  tbody.innerHTML = rows.map(r => {
+    const yv = r[k.yes], nv = r[k.no], tot = yv+nv;
+    const pct = pctYes(r, tableMode), w = winner(r, tableMode);
+    const bw = Math.round(pct);
+    return `<tr>
+      <td>${r.name}</td>
+      <td>${yv.toLocaleString()}</td>
+      <td>${nv.toLocaleString()}</td>
+      <td>${pct}%</td>
+      <td>${tot.toLocaleString()}</td>
+      <td class="winner-${w.toLowerCase()}">${w}</td>
+      <td class="bar-cell">
+        <div class="mini-bar" style="width:${bw}px;background:#1a52c8;"></div>
+        <div class="mini-bar" style="width:${100-bw}px;background:#c8102e;"></div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function filterTable() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const w = document.getElementById('filter-winner').value;
+  renderTable(allRows.filter(r =>
+    r.name.toLowerCase().includes(q) && (w==='' || winner(r,tableMode)===w)
+  ));
+}
+
+function sortTable(col) {
+  if (sortCol===col) sortAsc=!sortAsc; else { sortCol=col; sortAsc=col===0; }
+  const k = modeKeys(tableMode);
+  const keys = ['name', k.yes, k.no, null, null];
+  allRows.sort((a,b) => {
+    let av, bv;
+    if (col===3) { av=pctYes(a,tableMode); bv=pctYes(b,tableMode); }
+    else if (col===4) { av=a[k.yes]+a[k.no]; bv=b[k.yes]+b[k.no]; }
+    else { av=a[keys[col]]; bv=b[keys[col]]; }
+    return sortAsc ? (av>bv?1:-1) : (av<bv?1:-1);
+  });
+  filterTable();
+}
+
+loadData();
+
+// ── Address lookup ──────────────────────────────────────────────────────────
+async function lookup() {
+  const address = document.getElementById('address').value;
+  const card = document.getElementById('result-card');
+  if (address.length < 10) { card.style.display='block'; card.innerHTML='<p style="color:var(--red)">Please enter your full address.</p>'; return; }
+  if (!address.includes(',')) { card.style.display='block'; card.innerHTML='<p style="color:var(--red)">Use format: 123 Main St, City, VA 12345</p>'; return; }
+  card.style.display='block'; card.innerHTML='<p>Loading…</p>';
+  document.getElementById('viqChatPanel').style.display='none';
+  try {
+    const res = await fetch('/api/lookup?address='+encodeURIComponent(address));
+    const data = await res.json();
+    const reps = {"02":"Jen Kiggans (R)","03":"Bobby Scott (D)"};
+    const rep = reps[data.district.district_number] || 'See elections.virginia.gov';
+    card.innerHTML =
+      '<p>📍 Locality: <strong>'+data.district.locality+'</strong></p>'+
+      '<p>🏛️ District: <strong>'+data.district.district+'</strong></p>'+
+      '<p>👤 Representative: <strong>'+rep+'</strong></p>'+
+      '<p>🗳️ Precinct: <strong>'+data.district.precinct+'</strong></p>'+
+      '<p style="margin-top:8px;font-size:0.8rem;"><a href="https://vpap.org/redistricting/2026" target="_blank" style="color:var(--red)">See proposed changes at VPAP →</a></p>';
+    const num = data.district.district_number;
+    initViqChat('VA-'+(num.startsWith('0') ? num : '0'+num));
+  } catch(e) {
+    card.innerHTML='<p style="color:var(--red)">Error loading results. Please try again.</p>';
+  }
+}
+document.getElementById('address').addEventListener('keydown', e => { if(e.key==='Enter') lookup(); });
+
+// ── District chat ───────────────────────────────────────────────────────────
+(function(){
+  let viqDistrict=null;
+  const viqMsgs=[];
+  window.initViqChat = function(code){
+    viqDistrict=code; viqMsgs.length=0;
+    document.getElementById('viqDistrictBadge').textContent=code;
+    document.getElementById('viqMsgList').innerHTML='';
+    document.getElementById('viqChips').style.display='flex';
+    document.getElementById('viqChatPanel').style.display='flex';
+    viqAddMsg('assistant',"Hi! I'm your VoteIQ assistant for "+code+". Ask me anything about your representative, district boundaries, or upcoming votes.");
+  };
+  function viqAddMsg(role,text,isTyping){
+    const list=document.getElementById('viqMsgList');
+    const wrap=document.createElement('div'); wrap.className='viq-chat-msg '+(role==='user'?'user':'bot');
+    if(isTyping) wrap.id='viq-typing';
+    const av=document.createElement('div'); av.className='viq-chat-avatar'; av.textContent=role==='user'?'YOU':'IQ';
+    const bubble=document.createElement('div'); bubble.className='viq-chat-bubble';
+    if(isTyping){
+      bubble.innerHTML='<div class="viq-chat-typing"><div class="viq-chat-dot"></div><div class="viq-chat-dot"></div><div class="viq-chat-dot"></div></div>';
+    } else {
+      bubble.textContent=text;
+      if(role==='assistant') viqMsgs.push({role:'assistant',content:text});
+    }
+    wrap.appendChild(av); wrap.appendChild(bubble); list.appendChild(wrap);
+    list.scrollTop=list.scrollHeight;
+  }
+  function viqRemoveTyping(){ const t=document.getElementById('viq-typing'); if(t) t.remove(); }
+  async function viqSendMessage(override){
+    const input=document.getElementById('viqInput'), btn=document.getElementById('viqSendBtn');
+    const text=override||input.value.trim();
+    if(!text||!viqDistrict) return;
+    input.value=''; btn.disabled=true;
+    document.getElementById('viqChips').style.display='none';
+    viqAddMsg('user',text); viqMsgs.push({role:'user',content:text});
+    viqAddMsg('assistant','',true);
+    try {
+      const res=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({district:viqDistrict,messages:viqMsgs})});
+      if(!res.ok) throw new Error();
+      const data=await res.json(); viqRemoveTyping(); viqAddMsg('assistant',data.reply);
+    } catch(err){ viqRemoveTyping(); viqAddMsg('assistant','Something went wrong — please try again.'); }
+    btn.disabled=false; input.focus();
+  }
+  window.viqSendChip=t=>viqSendMessage(t);
+  window.viqSendMessage=viqSendMessage;
+  document.getElementById('viqInput').addEventListener('keydown',e=>{ if(e.key==='Enter') viqSendMessage(); });
+})();
+</script>
+</body>
+</html>

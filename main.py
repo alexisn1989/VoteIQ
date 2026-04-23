@@ -52,6 +52,7 @@ class ChatResponse(BaseModel):
     reply: str
 
 @app.get("/election-map", response_class=HTMLResponse)
+@app.get("/results-map", response_class=HTMLResponse)
 def election_map():
     with open(os.path.join(BASE_DIR, "templates", "election_map.html"), "r", encoding="utf-8") as f:
         return f.read()
