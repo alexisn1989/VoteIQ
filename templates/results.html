@@ -357,22 +357,18 @@ function fillMethodCard(prefix, yes, no) {
 async function loadData() {
   const res = await fetch(DATA_URL);
   const data = await res.json();
-
   const yesTotal = data.statewide.yes, noTotal = data.statewide.no, total = yesTotal + noTotal;
   const yesPct = total ? (yesTotal/total*100).toFixed(1) : '—';
   const noPct  = total ? (noTotal /total*100).toFixed(1) : '—';
-
   document.getElementById('yes-num').textContent = yesTotal.toLocaleString();
   document.getElementById('no-num').textContent  = noTotal.toLocaleString();
   document.getElementById('yes-pct').textContent = yesPct+'%';
   document.getElementById('no-pct').textContent  = noPct+'%';
   document.getElementById('progress-yes').style.width = yesPct+'%';
   document.getElementById((yesTotal >= noTotal ? 'yes' : 'no')+'-badge').style.display = 'inline-block';
-
   fillMethodCard('early', data.statewide.early.yes, data.statewide.early.no);
   fillMethodCard('eday',  data.statewide.election_day.yes, data.statewide.election_day.no);
   fillMethodCard('mail',  data.statewide.mail.yes, data.statewide.mail.no);
-
   allRows = data.local;
   renderTable(allRows);
 }
@@ -454,55 +450,62 @@ async function lookup() {
     card.innerHTML='<p style="color:var(--red)">Error loading results. Please try again.</p>';
   }
 }
-document.getElementById('address').addEventListener('keydown', e => { if(e.key==='Enter') lookup(); });
+
+const addressInput = document.getElementById('address');
+if (addressInput) {
+  addressInput.addEventListener('keydown', e => { if(e.key==='Enter') lookup(); });
+}
 
 // ── District chat ───────────────────────────────────────────────────────────
-(function(){
-  let viqDistrict=null;
-  const viqMsgs=[];
-  window.initViqChat = function(code){
-    viqDistrict=code; viqMsgs.length=0;
-    document.getElementById('viqDistrictBadge').textContent=code;
-    document.getElementById('viqMsgList').innerHTML='';
-    document.getElementById('viqChips').style.display='flex';
-    document.getElementById('viqChatPanel').style.display='flex';
-    viqAddMsg('assistant',"Hi! I'm your VoteIQ assistant for "+code+". Ask me anything about your representative, district boundaries, or upcoming votes.");
-  };
-  function viqAddMsg(role,text,isTyping){
-    const list=document.getElementById('viqMsgList');
-    const wrap=document.createElement('div'); wrap.className='viq-chat-msg '+(role==='user'?'user':'bot');
-    if(isTyping) wrap.id='viq-typing';
-    const av=document.createElement('div'); av.className='viq-chat-avatar'; av.textContent=role==='user'?'YOU':'IQ';
-    const bubble=document.createElement('div'); bubble.className='viq-chat-bubble';
-    if(isTyping){
-      bubble.innerHTML='<div class="viq-chat-typing"><div class="viq-chat-dot"></div><div class="viq-chat-dot"></div><div class="viq-chat-dot"></div></div>';
-    } else {
-      bubble.textContent=text;
-      if(role==='assistant') viqMsgs.push({role:'assistant',content:text});
+if (document.getElementById('viqInput')) {
+  (function(){
+    let viqDistrict=null;
+    const viqMsgs=[];
+    window.initViqChat = function(code){
+      viqDistrict=code; viqMsgs.length=0;
+      document.getElementById('viqDistrictBadge').textContent=code;
+      document.getElementById('viqMsgList').innerHTML='';
+      document.getElementById('viqChips').style.display='flex';
+      document.getElementById('viqChatPanel').style.display='flex';
+      viqAddMsg('assistant',"Hi! I'm your VoteIQ assistant for "+code+". Ask me anything about your representative, district boundaries, or upcoming votes.");
+    };
+    function viqAddMsg(role,text,isTyping){
+      const list=document.getElementById('viqMsgList');
+      const wrap=document.createElement('div'); wrap.className='viq-chat-msg '+(role==='user'?'user':'bot');
+      if(isTyping) wrap.id='viq-typing';
+      const av=document.createElement('div'); av.className='viq-chat-avatar'; av.textContent=role==='user'?'YOU':'IQ';
+      const bubble=document.createElement('div'); bubble.className='viq-chat-bubble';
+      if(isTyping){
+        bubble.innerHTML='<div class="viq-chat-typing"><div class="viq-chat-dot"></div><div class="viq-chat-dot"></div><div class="viq-chat-dot"></div></div>';
+      } else {
+        bubble.textContent=text;
+        if(role==='assistant') viqMsgs.push({role:'assistant',content:text});
+      }
+      wrap.appendChild(av); wrap.appendChild(bubble); list.appendChild(wrap);
+      list.scrollTop=list.scrollHeight;
     }
-    wrap.appendChild(av); wrap.appendChild(bubble); list.appendChild(wrap);
-    list.scrollTop=list.scrollHeight;
-  }
-  function viqRemoveTyping(){ const t=document.getElementById('viq-typing'); if(t) t.remove(); }
-  async function viqSendMessage(override){
-    const input=document.getElementById('viqInput'), btn=document.getElementById('viqSendBtn');
-    const text=override||input.value.trim();
-    if(!text||!viqDistrict) return;
-    input.value=''; btn.disabled=true;
-    document.getElementById('viqChips').style.display='none';
-    viqAddMsg('user',text); viqMsgs.push({role:'user',content:text});
-    viqAddMsg('assistant','',true);
-    try {
-      const res=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({district:viqDistrict,messages:viqMsgs})});
-      if(!res.ok) throw new Error();
-      const data=await res.json(); viqRemoveTyping(); viqAddMsg('assistant',data.reply);
-    } catch(err){ viqRemoveTyping(); viqAddMsg('assistant','Something went wrong — please try again.'); }
-    btn.disabled=false; input.focus();
-  }
-  window.viqSendChip=t=>viqSendMessage(t);
-  window.viqSendMessage=viqSendMessage;
-  document.getElementById('viqInput').addEventListener('keydown',e=>{ if(e.key==='Enter') viqSendMessage(); });
-})();
+    function viqRemoveTyping(){ const t=document.getElementById('viq-typing'); if(t) t.remove(); }
+    async function viqSendMessage(override){
+      const input=document.getElementById('viqInput'), btn=document.getElementById('viqSendBtn');
+      const text=override||input.value.trim();
+      if(!text||!viqDistrict) return;
+      input.value=''; btn.disabled=true;
+      document.getElementById('viqChips').style.display='none';
+      viqAddMsg('user',text); viqMsgs.push({role:'user',content:text});
+      viqAddMsg('assistant','',true);
+      try {
+        const res=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({district:viqDistrict,messages:viqMsgs})});
+        if(!res.ok) throw new Error();
+        const data=await res.json(); viqRemoveTyping(); viqAddMsg('assistant',data.reply);
+      } catch(err){ viqRemoveTyping(); viqAddMsg('assistant','Something went wrong — please try again.'); }
+      btn.disabled=false; input.focus();
+    }
+    window.viqSendChip=t=>viqSendMessage(t);
+    window.viqSendMessage=viqSendMessage;
+    document.getElementById('viqInput').addEventListener('keydown',e=>{ if(e.key==='Enter') viqSendMessage(); });
+  })();
+}
 </script>
 </body>
 </html>
+
