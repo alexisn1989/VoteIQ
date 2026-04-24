@@ -20,98 +20,124 @@ app = FastAPI()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# ── Election results map (built once at startup) ──────────────────────────────
-_election_map_html: str | None = None
+# ── Election maps — all four modes built once at startup ──────────────────────
+import copy
 
-def _build_election_map() -> str:
+_election_maps: dict[str, str] = {}
+
+_MODE_LABELS = {
+    "total": "All Votes",
+    "early": "Early Voting",
+    "eday":  "Election Day",
+    "mail":  "Mail-In (Absentee)",
+}
+
+def _build_all_election_maps() -> dict[str, str]:
     with open(os.path.join(BASE_DIR, "data_2026_special.json"), encoding="utf-8") as f:
         data = json.load(f)
 
-    county_results, city_results = {}, {}
+    county_data, city_data = {}, {}
     for j in data.get("localResults", []):
         raw = j["name"].strip().upper()
-        yes_v = no_v = 0
+        yes_v = no_v = yes_ev = no_ev = yes_ed = no_ed = yes_ml = no_ml = 0
         for item in j.get("ballotItems", []):
             for opt in item.get("ballotOptions", []):
-                if opt["name"].upper() == "YES": yes_v += opt["voteCount"]
-                elif opt["name"].upper() == "NO": no_v += opt["voteCount"]
-        total = yes_v + no_v
+                grps = {g["groupName"]: g["voteCount"] for g in opt.get("groupResults", [])}
+                if opt["name"].upper() == "YES":
+                    yes_v  += opt["voteCount"]
+                    yes_ev += grps.get("Early Voting", 0)
+                    yes_ed += grps.get("Election Day", 0)
+                    yes_ml += grps.get("Mailed Absentee", 0)
+                elif opt["name"].upper() == "NO":
+                    no_v   += opt["voteCount"]
+                    no_ev  += grps.get("Early Voting", 0)
+                    no_ed  += grps.get("Election Day", 0)
+                    no_ml  += grps.get("Mailed Absentee", 0)
         info = {
-            "yes": yes_v, "no": no_v, "total": total,
-            "pct_yes": round(yes_v / total * 100, 1) if total else 50.0,
-            "winner": "Yes" if yes_v >= no_v else "No",
+            "yes": yes_v,      "no": no_v,
+            "early_yes": yes_ev, "early_no": no_ev,
+            "eday_yes":  yes_ed, "eday_no":  no_ed,
+            "mail_yes":  yes_ml, "mail_no":  no_ml,
             "display_name": j["name"].strip(),
         }
-        if raw.endswith(" COUNTY"):
-            county_results[raw[:-7].strip()] = info
-        elif raw.endswith(" CITY"):
-            city_results[raw[:-5].strip()] = info
-        else:
-            county_results[raw.replace("&", "AND").replace("  ", " ").strip()] = info
+        key = raw[:-7].strip() if raw.endswith(" COUNTY") else \
+              raw[:-5].strip() if raw.endswith(" CITY") else \
+              raw.replace("&", "AND").replace("  ", " ").strip()
+        (city_data if raw.endswith(" CITY") else county_data)[key] = info
 
     resp = requests.get(
         "https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json",
         timeout=60,
     )
     resp.raise_for_status()
-    va_features = [f for f in resp.json()["features"] if f["properties"]["STATE"] == "51"]
+    base_features = [f for f in resp.json()["features"] if f["properties"]["STATE"] == "51"]
 
-    for feat in va_features:
-        fips3 = int(feat["properties"]["GEO_ID"][-3:])
-        name_up = feat["properties"]["NAME"].strip().upper()
-        r = (county_results if fips3 <= 199 else city_results).get(name_up)
-        feat["properties"].update(r if r else {
-            "pct_yes": None, "winner": "No data",
-            "yes": 0, "no": 0, "total": 0,
-            "display_name": feat["properties"]["NAME"],
-        })
+    def _make_map(mode: str) -> str:
+        features = copy.deepcopy(base_features)
+        for feat in features:
+            fips3   = int(feat["properties"]["GEO_ID"][-3:])
+            name_up = feat["properties"]["NAME"].strip().upper()
+            r = (city_data if fips3 > 199 else county_data).get(name_up)
+            if r:
+                y = r[f"{mode}_yes"] if mode != "total" else r["yes"]
+                n = r[f"{mode}_no"]  if mode != "total" else r["no"]
+                t = y + n
+                feat["properties"].update({
+                    "display_name": r["display_name"],
+                    "yes": y, "no": n,
+                    "pct_yes": round(y / t * 100, 1) if t else None,
+                    "winner": ("Yes" if y >= n else "No") if t else "No data",
+                })
+            else:
+                feat["properties"].update({
+                    "display_name": feat["properties"]["NAME"],
+                    "pct_yes": None, "winner": "No data", "yes": 0, "no": 0,
+                })
 
-    m = folium.Map(location=[37.5, -79.0], zoom_start=7, tiles="CartoDB positron")
+        def style_fn(feat):
+            pct = feat["properties"].get("pct_yes")
+            if pct is None:
+                return {"fillColor": "#cccccc", "color": "#888", "weight": 0.8, "fillOpacity": 0.5}
+            if pct >= 50:
+                intensity = int(80 + (pct - 50) / 50 * 175)
+                color = f"#{255-intensity:02x}{255-intensity:02x}ff"
+            else:
+                intensity = int(80 + (50 - pct) / 50 * 175)
+                color = f"#ff{255-intensity:02x}{255-intensity:02x}"
+            return {"fillColor": color, "color": "#444", "weight": 0.5, "fillOpacity": 0.85}
 
-    def style_fn(feat):
-        pct = feat["properties"].get("pct_yes")
-        if pct is None:
-            return {"fillColor": "#cccccc", "color": "#888", "weight": 0.8, "fillOpacity": 0.5}
-        # Minimum intensity of 80 so even near-50% results are clearly colored
-        if pct >= 50:
-            frac = (pct - 50) / 50
-            intensity = int(80 + frac * 175)
-            color = f"#{255-intensity:02x}{255-intensity:02x}ff"
-        else:
-            frac = (50 - pct) / 50
-            intensity = int(80 + frac * 175)
-            color = f"#ff{255-intensity:02x}{255-intensity:02x}"
-        return {"fillColor": color, "color": "#444", "weight": 0.5, "fillOpacity": 0.85}
+        m = folium.Map(location=[37.5, -79.0], zoom_start=7, tiles="CartoDB positron")
+        folium.GeoJson(
+            {"type": "FeatureCollection", "features": features},
+            style_function=style_fn,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["display_name", "yes", "no", "pct_yes", "winner"],
+                aliases=["Jurisdiction:", "Yes votes:", "No votes:", "Yes %:", "Winner:"],
+                localize=True, sticky=True,
+                style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        m.get_root().html.add_child(folium.Element(f"""
+        <div style="position:fixed;bottom:40px;left:40px;z-index:1000;
+             background:white;padding:12px 16px;border-radius:8px;
+             box-shadow:2px 2px 8px rgba(0,0,0,.3);font-family:Arial;font-size:13px;line-height:1.8">
+          <b style="font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:#555">{_MODE_LABELS[mode]}</b><br>
+          <span style="background:#1a52c8;color:white;padding:2px 10px;border-radius:3px">Yes</span>
+          &nbsp;
+          <span style="background:#ff4444;color:white;padding:2px 10px;border-radius:3px">No</span>
+          <br><small style="color:#666">Deeper color = larger margin</small>
+        </div>
+        """))
+        return m.get_root().render()
 
-    folium.GeoJson(
-        {"type": "FeatureCollection", "features": va_features},
-        style_function=style_fn,
-        tooltip=folium.GeoJsonTooltip(
-            fields=["display_name", "yes", "no", "pct_yes", "winner"],
-            aliases=["Jurisdiction:", "Yes votes:", "No votes:", "Yes %:", "Winner:"],
-            localize=True, sticky=True,
-            style="font-family:Arial;font-size:13px;",
-        ),
-    ).add_to(m)
-
-    m.get_root().html.add_child(folium.Element("""
-    <div style="position:fixed;bottom:40px;left:40px;z-index:1000;
-         background:white;padding:12px 16px;border-radius:8px;
-         box-shadow:2px 2px 8px rgba(0,0,0,.3);font-family:Arial;font-size:13px;line-height:1.8">
-      <span style="background:#1a52c8;color:white;padding:2px 10px;border-radius:3px">Yes</span>
-      &nbsp;
-      <span style="background:#ff4444;color:white;padding:2px 10px;border-radius:3px">No</span>
-      <br><small style="color:#666">Deeper color = larger margin</small>
-    </div>
-    """))
-
-    return m.get_root().render()
+    return {mode: _make_map(mode) for mode in _MODE_LABELS}
 
 try:
-    _election_map_html = _build_election_map()
-    print("Election results map ready.")
+    _election_maps = _build_all_election_maps()
+    print(f"Election maps ready ({', '.join(_election_maps.keys())}).")
 except Exception as e:
-    print(f"Warning: could not build election map: {e}")
+    _election_maps = {}
+    print(f"Warning: could not build election maps: {e}")
 
 # ── Election results cache (for chat context) ─────────────────────────────────
 def _load_election_results():
@@ -195,9 +221,10 @@ class ChatResponse(BaseModel):
 
 @app.get("/election-map", response_class=HTMLResponse)
 @app.get("/results-map", response_class=HTMLResponse)
-def election_map():
-    if _election_map_html:
-        return _election_map_html
+def election_map(mode: str = "total"):
+    html = _election_maps.get(mode) or _election_maps.get("total")
+    if html:
+        return html
     return "<p style='font-family:sans-serif;padding:40px'>Map is loading, please refresh in a moment.</p>"
 
 @app.get("/results", response_class=HTMLResponse)
