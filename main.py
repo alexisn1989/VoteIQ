@@ -22,6 +22,8 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ── Election maps — all four modes built once at startup ──────────────────────
 import copy
+import math
+from shapely.geometry import shape
 
 _election_maps: dict[str, str] = {}
 
@@ -66,16 +68,10 @@ def _build_all_election_maps() -> dict[str, str]:
               raw.replace("&", "AND").replace("  ", " ").strip()
         (city_data if raw.endswith(" CITY") else county_data)[key] = info
 
-    resp = requests.get(
-        "https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json",
-        timeout=60,
-    )
-    resp.raise_for_status()
-    base_features = [f for f in resp.json()["features"] if f["properties"]["STATE"] == "51"]
+    with open(os.path.join(BASE_DIR, "va_counties.json"), encoding="utf-8") as gf:
+        base_features = json.load(gf)["features"]
 
     def _make_map(mode: str) -> str:
-        import math
-        from shapely.geometry import shape
 
         features = copy.deepcopy(base_features)
         for feat in features:
