@@ -118,13 +118,16 @@ def _build_all_election_maps() -> dict[str, str]:
             ).add_to(m)
 
             # Bubble layer — circle size = total votes, color = winner
-            max_total = max((f["properties"]["total"] for f in features), default=1)
+            max_total = max((f["properties"]["total"] for f in features), default=1) or 1
             for feat in features:
                 props = feat["properties"]
                 total = props["total"]
                 if total == 0:
                     continue
-                centroid = shape(feat["geometry"]).centroid
+                try:
+                    centroid = shape(feat["geometry"]).centroid
+                except Exception:
+                    continue
                 radius = 4 + math.sqrt(total / max_total) * 34
                 fill_color = "#1a52c8" if props["winner"] == "Yes" else "#ff4444"
                 pct = props["pct_yes"] or 50
@@ -190,7 +193,16 @@ def _build_all_election_maps() -> dict[str, str]:
         """))
         return m.get_root().render()
 
-    return {mode: _make_map(mode) for mode in _MODE_LABELS}
+    maps = {}
+    for mode in _MODE_LABELS:
+        try:
+            maps[mode] = _make_map(mode)
+            print(f"  Built '{mode}' map OK.")
+        except Exception as e:
+            import traceback
+            print(f"  ERROR building '{mode}' map: {e}")
+            traceback.print_exc()
+    return maps
 
 try:
     _election_maps = _build_all_election_maps()
