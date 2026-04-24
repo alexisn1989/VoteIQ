@@ -106,7 +106,14 @@ def _build_all_election_maps() -> dict[str, str]:
                 color = f"#ff{255-intensity:02x}{255-intensity:02x}"
             return {"fillColor": color, "color": "#444", "weight": 0.5, "fillOpacity": 0.85}
 
-        m = folium.Map(location=[37.5, -79.0], zoom_start=7, tiles="CartoDB positron")
+        m = folium.Map(location=[37.5, -79.0], zoom_start=7, tiles="CartoDB positron",
+                       min_zoom=6)
+        # Lock pan/zoom to Virginia
+        map_var = m.get_name()
+        m.get_root().script.add_child(folium.Element(f"""
+            {map_var}.setMaxBounds([[35.9, -84.8], [39.7, -74.9]]);
+            {map_var}.options.maxBoundsViscosity = 1.0;
+        """))
         folium.GeoJson(
             {"type": "FeatureCollection", "features": features},
             style_function=style_fn,
