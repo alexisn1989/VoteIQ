@@ -264,18 +264,17 @@
 
 <script>
   let _lastAddress = '';
+  let _cdMapHTML = '';
 
   function switchMapLayer(layer, btn) {
     document.querySelectorAll('.map-layer-tab').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     const mapEl = document.getElementById('map');
     if (layer === 'cd') {
-      if (_lastAddress) {
-        fetch('/map?address=' + encodeURIComponent(_lastAddress))
-          .then(r => r.text()).then(html => { mapEl.srcdoc = html; mapEl.src = ''; });
-      }
+      mapEl.removeAttribute('src');
+      mapEl.srcdoc = _cdMapHTML;
     } else {
-      mapEl.srcdoc = '';
+      mapEl.removeAttribute('srcdoc');
       mapEl.src = '/district-map?layer=' + layer;
     }
   }
@@ -285,8 +284,9 @@
     if (address.length < 10) { document.getElementById('result').innerHTML = '<p style="color:red;">Please enter your full address.</p>'; return; }
     if (!address.includes(',')) { document.getElementById('result').innerHTML = '<p style="color:red;">Please use format: 2000 Atlantic Ave, Virginia Beach, VA 23451</p>'; return; }
     document.getElementById('result').innerHTML = '<p>Loading...</p>';
-    document.getElementById('map').srcdoc = '';
-    document.getElementById('map').src = '';
+    const mapEl0 = document.getElementById('map');
+    mapEl0.removeAttribute('srcdoc');
+    mapEl0.removeAttribute('src');
     document.getElementById('viqChatPanel').style.display = 'none';
     try {
       const response = await fetch('/api/lookup?address=' + encodeURIComponent(address));
@@ -331,9 +331,9 @@
       mapEl.style.display = 'block';
       _lastAddress = address;
       const mapResponse = await fetch('/map?address=' + encodeURIComponent(address));
-      const mapHTML = await mapResponse.text();
-      mapEl.srcdoc = mapHTML;
-      mapEl.src = '';
+      _cdMapHTML = await mapResponse.text();
+      mapEl.removeAttribute('src');
+      mapEl.srcdoc = _cdMapHTML;
     } catch (error) {
       document.getElementById('result').innerHTML = '<p style="color:red;">Error loading results.</p>';
     }
