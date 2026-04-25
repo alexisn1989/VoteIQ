@@ -265,10 +265,21 @@ va_cd = va_cd.to_crs(epsg=4326)
 va_cd = va_cd[['NAMELSAD', 'CD118FP', 'geometry']]
 
 # Load HOD and SD shapefiles for district maps
-_va_hod_gdf = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL HOD.shp"))
-_va_hod_gdf = _va_hod_gdf.to_crs(epsg=4326)
-_va_sd_gdf  = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL SD.shp"))
-_va_sd_gdf  = _va_sd_gdf.to_crs(epsg=4326)
+try:
+    _va_hod_gdf = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL HOD.shp"))
+    _va_hod_gdf = _va_hod_gdf.to_crs(epsg=4326)
+    print("HOD shapefile loaded OK.")
+except Exception as e:
+    _va_hod_gdf = None
+    print(f"Warning: could not load HOD shapefile: {e}")
+
+try:
+    _va_sd_gdf = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL SD.shp"))
+    _va_sd_gdf = _va_sd_gdf.to_crs(epsg=4326)
+    print("SD shapefile loaded OK.")
+except Exception as e:
+    _va_sd_gdf = None
+    print(f"Warning: could not load SD shapefile: {e}")
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
@@ -689,15 +700,18 @@ def _build_district_map(layer: str) -> str:
 
 _district_maps: dict[str, str] = {}
 
-try:
-    for _layer in ("congressional", "hod", "sd"):
+for _layer in ("congressional", "hod", "sd"):
+    try:
+        if _layer in ("hod", "sd") and (_va_hod_gdf is None or _va_sd_gdf is None):
+            print(f"  Skipping '{_layer}' district map — shapefile not loaded.")
+            continue
         _district_maps[_layer] = _build_district_map(_layer)
         print(f"  Built '{_layer}' district map OK.")
-    print("District maps ready.")
-except Exception as e:
-    import traceback
-    print(f"Warning: could not build district maps: {e}")
-    traceback.print_exc()
+    except Exception as e:
+        import traceback
+        print(f"Warning: could not build '{_layer}' district map: {e}")
+        traceback.print_exc()
+print(f"District maps ready ({', '.join(_district_maps.keys()) or 'none'}).")
 
 
 @app.get("/district-map", response_class=HTMLResponse)
