@@ -3,6 +3,7 @@ import geopandas as gpd
 from shapely.geometry import Point
 import os
 import time
+import requests as _requests
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -55,13 +56,36 @@ def find_district(address):
     _load_shapefiles()
 
     try:
-        geolocator = Nominatim(user_agent="voteiq_civic_platform_v1", timeout=15)
-        time.sleep(1)
-        location = geolocator.geocode(address)
-        if not location:
+        lat, lng, display_name_raw = None, None, ""
+
+        # Primary: US Census Geocoder — free, no key, accurate for US addresses
+        try:
+            r = _requests.get(
+                "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
+                params={"address": address, "benchmark": "Public_AR_Current", "format": "json"},
+                timeout=10,
+            )
+            matches = r.json().get("result", {}).get("addressMatches", [])
+            if matches:
+                coords = matches[0]["coordinates"]
+                lat, lng = float(coords["y"]), float(coords["x"])
+                display_name_raw = matches[0].get("matchedAddress", address)
+        except Exception:
+            pass
+
+        # Fallback: Nominatim
+        if lat is None:
+            time.sleep(1)
+            geolocator = Nominatim(user_agent="voteiq_civic_platform_v1", timeout=15)
+            location = geolocator.geocode(address + ", Virginia, USA")
+            if location:
+                lat, lng = location.latitude, location.longitude
+                display_name_raw = location.raw.get("display_name", "")
+
+        if lat is None:
             return {"error": "Address not found"}
 
-        point = Point(location.longitude, location.latitude)
+        point = Point(lng, lat)
 
         # Get congressional district
         district = None
@@ -101,8 +125,7 @@ def find_district(address):
 
         # Extract city from geocoded address if locality not found
         if not locality:
-            display_name = location.raw.get('display_name', '')
-            parts = display_name.split(',')
+            parts = display_name_raw.split(',')
             if len(parts) >= 3:
                 locality = parts[2].strip()
             else:
@@ -115,8 +138,8 @@ def find_district(address):
             "hod_district": hod_district,
             "sd_district": sd_district,
             "precinct": precinct or "Not found",
-            "lat": location.latitude,
-            "lng": location.longitude
+            "lat": lat,
+            "lng": lng
         }
 
     except Exception as e:
