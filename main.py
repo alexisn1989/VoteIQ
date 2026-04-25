@@ -264,10 +264,9 @@ va_cd = gpd.read_file(os.path.join(BASE_DIR, "tl_2023_51_cd118.shp"))
 va_cd = va_cd.to_crs(epsg=4326)
 va_cd = va_cd[['NAMELSAD', 'CD118FP', 'geometry']]
 
-# Reuse the shapefiles already loaded by address_lookup — no duplicate load
-import address_lookup as _al
-_va_hod_gdf = _al.va_hod   # None if shapefile failed to load
-_va_sd_gdf  = _al.va_sd
+# HOD/SD GDFs are loaded on demand inside _build_district_map (lazy)
+_va_hod_gdf = None
+_va_sd_gdf  = None
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
@@ -571,6 +570,16 @@ def get_map(address: str):
 
 def _build_district_map(layer: str) -> str:
     """Build a party-shaded folium map for congressional, HOD, or SD districts."""
+    global _va_hod_gdf, _va_sd_gdf
+
+    # Load shapefiles on demand
+    if layer == "hod" and _va_hod_gdf is None:
+        _va_hod_gdf = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL HOD.shp"))
+        _va_hod_gdf = _va_hod_gdf.to_crs(epsg=4326)
+    if layer == "sd" and _va_sd_gdf is None:
+        _va_sd_gdf = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL SD.shp"))
+        _va_sd_gdf = _va_sd_gdf.to_crs(epsg=4326)
+
     m = folium.Map(location=[37.5, -79.0], zoom_start=7, tiles="CartoDB positron", min_zoom=6)
     map_var = m.get_name()
 
