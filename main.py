@@ -244,13 +244,19 @@ except Exception as e:
     _results = None
     print(f"Warning: could not load election results: {e}")
 
-va_cd = gpd.read_file(os.path.join(BASE_DIR, "tl_2023_51_cd118.shp"))
-va_cd = va_cd.to_crs(epsg=4326)
-va_cd = va_cd[['NAMELSAD', 'CD118FP', 'geometry']]
-
-# HOD/SD GDFs are loaded on demand inside _build_district_map (lazy)
+# All district GDFs are lazy — borrowed from address_lookup on first use
+_va_cd_gdf  = None
 _va_hod_gdf = None
 _va_sd_gdf  = None
+
+def _get_va_cd():
+    global _va_cd_gdf
+    if _va_cd_gdf is None:
+        from address_lookup import _load_shapefiles
+        import address_lookup as _al
+        _load_shapefiles()
+        _va_cd_gdf = _al.va_cd
+    return _va_cd_gdf
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
@@ -551,16 +557,13 @@ def get_map(address: str):
         return "<p>Address not found</p>"
     m = folium.Map(location=[result["lat"], result["lng"]], zoom_start=12)
     folium.Marker(location=[result["lat"], result["lng"]], popup=f"{result['district']}", icon=folium.Icon(color="red")).add_to(m)
-    folium.GeoJson(va_cd).add_to(m)
+    folium.GeoJson(_get_va_cd()).add_to(m)
     return m.get_root().render()
 
 
 def _build_district_map(layer: str) -> str:
     """Build a party-shaded folium map for congressional, HOD, or SD districts."""
     global _va_hod_gdf, _va_sd_gdf
-
-    # Load shapefiles on demand — import from address_lookup to avoid a second copy in RAM
-    from address_lookup import _load_shapefiles, va_hod as al_hod, va_sd as al_sd
 
     if layer == "hod":
         if _va_hod_gdf is None:
@@ -587,7 +590,7 @@ def _build_district_map(layer: str) -> str:
             for fp in [key.replace("VA-", "")]
             if key != "VA-00"
         }
-        features = json.loads(va_cd.to_json())["features"]
+        features = json.loads(_get_va_cd().to_json())["features"]
         for feat in features:
             fp = str(int(feat["properties"]["CD118FP"]))
             district_key = f"VA-{fp.zfill(2)}"
