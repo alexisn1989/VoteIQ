@@ -385,7 +385,7 @@ HOD_CONTEXT = {
     94:  {"delegate": "Phil M. Hernandez",            "party": "Democrat",    "locality": "Norfolk"},
     95:  {"delegate": "Alex Q. Askew",                "party": "Democrat",    "locality": "Norfolk/Virginia Beach"},
     96:  {"delegate": "Kelly K. Convirs-Fowler",      "party": "Democrat",    "locality": "Virginia Beach"},
-    97:  {"delegate": "Michael Feggans",              "party": "Republican",  "locality": "Virginia Beach"},
+    97:  {"delegate": "Michael Feggans",              "party": "Democrat",    "locality": "Virginia Beach"},
     98:  {"delegate": "Andrew Rice",                  "party": "Republican",  "locality": "Virginia Beach"},
     99:  {"delegate": "Anne Ferrell H. Tata",         "party": "Republican",  "locality": "Virginia Beach"},
     100: {"delegate": "Robert S. Bloxom, Jr.",        "party": "Republican",  "locality": "Accomack/Northampton/Virginia Beach"},
@@ -526,23 +526,36 @@ def lookup(address: str):
         return {"district": result}
 
     hod_num = result.get("hod_district")
-    sd_num = result.get("sd_district")
+    sd_num  = result.get("sd_district")
     hod_info = HOD_CONTEXT.get(hod_num) if hod_num else None
-    sd_info = SD_CONTEXT.get(sd_num) if sd_num else None
+    sd_info  = SD_CONTEXT.get(sd_num)  if sd_num  else None
+
+    cd_num_raw = result.get("district_number", "")
+    try:
+        cd_key = f"VA-{int(cd_num_raw):02d}"
+    except (ValueError, TypeError):
+        cd_key = "VA-00"
+    cd_info = DISTRICT_CONTEXT.get(cd_key, {})
 
     return {
         "district": result,
+        "us_rep": {
+            "district_number": int(cd_num_raw) if cd_num_raw not in ("", "N/A") else None,
+            "rep": cd_info.get("rep"),
+            "party": cd_info.get("party"),
+            "region": cd_info.get("region"),
+        } if cd_info.get("rep") else None,
         "state_delegate": {
             "district_number": hod_num,
-            "delegate": hod_info["delegate"] if hod_info else None,
-            "party": hod_info["party"] if hod_info else None,
-            "locality": hod_info["locality"] if hod_info else None,
+            "delegate": hod_info["delegate"],
+            "party": hod_info["party"],
+            "locality": hod_info["locality"],
         } if hod_info else None,
         "state_senator": {
             "district_number": sd_num,
-            "senator": sd_info["senator"] if sd_info else None,
-            "party": sd_info["party"] if sd_info else None,
-            "region": sd_info["region"] if sd_info else None,
+            "senator": sd_info["senator"],
+            "party": sd_info["party"],
+            "region": sd_info["region"],
         } if sd_info else None,
     }
 

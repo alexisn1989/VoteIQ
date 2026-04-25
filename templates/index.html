@@ -267,6 +267,7 @@
         return;
       }
       const d = data.district;
+      const usRep = data.us_rep;
       const del = data.state_delegate;
       const sen = data.state_senator;
       const partyColor = p => p === 'Democrat' ? '#1a52c8' : p === 'Republican' ? '#c8102e' : '#777';
@@ -283,7 +284,7 @@
         '<div style="background:white;border:1px solid #ddd8cc;border-top:4px solid #c8102e;padding:20px 24px;margin-top:20px;">' +
         '<h3 style="font-family:Barlow Condensed,sans-serif;font-size:0.8rem;color:#c8102e;margin-bottom:12px;letter-spacing:0.12em;text-transform:uppercase;">Your Representatives</h3>' +
         '<p style="margin-bottom:10px;font-size:0.9rem;">📍 <strong>' + d.locality + '</strong></p>' +
-        repBlock('U.S. Congress', null, d.district || 'Not found', null, null) +
+        (usRep ? repBlock('U.S. House · District ' + usRep.district_number, null, usRep.rep, usRep.party, usRep.region) : repBlock('U.S. House', null, d.district || 'Not found', null, null)) +
         (del ? repBlock('House of Delegates', del.district_number, del.delegate, del.party, del.locality) : '') +
         (sen ? repBlock('State Senate', sen.district_number, sen.senator, sen.party, sen.region) : '') +
         '<p style="margin-top:12px;font-size:0.78rem;"><a href="https://whosmy.virginiageneralassembly.gov/" target="_blank" style="color:#c8102e;">Verify at VA General Assembly →</a></p>' +

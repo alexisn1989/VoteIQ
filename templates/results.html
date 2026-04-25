@@ -491,6 +491,7 @@ async function lookup() {
     const num = data.district.district_number;
     const districtKey = 'VA-'+(num && num.startsWith('0') ? num : '0'+(num||'0'));
     const d = data.district;
+    const usRep = data.us_rep;
     const del = data.state_delegate;
     const sen = data.state_senator;
 
@@ -501,10 +502,17 @@ async function lookup() {
 
     card.innerHTML =
       `<p>📍 <strong>${d.locality}</strong></p>`+
-      `<div style="margin-top:8px;padding:8px 10px;background:#f4f1eb;border-left:3px solid #1a52c8;font-size:0.82rem;line-height:1.8;">`+
-        `<div style="font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:4px;">U.S. Congress</div>`+
-        `<div>${d.district || 'Not found'}</div>`+
-      `</div>`+
+      (usRep ?
+        `<div style="margin-top:8px;padding:8px 10px;background:#f4f1eb;border-left:3px solid #1a52c8;font-size:0.82rem;line-height:1.8;">`+
+          `<div style="font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:4px;">U.S. House · District ${usRep.district_number}</div>`+
+          `<div><strong>${usRep.rep}</strong>${partyTag(usRep.party)}</div>`+
+          `<div style="font-size:0.75rem;color:#7a7468;">${(usRep.region||'').substring(0,50)}${usRep.region&&usRep.region.length>50?'…':''}</div>`+
+        `</div>` :
+        `<div style="margin-top:8px;padding:8px 10px;background:#f4f1eb;border-left:3px solid #1a52c8;font-size:0.82rem;line-height:1.8;">`+
+          `<div style="font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:4px;">U.S. House</div>`+
+          `<div>${d.district || 'Not found'}</div>`+
+        `</div>`
+      )+
       (del ? `<div style="margin-top:6px;padding:8px 10px;background:#f4f1eb;border-left:3px solid #1a52c8;font-size:0.82rem;line-height:1.8;">`+
         `<div style="font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:4px;">House of Delegates · District ${del.district_number}</div>`+
         `<div><strong>${del.delegate}</strong>${partyTag(del.party)}</div>`+
