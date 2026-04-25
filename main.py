@@ -97,6 +97,7 @@ def _build_all_election_maps() -> dict[str, str]:
 
         m = folium.Map(location=[37.5, -79.0], zoom_start=7, tiles="CartoDB positron",
                        min_zoom=6)
+        map_var = m.get_name()
 
         if mode == "density":
             # Light boundary layer for context
@@ -182,7 +183,16 @@ def _build_all_election_maps() -> dict[str, str]:
           {legend_html}
         </div>
         """))
-        return m.get_root().render()
+        rendered = m.get_root().render()
+        # Folium places the map init script AFTER </body> and before </html>,
+        # so inject bounds lock just before </html> to guarantee correct order.
+        bounds_js = (
+            f"<script>"
+            f"{map_var}.setMaxBounds([[35.9,-84.8],[39.7,-74.9]]);"
+            f"{map_var}.options.maxBoundsViscosity=1.0;"
+            f"</script>"
+        )
+        return rendered.replace("</html>", bounds_js + "</html>")
 
     maps = {}
     for mode in _MODE_LABELS:
