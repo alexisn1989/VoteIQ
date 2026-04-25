@@ -260,6 +260,32 @@
     </div>
 
 
+    <!-- Chat -->
+    <div class="panel-section" style="flex:1;display:flex;flex-direction:column;padding:14px 18px;">
+      <div class="section-label" style="margin-bottom:8px;">Ask VoteIQ</div>
+      <div class="viq-chat-panel" id="viqChatPanel" style="display:flex;flex-direction:column;flex:1;border:1px solid var(--mid);overflow:hidden;">
+        <div class="viq-chat-header">
+          <div class="viq-chat-title">
+            <img src="/static/logo.png" alt="VoteIQ" style="width:22px;height:22px;object-fit:contain;border-radius:3px;flex-shrink:0;"/>
+            District Q&amp;A
+          </div>
+          <span class="viq-chat-district-badge" id="viqDistrictBadge">Statewide</span>
+        </div>
+        <div class="viq-chat-msgs" id="viqMsgList"></div>
+        <div class="viq-chat-chips" id="viqChips">
+          <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">How did my area vote?</button>
+          <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">What does Yes winning mean?</button>
+          <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">How did early vs election day differ?</button>
+          <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">What happens to district maps now?</button>
+        </div>
+        <div class="viq-chat-input-row">
+          <input class="viq-chat-input" id="viqInput" type="text" placeholder="Ask about the results…"/>
+          <button class="viq-chat-send" id="viqSendBtn" onclick="viqSendMessage()">Ask →</button>
+        </div>
+        <div class="viq-chat-footer">Powered by VoteIQ · Verify at elections.virginia.gov</div>
+      </div>
+    </div>
+
   </div><!-- /left-panel -->
 
   <!-- Right: map mode tabs + interactive map -->
@@ -418,6 +444,7 @@ function sortTable(col) {
 }
 
 loadData();
+document.addEventListener('DOMContentLoaded', () => initViqChat('VA-00'));
 
 function setMapMode(mode, btn) {
   document.querySelectorAll('.map-tab').forEach(b => b.classList.remove('active'));
@@ -459,15 +486,16 @@ if (addressInput) {
 // ── District chat ───────────────────────────────────────────────────────────
 if (document.getElementById('viqInput')) {
   (function(){
-    let viqDistrict=null;
+    let viqDistrict='VA-00';
     const viqMsgs=[];
     window.initViqChat = function(code){
       viqDistrict=code; viqMsgs.length=0;
-      document.getElementById('viqDistrictBadge').textContent=code;
+      document.getElementById('viqDistrictBadge').textContent=code==='VA-00'?'Statewide':code;
       document.getElementById('viqMsgList').innerHTML='';
       document.getElementById('viqChips').style.display='flex';
-      document.getElementById('viqChatPanel').style.display='flex';
-      viqAddMsg('assistant',"Hi! I'm your VoteIQ assistant for "+code+". Ask me anything about your representative, district boundaries, or upcoming votes.");
+      viqAddMsg('assistant', code==='VA-00'
+        ? "Hi! I'm VoteIQ. The April 21 referendum results are in — ask me what the Yes result means, how Virginia voted, or anything about the election."
+        : "Hi! I'm your VoteIQ assistant for "+code+". Ask me how your area voted, what the outcome means, or about your representative.");
     };
     function viqAddMsg(role,text,isTyping){
       const list=document.getElementById('viqMsgList');

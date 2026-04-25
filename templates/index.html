@@ -288,19 +288,22 @@
 
 
   (function () {
-    let viqDistrict = null;
+    let viqDistrict = 'VA-00';
     let viqLocality = '';
     const viqMsgs = [];
     window.initViqChat = function (districtCode, locality) {
-      viqDistrict = districtCode;
+      viqDistrict = districtCode || 'VA-00';
       viqLocality = locality || '';
       viqMsgs.length = 0;
-      document.getElementById('viqDistrictBadge').textContent = districtCode;
+      document.getElementById('viqDistrictBadge').textContent = viqDistrict === 'VA-00' ? 'Statewide' : viqDistrict;
       document.getElementById('viqMsgList').innerHTML = '';
       document.getElementById('viqChips').style.display = 'flex';
       document.getElementById('viqChatPanel').style.display = 'flex';
-      viqAddMsg('assistant', "Hi! I'm your VoteIQ assistant for " + districtCode + ". The April 21 referendum results are in — ask me how your area voted, what the outcome means, or anything about your district.");
+      viqAddMsg('assistant', viqDistrict === 'VA-00'
+        ? "Hi! I'm VoteIQ. The April 21 referendum results are in — ask me what the Yes result means, how Virginia voted, or anything about the election."
+        : "Hi! I'm your VoteIQ assistant for " + viqDistrict + ". The April 21 results are in — ask me how your area voted, what the outcome means, or about your district.");
     };
+    document.addEventListener('DOMContentLoaded', () => initViqChat('VA-00'));
     function viqAddMsg(role, text, isTyping) {
       const list = document.getElementById('viqMsgList');
       const wrap = document.createElement('div');

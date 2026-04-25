@@ -257,6 +257,7 @@ va_cd = va_cd[['NAMELSAD', 'CD118FP', 'geometry']]
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 DISTRICT_CONTEXT = {
+    "VA-00": {"rep": None, "party": None, "region": "Statewide — Virginia"},
     "VA-01": {"rep": "Rob Wittman",       "party": "Republican", "region": "Western Chesapeake Bay / suburban Richmond"},
     "VA-02": {"rep": "Jen Kiggans",        "party": "Republican", "region": "Hampton Roads (Virginia Beach, Chesapeake, Suffolk)"},
     "VA-03": {"rep": "Bobby Scott",        "party": "Democrat",   "region": "Inner Hampton Roads (Newport News, Hampton, Norfolk)"},
@@ -402,6 +403,13 @@ async def chat(req: ChatRequest):
     else:
         election_context = "Election results data is currently unavailable."
 
+    district_block = (
+        f"USER'S CONGRESSIONAL DISTRICT: {req.district}\n"
+        f"Representative: {ctx['rep']} ({ctx['party']})\n"
+        f"Region: {ctx['region']}"
+        if ctx["rep"] else
+        "The user has not yet looked up their specific district. Answer statewide questions."
+    )
     system_prompt = f"""You are VoteIQ, a nonpartisan civic assistant helping Virginia voters understand the April 21, 2026 statewide special election.
 
 REFERENDUM: Should Virginia's General Assembly have authority to redraw congressional districts?
@@ -410,9 +418,7 @@ A NO vote keeps the existing commission-drawn districts in place.
 
 {election_context}
 
-USER'S CONGRESSIONAL DISTRICT: {req.district}
-Representative: {ctx['rep']} ({ctx['party']})
-Region: {ctx['region']}
+{district_block}
 
 Answer questions about the election results, what the amendment means, redistricting, the representative, and voter info.
 Keep answers 2-4 sentences. Be factual and nonpartisan. Suggest elections.virginia.gov for official voter info. Never tell people who to vote for."""
