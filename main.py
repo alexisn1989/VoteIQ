@@ -688,14 +688,22 @@ _district_maps: dict[str, str] = {}
 
 @app.get("/district-map", response_class=HTMLResponse)
 def district_map(layer: str = "congressional"):
-    if layer not in _district_maps:
+    # Congressional is cheap (va_cd already loaded) — cache it
+    # HOD and SD are heavy — build fresh each request to avoid holding large HTML in RAM
+    if layer == "congressional":
+        if layer not in _district_maps:
+            try:
+                _district_maps[layer] = _build_district_map(layer)
+            except Exception as e:
+                return f"<p style='font-family:sans-serif;padding:40px'>Could not build map: {e}</p>"
+        return _district_maps[layer]
+    else:
         try:
-            _district_maps[layer] = _build_district_map(layer)
+            return _build_district_map(layer)
         except Exception as e:
             import traceback
             traceback.print_exc()
             return f"<p style='font-family:sans-serif;padding:40px'>Could not build {layer} map: {e}</p>"
-    return _district_maps[layer]
 
 
 @app.post("/chat", response_model=ChatResponse)
