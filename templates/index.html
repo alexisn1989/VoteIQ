@@ -103,6 +103,9 @@
   .viq-chat-send:hover { background: #c8102e; }
   .viq-chat-send:disabled { opacity: 0.4; cursor: default; }
   .viq-chat-footer { font-size: 11px; color: #8892a4; text-align: center; padding: 6px 16px 10px; background: #fff; font-family: 'Barlow', sans-serif; }
+  .map-layer-tab { font-family: 'Barlow Condensed', sans-serif; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; padding: 7px 16px; border: none; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); cursor: pointer; border-radius: 4px 4px 0 0; transition: all .15s; }
+  .map-layer-tab.active { background: #f4f1eb; color: #0d1b2a; }
+  .map-layer-tab:hover:not(.active) { background: rgba(255,255,255,0.2); color: white; }
 </style>
 </head>
 <body>
@@ -161,7 +164,15 @@
     <div class="viq-chat-footer">Powered by VoteIQ · Verify important info at elections.virginia.gov</div>
   </div>
 
-  <iframe id="map" style="width:100%; height:400px; border:none; margin-top:20px;"></iframe>
+  <div id="map-layer-bar" style="display:none;margin-top:20px;background:#0d1b2a;padding:8px 10px 0;border-radius:6px 6px 0 0;">
+    <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;padding-bottom:4px;">
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.4);padding-right:6px;">Map Layer</span>
+      <button id="tab-cd"  class="map-layer-tab active" onclick="switchMapLayer('cd',this)">Congressional</button>
+      <button id="tab-hod" class="map-layer-tab"        onclick="switchMapLayer('hod',this)">House of Delegates</button>
+      <button id="tab-sd"  class="map-layer-tab"        onclick="switchMapLayer('sd',this)">State Senate</button>
+    </div>
+  </div>
+  <iframe id="map" style="width:100%; height:400px; border:none; border-radius:0 0 6px 6px;margin-bottom:20px;display:none;"></iframe>
 
   <div class="divider"><span>How it works</span></div>
 
@@ -252,12 +263,30 @@
 </footer>
 
 <script>
+  let _lastAddress = '';
+
+  function switchMapLayer(layer, btn) {
+    document.querySelectorAll('.map-layer-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const mapEl = document.getElementById('map');
+    if (layer === 'cd') {
+      if (_lastAddress) {
+        fetch('/map?address=' + encodeURIComponent(_lastAddress))
+          .then(r => r.text()).then(html => { mapEl.srcdoc = html; mapEl.src = ''; });
+      }
+    } else {
+      mapEl.srcdoc = '';
+      mapEl.src = '/district-map?layer=' + layer;
+    }
+  }
+
   async function lookup() {
     const address = document.getElementById('address').value;
     if (address.length < 10) { document.getElementById('result').innerHTML = '<p style="color:red;">Please enter your full address.</p>'; return; }
     if (!address.includes(',')) { document.getElementById('result').innerHTML = '<p style="color:red;">Please use format: 2000 Atlantic Ave, Virginia Beach, VA 23451</p>'; return; }
     document.getElementById('result').innerHTML = '<p>Loading...</p>';
     document.getElementById('map').srcdoc = '';
+    document.getElementById('map').src = '';
     document.getElementById('viqChatPanel').style.display = 'none';
     try {
       const response = await fetch('/api/lookup?address=' + encodeURIComponent(address));
@@ -293,9 +322,18 @@
       const districtCode = 'VA-' + (districtNum && districtNum.startsWith('0') ? districtNum : '0' + (districtNum || '0'));
       initViqChat(districtCode, d.locality, del ? del.district_number : null, sen ? sen.district_number : null);
       document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      // Reset to Congressional tab, show layer bar + map
+      document.querySelectorAll('.map-layer-tab').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-cd').classList.add('active');
+      document.getElementById('map-layer-bar').style.display = 'block';
+      const mapEl = document.getElementById('map');
+      mapEl.style.display = 'block';
+      _lastAddress = address;
       const mapResponse = await fetch('/map?address=' + encodeURIComponent(address));
       const mapHTML = await mapResponse.text();
-      document.getElementById('map').srcdoc = mapHTML;
+      mapEl.srcdoc = mapHTML;
+      mapEl.src = '';
     } catch (error) {
       document.getElementById('result').innerHTML = '<p style="color:red;">Error loading results.</p>';
     }
