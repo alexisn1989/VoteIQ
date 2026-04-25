@@ -117,7 +117,10 @@
 
   /* Right panel — map */
   .right-panel { position:relative; display:flex; flex-direction:column; }
-  .map-tabs { display:flex; background:var(--navy); padding:8px 10px 0; gap:4px; flex-shrink:0; }
+  .map-tab-bar { background:var(--navy); padding:8px 10px 0; flex-shrink:0; }
+  .map-tab-group { display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+  .map-tab-group + .map-tab-group { margin-top:4px; }
+  .map-tab-group-label { font-family:'Barlow Condensed',sans-serif; font-size:0.6rem; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:rgba(255,255,255,0.4); padding:0 8px 0 2px; white-space:nowrap; }
   .map-tab { font-family:'Barlow Condensed',sans-serif; font-size:0.74rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; padding:7px 16px; border:none; background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.6); cursor:pointer; border-radius:4px 4px 0 0; transition:all .15s; }
   .map-tab.active { background:var(--light); color:var(--navy); }
   .map-tab:hover:not(.active) { background:rgba(255,255,255,0.2); color:white; }
@@ -290,12 +293,21 @@
 
   <!-- Right: map mode tabs + interactive map -->
   <div class="right-panel">
-    <div class="map-tabs">
-      <button class="map-tab active" onclick="setMapMode('total',this)">All Votes</button>
-      <button class="map-tab" onclick="setMapMode('early',this)">Early Voting</button>
-      <button class="map-tab" onclick="setMapMode('eday',this)">Election Day</button>
-      <button class="map-tab" onclick="setMapMode('mail',this)">Mail-In</button>
-      <button class="map-tab" onclick="setMapMode('density',this)">Vote Density</button>
+    <div class="map-tab-bar">
+      <div class="map-tab-group">
+        <span class="map-tab-group-label">Election Results</span>
+        <button class="map-tab active" onclick="setMapMode('results','total',this)">All Votes</button>
+        <button class="map-tab" onclick="setMapMode('results','early',this)">Early Voting</button>
+        <button class="map-tab" onclick="setMapMode('results','eday',this)">Election Day</button>
+        <button class="map-tab" onclick="setMapMode('results','mail',this)">Mail-In</button>
+        <button class="map-tab" onclick="setMapMode('results','density',this)">Vote Density</button>
+      </div>
+      <div class="map-tab-group" style="padding-bottom:4px;">
+        <span class="map-tab-group-label">District Maps</span>
+        <button class="map-tab" onclick="setMapMode('district','congressional',this)">Congressional</button>
+        <button class="map-tab" onclick="setMapMode('district','sd',this)">State Senate</button>
+        <button class="map-tab" onclick="setMapMode('district','hod',this)">House of Delegates</button>
+      </div>
     </div>
     <iframe class="map-frame" id="map-iframe" src="/results-map?mode=total" title="Election Results Map"></iframe>
   </div>
@@ -444,15 +456,21 @@ function sortTable(col) {
 }
 
 loadData();
-document.addEventListener('DOMContentLoaded', () => initViqChat('VA-00'));
+document.addEventListener('DOMContentLoaded', () => initViqChat('VA-00', null, null, ''));
 
-function setMapMode(mode, btn) {
+function setMapMode(type, value, btn) {
   document.querySelectorAll('.map-tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('map-iframe').src = '/results-map?mode=' + mode;
+  if (type === 'results') {
+    document.getElementById('map-iframe').src = '/results-map?mode=' + value;
+  } else {
+    document.getElementById('map-iframe').src = '/district-map?layer=' + value;
+  }
 }
 
-// ── Address lookup ──────────────────────────────────────────────────────────
+// ── Address lookup ────────────────────────────���─────────────────────────────
+let _hodDistrict = null, _sdDistrict = null;
+
 async function lookup() {
   const address = document.getElementById('address').value;
   const card = document.getElementById('result-card');
@@ -463,16 +481,43 @@ async function lookup() {
   try {
     const res = await fetch('/api/lookup?address='+encodeURIComponent(address));
     const data = await res.json();
-    const reps = {"02":"Jen Kiggans (R)","03":"Bobby Scott (D)"};
-    const rep = reps[data.district.district_number] || 'See elections.virginia.gov';
-    card.innerHTML =
-      '<p>📍 Locality: <strong>'+data.district.locality+'</strong></p>'+
-      '<p>🏛️ District: <strong>'+data.district.district+'</strong></p>'+
-      '<p>👤 Representative: <strong>'+rep+'</strong></p>'+
-      '<p>🗳️ Precinct: <strong>'+data.district.precinct+'</strong></p>'+
-      '<p style="margin-top:8px;font-size:0.8rem;"><a href="https://vpap.org/redistricting/2026" target="_blank" style="color:var(--red)">See proposed changes at VPAP →</a></p>';
+    if (data.district && data.district.error) {
+      card.innerHTML='<p style="color:var(--red)">Address not found. Try: 123 Main St, Richmond, VA 23219</p>';
+      return;
+    }
+    _hodDistrict = data.state_delegate ? data.state_delegate.district_number : null;
+    _sdDistrict  = data.state_senator  ? data.state_senator.district_number  : null;
+
     const num = data.district.district_number;
-    initViqChat('VA-'+(num.startsWith('0') ? num : '0'+num));
+    const districtKey = 'VA-'+(num && num.startsWith('0') ? num : '0'+(num||'0'));
+    const d = data.district;
+    const del = data.state_delegate;
+    const sen = data.state_senator;
+
+    const partyColor = p => p==='Democrat' ? '#1a52c8' : p==='Republican' ? '#c8102e' : '#777';
+    const partyTag = p => p
+      ? `<span style="display:inline-block;background:${partyColor(p)};color:#fff;font-size:0.68rem;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1px 7px;border-radius:3px;margin-left:5px;">${p[0]}</span>`
+      : '';
+
+    card.innerHTML =
+      `<p>📍 <strong>${d.locality}</strong></p>`+
+      `<div style="margin-top:8px;padding:8px 10px;background:#f4f1eb;border-left:3px solid #1a52c8;font-size:0.82rem;line-height:1.8;">`+
+        `<div style="font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:4px;">U.S. Congress</div>`+
+        `<div>${d.district || 'Not found'}</div>`+
+      `</div>`+
+      (del ? `<div style="margin-top:6px;padding:8px 10px;background:#f4f1eb;border-left:3px solid #1a52c8;font-size:0.82rem;line-height:1.8;">`+
+        `<div style="font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:4px;">House of Delegates · District ${del.district_number}</div>`+
+        `<div><strong>${del.delegate}</strong>${partyTag(del.party)}</div>`+
+        `<div style="font-size:0.75rem;color:#7a7468;">${del.locality}</div>`+
+      `</div>` : '')+
+      (sen ? `<div style="margin-top:6px;padding:8px 10px;background:#f4f1eb;border-left:3px solid #c8102e;font-size:0.82rem;line-height:1.8;">`+
+        `<div style="font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:4px;">State Senate · District ${sen.district_number}</div>`+
+        `<div><strong>${sen.senator}</strong>${partyTag(sen.party)}</div>`+
+        `<div style="font-size:0.75rem;color:#7a7468;">${(sen.region||'').substring(0,50)}${sen.region&&sen.region.length>50?'…':''}</div>`+
+      `</div>` : '')+
+      `<p style="margin-top:8px;font-size:0.78rem;"><a href="https://whosmy.virginiageneralassembly.gov/" target="_blank" style="color:var(--red)">Verify at VA General Assembly →</a></p>`;
+
+    initViqChat(districtKey, _hodDistrict, _sdDistrict, d.locality||'');
   } catch(e) {
     card.innerHTML='<p style="color:var(--red)">Error loading results. Please try again.</p>';
   }
@@ -486,10 +531,11 @@ if (addressInput) {
 // ── District chat ───────────────────────────────────────────────────────────
 if (document.getElementById('viqInput')) {
   (function(){
-    let viqDistrict='VA-00';
+    let viqDistrict='VA-00', viqHod=null, viqSd=null, viqLocality='';
     const viqMsgs=[];
-    window.initViqChat = function(code){
-      viqDistrict=code; viqMsgs.length=0;
+    window.initViqChat = function(code, hod, sd, locality){
+      viqDistrict=code; viqHod=hod||null; viqSd=sd||null; viqLocality=locality||'';
+      viqMsgs.length=0;
       document.getElementById('viqDistrictBadge').textContent=code==='VA-00'?'Statewide':code;
       document.getElementById('viqMsgList').innerHTML='';
       document.getElementById('viqChips').style.display='flex';
@@ -522,7 +568,7 @@ if (document.getElementById('viqInput')) {
       viqAddMsg('user',text); viqMsgs.push({role:'user',content:text});
       viqAddMsg('assistant','',true);
       try {
-        const res=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({district:viqDistrict,messages:viqMsgs})});
+        const res=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({district:viqDistrict,messages:viqMsgs,locality:viqLocality,hod_district:viqHod,sd_district:viqSd})});
         if(!res.ok) throw new Error();
         const data=await res.json(); viqRemoveTyping(); viqAddMsg('assistant',data.reply);
       } catch(err){ viqRemoveTyping(); viqAddMsg('assistant','Something went wrong — please try again.'); }

@@ -5,7 +5,6 @@ import os
 import time
 
 
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Load Virginia Congressional Districts
@@ -14,9 +13,21 @@ va_cd = va_cd.to_crs(epsg=4326)
 va_cd = va_cd[['NAMELSAD', 'CD118FP', 'geometry']]
 
 # Load Virginia Beach local data
-vb_local = gpd.read_file(os.path.join(BASE_DIR, "va_senate_distrcits.json", "VIRGINIA_BEACH_CITY.shp"))
-vb_local = vb_local.to_crs(epsg=4326)
-vb_local = vb_local[['LocalityNa', 'PrecinctNa', 'geometry']]
+try:
+    vb_local = gpd.read_file(os.path.join(BASE_DIR, "va_senate_distrcits.json", "VIRGINIA_BEACH_CITY.shp"))
+    vb_local = vb_local.to_crs(epsg=4326)
+    vb_local = vb_local[['LocalityNa', 'PrecinctNa', 'geometry']]
+except Exception:
+    vb_local = None
+
+# Load Virginia House of Delegates districts (2021 redistricting)
+va_hod = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL HOD.shp"))
+va_hod = va_hod.to_crs(epsg=4326)
+
+# Load Virginia State Senate districts (2021 redistricting)
+va_sd = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL SD.shp"))
+va_sd = va_sd.to_crs(epsg=4326)
+
 
 def find_district(address):
     try:
@@ -37,14 +48,29 @@ def find_district(address):
                 district_number = row['CD118FP']
                 break
 
+        # Get House of Delegates district
+        hod_district = None
+        for idx, row in va_hod.iterrows():
+            if row['geometry'].contains(point):
+                hod_district = int(row['DISTRICT'])
+                break
+
+        # Get State Senate district
+        sd_district = None
+        for idx, row in va_sd.iterrows():
+            if row['geometry'].contains(point):
+                sd_district = int(row['DISTRICT'])
+                break
+
         # Get locality and precinct
         locality = None
         precinct = None
-        for idx, row in vb_local.iterrows():
-            if row['geometry'].contains(point):
-                locality = row['LocalityNa']
-                precinct = row['PrecinctNa']
-                break
+        if vb_local is not None:
+            for idx, row in vb_local.iterrows():
+                if row['geometry'].contains(point):
+                    locality = row['LocalityNa']
+                    precinct = row['PrecinctNa']
+                    break
 
         # Extract city from geocoded address if locality not found
         if not locality:
@@ -59,6 +85,8 @@ def find_district(address):
             "locality": locality or "Virginia",
             "district": district or "Not found",
             "district_number": district_number or "N/A",
+            "hod_district": hod_district,
+            "sd_district": sd_district,
             "precinct": precinct or "Not found",
             "lat": location.latitude,
             "lng": location.longitude

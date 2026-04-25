@@ -264,6 +264,12 @@ va_cd = gpd.read_file(os.path.join(BASE_DIR, "tl_2023_51_cd118.shp"))
 va_cd = va_cd.to_crs(epsg=4326)
 va_cd = va_cd[['NAMELSAD', 'CD118FP', 'geometry']]
 
+# Load HOD and SD shapefiles for district maps
+_va_hod_gdf = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL HOD.shp"))
+_va_hod_gdf = _va_hod_gdf.to_crs(epsg=4326)
+_va_sd_gdf  = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL SD.shp"))
+_va_sd_gdf  = _va_sd_gdf.to_crs(epsg=4326)
+
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 DISTRICT_CONTEXT = {
@@ -281,6 +287,154 @@ DISTRICT_CONTEXT = {
     "VA-11": {"rep": "James Walkinshaw",   "party": "Democrat",   "region": "Northern Virginia outer suburbs (Fairfax County)"},
 }
 
+# Virginia House of Delegates — 100 districts (2021 redistricting, 2026 session members)
+HOD_CONTEXT = {
+    1:   {"delegate": "Patrick A. Hope",              "party": "Democrat",    "locality": "Arlington"},
+    2:   {"delegate": "Adele Y. McClure",             "party": "Democrat",    "locality": "Arlington"},
+    3:   {"delegate": "Alfonso H. Lopez",             "party": "Democrat",    "locality": "Arlington/Alexandria"},
+    4:   {"delegate": "Charniele L. Herring",         "party": "Democrat",    "locality": "Fairfax/Alexandria"},
+    5:   {"delegate": "R. Kirk McPike",               "party": "Democrat",    "locality": "Alexandria"},
+    6:   {"delegate": "Richard C. Sullivan, Jr.",     "party": "Democrat",    "locality": "Fairfax"},
+    7:   {"delegate": "Karen Keys-Gamarra",           "party": "Democrat",    "locality": "Fairfax"},
+    8:   {"delegate": "Irene Shin",                   "party": "Democrat",    "locality": "Fairfax/Herndon"},
+    9:   {"delegate": "Karrie K. Delaney",            "party": "Democrat",    "locality": "Fairfax"},
+    10:  {"delegate": "Dan Helmer",                   "party": "Democrat",    "locality": "Fairfax"},
+    11:  {"delegate": "Gretchen M. Bulova",           "party": "Democrat",    "locality": "Fairfax/Fairfax City"},
+    12:  {"delegate": "Holly M. Seibold",             "party": "Democrat",    "locality": "Fairfax"},
+    13:  {"delegate": "Marcus B. Simon",              "party": "Democrat",    "locality": "Fairfax/Falls Church"},
+    14:  {"delegate": "Vivian E. Watts",              "party": "Democrat",    "locality": "Fairfax"},
+    15:  {"delegate": "Laura Jane Cohen",             "party": "Democrat",    "locality": "Fairfax"},
+    16:  {"delegate": "Paul E. Krizek",               "party": "Democrat",    "locality": "Fairfax"},
+    17:  {"delegate": "Garrett McGuire",              "party": "Democrat",    "locality": "Fairfax"},
+    18:  {"delegate": "Kathy KL Tran",                "party": "Democrat",    "locality": "Fairfax"},
+    19:  {"delegate": "Rozia A. Henson, Jr.",         "party": "Democrat",    "locality": "Fairfax/Prince William"},
+    20:  {"delegate": "Michelle Lopes Maldonado",     "party": "Democrat",    "locality": "Prince William"},
+    21:  {"delegate": "Josh Thomas",                  "party": "Democrat",    "locality": "Prince William"},
+    22:  {"delegate": "Elizabeth R. Guzman",          "party": "Democrat",    "locality": "Prince William"},
+    23:  {"delegate": "Margaret Angela Franklin",     "party": "Democrat",    "locality": "Prince William/Stafford"},
+    24:  {"delegate": "Luke E. Torian",               "party": "Democrat",    "locality": "Prince William"},
+    25:  {"delegate": "Briana D. Sewell",             "party": "Democrat",    "locality": "Prince William"},
+    26:  {"delegate": "JJ Singh",                     "party": "Democrat",    "locality": "Loudoun"},
+    27:  {"delegate": "Atoosa R. Reaser",             "party": "Democrat",    "locality": "Loudoun"},
+    28:  {"delegate": "David A. Reid",                "party": "Democrat",    "locality": "Loudoun"},
+    29:  {"delegate": "Fernando J. Martinez",         "party": "Democrat",    "locality": "Loudoun"},
+    30:  {"delegate": "John C. McAuliff",             "party": "Republican",  "locality": "Fauquier/Loudoun"},
+    31:  {"delegate": "Delores Oates",                "party": "Republican",  "locality": "Clarke/Frederick/Warren"},
+    32:  {"delegate": "William D. Wiley",             "party": "Republican",  "locality": "Frederick/Winchester"},
+    33:  {"delegate": "Justin L. Pence",              "party": "Republican",  "locality": "Page/Rockingham/Shenandoah/Warren"},
+    34:  {"delegate": "Tony O. Wilt",                 "party": "Republican",  "locality": "Rockingham/Harrisonburg"},
+    35:  {"delegate": "Chris Runion",                 "party": "Republican",  "locality": "Augusta/Bath/Highland/Rockingham"},
+    36:  {"delegate": "Ellen H. McLaughlin",          "party": "Republican",  "locality": "Augusta/Rockbridge/Staunton/Waynesboro"},
+    37:  {"delegate": "Terry L. Austin",              "party": "Republican",  "locality": "Alleghany/Botetourt/Craig/Rockbridge"},
+    38:  {"delegate": "Sam Rasoul",                   "party": "Democrat",    "locality": "Roanoke"},
+    39:  {"delegate": "Will P. Davis",                "party": "Republican",  "locality": "Franklin/Roanoke"},
+    40:  {"delegate": "Joseph P. McNamara",           "party": "Republican",  "locality": "Roanoke/Salem"},
+    41:  {"delegate": "Lily V. Franklin",             "party": "Democrat",    "locality": "Montgomery/Roanoke"},
+    42:  {"delegate": "Jason S. Ballard",             "party": "Republican",  "locality": "Giles/Montgomery/Pulaski/Radford"},
+    43:  {"delegate": "James W. Morefield",           "party": "Republican",  "locality": "Bland/Buchanan/Dickenson/Russell/Tazewell"},
+    44:  {"delegate": "Israel D. O'Quinn",            "party": "Republican",  "locality": "Russell/Washington/Bristol"},
+    45:  {"delegate": "Terry G. Kilgore",             "party": "Republican",  "locality": "Lee/Scott/Wise/Norton"},
+    46:  {"delegate": "Mitchell Cornett",             "party": "Republican",  "locality": "Grayson/Pulaski/Smyth/Wythe"},
+    47:  {"delegate": "Wren M. Williams",             "party": "Republican",  "locality": "Carroll/Floyd/Henry/Patrick/Galax"},
+    48:  {"delegate": "Eric J. Phillips",             "party": "Republican",  "locality": "Henry/Pittsylvania/Martinsville"},
+    49:  {"delegate": "Madison Whittle",              "party": "Republican",  "locality": "Halifax/Pittsylvania/Danville"},
+    50:  {"delegate": "Thomas C. Wright, Jr.",        "party": "Republican",  "locality": "Charlotte/Halifax/Lunenburg/Mecklenburg/Prince Edward"},
+    51:  {"delegate": "Eric Zehr",                    "party": "Republican",  "locality": "Bedford/Campbell/Pittsylvania"},
+    52:  {"delegate": "Wendell S. Walker",            "party": "Republican",  "locality": "Campbell/Lynchburg"},
+    53:  {"delegate": "Timothy P. Griffin",           "party": "Republican",  "locality": "Amherst/Bedford/Nelson"},
+    54:  {"delegate": "Katrina E. Callsen",           "party": "Democrat",    "locality": "Albemarle/Charlottesville"},
+    55:  {"delegate": "Amy J. Laufer",                "party": "Democrat",    "locality": "Albemarle/Fluvanna/Louisa/Nelson"},
+    56:  {"delegate": "Thomas A. Garrett, Jr.",       "party": "Republican",  "locality": "Appomattox/Buckingham/Cumberland/Fluvanna/Goochland/Louisa/Prince Edward"},
+    57:  {"delegate": "May Nivar",                    "party": "Democrat",    "locality": "Goochland/Henrico"},
+    58:  {"delegate": "Rodney T. Willett",            "party": "Republican",  "locality": "Henrico"},
+    59:  {"delegate": "Hyland F. Fowler, Jr.",        "party": "Republican",  "locality": "Hanover/Henrico/Louisa"},
+    60:  {"delegate": "Scott A. Wyatt",               "party": "Republican",  "locality": "Hanover/New Kent"},
+    61:  {"delegate": "Michael J. Webert",            "party": "Republican",  "locality": "Culpeper/Fauquier/Rappahannock"},
+    62:  {"delegate": "Karen Fleming Hamilton",       "party": "Republican",  "locality": "Culpeper/Greene/Madison/Orange"},
+    63:  {"delegate": "Phillip A. Scott",             "party": "Republican",  "locality": "Orange/Spotsylvania"},
+    64:  {"delegate": "Stacey A. Carroll",            "party": "Democrat",    "locality": "Stafford"},
+    65:  {"delegate": "Joshua G. Cole",               "party": "Democrat",    "locality": "Spotsylvania/Stafford/Fredericksburg"},
+    66:  {"delegate": "Nicole Cole",                  "party": "Democrat",    "locality": "Caroline/Spotsylvania"},
+    67:  {"delegate": "Hillary Pugh Kent",            "party": "Republican",  "locality": "Caroline/King George/Lancaster/Northumberland/Richmond/Westmoreland"},
+    68:  {"delegate": "M. Keith Hodges",              "party": "Republican",  "locality": "Essex/Gloucester/King and Queen/King William/Mathews/Middlesex"},
+    69:  {"delegate": "Mark C. Downey",               "party": "Republican",  "locality": "Gloucester/James City/York/Newport News"},
+    70:  {"delegate": "Shelly A. Simonds",            "party": "Democrat",    "locality": "Newport News"},
+    71:  {"delegate": "Jessica L. Anderson",          "party": "Democrat",    "locality": "James City/New Kent/Williamsburg"},
+    72:  {"delegate": "R. Lee Ware",                  "party": "Republican",  "locality": "Amelia/Chesterfield/Nottoway/Powhatan"},
+    73:  {"delegate": "Leslie Chambers Mehta",        "party": "Democrat",    "locality": "Chesterfield"},
+    74:  {"delegate": "Mike A. Cherry",               "party": "Republican",  "locality": "Chesterfield/Colonial Heights"},
+    75:  {"delegate": "Lindsey Dougherty",            "party": "Democrat",    "locality": "Chesterfield/Prince George/Hopewell"},
+    76:  {"delegate": "Debra D. Gardner",             "party": "Democrat",    "locality": "Chesterfield"},
+    77:  {"delegate": "Charles H. Schmidt, Jr.",      "party": "Republican",  "locality": "Chesterfield/Richmond"},
+    78:  {"delegate": "Betsy B. Carr",                "party": "Democrat",    "locality": "Richmond"},
+    79:  {"delegate": "Rae C. Cousins",               "party": "Democrat",    "locality": "Richmond"},
+    80:  {"delegate": "Destiny L. LeVere Bolling",    "party": "Democrat",    "locality": "Henrico"},
+    81:  {"delegate": "Delores L. McQuinn",           "party": "Democrat",    "locality": "Charles City/Chesterfield/Henrico"},
+    82:  {"delegate": "Kimberly Pope Adams",          "party": "Democrat",    "locality": "Dinwiddie/Prince George/Surry/Petersburg"},
+    83:  {"delegate": "Howard Otto Wachsmann, Jr.",   "party": "Republican",  "locality": "Brunswick/Dinwiddie/Greensville/Isle of Wight/Southampton/Sussex/Emporia"},
+    84:  {"delegate": "Nadarius E. Clark",            "party": "Democrat",    "locality": "Chesapeake/Isle of Wight/Franklin/Suffolk"},
+    85:  {"delegate": "Marcia S. Price",              "party": "Democrat",    "locality": "Newport News"},
+    86:  {"delegate": "Virgil Gene Thornton, Sr.",    "party": "Republican",  "locality": "York/Hampton/Poquoson"},
+    87:  {"delegate": "Jeion A. Ward",                "party": "Democrat",    "locality": "Hampton"},
+    88:  {"delegate": "Don Scott",                    "party": "Democrat",    "locality": "Portsmouth"},
+    89:  {"delegate": "Karen Robins Carnegie",        "party": "Democrat",    "locality": "Chesapeake/Suffolk"},
+    90:  {"delegate": "James A. Leftwich, Jr.",       "party": "Democrat",    "locality": "Chesapeake"},
+    91:  {"delegate": "C. E. Hayes, Jr.",             "party": "Democrat",    "locality": "Chesapeake/Portsmouth"},
+    92:  {"delegate": "Bonita G. Anthony",            "party": "Democrat",    "locality": "Chesapeake/Norfolk"},
+    93:  {"delegate": "Jackie Hope Glass",            "party": "Democrat",    "locality": "Norfolk"},
+    94:  {"delegate": "Phil M. Hernandez",            "party": "Democrat",    "locality": "Norfolk"},
+    95:  {"delegate": "Alex Q. Askew",                "party": "Democrat",    "locality": "Norfolk/Virginia Beach"},
+    96:  {"delegate": "Kelly K. Convirs-Fowler",      "party": "Democrat",    "locality": "Virginia Beach"},
+    97:  {"delegate": "Michael Feggans",              "party": "Republican",  "locality": "Virginia Beach"},
+    98:  {"delegate": "Andrew Rice",                  "party": "Republican",  "locality": "Virginia Beach"},
+    99:  {"delegate": "Anne Ferrell H. Tata",         "party": "Republican",  "locality": "Virginia Beach"},
+    100: {"delegate": "Robert S. Bloxom, Jr.",        "party": "Republican",  "locality": "Accomack/Northampton/Virginia Beach"},
+}
+
+# Virginia State Senate — 40 districts (2021 redistricting, 2026 session members)
+SD_CONTEXT = {
+    1:  {"senator": "Timmy French",             "party": "Republican", "region": "Clarke, Frederick, Shenandoah, Warren; Winchester"},
+    2:  {"senator": "Mark Obenshain",           "party": "Republican", "region": "Augusta, Bath, Highland, Page, Rockingham; Harrisonburg"},
+    3:  {"senator": "Chris Head",               "party": "Republican", "region": "Alleghany, Augusta, Bedford, Botetourt, Craig, Roanoke, Rockbridge"},
+    4:  {"senator": "Dave Suetterlein",         "party": "Republican", "region": "Montgomery, Roanoke; Roanoke, Salem"},
+    5:  {"senator": "Travis Hackworth",         "party": "Republican", "region": "Bland, Giles, Montgomery, Pulaski, Smyth, Tazewell, Wythe; Radford"},
+    6:  {"senator": "Todd Pillion",             "party": "Republican", "region": "Buchanan, Dickenson, Lee, Russell, Scott, Washington, Wise; Bristol, Norton"},
+    7:  {"senator": "Bill Stanley",             "party": "Republican", "region": "Carroll, Floyd, Franklin, Grayson, Henry, Patrick, Wythe; Martinsville, Galax"},
+    8:  {"senator": "Mark Peake",               "party": "Republican", "region": "Bedford, Campbell; Lynchburg"},
+    9:  {"senator": "Tammy Brankley Mulchi",    "party": "Republican", "region": "Charlotte, Halifax, Lunenburg, Mecklenburg, Nottoway, Pittsylvania, Prince Edward; Danville"},
+    10: {"senator": "Luther Cifers",            "party": "Republican", "region": "Amelia, Appomattox, Buckingham, Cumberland, Fluvanna, Goochland, Hanover, Henrico, Louisa, Powhatan, Prince Edward"},
+    11: {"senator": "Creigh Deeds",             "party": "Democrat",   "region": "Albemarle, Amherst, Louisa, Nelson; Charlottesville"},
+    12: {"senator": "Glen Sturtevant",          "party": "Republican", "region": "Chesterfield; Colonial Heights"},
+    13: {"senator": "Lashrecse Aird",           "party": "Democrat",   "region": "Charles City, Dinwiddie, Henrico, Prince George, Surry, Sussex; Hopewell, Petersburg"},
+    14: {"senator": "Lamont Bagby",             "party": "Democrat",   "region": "Henrico; Richmond"},
+    15: {"senator": "Michael Jones",            "party": "Democrat",   "region": "Chesterfield; Richmond"},
+    16: {"senator": "Schuyler VanValkenburg",   "party": "Democrat",   "region": "Henrico"},
+    17: {"senator": "Emily Jordan",             "party": "Republican", "region": "Brunswick, Dinwiddie, Greensville, Isle of Wight, Southampton; Chesapeake, Emporia, Franklin, Portsmouth, Suffolk"},
+    18: {"senator": "L. Louise Lucas",          "party": "Democrat",   "region": "Chesapeake, Portsmouth"},
+    19: {"senator": "Christie New Craig",       "party": "Republican", "region": "Chesapeake, Virginia Beach"},
+    20: {"senator": "Bill DeSteph",             "party": "Republican", "region": "Accomack, Northampton; Norfolk, Virginia Beach"},
+    21: {"senator": "Angelia Williams Graves",  "party": "Democrat",   "region": "Norfolk"},
+    22: {"senator": "Aaron Rouse",              "party": "Democrat",   "region": "Virginia Beach"},
+    23: {"senator": "Mamie Locke",              "party": "Democrat",   "region": "Hampton; Newport News"},
+    24: {"senator": "Danny Diggs",              "party": "Republican", "region": "James City, York; Newport News, Poquoson, Williamsburg"},
+    25: {"senator": "Richard Stuart",           "party": "Republican", "region": "Caroline, Essex, King George, King William, Lancaster, Middlesex, Northumberland, Richmond, Spotsylvania, Westmoreland"},
+    26: {"senator": "Ryan McDougle",            "party": "Republican", "region": "Gloucester, Hanover, James City, Mathews, New Kent"},
+    27: {"senator": "Tara Durant",              "party": "Republican", "region": "Spotsylvania, Stafford; Fredericksburg"},
+    28: {"senator": "Bryce Reeves",             "party": "Republican", "region": "Culpeper, Fauquier, Greene, Madison, Orange, Rappahannock, Spotsylvania"},
+    29: {"senator": "Jeremy McPike",            "party": "Democrat",   "region": "Prince William, Stafford"},
+    30: {"senator": "Danica Roem",              "party": "Democrat",   "region": "Prince William; Manassas, Manassas Park"},
+    31: {"senator": "Russet Perry",             "party": "Democrat",   "region": "Fauquier, Loudoun"},
+    32: {"senator": "Kannan Srinivasan",        "party": "Democrat",   "region": "Loudoun"},
+    33: {"senator": "Jennifer Carroll Foy",     "party": "Democrat",   "region": "Fairfax, Prince William"},
+    34: {"senator": "Scott Surovell",           "party": "Democrat",   "region": "Fairfax"},
+    35: {"senator": "Dave Marsden",             "party": "Democrat",   "region": "Fairfax"},
+    36: {"senator": "Stella Pekarsky",          "party": "Democrat",   "region": "Fairfax"},
+    37: {"senator": "Saddam Azlan Salim",       "party": "Democrat",   "region": "Fairfax; Fairfax City, Falls Church"},
+    38: {"senator": "Jennifer Boysko",          "party": "Democrat",   "region": "Fairfax"},
+    39: {"senator": "Elizabeth Bennett-Parker", "party": "Democrat",   "region": "Arlington, Fairfax; Alexandria"},
+    40: {"senator": "Barbara Favola",           "party": "Democrat",   "region": "Arlington"},
+}
+
 class ChatMessage(BaseModel):
     role: str
     content: str
@@ -289,6 +443,8 @@ class ChatRequest(BaseModel):
     district: str
     messages: list[ChatMessage]
     locality: str = ""
+    hod_district: int | None = None
+    sd_district: int | None = None
 
 class ChatResponse(BaseModel):
     reply: str
@@ -366,7 +522,29 @@ def home():
 @app.get("/api/lookup")
 def lookup(address: str):
     result = find_district(address)
-    return {"district": result}
+    if "error" in result:
+        return {"district": result}
+
+    hod_num = result.get("hod_district")
+    sd_num = result.get("sd_district")
+    hod_info = HOD_CONTEXT.get(hod_num) if hod_num else None
+    sd_info = SD_CONTEXT.get(sd_num) if sd_num else None
+
+    return {
+        "district": result,
+        "state_delegate": {
+            "district_number": hod_num,
+            "delegate": hod_info["delegate"] if hod_info else None,
+            "party": hod_info["party"] if hod_info else None,
+            "locality": hod_info["locality"] if hod_info else None,
+        } if hod_info else None,
+        "state_senator": {
+            "district_number": sd_num,
+            "senator": sd_info["senator"] if sd_info else None,
+            "party": sd_info["party"] if sd_info else None,
+            "region": sd_info["region"] if sd_info else None,
+        } if sd_info else None,
+    }
 
 @app.get("/map", response_class=HTMLResponse)
 def get_map(address: str):
@@ -377,6 +555,145 @@ def get_map(address: str):
     folium.Marker(location=[result["lat"], result["lng"]], popup=f"{result['district']}", icon=folium.Icon(color="red")).add_to(m)
     folium.GeoJson(va_cd).add_to(m)
     return m.get_root().render()
+
+
+def _build_district_map(layer: str) -> str:
+    """Build a party-shaded folium map for congressional, HOD, or SD districts."""
+    m = folium.Map(location=[37.5, -79.0], zoom_start=7, tiles="CartoDB positron", min_zoom=6)
+    map_var = m.get_name()
+
+    if layer == "congressional":
+        cd_num_to_context = {
+            str(int(fp)): (key, ctx)
+            for key, ctx in DISTRICT_CONTEXT.items()
+            for fp in [key.replace("VA-", "")]
+            if key != "VA-00"
+        }
+        features = json.loads(va_cd.to_json())["features"]
+        for feat in features:
+            fp = str(int(feat["properties"]["CD118FP"]))
+            district_key = f"VA-{fp.zfill(2)}"
+            ctx = DISTRICT_CONTEXT.get(district_key, {})
+            party = ctx.get("party", "")
+            rep = ctx.get("rep", "Unknown")
+            region = ctx.get("region", "")
+            feat["properties"]["_party"] = party
+            feat["properties"]["_rep"] = rep
+            feat["properties"]["_district"] = district_key
+            feat["properties"]["_region"] = region
+
+        def cd_style(feat):
+            party = feat["properties"].get("_party", "")
+            fill = "#1a52c8" if party == "Democrat" else "#e03030" if party == "Republican" else "#aaaaaa"
+            return {"fillColor": fill, "color": "#333", "weight": 1.2, "fillOpacity": 0.55}
+
+        folium.GeoJson(
+            {"type": "FeatureCollection", "features": features},
+            style_function=cd_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["_district", "_rep", "_party", "_region"],
+                aliases=["District:", "U.S. Representative:", "Party:", "Region:"],
+                localize=True, sticky=True,
+                style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        title = "U.S. Congressional Districts"
+
+    elif layer == "hod":
+        features = json.loads(_va_hod_gdf.to_json())["features"]
+        for feat in features:
+            d = int(feat["properties"]["DISTRICT"])
+            ctx = HOD_CONTEXT.get(d, {})
+            feat["properties"]["_district"] = f"HOD District {d}"
+            feat["properties"]["_delegate"] = ctx.get("delegate", "Unknown")
+            feat["properties"]["_party"] = ctx.get("party", "")
+            feat["properties"]["_locality"] = ctx.get("locality", "")
+
+        def hod_style(feat):
+            party = feat["properties"].get("_party", "")
+            fill = "#1a52c8" if party == "Democrat" else "#e03030" if party == "Republican" else "#aaaaaa"
+            return {"fillColor": fill, "color": "#555", "weight": 0.7, "fillOpacity": 0.55}
+
+        folium.GeoJson(
+            {"type": "FeatureCollection", "features": features},
+            style_function=hod_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["_district", "_delegate", "_party", "_locality"],
+                aliases=["District:", "Delegate:", "Party:", "Area:"],
+                localize=True, sticky=True,
+                style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        title = "VA House of Delegates Districts"
+
+    else:  # sd
+        features = json.loads(_va_sd_gdf.to_json())["features"]
+        for feat in features:
+            d = int(feat["properties"]["DISTRICT"])
+            ctx = SD_CONTEXT.get(d, {})
+            feat["properties"]["_district"] = f"Senate District {d}"
+            feat["properties"]["_senator"] = ctx.get("senator", "Unknown")
+            feat["properties"]["_party"] = ctx.get("party", "")
+            feat["properties"]["_region"] = ctx.get("region", "")
+
+        def sd_style(feat):
+            party = feat["properties"].get("_party", "")
+            fill = "#1a52c8" if party == "Democrat" else "#e03030" if party == "Republican" else "#aaaaaa"
+            return {"fillColor": fill, "color": "#555", "weight": 0.9, "fillOpacity": 0.55}
+
+        folium.GeoJson(
+            {"type": "FeatureCollection", "features": features},
+            style_function=sd_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["_district", "_senator", "_party", "_region"],
+                aliases=["District:", "Senator:", "Party:", "Region:"],
+                localize=True, sticky=True,
+                style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        title = "VA State Senate Districts"
+
+    m.get_root().html.add_child(folium.Element(f"""
+    <div style="position:fixed;bottom:40px;left:40px;z-index:1000;
+         background:white;padding:12px 16px;border-radius:8px;
+         box-shadow:2px 2px 8px rgba(0,0,0,.3);font-family:Arial;font-size:13px;line-height:1.8">
+      <b style="font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:#555">{title}</b><br>
+      <span style="background:#1a52c8;color:white;padding:2px 10px;border-radius:3px">Democrat</span>
+      &nbsp;
+      <span style="background:#e03030;color:white;padding:2px 10px;border-radius:3px">Republican</span>
+      <br><small style="color:#666">Hover over a district for details</small>
+    </div>
+    """))
+    rendered = m.get_root().render()
+    bounds_js = (
+        f"<script>"
+        f"{map_var}.setMaxBounds([[35.9,-84.8],[39.7,-74.9]]);"
+        f"{map_var}.options.maxBoundsViscosity=1.0;"
+        f"</script>"
+    )
+    return rendered.replace("</html>", bounds_js + "</html>")
+
+
+_district_maps: dict[str, str] = {}
+
+try:
+    for _layer in ("congressional", "hod", "sd"):
+        _district_maps[_layer] = _build_district_map(_layer)
+        print(f"  Built '{_layer}' district map OK.")
+    print("District maps ready.")
+except Exception as e:
+    import traceback
+    print(f"Warning: could not build district maps: {e}")
+    traceback.print_exc()
+
+
+@app.get("/district-map", response_class=HTMLResponse)
+def district_map(layer: str = "congressional"):
+    html = _district_maps.get(layer) or _district_maps.get("congressional")
+    if html:
+        return html
+    return "<p style='font-family:sans-serif;padding:40px'>District map is loading, please refresh.</p>"
+
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
@@ -415,11 +732,29 @@ async def chat(req: ChatRequest):
 
     district_block = (
         f"USER'S CONGRESSIONAL DISTRICT: {req.district}\n"
-        f"Representative: {ctx['rep']} ({ctx['party']})\n"
+        f"U.S. Representative: {ctx['rep']} ({ctx['party']})\n"
         f"Region: {ctx['region']}"
         if ctx["rep"] else
         "The user has not yet looked up their specific district. Answer statewide questions."
     )
+
+    # Add state House of Delegates context
+    hod_info = HOD_CONTEXT.get(req.hod_district) if req.hod_district else None
+    if hod_info:
+        district_block += (
+            f"\nVA HOUSE OF DELEGATES DISTRICT: {req.hod_district}\n"
+            f"Delegate: {hod_info['delegate']} ({hod_info['party']})\n"
+            f"Locality: {hod_info['locality']}"
+        )
+
+    # Add state Senate context
+    sd_info = SD_CONTEXT.get(req.sd_district) if req.sd_district else None
+    if sd_info:
+        district_block += (
+            f"\nVA STATE SENATE DISTRICT: {req.sd_district}\n"
+            f"Senator: {sd_info['senator']} ({sd_info['party']})\n"
+            f"Region: {sd_info['region']}"
+        )
     system_prompt = f"""You are VoteIQ, a nonpartisan civic assistant helping Virginia voters understand the April 21, 2026 statewide special election.
 
 REFERENDUM: Should Virginia's General Assembly have authority to redraw congressional districts?

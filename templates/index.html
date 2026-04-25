@@ -262,21 +262,35 @@
     try {
       const response = await fetch('/api/lookup?address=' + encodeURIComponent(address));
       const data = await response.json();
-      const reps = { "02": "Jen Kiggans (R)", "03": "Bobby Scott (D)" };
-      const repDisplay = reps[data.district.district_number] || "Not found";
-      document.getElementById('result').innerHTML =
-        '<div style="background:white;border:1px solid #ddd8cc;border-top:4px solid #c8102e;padding:24px;margin-top:20px;">' +
-        '<h3 style="font-family:Barlow Condensed,sans-serif;font-size:0.8rem;color:#c8102e;margin-bottom:16px;">Your District Information</h3>' +
-        '<p style="margin-bottom:8px;">📍 Locality: <strong>' + data.district.locality + '</strong></p>' +
-        '<p style="margin-bottom:8px;">🏛️ District: <strong>' + data.district.district + '</strong></p>' +
-        '<p style="margin-bottom:8px;">🔢 District Number: <strong>' + data.district.district_number + '</strong></p>' +
-        '<p style="margin-bottom:8px;">👤 Representative: <strong>' + repDisplay + '</strong></p>' +
-        '<p style="margin-bottom:8px;">🗳️ Precinct: <strong>' + data.district.precinct + '</strong></p>' +
-        '<p style="margin-top:16px;font-size:0.85rem;"><a href="https://vpap.org/redistricting/2026" target="_blank" style="color:#c8102e;">See proposed district changes at VPAP →</a></p>' +
+      if (data.district && data.district.error) {
+        document.getElementById('result').innerHTML = '<p style="color:red;">Address not found. Try: 123 Main St, Richmond, VA 23219</p>';
+        return;
+      }
+      const d = data.district;
+      const del = data.state_delegate;
+      const sen = data.state_senator;
+      const partyColor = p => p === 'Democrat' ? '#1a52c8' : p === 'Republican' ? '#c8102e' : '#777';
+      const partyTag = p => p
+        ? '<span style="display:inline-block;background:' + partyColor(p) + ';color:#fff;font-size:0.68rem;font-family:Barlow Condensed,sans-serif;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1px 7px;border-radius:3px;margin-left:5px;">' + p[0] + '</span>'
+        : '';
+      const repBlock = (label, num, name, party, sub) =>
+        '<div style="margin-top:8px;padding:8px 10px;background:#faf9f6;border-left:3px solid ' + partyColor(party) + ';font-size:0.86rem;line-height:1.7;">' +
+        '<div style="font-family:Barlow Condensed,sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:3px;">' + label + (num ? ' · District ' + num : '') + '</div>' +
+        '<div><strong>' + name + '</strong>' + partyTag(party) + '</div>' +
+        '<div style="font-size:0.75rem;color:#7a7468;">' + (sub || '').substring(0, 55) + ((sub || '').length > 55 ? '…' : '') + '</div>' +
         '</div>';
-      const districtNum = data.district.district_number;
-      const districtCode = 'VA-' + (districtNum.startsWith('0') ? districtNum : '0' + districtNum);
-      initViqChat(districtCode, data.district.locality);
+      document.getElementById('result').innerHTML =
+        '<div style="background:white;border:1px solid #ddd8cc;border-top:4px solid #c8102e;padding:20px 24px;margin-top:20px;">' +
+        '<h3 style="font-family:Barlow Condensed,sans-serif;font-size:0.8rem;color:#c8102e;margin-bottom:12px;letter-spacing:0.12em;text-transform:uppercase;">Your Representatives</h3>' +
+        '<p style="margin-bottom:10px;font-size:0.9rem;">📍 <strong>' + d.locality + '</strong></p>' +
+        repBlock('U.S. Congress', null, d.district || 'Not found', null, null) +
+        (del ? repBlock('House of Delegates', del.district_number, del.delegate, del.party, del.locality) : '') +
+        (sen ? repBlock('State Senate', sen.district_number, sen.senator, sen.party, sen.region) : '') +
+        '<p style="margin-top:12px;font-size:0.78rem;"><a href="https://whosmy.virginiageneralassembly.gov/" target="_blank" style="color:#c8102e;">Verify at VA General Assembly →</a></p>' +
+        '</div>';
+      const districtNum = d.district_number;
+      const districtCode = 'VA-' + (districtNum && districtNum.startsWith('0') ? districtNum : '0' + (districtNum || '0'));
+      initViqChat(districtCode, d.locality, del ? del.district_number : null, sen ? sen.district_number : null);
       document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
       const mapResponse = await fetch('/map?address=' + encodeURIComponent(address));
       const mapHTML = await mapResponse.text();
@@ -290,10 +304,13 @@
   (function () {
     let viqDistrict = 'VA-00';
     let viqLocality = '';
+    let viqHod = null, viqSd = null;
     const viqMsgs = [];
-    window.initViqChat = function (districtCode, locality) {
+    window.initViqChat = function (districtCode, locality, hod, sd) {
       viqDistrict = districtCode || 'VA-00';
       viqLocality = locality || '';
+      viqHod = hod || null;
+      viqSd = sd || null;
       viqMsgs.length = 0;
       document.getElementById('viqDistrictBadge').textContent = viqDistrict === 'VA-00' ? 'Statewide' : viqDistrict;
       document.getElementById('viqMsgList').innerHTML = '';
@@ -338,7 +355,7 @@
       viqMsgs.push({ role: 'user', content: text });
       viqAddMsg('assistant', '', true);
       try {
-        const res = await fetch('/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ district: viqDistrict, locality: viqLocality, messages: viqMsgs }) });
+        const res = await fetch('/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ district: viqDistrict, locality: viqLocality, hod_district: viqHod, sd_district: viqSd, messages: viqMsgs }) });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
         viqRemoveTyping();
