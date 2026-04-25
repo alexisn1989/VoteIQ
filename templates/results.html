@@ -294,19 +294,12 @@
   <!-- Right: map mode tabs + interactive map -->
   <div class="right-panel">
     <div class="map-tab-bar">
-      <div class="map-tab-group">
-        <span class="map-tab-group-label">Election Results</span>
+      <div class="map-tab-group" style="padding-bottom:4px;">
         <button class="map-tab active" onclick="setMapMode('results','total',this)">All Votes</button>
         <button class="map-tab" onclick="setMapMode('results','early',this)">Early Voting</button>
         <button class="map-tab" onclick="setMapMode('results','eday',this)">Election Day</button>
         <button class="map-tab" onclick="setMapMode('results','mail',this)">Mail-In</button>
         <button class="map-tab" onclick="setMapMode('results','density',this)">Vote Density</button>
-      </div>
-      <div class="map-tab-group" style="padding-bottom:4px;">
-        <span class="map-tab-group-label">District Maps</span>
-        <button class="map-tab" onclick="setMapMode('district','congressional',this)">Congressional</button>
-        <button class="map-tab" onclick="setMapMode('district','sd',this)">State Senate</button>
-        <button class="map-tab" onclick="setMapMode('district','hod',this)">House of Delegates</button>
       </div>
     </div>
     <iframe class="map-frame" id="map-iframe" src="/results-map?mode=total" title="Election Results Map"></iframe>

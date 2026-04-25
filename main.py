@@ -35,10 +35,14 @@ _MODE_LABELS = {
     "density": "Vote Density",
 }
 
-def _build_all_election_maps() -> dict[str, str]:
+# Parsed election data — loaded once on first map request, reused across modes
+_election_data_cache: dict = {}
+
+def _load_election_data():
+    if _election_data_cache:
+        return _election_data_cache
     with open(os.path.join(BASE_DIR, "data_2026_special.json"), encoding="utf-8") as f:
         data = json.load(f)
-
     county_data, city_data = {}, {}
     for j in data.get("localResults", []):
         raw = j["name"].strip().upper()
@@ -57,7 +61,7 @@ def _build_all_election_maps() -> dict[str, str]:
                     no_ed  += grps.get("Election Day", 0)
                     no_ml  += grps.get("Mailed Absentee", 0)
         info = {
-            "yes": yes_v,      "no": no_v,
+            "yes": yes_v, "no": no_v,
             "early_yes": yes_ev, "early_no": no_ev,
             "eday_yes":  yes_ed, "eday_no":  no_ed,
             "mail_yes":  yes_ml, "mail_no":  no_ml,
@@ -67,150 +71,130 @@ def _build_all_election_maps() -> dict[str, str]:
               raw[:-5].strip() if raw.endswith(" CITY") else \
               raw.replace("&", "AND").replace("  ", " ").strip()
         (city_data if raw.endswith(" CITY") else county_data)[key] = info
-
     with open(os.path.join(BASE_DIR, "va_counties.json"), encoding="utf-8") as gf:
         base_features = json.load(gf)["features"]
+    _election_data_cache["county"] = county_data
+    _election_data_cache["city"]   = city_data
+    _election_data_cache["features"] = base_features
+    return _election_data_cache
 
-    def _make_map(mode: str) -> str:
 
-        features = copy.deepcopy(base_features)
-        for feat in features:
-            fips3   = int(feat["properties"]["GEO_ID"][-3:])
-            name_up = feat["properties"]["NAME"].strip().upper()
-            r = (city_data if fips3 > 199 else county_data).get(name_up)
-            if r:
-                y = r[f"{mode}_yes"] if mode not in ("total", "density") else r["yes"]
-                n = r[f"{mode}_no"]  if mode not in ("total", "density") else r["no"]
-                t = y + n
-                feat["properties"].update({
-                    "display_name": r["display_name"],
-                    "yes": y, "no": n, "total": t,
-                    "pct_yes": round(y / t * 100, 1) if t else None,
-                    "winner": ("Yes" if y >= n else "No") if t else "No data",
-                })
-            else:
-                feat["properties"].update({
-                    "display_name": feat["properties"]["NAME"],
-                    "pct_yes": None, "winner": "No data",
-                    "yes": 0, "no": 0, "total": 0,
-                })
+def _build_election_map(mode: str) -> str:
+    """Build a single election results map for the given mode."""
+    ed = _load_election_data()
+    county_data  = ed["county"]
+    city_data    = ed["city"]
+    base_features = ed["features"]
 
-        m = folium.Map(location=[37.5, -79.0], zoom_start=7, tiles="CartoDB positron",
-                       min_zoom=6)
-        map_var = m.get_name()
-
-        if mode == "density":
-            # Light boundary layer for context
-            folium.GeoJson(
-                {"type": "FeatureCollection", "features": features},
-                style_function=lambda f: {
-                    "fillColor": "#f5f5f5", "color": "#bbb",
-                    "weight": 0.7, "fillOpacity": 0.5,
-                },
-            ).add_to(m)
-
-            # Bubble layer — circle size = total votes, color = winner
-            max_total = max((f["properties"]["total"] for f in features), default=1) or 1
-            for feat in features:
-                props = feat["properties"]
-                total = props["total"]
-                if total == 0:
-                    continue
-                try:
-                    centroid = shape(feat["geometry"]).centroid
-                except Exception:
-                    continue
-                radius = 4 + math.sqrt(total / max_total) * 34
-                fill_color = "#1a52c8" if props["winner"] == "Yes" else "#ff4444"
-                pct = props["pct_yes"] or 50
-                folium.CircleMarker(
-                    location=[centroid.y, centroid.x],
-                    radius=radius,
-                    color="white", weight=1,
-                    fill=True, fill_color=fill_color, fill_opacity=0.78,
-                    tooltip=(
-                        f"<b style='font-family:Arial'>{props['display_name']}</b><br>"
-                        f"Total votes: <b>{total:,}</b><br>"
-                        f"Yes: {props['yes']:,} ({pct}%)<br>"
-                        f"No: {props['no']:,} ({100-pct}%)<br>"
-                        f"Winner: <b>{props['winner']}</b>"
-                    ),
-                ).add_to(m)
-
-            legend_html = """
-            <b style="font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:#555">Vote Density</b><br>
-            <span style="background:#1a52c8;color:white;padding:2px 10px;border-radius:3px">Yes won</span>
-            &nbsp;
-            <span style="background:#ff4444;color:white;padding:2px 10px;border-radius:3px">No won</span>
-            <br><small style="color:#666">Bigger circle = more votes cast</small>"""
+    features = copy.deepcopy(base_features)
+    for feat in features:
+        fips3   = int(feat["properties"]["GEO_ID"][-3:])
+        name_up = feat["properties"]["NAME"].strip().upper()
+        r = (city_data if fips3 > 199 else county_data).get(name_up)
+        if r:
+            y = r[f"{mode}_yes"] if mode not in ("total", "density") else r["yes"]
+            n = r[f"{mode}_no"]  if mode not in ("total", "density") else r["no"]
+            t = y + n
+            feat["properties"].update({
+                "display_name": r["display_name"],
+                "yes": y, "no": n, "total": t,
+                "pct_yes": round(y / t * 100, 1) if t else None,
+                "winner": ("Yes" if y >= n else "No") if t else "No data",
+            })
         else:
-            def style_fn(feat):
-                pct = feat["properties"].get("pct_yes")
-                if pct is None:
-                    return {"fillColor": "#cccccc", "color": "#888", "weight": 0.8, "fillOpacity": 0.5}
-                if pct >= 50:
-                    intensity = int(80 + (pct - 50) / 50 * 175)
-                    color = f"#{255-intensity:02x}{255-intensity:02x}ff"
-                else:
-                    intensity = int(80 + (50 - pct) / 50 * 175)
-                    color = f"#ff{255-intensity:02x}{255-intensity:02x}"
-                return {"fillColor": color, "color": "#444", "weight": 0.5, "fillOpacity": 0.85}
+            feat["properties"].update({
+                "display_name": feat["properties"]["NAME"],
+                "pct_yes": None, "winner": "No data",
+                "yes": 0, "no": 0, "total": 0,
+            })
 
-            folium.GeoJson(
-                {"type": "FeatureCollection", "features": features},
-                style_function=style_fn,
-                tooltip=folium.GeoJsonTooltip(
-                    fields=["display_name", "yes", "no", "pct_yes", "winner"],
-                    aliases=["Jurisdiction:", "Yes votes:", "No votes:", "Yes %:", "Winner:"],
-                    localize=True, sticky=True,
-                    style="font-family:Arial;font-size:13px;",
+    m = folium.Map(location=[37.5, -79.0], zoom_start=7, tiles="CartoDB positron", min_zoom=6)
+    map_var = m.get_name()
+
+    if mode == "density":
+        folium.GeoJson(
+            {"type": "FeatureCollection", "features": features},
+            style_function=lambda f: {"fillColor": "#f5f5f5", "color": "#bbb", "weight": 0.7, "fillOpacity": 0.5},
+        ).add_to(m)
+        max_total = max((f["properties"]["total"] for f in features), default=1) or 1
+        for feat in features:
+            props = feat["properties"]
+            total = props["total"]
+            if total == 0:
+                continue
+            try:
+                centroid = shape(feat["geometry"]).centroid
+            except Exception:
+                continue
+            radius = 4 + math.sqrt(total / max_total) * 34
+            fill_color = "#1a52c8" if props["winner"] == "Yes" else "#ff4444"
+            pct = props["pct_yes"] or 50
+            folium.CircleMarker(
+                location=[centroid.y, centroid.x], radius=radius,
+                color="white", weight=1, fill=True,
+                fill_color=fill_color, fill_opacity=0.78,
+                tooltip=(
+                    f"<b style='font-family:Arial'>{props['display_name']}</b><br>"
+                    f"Total votes: <b>{total:,}</b><br>"
+                    f"Yes: {props['yes']:,} ({pct}%)<br>"
+                    f"No: {props['no']:,} ({100-pct}%)<br>"
+                    f"Winner: <b>{props['winner']}</b>"
                 ),
             ).add_to(m)
-
-            legend_html = (
-                f"<b style='font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:#555'>"
-                f"{_MODE_LABELS[mode]}</b><br>"
-                f"<span style='background:#1a52c8;color:white;padding:2px 10px;border-radius:3px'>Yes</span>"
-                f"&nbsp;"
-                f"<span style='background:#ff4444;color:white;padding:2px 10px;border-radius:3px'>No</span>"
-                f"<br><small style='color:#666'>Deeper color = larger margin</small>"
-            )
-
-        m.get_root().html.add_child(folium.Element(f"""
-        <div style="position:fixed;bottom:40px;left:40px;z-index:1000;
-             background:white;padding:12px 16px;border-radius:8px;
-             box-shadow:2px 2px 8px rgba(0,0,0,.3);font-family:Arial;font-size:13px;line-height:1.8">
-          {legend_html}
-        </div>
-        """))
-        rendered = m.get_root().render()
-        # Folium places the map init script AFTER </body> and before </html>,
-        # so inject bounds lock just before </html> to guarantee correct order.
-        bounds_js = (
-            f"<script>"
-            f"{map_var}.setMaxBounds([[35.9,-84.8],[39.7,-74.9]]);"
-            f"{map_var}.options.maxBoundsViscosity=1.0;"
-            f"</script>"
+        legend_html = """
+        <b style="font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:#555">Vote Density</b><br>
+        <span style="background:#1a52c8;color:white;padding:2px 10px;border-radius:3px">Yes won</span>
+        &nbsp;
+        <span style="background:#ff4444;color:white;padding:2px 10px;border-radius:3px">No won</span>
+        <br><small style="color:#666">Bigger circle = more votes cast</small>"""
+    else:
+        def style_fn(feat):
+            pct = feat["properties"].get("pct_yes")
+            if pct is None:
+                return {"fillColor": "#cccccc", "color": "#888", "weight": 0.8, "fillOpacity": 0.5}
+            if pct >= 50:
+                intensity = int(80 + (pct - 50) / 50 * 175)
+                color = f"#{255-intensity:02x}{255-intensity:02x}ff"
+            else:
+                intensity = int(80 + (50 - pct) / 50 * 175)
+                color = f"#ff{255-intensity:02x}{255-intensity:02x}"
+            return {"fillColor": color, "color": "#444", "weight": 0.5, "fillOpacity": 0.85}
+        folium.GeoJson(
+            {"type": "FeatureCollection", "features": features},
+            style_function=style_fn,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["display_name", "yes", "no", "pct_yes", "winner"],
+                aliases=["Jurisdiction:", "Yes votes:", "No votes:", "Yes %:", "Winner:"],
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        legend_html = (
+            f"<b style='font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:#555'>"
+            f"{_MODE_LABELS[mode]}</b><br>"
+            f"<span style='background:#1a52c8;color:white;padding:2px 10px;border-radius:3px'>Yes</span>"
+            f"&nbsp;"
+            f"<span style='background:#ff4444;color:white;padding:2px 10px;border-radius:3px'>No</span>"
+            f"<br><small style='color:#666'>Deeper color = larger margin</small>"
         )
-        return rendered.replace("</html>", bounds_js + "</html>")
 
-    maps = {}
-    for mode in _MODE_LABELS:
-        try:
-            maps[mode] = _make_map(mode)
-            print(f"  Built '{mode}' map OK.")
-        except Exception as e:
-            import traceback
-            print(f"  ERROR building '{mode}' map: {e}")
-            traceback.print_exc()
-    return maps
+    m.get_root().html.add_child(folium.Element(f"""
+    <div style="position:fixed;bottom:40px;left:40px;z-index:1000;
+         background:white;padding:12px 16px;border-radius:8px;
+         box-shadow:2px 2px 8px rgba(0,0,0,.3);font-family:Arial;font-size:13px;line-height:1.8">
+      {legend_html}
+    </div>
+    """))
+    rendered = m.get_root().render()
+    bounds_js = (
+        f"<script>"
+        f"{map_var}.setMaxBounds([[35.9,-84.8],[39.7,-74.9]]);"
+        f"{map_var}.options.maxBoundsViscosity=1.0;"
+        f"</script>"
+    )
+    return rendered.replace("</html>", bounds_js + "</html>")
 
-try:
-    _election_maps = _build_all_election_maps()
-    print(f"Election maps ready ({', '.join(_election_maps.keys())}).")
-except Exception as e:
-    _election_maps = {}
-    print(f"Warning: could not build election maps: {e}")
+
+
 
 # ── Election results cache (for chat context) ─────────────────────────────────
 def _load_election_results():
@@ -450,10 +434,13 @@ class ChatResponse(BaseModel):
 @app.get("/election-map", response_class=HTMLResponse)
 @app.get("/results-map", response_class=HTMLResponse)
 def election_map(mode: str = "total"):
-    html = _election_maps.get(mode) or _election_maps.get("total")
-    if html:
-        return html
-    return "<p style='font-family:sans-serif;padding:40px'>Map is loading, please refresh in a moment.</p>"
+    if mode not in _election_maps:
+        try:
+            _election_maps[mode] = _build_election_map(mode)
+        except Exception as e:
+            print(f"Warning: could not build election map ({mode}): {e}")
+            return f"<p style='font-family:sans-serif;padding:40px'>Map unavailable: {e}</p>"
+    return _election_maps.get(mode, "")
 
 @app.get("/results", response_class=HTMLResponse)
 def results_page():
