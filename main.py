@@ -264,22 +264,10 @@ va_cd = gpd.read_file(os.path.join(BASE_DIR, "tl_2023_51_cd118.shp"))
 va_cd = va_cd.to_crs(epsg=4326)
 va_cd = va_cd[['NAMELSAD', 'CD118FP', 'geometry']]
 
-# Load HOD and SD shapefiles for district maps
-try:
-    _va_hod_gdf = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL HOD.shp"))
-    _va_hod_gdf = _va_hod_gdf.to_crs(epsg=4326)
-    print("HOD shapefile loaded OK.")
-except Exception as e:
-    _va_hod_gdf = None
-    print(f"Warning: could not load HOD shapefile: {e}")
-
-try:
-    _va_sd_gdf = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL SD.shp"))
-    _va_sd_gdf = _va_sd_gdf.to_crs(epsg=4326)
-    print("SD shapefile loaded OK.")
-except Exception as e:
-    _va_sd_gdf = None
-    print(f"Warning: could not load SD shapefile: {e}")
+# Reuse the shapefiles already loaded by address_lookup — no duplicate load
+import address_lookup as _al
+_va_hod_gdf = _al.va_hod   # None if shapefile failed to load
+_va_sd_gdf  = _al.va_sd
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
@@ -698,28 +686,20 @@ def _build_district_map(layer: str) -> str:
     return rendered.replace("</html>", bounds_js + "</html>")
 
 
+# District maps are built lazily on first request to keep startup memory low
 _district_maps: dict[str, str] = {}
-
-for _layer in ("congressional", "hod", "sd"):
-    try:
-        if _layer in ("hod", "sd") and (_va_hod_gdf is None or _va_sd_gdf is None):
-            print(f"  Skipping '{_layer}' district map — shapefile not loaded.")
-            continue
-        _district_maps[_layer] = _build_district_map(_layer)
-        print(f"  Built '{_layer}' district map OK.")
-    except Exception as e:
-        import traceback
-        print(f"Warning: could not build '{_layer}' district map: {e}")
-        traceback.print_exc()
-print(f"District maps ready ({', '.join(_district_maps.keys()) or 'none'}).")
 
 
 @app.get("/district-map", response_class=HTMLResponse)
 def district_map(layer: str = "congressional"):
-    html = _district_maps.get(layer) or _district_maps.get("congressional")
-    if html:
-        return html
-    return "<p style='font-family:sans-serif;padding:40px'>District map is loading, please refresh.</p>"
+    if layer not in _district_maps:
+        try:
+            _district_maps[layer] = _build_district_map(layer)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return f"<p style='font-family:sans-serif;padding:40px'>Could not build {layer} map: {e}</p>"
+    return _district_maps[layer]
 
 
 @app.post("/chat", response_model=ChatResponse)
