@@ -559,13 +559,23 @@ def _build_district_map(layer: str) -> str:
     """Build a party-shaded folium map for congressional, HOD, or SD districts."""
     global _va_hod_gdf, _va_sd_gdf
 
-    # Load shapefiles on demand
-    if layer == "hod" and _va_hod_gdf is None:
-        _va_hod_gdf = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL HOD.shp"))
-        _va_hod_gdf = _va_hod_gdf.to_crs(epsg=4326)
-    if layer == "sd" and _va_sd_gdf is None:
-        _va_sd_gdf = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL SD.shp"))
-        _va_sd_gdf = _va_sd_gdf.to_crs(epsg=4326)
+    # Load shapefiles on demand — import from address_lookup to avoid a second copy in RAM
+    from address_lookup import _load_shapefiles, va_hod as al_hod, va_sd as al_sd
+
+    if layer == "hod":
+        if _va_hod_gdf is None:
+            _load_shapefiles()
+            import address_lookup as _al
+            _va_hod_gdf = _al.va_hod
+        if _va_hod_gdf is None:
+            raise RuntimeError("HOD shapefile could not be loaded")
+    if layer == "sd":
+        if _va_sd_gdf is None:
+            _load_shapefiles()
+            import address_lookup as _al
+            _va_sd_gdf = _al.va_sd
+        if _va_sd_gdf is None:
+            raise RuntimeError("SD shapefile could not be loaded")
 
     m = folium.Map(location=[37.5, -79.0], zoom_start=7, tiles="CartoDB positron", min_zoom=6)
     map_var = m.get_name()
@@ -608,7 +618,9 @@ def _build_district_map(layer: str) -> str:
         title = "U.S. Congressional Districts"
 
     elif layer == "hod":
-        features = json.loads(_va_hod_gdf.to_json())["features"]
+        simplified = _va_hod_gdf.copy()
+        simplified["geometry"] = simplified["geometry"].simplify(0.01, preserve_topology=True)
+        features = json.loads(simplified.to_json())["features"]
         for feat in features:
             d = int(feat["properties"]["DISTRICT"])
             ctx = HOD_CONTEXT.get(d, {})
@@ -635,7 +647,9 @@ def _build_district_map(layer: str) -> str:
         title = "VA House of Delegates Districts"
 
     else:  # sd
-        features = json.loads(_va_sd_gdf.to_json())["features"]
+        simplified = _va_sd_gdf.copy()
+        simplified["geometry"] = simplified["geometry"].simplify(0.01, preserve_topology=True)
+        features = json.loads(simplified.to_json())["features"]
         for feat in features:
             d = int(feat["properties"]["DISTRICT"])
             ctx = SD_CONTEXT.get(d, {})
