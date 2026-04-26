@@ -561,7 +561,7 @@ def get_map(address: str):
     return m.get_root().render()
 
 
-def _build_district_map(layer: str, user_lat: float = None, user_lng: float = None) -> str:
+def _build_district_map(layer: str, user_lat: float = None, user_lng: float = None, district: int = None) -> str:
     """Build a party-shaded folium map for congressional, HOD, or SD districts."""
     global _va_hod_gdf, _va_sd_gdf
 
@@ -620,9 +620,10 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         title = "U.S. Congressional Districts"
 
     elif layer == "hod":
-        simplified = _va_hod_gdf.copy()
-        simplified["geometry"] = simplified["geometry"].simplify(0.01, preserve_topology=True)
-        features = json.loads(simplified.to_json())["features"]
+        gdf = _va_hod_gdf if district is None else _va_hod_gdf[_va_hod_gdf["DISTRICT"].astype(int) == district]
+        gdf = gdf.copy()
+        gdf["geometry"] = gdf["geometry"].simplify(0.01, preserve_topology=True)
+        features = json.loads(gdf.to_json())["features"]
         for feat in features:
             d = int(feat["properties"]["DISTRICT"])
             ctx = HOD_CONTEXT.get(d, {})
@@ -634,7 +635,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         def hod_style(feat):
             party = feat["properties"].get("_party", "")
             fill = "#1a52c8" if party == "Democrat" else "#e03030" if party == "Republican" else "#aaaaaa"
-            return {"fillColor": fill, "color": "#555", "weight": 0.7, "fillOpacity": 0.55}
+            return {"fillColor": fill, "color": "#555", "weight": 1.5, "fillOpacity": 0.6}
 
         folium.GeoJson(
             {"type": "FeatureCollection", "features": features},
@@ -646,12 +647,14 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                 style="font-family:Arial;font-size:13px;",
             ),
         ).add_to(m)
-        title = "VA House of Delegates Districts"
+        ctx = HOD_CONTEXT.get(district, {}) if district else {}
+        title = f"HOD District {district} — {ctx.get('delegate','')}" if district else "VA House of Delegates"
 
     else:  # sd
-        simplified = _va_sd_gdf.copy()
-        simplified["geometry"] = simplified["geometry"].simplify(0.01, preserve_topology=True)
-        features = json.loads(simplified.to_json())["features"]
+        gdf = _va_sd_gdf if district is None else _va_sd_gdf[_va_sd_gdf["DISTRICT"].astype(int) == district]
+        gdf = gdf.copy()
+        gdf["geometry"] = gdf["geometry"].simplify(0.01, preserve_topology=True)
+        features = json.loads(gdf.to_json())["features"]
         for feat in features:
             d = int(feat["properties"]["DISTRICT"])
             ctx = SD_CONTEXT.get(d, {})
@@ -663,7 +666,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         def sd_style(feat):
             party = feat["properties"].get("_party", "")
             fill = "#1a52c8" if party == "Democrat" else "#e03030" if party == "Republican" else "#aaaaaa"
-            return {"fillColor": fill, "color": "#555", "weight": 0.9, "fillOpacity": 0.55}
+            return {"fillColor": fill, "color": "#555", "weight": 1.5, "fillOpacity": 0.6}
 
         folium.GeoJson(
             {"type": "FeatureCollection", "features": features},
@@ -675,32 +678,8 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                 style="font-family:Arial;font-size:13px;",
             ),
         ).add_to(m)
-        title = "VA State Senate Districts"
-
-    # Rep name labels at district centroids
-    if layer in ("hod", "sd"):
-        from shapely.geometry import shape as _shape
-        name_field = "_delegate" if layer == "hod" else "_senator"
-        for feat in features:
-            try:
-                centroid = _shape(feat["geometry"]).centroid
-                name = feat["properties"].get(name_field, "")
-                # Shorten to last name only to keep labels compact
-                short = name.split()[-1] if name else ""
-                dist_num = feat["properties"].get("DISTRICT", "")
-                folium.Marker(
-                    location=[centroid.y, centroid.x],
-                    icon=folium.DivIcon(
-                        html=f'<div style="font-family:Arial;font-size:9px;font-weight:700;color:#111;'
-                             f'background:rgba(255,255,255,0.75);padding:1px 3px;border-radius:2px;'
-                             f'white-space:nowrap;line-height:1.2;pointer-events:none;">'
-                             f'{dist_num}<br>{short}</div>',
-                        icon_size=(50, 24),
-                        icon_anchor=(25, 12),
-                    ),
-                ).add_to(m)
-            except Exception:
-                continue
+        ctx = SD_CONTEXT.get(district, {}) if district else {}
+        title = f"Senate District {district} — {ctx.get('senator','')}" if district else "VA State Senate"
 
     # User location pin
     if user_lat is not None and user_lng is not None:
@@ -736,8 +715,7 @@ _district_maps: dict[str, str] = {}
 
 
 @app.get("/district-map", response_class=HTMLResponse)
-def district_map(layer: str = "congressional", lat: float = None, lng: float = None):
-    # Congressional with no location pin can be cached; HOD/SD built fresh each request
+def district_map(layer: str = "congressional", lat: float = None, lng: float = None, district: int = None):
     if layer == "congressional" and lat is None:
         if layer not in _district_maps:
             try:
@@ -747,7 +725,7 @@ def district_map(layer: str = "congressional", lat: float = None, lng: float = N
         return _district_maps[layer]
     else:
         try:
-            return _build_district_map(layer, user_lat=lat, user_lng=lng)
+            return _build_district_map(layer, user_lat=lat, user_lng=lng, district=district)
         except Exception as e:
             import traceback
             traceback.print_exc()

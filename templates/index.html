@@ -306,8 +306,10 @@
       mapEl.style.display = 'block';
       document.getElementById('district-links').style.display = 'flex';
       const userLat = d.lat, userLng = d.lng;
-      document.getElementById('hod-map-link').href = `/district-map?layer=hod&lat=${userLat}&lng=${userLng}`;
-      document.getElementById('sd-map-link').href  = `/district-map?layer=sd&lat=${userLat}&lng=${userLng}`;
+      const hodNum = del ? del.district_number : '';
+      const sdNum  = sen ? sen.district_number : '';
+      document.getElementById('hod-map-link').href = `/district-map?layer=hod&lat=${userLat}&lng=${userLng}${hodNum ? '&district='+hodNum : ''}`;
+      document.getElementById('sd-map-link').href  = `/district-map?layer=sd&lat=${userLat}&lng=${userLng}${sdNum  ? '&district='+sdNum  : ''}`;
       const mapResponse = await fetch('/map?address=' + encodeURIComponent(address));
       const mapHTML = await mapResponse.text();
       mapEl.removeAttribute('src');
