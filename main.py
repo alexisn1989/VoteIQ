@@ -681,12 +681,53 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         ctx = SD_CONTEXT.get(district, {}) if district else {}
         title = f"Senate District {district} — {ctx.get('senator','')}" if district else "VA State Senate"
 
-    # User location pin
+    # Rep name label at district centroid (only when showing a single district)
+    if district and features:
+        from shapely.geometry import shape as _shape
+        try:
+            centroid = _shape(features[0]["geometry"]).centroid
+            name_field = "_delegate" if layer == "hod" else "_senator"
+            rep_name = features[0]["properties"].get(name_field, "")
+            party = features[0]["properties"].get("_party", "")
+            bg = "#1a52c8" if party == "Democrat" else "#e03030" if party == "Republican" else "#555"
+            folium.Marker(
+                location=[centroid.y, centroid.x],
+                icon=folium.DivIcon(
+                    html=f'<div style="font-family:Arial;font-size:12px;font-weight:700;color:#fff;'
+                         f'background:{bg};padding:4px 10px;border-radius:4px;'
+                         f'white-space:nowrap;box-shadow:1px 1px 4px rgba(0,0,0,0.3);">'
+                         f'{rep_name}</div>',
+                    icon_size=(200, 30),
+                    icon_anchor=(100, 15),
+                ),
+            ).add_to(m)
+        except Exception:
+            pass
+
+    # Fit map to the district bounds
+    if features:
+        from shapely.geometry import shape as _shape
+        try:
+            import geopandas as _gpd
+            from shapely.ops import unary_union
+            geoms = [_shape(f["geometry"]) for f in features]
+            bounds = unary_union(geoms).bounds  # (minx, miny, maxx, maxy)
+            m.fit_bounds([[bounds[1], bounds[0]], [bounds[3], bounds[2]]])
+        except Exception:
+            pass
+
+    # User location pin — use CircleMarker to avoid Font Awesome dependency
     if user_lat is not None and user_lng is not None:
-        folium.Marker(
+        folium.CircleMarker(
             location=[user_lat, user_lng],
+            radius=10,
+            color="white",
+            weight=3,
+            fill=True,
+            fill_color="#c8102e",
+            fill_opacity=1.0,
             popup="Your Location",
-            icon=folium.Icon(color="red", icon="home", prefix="fa"),
+            tooltip="📍 Your Location",
         ).add_to(m)
 
     m.get_root().html.add_child(folium.Element(f"""
@@ -697,7 +738,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
       <span style="background:#1a52c8;color:white;padding:2px 10px;border-radius:3px">Democrat</span>
       &nbsp;
       <span style="background:#e03030;color:white;padding:2px 10px;border-radius:3px">Republican</span>
-      <br><small style="color:#666">Hover over a district for details</small>
+      <br><small style="color:#666">Click the district for details</small>
     </div>
     """))
     rendered = m.get_root().render()
