@@ -620,17 +620,22 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         title = "U.S. Congressional Districts"
 
     elif layer == "hod":
-        gdf = _va_hod_gdf.copy()
-        gdf["geometry"] = gdf["geometry"].simplify(0.01, preserve_topology=True)
-        features = json.loads(gdf.to_json())["features"]
-        for feat in features:
-            d = int(feat["properties"]["DISTRICT"])
-            ctx = HOD_CONTEXT.get(d, {})
-            feat["properties"]["_district"] = f"HOD District {d}"
-            feat["properties"]["_delegate"] = ctx.get("delegate", "Unknown")
-            feat["properties"]["_party"] = ctx.get("party", "")
-            feat["properties"]["_locality"] = ctx.get("locality", "")
-            feat["properties"]["_highlight"] = (d == district) if district else False
+        from shapely.geometry import mapping as _mapping
+        features = []
+        for _, row in _va_hod_gdf.iterrows():
+            try:
+                d = int(row["DISTRICT"])
+                ctx = HOD_CONTEXT.get(d, {})
+                features.append({"type": "Feature",
+                    "geometry": _mapping(row.geometry.simplify(0.01, preserve_topology=True)),
+                    "properties": {"DISTRICT": d,
+                        "_district": f"HOD District {d}",
+                        "_delegate": ctx.get("delegate", "Unknown"),
+                        "_party": ctx.get("party", ""),
+                        "_locality": ctx.get("locality", ""),
+                        "_highlight": (d == district) if district else False}})
+            except Exception:
+                continue
 
         def hod_style(feat):
             party = feat["properties"].get("_party", "")
@@ -645,25 +650,29 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             tooltip=folium.GeoJsonTooltip(
                 fields=["_district", "_delegate", "_party", "_locality"],
                 aliases=["District:", "Delegate:", "Party:", "Area:"],
-                localize=True, sticky=True,
-                style="font-family:Arial;font-size:13px;",
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
             ),
         ).add_to(m)
         ctx = HOD_CONTEXT.get(district, {}) if district else {}
         title = f"HOD District {district} — {ctx.get('delegate','')}" if district else "VA House of Delegates"
 
     else:  # sd
-        gdf = _va_sd_gdf.copy()
-        gdf["geometry"] = gdf["geometry"].simplify(0.01, preserve_topology=True)
-        features = json.loads(gdf.to_json())["features"]
-        for feat in features:
-            d = int(feat["properties"]["DISTRICT"])
-            ctx = SD_CONTEXT.get(d, {})
-            feat["properties"]["_district"] = f"Senate District {d}"
-            feat["properties"]["_senator"] = ctx.get("senator", "Unknown")
-            feat["properties"]["_party"] = ctx.get("party", "")
-            feat["properties"]["_region"] = ctx.get("region", "")
-            feat["properties"]["_highlight"] = (d == district) if district else False
+        from shapely.geometry import mapping as _mapping
+        features = []
+        for _, row in _va_sd_gdf.iterrows():
+            try:
+                d = int(row["DISTRICT"])
+                ctx = SD_CONTEXT.get(d, {})
+                features.append({"type": "Feature",
+                    "geometry": _mapping(row.geometry.simplify(0.01, preserve_topology=True)),
+                    "properties": {"DISTRICT": d,
+                        "_district": f"Senate District {d}",
+                        "_senator": ctx.get("senator", "Unknown"),
+                        "_party": ctx.get("party", ""),
+                        "_region": ctx.get("region", ""),
+                        "_highlight": (d == district) if district else False}})
+            except Exception:
+                continue
 
         def sd_style(feat):
             party = feat["properties"].get("_party", "")
@@ -678,8 +687,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             tooltip=folium.GeoJsonTooltip(
                 fields=["_district", "_senator", "_party", "_region"],
                 aliases=["District:", "Senator:", "Party:", "Region:"],
-                localize=True, sticky=True,
-                style="font-family:Arial;font-size:13px;",
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
             ),
         ).add_to(m)
         ctx = SD_CONTEXT.get(district, {}) if district else {}
