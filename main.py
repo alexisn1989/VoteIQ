@@ -617,7 +617,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                 style="font-family:Arial;font-size:13px;",
             ),
         ).add_to(m)
-        title = "U.S. Congressional Districts"
+        title = "Current Congressional Map — Virginia"
 
     elif layer == "hod":
         from shapely.geometry import mapping as _mapping
@@ -744,14 +744,19 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         ).add_to(m)
 
     m.get_root().html.add_child(folium.Element(f"""
+    <div style="position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:1000;
+         background:#0d1b2a;color:white;padding:8px 20px;border-radius:6px;
+         box-shadow:2px 2px 8px rgba(0,0,0,.4);font-family:Arial;font-size:14px;
+         font-weight:700;letter-spacing:0.05em;white-space:nowrap;pointer-events:none;">
+      {title}
+    </div>
     <div style="position:fixed;bottom:40px;left:40px;z-index:1000;
          background:white;padding:12px 16px;border-radius:8px;
          box-shadow:2px 2px 8px rgba(0,0,0,.3);font-family:Arial;font-size:13px;line-height:1.8">
-      <b style="font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:#555">{title}</b><br>
       <span style="background:#1a52c8;color:white;padding:2px 10px;border-radius:3px">Democrat</span>
       &nbsp;
       <span style="background:#e03030;color:white;padding:2px 10px;border-radius:3px">Republican</span>
-      <br><small style="color:#666">Click the district for details</small>
+      <br><small style="color:#666">Hover for details</small>
     </div>
     """))
     rendered = m.get_root().render()
