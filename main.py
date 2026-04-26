@@ -561,7 +561,7 @@ def get_map(address: str):
     return m.get_root().render()
 
 
-def _build_district_map(layer: str) -> str:
+def _build_district_map(layer: str, user_lat: float = None, user_lng: float = None) -> str:
     """Build a party-shaded folium map for congressional, HOD, or SD districts."""
     global _va_hod_gdf, _va_sd_gdf
 
@@ -677,6 +677,39 @@ def _build_district_map(layer: str) -> str:
         ).add_to(m)
         title = "VA State Senate Districts"
 
+    # Rep name labels at district centroids
+    if layer in ("hod", "sd"):
+        from shapely.geometry import shape as _shape
+        name_field = "_delegate" if layer == "hod" else "_senator"
+        for feat in features:
+            try:
+                centroid = _shape(feat["geometry"]).centroid
+                name = feat["properties"].get(name_field, "")
+                # Shorten to last name only to keep labels compact
+                short = name.split()[-1] if name else ""
+                dist_num = feat["properties"].get("DISTRICT", "")
+                folium.Marker(
+                    location=[centroid.y, centroid.x],
+                    icon=folium.DivIcon(
+                        html=f'<div style="font-family:Arial;font-size:9px;font-weight:700;color:#111;'
+                             f'background:rgba(255,255,255,0.75);padding:1px 3px;border-radius:2px;'
+                             f'white-space:nowrap;line-height:1.2;pointer-events:none;">'
+                             f'{dist_num}<br>{short}</div>',
+                        icon_size=(50, 24),
+                        icon_anchor=(25, 12),
+                    ),
+                ).add_to(m)
+            except Exception:
+                continue
+
+    # User location pin
+    if user_lat is not None and user_lng is not None:
+        folium.Marker(
+            location=[user_lat, user_lng],
+            popup="Your Location",
+            icon=folium.Icon(color="red", icon="home", prefix="fa"),
+        ).add_to(m)
+
     m.get_root().html.add_child(folium.Element(f"""
     <div style="position:fixed;bottom:40px;left:40px;z-index:1000;
          background:white;padding:12px 16px;border-radius:8px;
@@ -703,10 +736,9 @@ _district_maps: dict[str, str] = {}
 
 
 @app.get("/district-map", response_class=HTMLResponse)
-def district_map(layer: str = "congressional"):
-    # Congressional is cheap (va_cd already loaded) — cache it
-    # HOD and SD are heavy — build fresh each request to avoid holding large HTML in RAM
-    if layer == "congressional":
+def district_map(layer: str = "congressional", lat: float = None, lng: float = None):
+    # Congressional with no location pin can be cached; HOD/SD built fresh each request
+    if layer == "congressional" and lat is None:
         if layer not in _district_maps:
             try:
                 _district_maps[layer] = _build_district_map(layer)
@@ -715,7 +747,7 @@ def district_map(layer: str = "congressional"):
         return _district_maps[layer]
     else:
         try:
-            return _build_district_map(layer)
+            return _build_district_map(layer, user_lat=lat, user_lng=lng)
         except Exception as e:
             import traceback
             traceback.print_exc()
