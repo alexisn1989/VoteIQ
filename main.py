@@ -568,14 +568,24 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
     import address_lookup as _al
     if layer == "hod":
         if _va_hod_gdf is None:
-            _al._load_shapefiles()
-            _va_hod_gdf = _al.va_hod
+            # Reuse already-loaded GDF if address lookup already ran; otherwise load only HOD
+            if _al.va_hod is not None:
+                _va_hod_gdf = _al.va_hod
+            else:
+                _va_hod_gdf = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL HOD.shp"))
+                _va_hod_gdf = _va_hod_gdf.to_crs(epsg=4326)
+                _al.va_hod = _va_hod_gdf  # share back so address_lookup can use it too
         if _va_hod_gdf is None:
             raise RuntimeError("HOD shapefile could not be loaded")
     if layer == "sd":
         if _va_sd_gdf is None:
-            _al._load_shapefiles()
-            _va_sd_gdf = _al.va_sd
+            # Reuse already-loaded GDF if address lookup already ran; otherwise load only SD
+            if _al.va_sd is not None:
+                _va_sd_gdf = _al.va_sd
+            else:
+                _va_sd_gdf = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL SD.shp"))
+                _va_sd_gdf = _va_sd_gdf.to_crs(epsg=4326)
+                _al.va_sd = _va_sd_gdf  # share back so address_lookup can use it too
         if _va_sd_gdf is None:
             raise RuntimeError("SD shapefile could not be loaded")
 
