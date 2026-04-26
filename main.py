@@ -620,8 +620,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         title = "U.S. Congressional Districts"
 
     elif layer == "hod":
-        gdf = _va_hod_gdf if district is None else _va_hod_gdf[_va_hod_gdf["DISTRICT"].astype(int) == district]
-        gdf = gdf.copy()
+        gdf = _va_hod_gdf.copy()
         gdf["geometry"] = gdf["geometry"].simplify(0.01, preserve_topology=True)
         features = json.loads(gdf.to_json())["features"]
         for feat in features:
@@ -631,11 +630,14 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             feat["properties"]["_delegate"] = ctx.get("delegate", "Unknown")
             feat["properties"]["_party"] = ctx.get("party", "")
             feat["properties"]["_locality"] = ctx.get("locality", "")
+            feat["properties"]["_highlight"] = (d == district) if district else False
 
         def hod_style(feat):
             party = feat["properties"].get("_party", "")
-            fill = "#1a52c8" if party == "Democrat" else "#e03030" if party == "Republican" else "#aaaaaa"
-            return {"fillColor": fill, "color": "#555", "weight": 1.5, "fillOpacity": 0.6}
+            hi = feat["properties"].get("_highlight", False)
+            fill = "#0a3a9e" if party == "Democrat" else "#b01020" if party == "Republican" else "#888"
+            return {"fillColor": fill, "color": "#333", "weight": 2 if hi else 0.6,
+                    "fillOpacity": 0.85 if hi else 0.3}
 
         folium.GeoJson(
             {"type": "FeatureCollection", "features": features},
@@ -651,8 +653,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         title = f"HOD District {district} — {ctx.get('delegate','')}" if district else "VA House of Delegates"
 
     else:  # sd
-        gdf = _va_sd_gdf if district is None else _va_sd_gdf[_va_sd_gdf["DISTRICT"].astype(int) == district]
-        gdf = gdf.copy()
+        gdf = _va_sd_gdf.copy()
         gdf["geometry"] = gdf["geometry"].simplify(0.01, preserve_topology=True)
         features = json.loads(gdf.to_json())["features"]
         for feat in features:
@@ -662,11 +663,14 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             feat["properties"]["_senator"] = ctx.get("senator", "Unknown")
             feat["properties"]["_party"] = ctx.get("party", "")
             feat["properties"]["_region"] = ctx.get("region", "")
+            feat["properties"]["_highlight"] = (d == district) if district else False
 
         def sd_style(feat):
             party = feat["properties"].get("_party", "")
-            fill = "#1a52c8" if party == "Democrat" else "#e03030" if party == "Republican" else "#aaaaaa"
-            return {"fillColor": fill, "color": "#555", "weight": 1.5, "fillOpacity": 0.6}
+            hi = feat["properties"].get("_highlight", False)
+            fill = "#0a3a9e" if party == "Democrat" else "#b01020" if party == "Republican" else "#888"
+            return {"fillColor": fill, "color": "#333", "weight": 2 if hi else 0.6,
+                    "fillOpacity": 0.85 if hi else 0.3}
 
         folium.GeoJson(
             {"type": "FeatureCollection", "features": features},
@@ -681,13 +685,14 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         ctx = SD_CONTEXT.get(district, {}) if district else {}
         title = f"Senate District {district} — {ctx.get('senator','')}" if district else "VA State Senate"
 
-    # Rep name label at district centroid (only when showing a single district)
-    if district and features:
+    # Rep name label at centroid of the user's highlighted district
+    highlighted = [f for f in features if f["properties"].get("_highlight")] if district else []
+    if highlighted:
         from shapely.geometry import shape as _shape
         try:
-            centroid = _shape(features[0]["geometry"]).centroid
+            centroid = _shape(highlighted[0]["geometry"]).centroid
             name_field = "_delegate" if layer == "hod" else "_senator"
-            rep_name = features[0]["properties"].get(name_field, "")
+            rep_name = highlighted[0]["properties"].get(name_field, "")
             party = features[0]["properties"].get("_party", "")
             bg = "#1a52c8" if party == "Democrat" else "#e03030" if party == "Republican" else "#555"
             folium.Marker(
@@ -704,13 +709,13 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         except Exception:
             pass
 
-    # Fit map to the district bounds
-    if features:
+    # Fit map to the user's highlighted district (or all of Virginia if no district)
+    target_features = [f for f in features if f["properties"].get("_highlight")] if district else features
+    if target_features:
         from shapely.geometry import shape as _shape
+        from shapely.ops import unary_union
         try:
-            import geopandas as _gpd
-            from shapely.ops import unary_union
-            geoms = [_shape(f["geometry"]) for f in features]
+            geoms = [_shape(f["geometry"]) for f in target_features]
             bounds = unary_union(geoms).bounds  # (minx, miny, maxx, maxy)
             m.fit_bounds([[bounds[1], bounds[0]], [bounds[3], bounds[2]]])
         except Exception:
