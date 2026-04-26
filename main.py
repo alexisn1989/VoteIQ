@@ -565,17 +565,16 @@ def _build_district_map(layer: str) -> str:
     """Build a party-shaded folium map for congressional, HOD, or SD districts."""
     global _va_hod_gdf, _va_sd_gdf
 
+    import address_lookup as _al
     if layer == "hod":
         if _va_hod_gdf is None:
-            _load_shapefiles()
-            import address_lookup as _al
+            _al._load_shapefiles()
             _va_hod_gdf = _al.va_hod
         if _va_hod_gdf is None:
             raise RuntimeError("HOD shapefile could not be loaded")
     if layer == "sd":
         if _va_sd_gdf is None:
-            _load_shapefiles()
-            import address_lookup as _al
+            _al._load_shapefiles()
             _va_sd_gdf = _al.va_sd
         if _va_sd_gdf is None:
             raise RuntimeError("SD shapefile could not be loaded")
