@@ -282,6 +282,7 @@
       const council = data.vb_council;
       const schoolBoard = data.vb_school_board;
       const vaStatewide = data.va_statewide || [];
+      const president = data.us_president;
       const partyColor = p => p === 'Democrat' ? '#1a52c8' : p === 'Republican' ? '#c8102e' : '#555';
       const partyTag = p => p
         ? '<span style="display:inline-block;background:' + partyColor(p) + ';color:#fff;font-size:0.68rem;font-family:Barlow Condensed,sans-serif;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1px 7px;border-radius:3px;margin-left:5px;">' + p[0] + '</span>'
@@ -317,6 +318,7 @@
           (schoolBoard && schoolBoard.at_large ? officialCard('School Board · At-Large',                           schoolBoard.at_large.name, 'Virginia Beach', schoolBoard.at_large.party) : '')
         : '';
       const allCards =
+        (president ? repBlock('President', null, president.name, president.party, president.title) : '') +
         vaStatewide.map(s => repBlock(s.title, null, s.name, s.party, 'Virginia')).join('') +
         usSenators.map(s => repBlock('U.S. Senate', null, s.name, s.party, s.title)).join('') +
         (usRep ? repBlock('U.S. House · District ' + usRep.district_number, null, usRep.rep, usRep.party, usRep.region) : repBlock('U.S. House', null, d.district || 'Not found', null, null)) +

@@ -582,6 +582,7 @@ def lookup(address: str):
             {"name": "Mark Warner", "party": "Democrat", "title": "Virginia · Senior Senator"},
             {"name": "Tim Kaine",   "party": "Democrat", "title": "Virginia · Junior Senator"},
         ],
+        "us_president": {"name": "Donald J. Trump", "party": "Republican", "title": "United States"},
         "va_statewide": [
             {"name": "Abigail Spanberger",  "party": "Democrat", "title": "Governor"},
             {"name": "Ghazala F. Hashmi",   "party": "Democrat", "title": "Lieutenant Governor"},
