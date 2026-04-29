@@ -287,7 +287,7 @@
         ? '<span style="display:inline-block;background:' + partyColor(p) + ';color:#fff;font-size:0.68rem;font-family:Barlow Condensed,sans-serif;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1px 7px;border-radius:3px;margin-left:5px;">' + p[0] + '</span>'
         : '';
       const repBlock = (label, num, name, party, sub) =>
-        '<div style="margin-top:8px;padding:8px 10px;background:#faf9f6;border-left:3px solid ' + partyColor(party) + ';font-size:0.86rem;line-height:1.7;">' +
+        '<div style="margin-bottom:8px;padding:8px 10px;background:#faf9f6;border-left:3px solid ' + partyColor(party) + ';font-size:0.86rem;line-height:1.7;">' +
         '<div style="font-family:Barlow Condensed,sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:3px;">' + label + (num ? ' · District ' + num : '') + '</div>' +
         '<div><strong>' + name + '</strong>' + partyTag(party) + '</div>' +
         '<div style="font-size:0.75rem;color:#7a7468;">' + (sub || '').substring(0, 55) + ((sub || '').length > 55 ? '…' : '') + '</div>' +
@@ -300,7 +300,7 @@
       };
       const partyBorder = (party) => party && party.includes('Democrat') ? '#1a52c8' : party && party.includes('Republican') ? '#c8102e' : '#7a7468';
       const officialCard = (label, name, email, party) =>
-        '<div style="margin-top:8px;padding:8px 10px;background:#faf9f6;border-left:3px solid ' + partyBorder(party) + ';font-size:0.86rem;line-height:1.7;">' +
+        '<div style="margin-bottom:8px;padding:8px 10px;background:#faf9f6;border-left:3px solid ' + partyBorder(party) + ';font-size:0.86rem;line-height:1.7;">' +
         '<div style="font-family:Barlow Condensed,sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:3px;">' + label + '</div>' +
         '<div><strong>' + name + '</strong>' + partyBadge(party) + '</div>' +
         (email ? '<div style="font-size:0.75rem;color:#7a7468;"><a href="mailto:' + email + '" style="color:' + partyBorder(party) + ';">' + email + '</a></div>' : '') +
@@ -316,16 +316,20 @@
           (schoolBoard && schoolBoard.member   ? officialCard('School Board · District ' + council.district_number, schoolBoard.member.name,   '', schoolBoard.member.party)   : '') +
           (schoolBoard && schoolBoard.at_large ? officialCard('School Board · At-Large',                           schoolBoard.at_large.name, '', schoolBoard.at_large.party) : '')
         : '';
-      document.getElementById('result').innerHTML =
-        '<div style="background:white;border:1px solid #ddd8cc;border-top:4px solid #c8102e;padding:20px 24px;margin-top:20px;">' +
-        '<h3 style="font-family:Barlow Condensed,sans-serif;font-size:0.8rem;color:#c8102e;margin-bottom:12px;letter-spacing:0.12em;text-transform:uppercase;">Your Representatives</h3>' +
-        '<p style="margin-bottom:10px;font-size:0.9rem;">📍 <strong>' + d.locality + '</strong></p>' +
+      const allCards =
         vaStatewide.map(s => repBlock(s.title, null, s.name, s.party, 'Virginia')).join('') +
         usSenators.map(s => repBlock('U.S. Senate', null, s.name, s.party, s.title)).join('') +
         (usRep ? repBlock('U.S. House · District ' + usRep.district_number, null, usRep.rep, usRep.party, usRep.region) : repBlock('U.S. House', null, d.district || 'Not found', null, null)) +
         (del ? repBlock('House of Delegates', del.district_number, del.delegate, del.party, del.locality) : '') +
         (sen ? repBlock('State Senate', sen.district_number, sen.senator, sen.party, sen.region) : '') +
-        councilBlock +
+        councilBlock;
+      document.getElementById('result').innerHTML =
+        '<div style="background:white;border:1px solid #ddd8cc;border-top:4px solid #c8102e;padding:20px 24px;margin-top:20px;">' +
+        '<h3 style="font-family:Barlow Condensed,sans-serif;font-size:0.8rem;color:#c8102e;margin-bottom:12px;letter-spacing:0.12em;text-transform:uppercase;">Your Representatives</h3>' +
+        '<p style="margin-bottom:10px;font-size:0.9rem;">📍 <strong>' + d.locality + '</strong></p>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px;">' +
+        allCards +
+        '</div>' +
         '<p style="margin-top:12px;font-size:0.78rem;"><a href="https://whosmy.virginiageneralassembly.gov/" target="_blank" style="color:#c8102e;">Verify at VA General Assembly →</a></p>' +
         '</div>';
       const districtNum = d.district_number;
