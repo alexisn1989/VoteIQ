@@ -20,7 +20,8 @@ _loaded  = False
 # VB council lookup: district number (int) -> {name, email}
 _vb_council = {}
 _vb_school_board = {}  # int district -> entry, "at_large" -> entry
-_norfolk_officials = {}  # "mayor" -> entry, future ward entries
+_norfolk_officials = {}  # "mayor" -> entry, ward entries
+_chesapeake_officials = {}  # "mayor", "vice_mayor", "sheriff", etc. -> entry; "council" -> list
 try:
     with open(os.path.join(BASE_DIR, "voteiq_officials.json"), encoding="utf-8") as _f:
         for _m in json.load(_f):
@@ -40,6 +41,22 @@ try:
                 _norfolk_officials["treasurer"] = _entry
             elif _d == "Norfolk Commissioner of the Revenue":
                 _norfolk_officials["commissioner"] = _entry
+            elif _d == "Chesapeake Mayor":
+                _chesapeake_officials["mayor"] = _entry
+            elif _d == "Chesapeake Vice Mayor":
+                _chesapeake_officials["vice_mayor"] = _entry
+            elif _d == "Chesapeake Sheriff":
+                _chesapeake_officials["sheriff"] = _entry
+            elif _d == "Chesapeake Commonwealth's Attorney":
+                _chesapeake_officials["commonwealths_attorney"] = _entry
+            elif _d == "Chesapeake Commissioner of the Revenue":
+                _chesapeake_officials["commissioner"] = _entry
+            elif _d == "Chesapeake City Treasurer":
+                _chesapeake_officials["treasurer"] = _entry
+            elif _d == "Chesapeake Clerk of the Circuit Court":
+                _chesapeake_officials["clerk"] = _entry
+            elif _d == "Chesapeake Council":
+                _chesapeake_officials.setdefault("council", []).append(_entry)
             elif _d == "School Board At-Large":
                 _vb_school_board["at_large"] = _entry
             elif _d.startswith("School Board District"):

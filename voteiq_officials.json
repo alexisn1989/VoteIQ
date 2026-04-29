@@ -222,5 +222,103 @@
         "email": "",
         "jurisdiction": "Virginia Beach",
         "party": "Democrat (nonpartisan)"
+    },
+    {
+        "name": "Rick West",
+        "district": "Chesapeake Mayor",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "Republican (nonpartisan)"
+    },
+    {
+        "name": "S.Z. \"Debbie\" Ritter",
+        "district": "Chesapeake Vice Mayor",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "Republican (nonpartisan)"
+    },
+    {
+        "name": "Wallace W. Chadwick III",
+        "district": "Chesapeake Sheriff",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "Republican (nonpartisan)"
+    },
+    {
+        "name": "Matthew R. Hamel",
+        "district": "Chesapeake Commonwealth's Attorney",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "Democrat (nonpartisan)"
+    },
+    {
+        "name": "Victoria L. Proffitt",
+        "district": "Chesapeake Commissioner of the Revenue",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "Republican (nonpartisan)"
+    },
+    {
+        "name": "Corrie A. Kring",
+        "district": "Chesapeake City Treasurer",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "Democrat (nonpartisan)"
+    },
+    {
+        "name": "Alan P. Krasnoff",
+        "district": "Chesapeake Clerk of the Circuit Court",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": ""
+    },
+    {
+        "name": "C. Jeff Bunn",
+        "district": "Chesapeake Council",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": ""
+    },
+    {
+        "name": "E.R. \"Jeff\" Jefferies, Jr.",
+        "district": "Chesapeake Council",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": ""
+    },
+    {
+        "name": "Patricia Y. \"Pat\" King, MD",
+        "district": "Chesapeake Council",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": ""
+    },
+    {
+        "name": "Amanda L. Newins",
+        "district": "Chesapeake Council",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": ""
+    },
+    {
+        "name": "Les Smith, Jr.",
+        "district": "Chesapeake Council",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": ""
+    },
+    {
+        "name": "Dr. Ella P. Ward",
+        "district": "Chesapeake Council",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": ""
+    },
+    {
+        "name": "Daniel W. Whitaker",
+        "district": "Chesapeake Council",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": ""
     }
 ]

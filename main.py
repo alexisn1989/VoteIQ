@@ -532,7 +532,7 @@ def lookup(address: str):
         cd_key = "VA-00"
     cd_info = DISTRICT_CONTEXT.get(cd_key, {})
 
-    from address_lookup import _vb_council, _vb_school_board, _norfolk_officials
+    from address_lookup import _vb_council, _vb_school_board, _norfolk_officials, _chesapeake_officials
     vb_num = result.get("vb_council_district")
     vb_info = _vb_council.get(vb_num) if vb_num is not None else None
     mayor_info = _vb_council.get(0)
@@ -569,6 +569,16 @@ def lookup(address: str):
             "superward_rep": result.get("norfolk_superward_rep"),
             "superward_sbm": result.get("norfolk_superward_sbm"),
         } if "norfolk" in result.get("locality", "").lower() else None,
+        "chesapeake": {
+            "mayor":                  (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_chesapeake_officials.get("mayor")),
+            "vice_mayor":             (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_chesapeake_officials.get("vice_mayor")),
+            "sheriff":                (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_chesapeake_officials.get("sheriff")),
+            "commonwealths_attorney": (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_chesapeake_officials.get("commonwealths_attorney")),
+            "commissioner":           (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_chesapeake_officials.get("commissioner")),
+            "treasurer":              (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_chesapeake_officials.get("treasurer")),
+            "clerk":                  (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_chesapeake_officials.get("clerk")),
+            "council": [{"name": m["name"], "party": m.get("party", "")} for m in _chesapeake_officials.get("council", [])],
+        } if "chesapeake" in result.get("locality", "").lower() else None,
         "vb_school_board": {
             "member": (lambda o: {"name": o["name"], "party": o.get("party", "")} if o else None)(_vb_school_board.get(vb_num)),
             "at_large": (lambda o: {"name": o["name"], "party": o.get("party", "")} if o else None)(_vb_school_board.get("at_large")),

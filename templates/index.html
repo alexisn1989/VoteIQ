@@ -281,6 +281,7 @@
       const sen = data.state_senator;
       const council = data.vb_council;
       const norfolk = data.norfolk;
+      const chesapeake = data.chesapeake;
       const schoolBoard = data.vb_school_board;
       const vaStatewide = data.va_statewide || [];
       const president = data.us_president;
@@ -334,12 +335,21 @@
         (norfolk && norfolk.ward_rep ? officialCard('City Council · Ward ' + norfolk.ward, norfolk.ward_rep, 'Norfolk', '') : '') +
         (norfolk && norfolk.ward_sbm ? officialCard('School Board · Ward ' + norfolk.ward, norfolk.ward_sbm, 'Norfolk', '') : '') +
         (norfolk && norfolk.superward_rep ? officialCard('City Council · Superward ' + norfolk.superward, norfolk.superward_rep, 'Norfolk', '') : '') +
-        (norfolk && norfolk.superward_sbm ? officialCard('School Board · Superward ' + norfolk.superward, norfolk.superward_sbm, 'Norfolk', '') : '');
+        (norfolk && norfolk.superward_sbm ? officialCard('School Board · Superward ' + norfolk.superward, norfolk.superward_sbm, 'Norfolk', '') : '') +
+        (chesapeake ? officialCard('Mayor', chesapeake.mayor ? chesapeake.mayor.name : '', 'Chesapeake', chesapeake.mayor ? chesapeake.mayor.party : '') : '') +
+        (chesapeake ? officialCard('Vice Mayor', chesapeake.vice_mayor ? chesapeake.vice_mayor.name : '', 'Chesapeake', chesapeake.vice_mayor ? chesapeake.vice_mayor.party : '') : '') +
+        (chesapeake ? officialCard('Sheriff', chesapeake.sheriff ? chesapeake.sheriff.name : '', 'Chesapeake', chesapeake.sheriff ? chesapeake.sheriff.party : '') : '') +
+        (chesapeake ? officialCard("Commonwealth's Attorney", chesapeake.commonwealths_attorney ? chesapeake.commonwealths_attorney.name : '', 'Chesapeake', chesapeake.commonwealths_attorney ? chesapeake.commonwealths_attorney.party : '') : '') +
+        (chesapeake ? officialCard('Commissioner of the Revenue', chesapeake.commissioner ? chesapeake.commissioner.name : '', 'Chesapeake', chesapeake.commissioner ? chesapeake.commissioner.party : '') : '') +
+        (chesapeake ? officialCard('City Treasurer', chesapeake.treasurer ? chesapeake.treasurer.name : '', 'Chesapeake', chesapeake.treasurer ? chesapeake.treasurer.party : '') : '') +
+        (chesapeake ? officialCard('Clerk of the Circuit Court', chesapeake.clerk ? chesapeake.clerk.name : '', 'Chesapeake', chesapeake.clerk ? chesapeake.clerk.party : '') : '') +
+        (chesapeake && chesapeake.council ? chesapeake.council.map(m => officialCard('City Council · At-Large', m.name, 'Chesapeake', m.party)).join('') : '');
+      const gridCols = chesapeake ? '1fr 1fr 1fr' : '1fr 1fr';
       document.getElementById('result').innerHTML =
         '<div style="background:white;border:1px solid #ddd8cc;border-top:4px solid #c8102e;padding:20px 24px;margin-top:20px;">' +
         '<h3 style="font-family:Barlow Condensed,sans-serif;font-size:0.8rem;color:#c8102e;margin-bottom:12px;letter-spacing:0.12em;text-transform:uppercase;">Your Representatives</h3>' +
         '<p style="margin-bottom:10px;font-size:0.9rem;">📍 <strong>' + d.locality + '</strong></p>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px;">' +
+        '<div style="display:grid;grid-template-columns:' + gridCols + ';gap:0 16px;">' +
         allCards +
         '</div>' +
         '<p style="margin-top:12px;font-size:0.78rem;"><a href="https://whosmy.virginiageneralassembly.gov/" target="_blank" style="color:#c8102e;">Verify at VA General Assembly →</a></p>' +
