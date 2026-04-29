@@ -23,6 +23,7 @@ _vb_school_board = {}  # int district -> entry, "at_large" -> entry
 _norfolk_officials = {}  # "mayor" -> entry, ward entries
 _chesapeake_officials = {}  # "mayor", "vice_mayor", "sheriff", etc. -> entry; "council" -> list
 _portsmouth_officials = {}  # "mayor", "vice_mayor", "sheriff", etc. -> entry; "council" -> list
+_hampton_officials = {}    # "mayor", "vice_mayor", "sheriff", etc. -> entry; "council" -> list
 try:
     with open(os.path.join(BASE_DIR, "voteiq_officials.json"), encoding="utf-8") as _f:
         for _m in json.load(_f):
@@ -78,6 +79,24 @@ try:
                 _portsmouth_officials.setdefault("council", []).append(_entry)
             elif _d == "Portsmouth School Board":
                 _portsmouth_officials.setdefault("school_board", []).append(_entry)
+            elif _d == "Hampton Mayor":
+                _hampton_officials["mayor"] = _entry
+            elif _d == "Hampton Vice Mayor":
+                _hampton_officials["vice_mayor"] = _entry
+            elif _d == "Hampton Sheriff":
+                _hampton_officials["sheriff"] = _entry
+            elif _d == "Hampton Commonwealth's Attorney":
+                _hampton_officials["commonwealths_attorney"] = _entry
+            elif _d == "Hampton Commissioner of the Revenue":
+                _hampton_officials["commissioner"] = _entry
+            elif _d == "Hampton City Treasurer":
+                _hampton_officials["treasurer"] = _entry
+            elif _d == "Hampton Clerk of the Circuit Court":
+                _hampton_officials["clerk"] = _entry
+            elif _d == "Hampton Council":
+                _hampton_officials.setdefault("council", []).append(_entry)
+            elif _d == "Hampton School Board":
+                _hampton_officials.setdefault("school_board", []).append(_entry)
             elif _d == "School Board At-Large":
                 _vb_school_board["at_large"] = _entry
             elif _d.startswith("School Board District"):

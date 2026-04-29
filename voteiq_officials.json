@@ -530,5 +530,89 @@
         "email": "",
         "jurisdiction": "Portsmouth",
         "party": ""
+    },
+    {
+        "name": "Jimmy Gray",
+        "district": "Hampton Mayor",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": ""
+    },
+    {
+        "name": "Steven L. Brown",
+        "district": "Hampton Vice Mayor",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": ""
+    },
+    {
+        "name": "Karen Bowden",
+        "district": "Hampton Sheriff",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": "Democrat (nonpartisan)"
+    },
+    {
+        "name": "Anton Bell",
+        "district": "Hampton Commonwealth's Attorney",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": "Democrat (nonpartisan)"
+    },
+    {
+        "name": "Michael A. Harris",
+        "district": "Hampton Commissioner of the Revenue",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": ""
+    },
+    {
+        "name": "Christine Snead",
+        "district": "Hampton City Treasurer",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": "Democrat (nonpartisan)"
+    },
+    {
+        "name": "Linda Batchelor Smith",
+        "district": "Hampton Clerk of the Circuit Court",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": "Democrat (nonpartisan)"
+    },
+    {
+        "name": "Randy Bowman",
+        "district": "Hampton Council",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": ""
+    },
+    {
+        "name": "Carolyn Campbell",
+        "district": "Hampton Council",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": ""
+    },
+    {
+        "name": "Michelle Ferebee",
+        "district": "Hampton Council",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": ""
+    },
+    {
+        "name": "Hope L. Harper",
+        "district": "Hampton Council",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": ""
+    },
+    {
+        "name": "Martha Mugler",
+        "district": "Hampton Council",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": ""
     }
 ]
