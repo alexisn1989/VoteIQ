@@ -567,6 +567,10 @@ def lookup(address: str):
             "party": sd_info["party"],
             "region": sd_info["region"],
         } if sd_info else None,
+        "us_senators": [
+            {"name": "Mark Warner", "party": "Democrat", "title": "Senior Senator"},
+            {"name": "Tim Kaine",   "party": "Democrat", "title": "Junior Senator"},
+        ],
     }
 
 @app.get("/map", response_class=HTMLResponse)
