@@ -66,15 +66,12 @@ def _load_shapefiles():
     except Exception as e:
         print(f"address_lookup: could not load va_sd: {e}")
 
-    # VB council district boundaries — download from Virginia Beach Open Data and place here:
-    # https://gis.data.vbgov.com/ → search "City Council Districts"
-    _vb_council_shp = os.path.join(BASE_DIR, "vb_council_districts", "VB_Council_Districts.shp")
     try:
-        vb_council_gdf = gpd.read_file(_vb_council_shp)
+        vb_council_gdf = gpd.read_file(os.path.join(BASE_DIR, "City_Council_Districts.shp"))
         vb_council_gdf = vb_council_gdf.to_crs(epsg=4326)
         print("address_lookup: vb_council_gdf loaded")
     except Exception as e:
-        print(f"address_lookup: vb_council_gdf not available (shapefile needed): {e}")
+        print(f"address_lookup: could not load vb_council_gdf: {e}")
 
 
 def find_district(address):
@@ -154,13 +151,10 @@ def find_district(address):
             for idx, row in vb_council_gdf.iterrows():
                 if row['geometry'].contains(point):
                     # Try common column names for district number
-                    for col in ['DISTRICT', 'District', 'DIST_NUM', 'COUNCIL_DI', 'COUNCILDIS']:
-                        if col in row and row[col] is not None:
-                            try:
-                                vb_council_district = int(row[col])
-                            except (ValueError, TypeError):
-                                pass
-                            break
+                    try:
+                        vb_council_district = int(row['District'])
+                    except (ValueError, TypeError, KeyError):
+                        pass
                     break
 
         # Extract city from geocoded address if locality not found
