@@ -582,6 +582,11 @@ def lookup(address: str):
             {"name": "Mark Warner", "party": "Democrat", "title": "Senior Senator"},
             {"name": "Tim Kaine",   "party": "Democrat", "title": "Junior Senator"},
         ],
+        "va_statewide": [
+            {"name": "Abigail Spanberger",  "party": "Democrat", "title": "Governor"},
+            {"name": "Ghazala F. Hashmi",   "party": "Democrat", "title": "Lieutenant Governor"},
+            {"name": "Jay Jones",           "party": "Democrat", "title": "Attorney General"},
+        ],
     }
 
 @app.get("/map", response_class=HTMLResponse)
