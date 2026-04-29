@@ -545,6 +545,7 @@ def lookup(address: str):
             "name": vb_info["name"],
             "email": vb_info["email"],
             "district": vb_info["district"],
+            "party": vb_info.get("party", ""),
             "mayor": {"name": mayor_info["name"], "email": mayor_info["email"], "party": mayor_info.get("party", "")} if mayor_info else None,
             "sheriff": {"name": sheriff_info["name"], "email": sheriff_info["email"], "party": sheriff_info.get("party", "")} if sheriff_info else None,
         } if vb_info else None,
