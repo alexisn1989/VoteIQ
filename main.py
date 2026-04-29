@@ -625,7 +625,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         def cd_style(feat):
             party = feat["properties"].get("_party", "")
             fill = "#1a52c8" if party == "Democrat" else "#e03030" if party == "Republican" else "#aaaaaa"
-            return {"fillColor": fill, "color": "#333", "weight": 1.2, "fillOpacity": 0.55}
+            return {"fillColor": fill, "color": "#555", "weight": 1.0, "fillOpacity": 0.3}
 
         folium.GeoJson(
             {"type": "FeatureCollection", "features": features},
