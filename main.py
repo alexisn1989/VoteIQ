@@ -536,6 +536,7 @@ def lookup(address: str):
     vb_num = result.get("vb_council_district")
     vb_info = _vb_council.get(vb_num) if vb_num is not None else None
     mayor_info = _vb_council.get(0)
+    sheriff_info = _vb_council.get("sheriff")
 
     return {
         "district": result,
@@ -545,6 +546,7 @@ def lookup(address: str):
             "email": vb_info["email"],
             "district": vb_info["district"],
             "mayor": {"name": mayor_info["name"], "email": mayor_info["email"], "party": mayor_info.get("party", "")} if mayor_info else None,
+            "sheriff": {"name": sheriff_info["name"], "email": sheriff_info["email"], "party": sheriff_info.get("party", "")} if sheriff_info else None,
         } if vb_info else None,
         "us_rep": {
             "district_number": int(cd_num_raw) if cd_num_raw not in ("", "N/A") else None,

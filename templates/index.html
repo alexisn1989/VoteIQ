@@ -289,11 +289,21 @@
         '<div><strong>' + name + '</strong>' + partyTag(party) + '</div>' +
         '<div style="font-size:0.75rem;color:#7a7468;">' + (sub || '').substring(0, 55) + ((sub || '').length > 55 ? '…' : '') + '</div>' +
         '</div>';
+      const partyBadge = (party) => party
+        ? '<span style="display:inline-block;background:#c8102e;color:#fff;font-size:0.68rem;font-family:Barlow Condensed,sans-serif;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1px 7px;border-radius:3px;margin-left:5px;">' + party + '</span>'
+        : '';
       const councilBlock = council
-        ? (council.mayor
+        ? (council.sheriff
+          ? '<div style="margin-top:8px;padding:8px 10px;background:#faf9f6;border-left:3px solid #2a7a3b;font-size:0.86rem;line-height:1.7;">' +
+            '<div style="font-family:Barlow Condensed,sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:3px;">VB Sheriff</div>' +
+            '<div><strong>' + council.sheriff.name + '</strong>' + partyBadge(council.sheriff.party) + '</div>' +
+            '<div style="font-size:0.75rem;color:#7a7468;"><a href="mailto:' + council.sheriff.email + '" style="color:#2a7a3b;">' + council.sheriff.email + '</a></div>' +
+            '</div>'
+          : '') +
+        (council.mayor
           ? '<div style="margin-top:8px;padding:8px 10px;background:#faf9f6;border-left:3px solid #2a7a3b;font-size:0.86rem;line-height:1.7;">' +
             '<div style="font-family:Barlow Condensed,sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:3px;">VB Mayor</div>' +
-            '<div><strong>' + council.mayor.name + '</strong>' + (council.mayor.party ? '<span style="display:inline-block;background:#c8102e;color:#fff;font-size:0.68rem;font-family:Barlow Condensed,sans-serif;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1px 7px;border-radius:3px;margin-left:5px;">' + council.mayor.party + '</span>' : '') + '</div>' +
+            '<div><strong>' + council.mayor.name + '</strong>' + partyBadge(council.mayor.party) + '</div>' +
             '<div style="font-size:0.75rem;color:#7a7468;"><a href="mailto:' + council.mayor.email + '" style="color:#2a7a3b;">' + council.mayor.email + '</a></div>' +
             '</div>'
           : '') +

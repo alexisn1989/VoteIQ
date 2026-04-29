@@ -21,7 +21,9 @@ _vb_council = {}
 try:
     with open(os.path.join(BASE_DIR, "voteiq_officials.json"), encoding="utf-8") as _f:
         for _m in json.load(_f):
-            if _m["district"] == "Mayor":
+            if _m["district"] == "Sheriff":
+                _vb_council["sheriff"] = {"name": _m["name"], "email": _m["email"], "district": "Sheriff", "party": _m.get("party", "")}
+            elif _m["district"] == "Mayor":
                 _vb_council[0] = {"name": _m["name"], "email": _m["email"], "district": "Mayor", "party": _m.get("party", "")}
             else:
                 _num = int(_m["district"].replace("District", "").strip())

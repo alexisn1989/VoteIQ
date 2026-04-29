@@ -1,5 +1,12 @@
 [
     {
+        "name": "Rocky Holcomb",
+        "district": "Sheriff",
+        "email": "sheriff@vbso.net",
+        "jurisdiction": "Virginia Beach",
+        "party": "Republican"
+    },
+    {
         "name": "Robert M. \"Bobby\" Dyer",
         "district": "Mayor",
         "email": "mayorsoffice@vbgov.com",
