@@ -565,6 +565,9 @@ def lookup(address: str):
             "ward": result.get("norfolk_ward"),
             "ward_rep": result.get("norfolk_ward_rep"),
             "ward_sbm": result.get("norfolk_ward_sbm"),
+            "superward": result.get("norfolk_superward"),
+            "superward_rep": result.get("norfolk_superward_rep"),
+            "superward_sbm": result.get("norfolk_superward_sbm"),
         } if "norfolk" in result.get("locality", "").lower() else None,
         "vb_school_board": {
             "member": (lambda o: {"name": o["name"], "party": o.get("party", "")} if o else None)(_vb_school_board.get(vb_num)),

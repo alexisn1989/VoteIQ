@@ -209,24 +209,27 @@ def find_district(address):
             else:
                 locality = parts[0]
 
-        # Get Norfolk ward / superward (check superwards first — ward shapefile overlaps superward areas)
+        # Get Norfolk ward and superward independently (residents may have both)
         norfolk_ward = None
         norfolk_ward_rep = None
         norfolk_ward_sbm = None
+        norfolk_superward = None
+        norfolk_superward_rep = None
+        norfolk_superward_sbm = None
         if "norfolk" in (locality or "").lower():
-            if norfolk_superwards_gdf is not None:
-                for idx, row in norfolk_superwards_gdf.iterrows():
-                    if row['geometry'].contains(point):
-                        norfolk_ward = int(row['SUPWARD'])
-                        norfolk_ward_rep = row['SWARD_REP']
-                        norfolk_ward_sbm = row['SWARD_SBM']
-                        break
-            if norfolk_ward is None and norfolk_wards_gdf is not None:
+            if norfolk_wards_gdf is not None:
                 for idx, row in norfolk_wards_gdf.iterrows():
                     if row['geometry'].contains(point):
                         norfolk_ward = int(row['WARD'])
                         norfolk_ward_rep = row['WARD_REP']
                         norfolk_ward_sbm = row['WARD_SBM']
+                        break
+            if norfolk_superwards_gdf is not None:
+                for idx, row in norfolk_superwards_gdf.iterrows():
+                    if row['geometry'].contains(point):
+                        norfolk_superward = int(row['SUPWARD'])
+                        norfolk_superward_rep = row['SWARD_REP']
+                        norfolk_superward_sbm = row['SWARD_SBM']
                         break
 
         return {
@@ -239,6 +242,9 @@ def find_district(address):
             "norfolk_ward": norfolk_ward,
             "norfolk_ward_rep": norfolk_ward_rep,
             "norfolk_ward_sbm": norfolk_ward_sbm,
+            "norfolk_superward": norfolk_superward,
+            "norfolk_superward_rep": norfolk_superward_rep,
+            "norfolk_superward_sbm": norfolk_superward_sbm,
             "precinct": precinct or "Not found",
             "lat": lat,
             "lng": lng
