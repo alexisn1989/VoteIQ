@@ -199,11 +199,15 @@ def find_district(address):
 
         # Extract city from geocoded address if locality not found
         if not locality:
-            parts = display_name_raw.split(',')
-            if len(parts) >= 3:
-                locality = parts[2].strip()
+            parts = [p.strip() for p in display_name_raw.split(',')]
+            if len(parts) == 4:
+                # Census format: STREET, CITY, STATE, ZIP
+                locality = parts[1]
+            elif len(parts) >= 3:
+                # Nominatim format: STREET, NEIGHBORHOOD, CITY, STATE, ...
+                locality = parts[2]
             else:
-                locality = parts[0].strip()
+                locality = parts[0]
 
         # Get Norfolk ward / superward
         norfolk_ward = None
