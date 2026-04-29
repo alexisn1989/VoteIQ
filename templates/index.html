@@ -326,10 +326,8 @@
       const sdNum  = sen ? sen.district_number : '';
       document.getElementById('hod-map-link').href = `/district-map?layer=hod&lat=${userLat}&lng=${userLng}${hodNum ? '&district='+hodNum : ''}`;
       document.getElementById('sd-map-link').href  = `/district-map?layer=sd&lat=${userLat}&lng=${userLng}${sdNum  ? '&district='+sdNum  : ''}`;
-      const mapResponse = await fetch('/map?address=' + encodeURIComponent(address));
-      const mapHTML = await mapResponse.text();
-      mapEl.removeAttribute('src');
-      mapEl.srcdoc = mapHTML;
+      mapEl.removeAttribute('srcdoc');
+      mapEl.src = `/district-map?layer=congressional&lat=${userLat}&lng=${userLng}`;
     } catch (error) {
       document.getElementById('result').innerHTML = '<p style="color:red;">Error loading results.</p>';
     }
