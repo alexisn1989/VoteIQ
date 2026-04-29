@@ -558,6 +558,7 @@ def lookup(address: str):
         } if vb_info else None,
         "norfolk": {
             "mayor": (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_norfolk_officials.get("mayor")),
+            "commissioner": (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_norfolk_officials.get("commissioner")),
             "ward": result.get("norfolk_ward"),
             "ward_rep": result.get("norfolk_ward_rep"),
             "ward_sbm": result.get("norfolk_ward_sbm"),
