@@ -3,20 +3,35 @@ import geopandas as gpd
 from shapely.geometry import Point
 import os
 import time
+import json
 import requests as _requests
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # All shapefiles are loaded lazily on first call to keep startup memory low
-va_cd   = None
+va_cd    = None
 vb_local = None
-va_hod  = None
-va_sd   = None
-_loaded = False
+va_hod   = None
+va_sd    = None
+vb_council_gdf = None  # VB city council district boundaries
+_loaded  = False
+
+# VB council lookup: district number (int) -> {name, email}
+_vb_council = {}
+try:
+    with open(os.path.join(BASE_DIR, "voteiq_officials.json"), encoding="utf-8") as _f:
+        for _m in json.load(_f):
+            if _m["district"] == "Mayor":
+                _vb_council[0] = {"name": _m["name"], "email": _m["email"], "district": "Mayor"}
+            else:
+                _num = int(_m["district"].replace("District", "").strip())
+                _vb_council[_num] = {"name": _m["name"], "email": _m["email"], "district": _m["district"]}
+except Exception as _e:
+    print(f"address_lookup: could not load voteiq_officials.json: {_e}")
 
 
 def _load_shapefiles():
-    global va_cd, vb_local, va_hod, va_sd, _loaded
+    global va_cd, vb_local, va_hod, va_sd, vb_council_gdf, _loaded
     if _loaded:
         return
     _loaded = True
@@ -50,6 +65,16 @@ def _load_shapefiles():
         print("address_lookup: va_sd loaded")
     except Exception as e:
         print(f"address_lookup: could not load va_sd: {e}")
+
+    # VB council district boundaries — download from Virginia Beach Open Data and place here:
+    # https://gis.data.vbgov.com/ → search "City Council Districts"
+    _vb_council_shp = os.path.join(BASE_DIR, "vb_council_districts", "VB_Council_Districts.shp")
+    try:
+        vb_council_gdf = gpd.read_file(_vb_council_shp)
+        vb_council_gdf = vb_council_gdf.to_crs(epsg=4326)
+        print("address_lookup: vb_council_gdf loaded")
+    except Exception as e:
+        print(f"address_lookup: vb_council_gdf not available (shapefile needed): {e}")
 
 
 def find_district(address):
@@ -123,6 +148,21 @@ def find_district(address):
                     precinct = row['PrecinctNa']
                     break
 
+        # Get Virginia Beach city council district
+        vb_council_district = None
+        if vb_council_gdf is not None:
+            for idx, row in vb_council_gdf.iterrows():
+                if row['geometry'].contains(point):
+                    # Try common column names for district number
+                    for col in ['DISTRICT', 'District', 'DIST_NUM', 'COUNCIL_DI', 'COUNCILDIS']:
+                        if col in row and row[col] is not None:
+                            try:
+                                vb_council_district = int(row[col])
+                            except (ValueError, TypeError):
+                                pass
+                            break
+                    break
+
         # Extract city from geocoded address if locality not found
         if not locality:
             parts = display_name_raw.split(',')
@@ -137,6 +177,7 @@ def find_district(address):
             "district_number": district_number or "N/A",
             "hod_district": hod_district,
             "sd_district": sd_district,
+            "vb_council_district": vb_council_district,
             "precinct": precinct or "Not found",
             "lat": lat,
             "lng": lng
