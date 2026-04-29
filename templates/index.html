@@ -290,7 +290,14 @@
         '<div style="font-size:0.75rem;color:#7a7468;">' + (sub || '').substring(0, 55) + ((sub || '').length > 55 ? '…' : '') + '</div>' +
         '</div>';
       const councilBlock = council
-        ? '<div style="margin-top:8px;padding:8px 10px;background:#faf9f6;border-left:3px solid #2a7a3b;font-size:0.86rem;line-height:1.7;">' +
+        ? (council.mayor
+          ? '<div style="margin-top:8px;padding:8px 10px;background:#faf9f6;border-left:3px solid #2a7a3b;font-size:0.86rem;line-height:1.7;">' +
+            '<div style="font-family:Barlow Condensed,sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:3px;">VB Mayor</div>' +
+            '<div><strong>' + council.mayor.name + '</strong></div>' +
+            '<div style="font-size:0.75rem;color:#7a7468;"><a href="mailto:' + council.mayor.email + '" style="color:#2a7a3b;">' + council.mayor.email + '</a></div>' +
+            '</div>'
+          : '') +
+          '<div style="margin-top:8px;padding:8px 10px;background:#faf9f6;border-left:3px solid #2a7a3b;font-size:0.86rem;line-height:1.7;">' +
           '<div style="font-family:Barlow Condensed,sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:3px;">VB City Council · ' + council.district + '</div>' +
           '<div><strong>' + council.name + '</strong></div>' +
           '<div style="font-size:0.75rem;color:#7a7468;"><a href="mailto:' + council.email + '" style="color:#2a7a3b;">' + council.email + '</a></div>' +
