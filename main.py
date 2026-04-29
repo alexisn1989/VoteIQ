@@ -252,10 +252,14 @@ _va_sd_gdf  = None
 def _get_va_cd():
     global _va_cd_gdf
     if _va_cd_gdf is None:
-        from address_lookup import _load_shapefiles
         import address_lookup as _al
-        _load_shapefiles()
-        _va_cd_gdf = _al.va_cd
+        if _al.va_cd is not None:
+            _va_cd_gdf = _al.va_cd
+        else:
+            _va_cd_gdf = gpd.read_file(os.path.join(BASE_DIR, "tl_2023_51_cd118.shp"))
+            _va_cd_gdf = _va_cd_gdf.to_crs(epsg=4326)
+            _va_cd_gdf = _va_cd_gdf[['NAMELSAD', 'CD118FP', 'geometry']]
+            _al.va_cd = _va_cd_gdf
     return _va_cd_gdf
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
@@ -603,24 +607,24 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
     map_var = m.get_name()
 
     if layer == "congressional":
-        cd_num_to_context = {
-            str(int(fp)): (key, ctx)
-            for key, ctx in DISTRICT_CONTEXT.items()
-            for fp in [key.replace("VA-", "")]
-            if key != "VA-00"
-        }
-        features = json.loads(_get_va_cd().to_json())["features"]
-        for feat in features:
-            fp = str(int(feat["properties"]["CD118FP"]))
-            district_key = f"VA-{fp.zfill(2)}"
-            ctx = DISTRICT_CONTEXT.get(district_key, {})
-            party = ctx.get("party", "")
-            rep = ctx.get("rep", "Unknown")
-            region = ctx.get("region", "")
-            feat["properties"]["_party"] = party
-            feat["properties"]["_rep"] = rep
-            feat["properties"]["_district"] = district_key
-            feat["properties"]["_region"] = region
+        from shapely.geometry import mapping as _mapping
+        va_cd = _get_va_cd()
+        features = []
+        for _, row in va_cd.iterrows():
+            try:
+                fp = str(int(row["CD118FP"]))
+                district_key = f"VA-{fp.zfill(2)}"
+                ctx = DISTRICT_CONTEXT.get(district_key, {})
+                features.append({"type": "Feature",
+                    "geometry": _mapping(row.geometry.simplify(0.005, preserve_topology=True)),
+                    "properties": {
+                        "_party": ctx.get("party", ""),
+                        "_rep": ctx.get("rep", "Unknown"),
+                        "_district": district_key,
+                        "_region": ctx.get("region", ""),
+                    }})
+            except Exception:
+                continue
 
         def cd_style(feat):
             party = feat["properties"].get("_party", "")
