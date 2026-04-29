@@ -578,6 +578,7 @@ def lookup(address: str):
             "treasurer":              (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_chesapeake_officials.get("treasurer")),
             "clerk":                  (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_chesapeake_officials.get("clerk")),
             "council": [{"name": m["name"], "party": m.get("party", "")} for m in _chesapeake_officials.get("council", [])],
+            "school_board": [{"name": m["name"], "party": m.get("party", "")} for m in _chesapeake_officials.get("school_board", [])],
         } if "chesapeake" in result.get("locality", "").lower() else None,
         "vb_school_board": {
             "member": (lambda o: {"name": o["name"], "party": o.get("party", "")} if o else None)(_vb_school_board.get(vb_num)),

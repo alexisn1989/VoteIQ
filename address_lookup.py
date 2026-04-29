@@ -57,6 +57,8 @@ try:
                 _chesapeake_officials["clerk"] = _entry
             elif _d == "Chesapeake Council":
                 _chesapeake_officials.setdefault("council", []).append(_entry)
+            elif _d == "Chesapeake School Board":
+                _chesapeake_officials.setdefault("school_board", []).append(_entry)
             elif _d == "School Board At-Large":
                 _vb_school_board["at_large"] = _entry
             elif _d.startswith("School Board District"):
