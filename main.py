@@ -544,7 +544,7 @@ def lookup(address: str):
             "name": vb_info["name"],
             "email": vb_info["email"],
             "district": vb_info["district"],
-            "mayor": {"name": mayor_info["name"], "email": mayor_info["email"]} if mayor_info else None,
+            "mayor": {"name": mayor_info["name"], "email": mayor_info["email"], "party": mayor_info.get("party", "")} if mayor_info else None,
         } if vb_info else None,
         "us_rep": {
             "district_number": int(cd_num_raw) if cd_num_raw not in ("", "N/A") else None,

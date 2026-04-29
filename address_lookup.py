@@ -22,10 +22,10 @@ try:
     with open(os.path.join(BASE_DIR, "voteiq_officials.json"), encoding="utf-8") as _f:
         for _m in json.load(_f):
             if _m["district"] == "Mayor":
-                _vb_council[0] = {"name": _m["name"], "email": _m["email"], "district": "Mayor"}
+                _vb_council[0] = {"name": _m["name"], "email": _m["email"], "district": "Mayor", "party": _m.get("party", "")}
             else:
                 _num = int(_m["district"].replace("District", "").strip())
-                _vb_council[_num] = {"name": _m["name"], "email": _m["email"], "district": _m["district"]}
+                _vb_council[_num] = {"name": _m["name"], "email": _m["email"], "district": _m["district"], "party": _m.get("party", "")}
 except Exception as _e:
     print(f"address_lookup: could not load voteiq_officials.json: {_e}")
 
