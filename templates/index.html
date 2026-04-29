@@ -299,22 +299,22 @@
         return '<span style="display:inline-block;background:' + bg + ';color:#fff;font-size:0.68rem;font-family:Barlow Condensed,sans-serif;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1px 7px;border-radius:3px;margin-left:5px;">' + label + '</span>';
       };
       const partyBorder = (party) => party && party.includes('Democrat') ? '#1a52c8' : party && party.includes('Republican') ? '#c8102e' : '#7a7468';
-      const officialCard = (label, name, email, party) =>
+      const officialCard = (label, name, city, party) =>
         '<div style="margin-bottom:8px;padding:8px 10px;background:#faf9f6;border-left:3px solid ' + partyBorder(party) + ';font-size:0.86rem;line-height:1.7;">' +
         '<div style="font-family:Barlow Condensed,sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:3px;">' + label + '</div>' +
         '<div><strong>' + name + '</strong>' + partyBadge(party) + '</div>' +
-        (email ? '<div style="font-size:0.75rem;color:#7a7468;"><a href="mailto:' + email + '" style="color:' + partyBorder(party) + ';">' + email + '</a></div>' : '') +
+        (city ? '<div style="font-size:0.75rem;color:#7a7468;">' + city + '</div>' : '') +
         '</div>';
       const councilBlock = council
-        ? (council.mayor                  ? officialCard('Mayor',                          council.mayor.name,                  council.mayor.email,                  council.mayor.party)                  : '') +
-          (council.sheriff                ? officialCard('Sheriff',                        council.sheriff.name,                council.sheriff.email,                council.sheriff.party)                : '') +
-          (council.commonwealths_attorney ? officialCard("Commonwealth's Attorney",        council.commonwealths_attorney.name, council.commonwealths_attorney.email, council.commonwealths_attorney.party) : '') +
-          (council.commissioner           ? officialCard('Commissioner of the Revenue',    council.commissioner.name,           council.commissioner.email,           council.commissioner.party)           : '') +
-          (council.treasurer              ? officialCard('City Treasurer',                 council.treasurer.name,              council.treasurer.email,              council.treasurer.party)              : '') +
-          (council.clerk                  ? officialCard('Clerk of the Circuit Court',     council.clerk.name,                  council.clerk.email,                  council.clerk.party)                  : '') +
-          officialCard('City Council · ' + council.district, council.name, council.email, council.party) +
-          (schoolBoard && schoolBoard.member   ? officialCard('School Board · District ' + council.district_number, schoolBoard.member.name,   '', schoolBoard.member.party)   : '') +
-          (schoolBoard && schoolBoard.at_large ? officialCard('School Board · At-Large',                           schoolBoard.at_large.name, '', schoolBoard.at_large.party) : '')
+        ? (council.mayor                  ? officialCard('Mayor',                          council.mayor.name,                  'Virginia Beach', council.mayor.party)                  : '') +
+          (council.sheriff                ? officialCard('Sheriff',                        council.sheriff.name,                'Virginia Beach', council.sheriff.party)                : '') +
+          (council.commonwealths_attorney ? officialCard("Commonwealth's Attorney",        council.commonwealths_attorney.name, 'Virginia Beach', council.commonwealths_attorney.party) : '') +
+          (council.commissioner           ? officialCard('Commissioner of the Revenue',    council.commissioner.name,           'Virginia Beach', council.commissioner.party)           : '') +
+          (council.treasurer              ? officialCard('City Treasurer',                 council.treasurer.name,              'Virginia Beach', council.treasurer.party)              : '') +
+          (council.clerk                  ? officialCard('Clerk of the Circuit Court',     council.clerk.name,                  'Virginia Beach', council.clerk.party)                  : '') +
+          officialCard('City Council · ' + council.district, council.name, 'Virginia Beach', council.party) +
+          (schoolBoard && schoolBoard.member   ? officialCard('School Board · District ' + council.district_number, schoolBoard.member.name,   'Virginia Beach', schoolBoard.member.party)   : '') +
+          (schoolBoard && schoolBoard.at_large ? officialCard('School Board · At-Large',                           schoolBoard.at_large.name, 'Virginia Beach', schoolBoard.at_large.party) : '')
         : '';
       const allCards =
         vaStatewide.map(s => repBlock(s.title, null, s.name, s.party, 'Virginia')).join('') +
