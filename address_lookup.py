@@ -14,8 +14,7 @@ vb_local = None
 va_hod   = None
 va_sd    = None
 vb_council_gdf = None  # VB city council district boundaries
-norfolk_wards_gdf = None       # Norfolk wards 1-5
-norfolk_superwards_gdf = None  # Norfolk superwards 6-7
+norfolk_combined_gdf = None    # Norfolk wards + superwards merged into one GDF
 _loaded  = False
 
 # VB council lookup: district number (int) -> {name, email}
@@ -54,7 +53,7 @@ except Exception as _e:
 
 
 def _load_shapefiles():
-    global va_cd, vb_local, va_hod, va_sd, vb_council_gdf, _loaded
+    global va_cd, vb_local, va_hod, va_sd, vb_council_gdf, norfolk_combined_gdf, _loaded
     if _loaded:
         return
     _loaded = True
@@ -97,21 +96,23 @@ def _load_shapefiles():
         print(f"address_lookup: could not load vb_council_gdf: {e}")
 
     try:
-        global norfolk_wards_gdf
-        norfolk_wards_gdf = gpd.read_file(os.path.join(BASE_DIR, "Wards.shp"))
-        norfolk_wards_gdf = norfolk_wards_gdf.to_crs(epsg=4326)
-        norfolk_wards_gdf = norfolk_wards_gdf[['WARD', 'WARD_REP', 'WARD_SBM', 'geometry']]
-        print("address_lookup: norfolk_wards_gdf loaded")
+        import geopandas as _gpd
+        _wards = _gpd.read_file(os.path.join(BASE_DIR, "Wards.shp")).to_crs(epsg=4326)
+        _sw    = _gpd.read_file(os.path.join(BASE_DIR, "Superwards.geojson"))
+        rows = []
+        for _, wr in _wards.iterrows():
+            for _, sr in _sw.iterrows():
+                inter = wr.geometry.intersection(sr.geometry)
+                if not inter.is_empty:
+                    rows.append({
+                        "WARD": int(wr["WARD"]), "WARD_REP": wr["WARD_REP"], "WARD_SBM": wr["WARD_SBM"],
+                        "SUPWARD": int(sr["SUPWARD"]), "SWARD_REP": sr["SWARD_REP"], "SWARD_SBM": sr["SWARD_SBM"],
+                        "geometry": inter,
+                    })
+        norfolk_combined_gdf = _gpd.GeoDataFrame(rows, crs="EPSG:4326")
+        print(f"address_lookup: norfolk_combined_gdf loaded ({len(rows)} polygons)")
     except Exception as e:
-        print(f"address_lookup: could not load norfolk_wards_gdf: {e}")
-
-    try:
-        global norfolk_superwards_gdf
-        norfolk_superwards_gdf = gpd.read_file(os.path.join(BASE_DIR, "Superwards.geojson"))
-        norfolk_superwards_gdf = norfolk_superwards_gdf[['SUPWARD', 'SWARD_REP', 'SWARD_SBM', 'geometry']]
-        print("address_lookup: norfolk_superwards_gdf loaded")
-    except Exception as e:
-        print(f"address_lookup: could not load norfolk_superwards_gdf: {e}")
+        print(f"address_lookup: could not build norfolk_combined_gdf: {e}")
 
 
 def find_district(address):
@@ -209,28 +210,23 @@ def find_district(address):
             else:
                 locality = parts[0]
 
-        # Get Norfolk ward and superward independently (residents may have both)
+        # Norfolk ward + superward from single combined GDF
         norfolk_ward = None
         norfolk_ward_rep = None
         norfolk_ward_sbm = None
         norfolk_superward = None
         norfolk_superward_rep = None
         norfolk_superward_sbm = None
-        if "norfolk" in (locality or "").lower():
-            if norfolk_wards_gdf is not None:
-                for idx, row in norfolk_wards_gdf.iterrows():
-                    if row['geometry'].contains(point):
-                        norfolk_ward = int(row['WARD'])
-                        norfolk_ward_rep = row['WARD_REP']
-                        norfolk_ward_sbm = row['WARD_SBM']
-                        break
-            if norfolk_superwards_gdf is not None:
-                for idx, row in norfolk_superwards_gdf.iterrows():
-                    if row['geometry'].contains(point):
-                        norfolk_superward = int(row['SUPWARD'])
-                        norfolk_superward_rep = row['SWARD_REP']
-                        norfolk_superward_sbm = row['SWARD_SBM']
-                        break
+        if "norfolk" in (locality or "").lower() and norfolk_combined_gdf is not None:
+            for _, row in norfolk_combined_gdf.iterrows():
+                if row['geometry'].contains(point):
+                    norfolk_ward = row['WARD']
+                    norfolk_ward_rep = row['WARD_REP']
+                    norfolk_ward_sbm = row['WARD_SBM']
+                    norfolk_superward = row['SUPWARD']
+                    norfolk_superward_rep = row['SWARD_REP']
+                    norfolk_superward_sbm = row['SWARD_SBM']
+                    break
 
         return {
             "locality": locality or "Virginia",
