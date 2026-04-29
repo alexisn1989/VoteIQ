@@ -304,9 +304,13 @@
         '<div style="font-size:0.75rem;color:#7a7468;"><a href="mailto:' + email + '" style="color:' + partyBorder(party) + ';">' + email + '</a></div>' +
         '</div>';
       const councilBlock = council
-        ? (council.sheriff ? officialCard('VB Sheriff', council.sheriff.name, council.sheriff.email, council.sheriff.party) : '') +
-          (council.mayor   ? officialCard('VB Mayor',   council.mayor.name,   council.mayor.email,   council.mayor.party)   : '') +
-          officialCard('VB City Council · ' + council.district, council.name, council.email, council.party)
+        ? (council.sheriff                ? officialCard('Sheriff',                        council.sheriff.name,                council.sheriff.email,                council.sheriff.party)                : '') +
+          (council.commonwealths_attorney ? officialCard("Commonwealth's Attorney",        council.commonwealths_attorney.name, council.commonwealths_attorney.email, council.commonwealths_attorney.party) : '') +
+          (council.mayor                  ? officialCard('Mayor',                          council.mayor.name,                  council.mayor.email,                  council.mayor.party)                  : '') +
+          (council.commissioner           ? officialCard('Commissioner of the Revenue',    council.commissioner.name,           council.commissioner.email,           council.commissioner.party)           : '') +
+          (council.treasurer              ? officialCard('City Treasurer',                 council.treasurer.name,              council.treasurer.email,              council.treasurer.party)              : '') +
+          (council.clerk                  ? officialCard('Clerk of the Circuit Court',     council.clerk.name,                  council.clerk.email,                  council.clerk.party)                  : '') +
+          officialCard('City Council · ' + council.district, council.name, council.email, council.party)
         : '';
       document.getElementById('result').innerHTML =
         '<div style="background:white;border:1px solid #ddd8cc;border-top:4px solid #c8102e;padding:20px 24px;margin-top:20px;">' +

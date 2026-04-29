@@ -1,5 +1,33 @@
 [
     {
+        "name": "Colin Stolle",
+        "district": "Commonwealth's Attorney",
+        "email": "cstolle@vbgov.com",
+        "jurisdiction": "Virginia Beach",
+        "party": "Republican"
+    },
+    {
+        "name": "Philip Kellam",
+        "district": "Commissioner of the Revenue",
+        "email": "pkellam@vbgov.com",
+        "jurisdiction": "Virginia Beach",
+        "party": "Democrat"
+    },
+    {
+        "name": "Leigh Henderson",
+        "district": "City Treasurer",
+        "email": "lhenderson@vbgov.com",
+        "jurisdiction": "Virginia Beach",
+        "party": "Republican"
+    },
+    {
+        "name": "Tina Sinnen",
+        "district": "Clerk of the Circuit Court",
+        "email": "tsinnen@vbgov.com",
+        "jurisdiction": "Virginia Beach",
+        "party": "Democrat"
+    },
+    {
         "name": "Rocky Holcomb",
         "district": "Sheriff",
         "email": "sheriff@vbso.net",
