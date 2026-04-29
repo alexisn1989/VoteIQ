@@ -528,8 +528,18 @@ def lookup(address: str):
         cd_key = "VA-00"
     cd_info = DISTRICT_CONTEXT.get(cd_key, {})
 
+    from address_lookup import _vb_council
+    vb_num = result.get("vb_council_district")
+    vb_info = _vb_council.get(vb_num) if vb_num is not None else None
+
     return {
         "district": result,
+        "vb_council": {
+            "district_number": vb_num,
+            "name": vb_info["name"],
+            "email": vb_info["email"],
+            "district": vb_info["district"],
+        } if vb_info else None,
         "us_rep": {
             "district_number": int(cd_num_raw) if cd_num_raw not in ("", "N/A") else None,
             "rep": cd_info.get("rep"),
