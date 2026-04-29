@@ -579,8 +579,8 @@ def lookup(address: str):
             "region": sd_info["region"],
         } if sd_info else None,
         "us_senators": [
-            {"name": "Mark Warner", "party": "Democrat", "title": "Senior Senator"},
-            {"name": "Tim Kaine",   "party": "Democrat", "title": "Junior Senator"},
+            {"name": "Mark Warner", "party": "Democrat", "title": "Virginia · Senior Senator"},
+            {"name": "Tim Kaine",   "party": "Democrat", "title": "Virginia · Junior Senator"},
         ],
         "va_statewide": [
             {"name": "Abigail Spanberger",  "party": "Democrat", "title": "Governor"},
