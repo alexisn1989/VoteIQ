@@ -331,8 +331,8 @@
         (norfolk && norfolk.commonwealths_attorney ? officialCard("Commonwealth's Attorney",     norfolk.commonwealths_attorney.name, 'Norfolk', norfolk.commonwealths_attorney.party) : '') +
         (norfolk && norfolk.treasurer              ? officialCard('City Treasurer',              norfolk.treasurer.name,    'Norfolk', norfolk.treasurer.party)              : '') +
         (norfolk && norfolk.commissioner           ? officialCard('Commissioner of the Revenue', norfolk.commissioner.name, 'Norfolk', norfolk.commissioner.party)           : '') +
-        (norfolk && norfolk.ward_rep ? officialCard('City Council · Ward ' + norfolk.ward,          norfolk.ward_rep,   'Norfolk', '')                   : '') +
-        (norfolk && norfolk.ward_sbm ? officialCard('School Board · Ward ' + norfolk.ward,          norfolk.ward_sbm,   'Norfolk', '')                   : '');
+        (norfolk && norfolk.ward_rep ? officialCard('City Council · ' + (norfolk.ward >= 6 ? 'Superward ' : 'Ward ') + norfolk.ward, norfolk.ward_rep, 'Norfolk', '') : '') +
+        (norfolk && norfolk.ward_sbm ? officialCard('School Board · ' + (norfolk.ward >= 6 ? 'Superward ' : 'Ward ') + norfolk.ward, norfolk.ward_sbm, 'Norfolk', '') : '');
       document.getElementById('result').innerHTML =
         '<div style="background:white;border:1px solid #ddd8cc;border-top:4px solid #c8102e;padding:20px 24px;margin-top:20px;">' +
         '<h3 style="font-family:Barlow Condensed,sans-serif;font-size:0.8rem;color:#c8102e;margin-bottom:12px;letter-spacing:0.12em;text-transform:uppercase;">Your Representatives</h3>' +
