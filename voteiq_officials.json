@@ -383,5 +383,89 @@
         "email": "",
         "jurisdiction": "Chesapeake",
         "party": ""
+    },
+    {
+        "name": "Stephanie N. Morales",
+        "district": "Portsmouth Commonwealth's Attorney",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": ""
+    },
+    {
+        "name": "Michael A. Moore",
+        "district": "Portsmouth Sheriff",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": ""
+    },
+    {
+        "name": "Paige D. Cherry",
+        "district": "Portsmouth City Treasurer",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": ""
+    },
+    {
+        "name": "Franklin D. Edmondson",
+        "district": "Portsmouth Commissioner of the Revenue",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": ""
+    },
+    {
+        "name": "Cynthia P. Morrison",
+        "district": "Portsmouth Clerk of the Circuit Court",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": ""
+    },
+    {
+        "name": "Shannon E. Glover",
+        "district": "Portsmouth Mayor",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": ""
+    },
+    {
+        "name": "William E. Moody, Jr.",
+        "district": "Portsmouth Vice Mayor",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": ""
+    },
+    {
+        "name": "Mark A. Hugel",
+        "district": "Portsmouth Council",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": ""
+    },
+    {
+        "name": "Vernon L. Tillage, Jr.",
+        "district": "Portsmouth Council",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": ""
+    },
+    {
+        "name": "Kathryn W. Bryant",
+        "district": "Portsmouth Council",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": ""
+    },
+    {
+        "name": "William S. Dodson, Jr.",
+        "district": "Portsmouth Council",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": ""
+    },
+    {
+        "name": "Yolanda E. Thomas",
+        "district": "Portsmouth Council",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": ""
     }
 ]

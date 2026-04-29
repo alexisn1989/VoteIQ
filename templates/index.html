@@ -282,6 +282,7 @@
       const council = data.vb_council;
       const norfolk = data.norfolk;
       const chesapeake = data.chesapeake;
+      const portsmouth = data.portsmouth;
       const schoolBoard = data.vb_school_board;
       const vaStatewide = data.va_statewide || [];
       const president = data.us_president;
@@ -344,8 +345,16 @@
         (chesapeake ? officialCard('City Treasurer', chesapeake.treasurer ? chesapeake.treasurer.name : '', 'Chesapeake', chesapeake.treasurer ? chesapeake.treasurer.party : '') : '') +
         (chesapeake ? officialCard('Clerk of the Circuit Court', chesapeake.clerk ? chesapeake.clerk.name : '', 'Chesapeake', chesapeake.clerk ? chesapeake.clerk.party : '') : '') +
         (chesapeake && chesapeake.council ? chesapeake.council.map(m => officialCard('City Council · At-Large', m.name, 'Chesapeake', m.party)).join('') : '') +
-        (chesapeake && chesapeake.school_board ? chesapeake.school_board.map(m => officialCard('School Board', m.name, 'Chesapeake', m.party)).join('') : '');
-      const gridCols = chesapeake ? '1fr 1fr 1fr' : '1fr 1fr';
+        (chesapeake && chesapeake.school_board ? chesapeake.school_board.map(m => officialCard('School Board', m.name, 'Chesapeake', m.party)).join('') : '') +
+        (portsmouth ? officialCard('Mayor', portsmouth.mayor ? portsmouth.mayor.name : '', 'Portsmouth', portsmouth.mayor ? portsmouth.mayor.party : '') : '') +
+        (portsmouth ? officialCard('Vice Mayor', portsmouth.vice_mayor ? portsmouth.vice_mayor.name : '', 'Portsmouth', portsmouth.vice_mayor ? portsmouth.vice_mayor.party : '') : '') +
+        (portsmouth ? officialCard('Sheriff', portsmouth.sheriff ? portsmouth.sheriff.name : '', 'Portsmouth', portsmouth.sheriff ? portsmouth.sheriff.party : '') : '') +
+        (portsmouth ? officialCard("Commonwealth's Attorney", portsmouth.commonwealths_attorney ? portsmouth.commonwealths_attorney.name : '', 'Portsmouth', portsmouth.commonwealths_attorney ? portsmouth.commonwealths_attorney.party : '') : '') +
+        (portsmouth ? officialCard('Commissioner of the Revenue', portsmouth.commissioner ? portsmouth.commissioner.name : '', 'Portsmouth', portsmouth.commissioner ? portsmouth.commissioner.party : '') : '') +
+        (portsmouth ? officialCard('City Treasurer', portsmouth.treasurer ? portsmouth.treasurer.name : '', 'Portsmouth', portsmouth.treasurer ? portsmouth.treasurer.party : '') : '') +
+        (portsmouth ? officialCard('Clerk of the Circuit Court', portsmouth.clerk ? portsmouth.clerk.name : '', 'Portsmouth', portsmouth.clerk ? portsmouth.clerk.party : '') : '') +
+        (portsmouth && portsmouth.council ? portsmouth.council.map(m => officialCard('City Council · At-Large', m.name, 'Portsmouth', m.party)).join('') : '');
+      const gridCols = (chesapeake || portsmouth) ? '1fr 1fr 1fr' : '1fr 1fr';
       document.getElementById('result').innerHTML =
         '<div style="background:white;border:1px solid #ddd8cc;border-top:4px solid #c8102e;padding:20px 24px;margin-top:20px;">' +
         '<h3 style="font-family:Barlow Condensed,sans-serif;font-size:0.8rem;color:#c8102e;margin-bottom:12px;letter-spacing:0.12em;text-transform:uppercase;">Your Representatives</h3>' +
