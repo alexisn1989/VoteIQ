@@ -294,26 +294,17 @@
         const bg = party.includes('Democrat') ? '#1a52c8' : party.includes('Republican') ? '#c8102e' : '#555';
         return '<span style="display:inline-block;background:' + bg + ';color:#fff;font-size:0.68rem;font-family:Barlow Condensed,sans-serif;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1px 7px;border-radius:3px;margin-left:5px;">' + party + '</span>';
       };
+      const partyBorder = (party) => party && party.includes('Democrat') ? '#1a52c8' : party && party.includes('Republican') ? '#c8102e' : '#7a7468';
+      const officialCard = (label, name, email, party) =>
+        '<div style="margin-top:8px;padding:8px 10px;background:#faf9f6;border-left:3px solid ' + partyBorder(party) + ';font-size:0.86rem;line-height:1.7;">' +
+        '<div style="font-family:Barlow Condensed,sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:3px;">' + label + '</div>' +
+        '<div><strong>' + name + '</strong>' + partyBadge(party) + '</div>' +
+        '<div style="font-size:0.75rem;color:#7a7468;"><a href="mailto:' + email + '" style="color:#2a7a3b;">' + email + '</a></div>' +
+        '</div>';
       const councilBlock = council
-        ? (council.sheriff
-          ? '<div style="margin-top:8px;padding:8px 10px;background:#faf9f6;border-left:3px solid #2a7a3b;font-size:0.86rem;line-height:1.7;">' +
-            '<div style="font-family:Barlow Condensed,sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:3px;">VB Sheriff</div>' +
-            '<div><strong>' + council.sheriff.name + '</strong>' + partyBadge(council.sheriff.party) + '</div>' +
-            '<div style="font-size:0.75rem;color:#7a7468;"><a href="mailto:' + council.sheriff.email + '" style="color:#2a7a3b;">' + council.sheriff.email + '</a></div>' +
-            '</div>'
-          : '') +
-        (council.mayor
-          ? '<div style="margin-top:8px;padding:8px 10px;background:#faf9f6;border-left:3px solid #2a7a3b;font-size:0.86rem;line-height:1.7;">' +
-            '<div style="font-family:Barlow Condensed,sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:3px;">VB Mayor</div>' +
-            '<div><strong>' + council.mayor.name + '</strong>' + partyBadge(council.mayor.party) + '</div>' +
-            '<div style="font-size:0.75rem;color:#7a7468;"><a href="mailto:' + council.mayor.email + '" style="color:#2a7a3b;">' + council.mayor.email + '</a></div>' +
-            '</div>'
-          : '') +
-          '<div style="margin-top:8px;padding:8px 10px;background:#faf9f6;border-left:3px solid #2a7a3b;font-size:0.86rem;line-height:1.7;">' +
-          '<div style="font-family:Barlow Condensed,sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:3px;">VB City Council · ' + council.district + '</div>' +
-          '<div><strong>' + council.name + '</strong>' + partyBadge(council.party) + '</div>' +
-          '<div style="font-size:0.75rem;color:#7a7468;"><a href="mailto:' + council.email + '" style="color:#2a7a3b;">' + council.email + '</a></div>' +
-          '</div>'
+        ? (council.sheriff ? officialCard('VB Sheriff', council.sheriff.name, council.sheriff.email, council.sheriff.party) : '') +
+          (council.mayor   ? officialCard('VB Mayor',   council.mayor.name,   council.mayor.email,   council.mayor.party)   : '') +
+          officialCard('VB City Council · ' + council.district, council.name, council.email, council.party)
         : '';
       document.getElementById('result').innerHTML =
         '<div style="background:white;border:1px solid #ddd8cc;border-top:4px solid #c8102e;padding:20px 24px;margin-top:20px;">' +
