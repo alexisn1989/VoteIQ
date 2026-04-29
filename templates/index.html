@@ -327,7 +327,8 @@
         (sen ? repBlock('State Senate', sen.district_number, sen.senator, sen.party, sen.region) : '') +
         councilBlock +
         (norfolk && norfolk.mayor        ? officialCard('Mayor',                          norfolk.mayor.name,        'Norfolk', norfolk.mayor.party)        : '') +
-        (norfolk && norfolk.commissioner ? officialCard('Commissioner of the Revenue',   norfolk.commissioner.name, 'Norfolk', norfolk.commissioner.party) : '') +
+        (norfolk && norfolk.commonwealths_attorney ? officialCard("Commonwealth's Attorney", norfolk.commonwealths_attorney.name, 'Norfolk', norfolk.commonwealths_attorney.party) : '') +
+        (norfolk && norfolk.commissioner           ? officialCard('Commissioner of the Revenue', norfolk.commissioner.name, 'Norfolk', norfolk.commissioner.party)           : '') +
         (norfolk && norfolk.ward_rep ? officialCard('City Council · Ward ' + norfolk.ward,          norfolk.ward_rep,   'Norfolk', '')                   : '') +
         (norfolk && norfolk.ward_sbm ? officialCard('School Board · Ward ' + norfolk.ward,          norfolk.ward_sbm,   'Norfolk', '')                   : '');
       document.getElementById('result').innerHTML =
