@@ -560,6 +560,7 @@ def lookup(address: str):
             "mayor": (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_norfolk_officials.get("mayor")),
             "sheriff": (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_norfolk_officials.get("sheriff")),
             "commonwealths_attorney": (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_norfolk_officials.get("commonwealths_attorney")),
+            "treasurer": (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_norfolk_officials.get("treasurer")),
             "commissioner": (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_norfolk_officials.get("commissioner")),
             "ward": result.get("norfolk_ward"),
             "ward_rep": result.get("norfolk_ward_rep"),

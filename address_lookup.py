@@ -37,6 +37,8 @@ try:
                 _norfolk_officials["sheriff"] = _entry
             elif _d == "Norfolk Commonwealth's Attorney":
                 _norfolk_officials["commonwealths_attorney"] = _entry
+            elif _d == "Norfolk City Treasurer":
+                _norfolk_officials["treasurer"] = _entry
             elif _d == "Norfolk Commissioner of the Revenue":
                 _norfolk_officials["commissioner"] = _entry
             elif _d == "School Board At-Large":
