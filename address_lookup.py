@@ -209,24 +209,24 @@ def find_district(address):
             else:
                 locality = parts[0]
 
-        # Get Norfolk ward / superward
+        # Get Norfolk ward / superward (check superwards first — ward shapefile overlaps superward areas)
         norfolk_ward = None
         norfolk_ward_rep = None
         norfolk_ward_sbm = None
         if "norfolk" in (locality or "").lower():
-            if norfolk_wards_gdf is not None:
-                for idx, row in norfolk_wards_gdf.iterrows():
-                    if row['geometry'].contains(point):
-                        norfolk_ward = int(row['WARD'])
-                        norfolk_ward_rep = row['WARD_REP']
-                        norfolk_ward_sbm = row['WARD_SBM']
-                        break
-            if norfolk_ward is None and norfolk_superwards_gdf is not None:
+            if norfolk_superwards_gdf is not None:
                 for idx, row in norfolk_superwards_gdf.iterrows():
                     if row['geometry'].contains(point):
                         norfolk_ward = int(row['SUPWARD'])
                         norfolk_ward_rep = row['SWARD_REP']
                         norfolk_ward_sbm = row['SWARD_SBM']
+                        break
+            if norfolk_ward is None and norfolk_wards_gdf is not None:
+                for idx, row in norfolk_wards_gdf.iterrows():
+                    if row['geometry'].contains(point):
+                        norfolk_ward = int(row['WARD'])
+                        norfolk_ward_rep = row['WARD_REP']
+                        norfolk_ward_sbm = row['WARD_SBM']
                         break
 
         return {
