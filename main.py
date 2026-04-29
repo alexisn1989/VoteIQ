@@ -556,7 +556,12 @@ def lookup(address: str):
             "treasurer": _officer("City Treasurer"),
             "clerk": _officer("Clerk of the Circuit Court"),
         } if vb_info else None,
-        "norfolk": (lambda m: {"mayor": {"name": m["name"], "party": m.get("party", "")}} if m else None)(_norfolk_officials.get("mayor")) if "norfolk" in result.get("locality", "").lower() else None,
+        "norfolk": {
+            "mayor": (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_norfolk_officials.get("mayor")),
+            "ward": result.get("norfolk_ward"),
+            "ward_rep": result.get("norfolk_ward_rep"),
+            "ward_sbm": result.get("norfolk_ward_sbm"),
+        } if "norfolk" in result.get("locality", "").lower() else None,
         "vb_school_board": {
             "member": (lambda o: {"name": o["name"], "party": o.get("party", "")} if o else None)(_vb_school_board.get(vb_num)),
             "at_large": (lambda o: {"name": o["name"], "party": o.get("party", "")} if o else None)(_vb_school_board.get("at_large")),

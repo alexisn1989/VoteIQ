@@ -14,6 +14,7 @@ vb_local = None
 va_hod   = None
 va_sd    = None
 vb_council_gdf = None  # VB city council district boundaries
+norfolk_wards_gdf = None  # Norfolk ward boundaries
 _loaded  = False
 
 # VB council lookup: district number (int) -> {name, email}
@@ -85,6 +86,15 @@ def _load_shapefiles():
         print("address_lookup: vb_council_gdf loaded")
     except Exception as e:
         print(f"address_lookup: could not load vb_council_gdf: {e}")
+
+    try:
+        global norfolk_wards_gdf
+        norfolk_wards_gdf = gpd.read_file(os.path.join(BASE_DIR, "Wards.shp"))
+        norfolk_wards_gdf = norfolk_wards_gdf.to_crs(epsg=4326)
+        norfolk_wards_gdf = norfolk_wards_gdf[['WARD', 'WARD_REP', 'WARD_SBM', 'geometry']]
+        print("address_lookup: norfolk_wards_gdf loaded")
+    except Exception as e:
+        print(f"address_lookup: could not load norfolk_wards_gdf: {e}")
 
 
 def find_district(address):
@@ -178,6 +188,18 @@ def find_district(address):
             else:
                 locality = parts[0].strip()
 
+        # Get Norfolk ward
+        norfolk_ward = None
+        norfolk_ward_rep = None
+        norfolk_ward_sbm = None
+        if norfolk_wards_gdf is not None and "norfolk" in (locality or "").lower():
+            for idx, row in norfolk_wards_gdf.iterrows():
+                if row['geometry'].contains(point):
+                    norfolk_ward = int(row['WARD'])
+                    norfolk_ward_rep = row['WARD_REP']
+                    norfolk_ward_sbm = row['WARD_SBM']
+                    break
+
         return {
             "locality": locality or "Virginia",
             "district": district or "Not found",
@@ -185,6 +207,9 @@ def find_district(address):
             "hod_district": hod_district,
             "sd_district": sd_district,
             "vb_council_district": vb_council_district,
+            "norfolk_ward": norfolk_ward,
+            "norfolk_ward_rep": norfolk_ward_rep,
+            "norfolk_ward_sbm": norfolk_ward_sbm,
             "precinct": precinct or "Not found",
             "lat": lat,
             "lng": lng
