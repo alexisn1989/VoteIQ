@@ -18,6 +18,7 @@ _loaded  = False
 
 # VB council lookup: district number (int) -> {name, email}
 _vb_council = {}
+_vb_school_board = {}  # int district -> entry, "at_large" -> entry
 try:
     with open(os.path.join(BASE_DIR, "voteiq_officials.json"), encoding="utf-8") as _f:
         for _m in json.load(_f):
@@ -27,6 +28,11 @@ try:
                 _vb_council[0] = _entry
             elif _d in ("Sheriff", "Commonwealth's Attorney", "Commissioner of the Revenue", "City Treasurer", "Clerk of the Circuit Court"):
                 _vb_council[_d] = _entry
+            elif _d == "School Board At-Large":
+                _vb_school_board["at_large"] = _entry
+            elif _d.startswith("School Board District"):
+                _num = int(_d.replace("School Board District", "").strip())
+                _vb_school_board[_num] = _entry
             else:
                 _num = int(_d.replace("District", "").strip())
                 _vb_council[_num] = _entry

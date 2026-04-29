@@ -110,5 +110,82 @@
         "email": "rcwilson@vbgov.com",
         "jurisdiction": "Virginia Beach",
         "party": "Republican (nonpartisan)"
+    },
+    {
+        "name": "Rose Dwyer",
+        "district": "School Board District 1",
+        "email": "",
+        "jurisdiction": "Virginia Beach",
+        "party": ""
+    },
+    {
+        "name": "Kimberly A. Melnyk",
+        "district": "School Board District 2",
+        "email": "",
+        "jurisdiction": "Virginia Beach",
+        "party": "Democrat (nonpartisan)"
+    },
+    {
+        "name": "Mark Bohenstiel",
+        "district": "School Board District 3",
+        "email": "",
+        "jurisdiction": "Virginia Beach",
+        "party": "Republican (nonpartisan)"
+    },
+    {
+        "name": "Dr. Alveta J. Green",
+        "district": "School Board District 4",
+        "email": "",
+        "jurisdiction": "Virginia Beach",
+        "party": "Democrat (nonpartisan)"
+    },
+    {
+        "name": "Melinda Rogers",
+        "district": "School Board District 5",
+        "email": "",
+        "jurisdiction": "Virginia Beach",
+        "party": ""
+    },
+    {
+        "name": "Michael Callan",
+        "district": "School Board District 6",
+        "email": "",
+        "jurisdiction": "Virginia Beach",
+        "party": ""
+    },
+    {
+        "name": "Matt Cummings",
+        "district": "School Board District 7",
+        "email": "",
+        "jurisdiction": "Virginia Beach",
+        "party": ""
+    },
+    {
+        "name": "David Culpepper",
+        "district": "School Board District 8",
+        "email": "",
+        "jurisdiction": "Virginia Beach",
+        "party": "Republican (nonpartisan)"
+    },
+    {
+        "name": "Carolyn D. Weems",
+        "district": "School Board District 9",
+        "email": "",
+        "jurisdiction": "Virginia Beach",
+        "party": "Republican (nonpartisan)"
+    },
+    {
+        "name": "Kathleen Brown",
+        "district": "School Board District 10",
+        "email": "",
+        "jurisdiction": "Virginia Beach",
+        "party": ""
+    },
+    {
+        "name": "Sharon Felton",
+        "district": "School Board At-Large",
+        "email": "",
+        "jurisdiction": "Virginia Beach",
+        "party": "Democrat (nonpartisan)"
     }
 ]

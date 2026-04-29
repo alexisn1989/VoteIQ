@@ -532,7 +532,7 @@ def lookup(address: str):
         cd_key = "VA-00"
     cd_info = DISTRICT_CONTEXT.get(cd_key, {})
 
-    from address_lookup import _vb_council
+    from address_lookup import _vb_council, _vb_school_board
     vb_num = result.get("vb_council_district")
     vb_info = _vb_council.get(vb_num) if vb_num is not None else None
     mayor_info = _vb_council.get(0)
@@ -556,6 +556,10 @@ def lookup(address: str):
             "treasurer": _officer("City Treasurer"),
             "clerk": _officer("Clerk of the Circuit Court"),
         } if vb_info else None,
+        "vb_school_board": {
+            "member": (lambda o: {"name": o["name"], "party": o.get("party", "")} if o else None)(_vb_school_board.get(vb_num)),
+            "at_large": (lambda o: {"name": o["name"], "party": o.get("party", "")} if o else None)(_vb_school_board.get("at_large")),
+        } if vb_num is not None else None,
         "us_rep": {
             "district_number": int(cd_num_raw) if cd_num_raw not in ("", "N/A") else None,
             "rep": cd_info.get("rep"),
