@@ -142,20 +142,20 @@
     <div class="viq-chat-header">
       <div class="viq-chat-title">
         <img src="/static/logo.png" alt="VoteIQ" style="width:28px;height:28px;object-fit:contain;border-radius:4px;flex-shrink:0;" />
-        District Q&amp;A
+        Ask Your Representatives
       </div>
       <span class="viq-chat-district-badge" id="viqDistrictBadge">—</span>
     </div>
     <div class="viq-chat-msgs" id="viqMsgList"></div>
     <div class="viq-chat-chips" id="viqChips">
-      <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">How did my area vote?</button>
-      <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">What does the Yes result mean?</button>
-      <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">Who represents this district?</button>
-      <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">How did early vs election day voting differ?</button>
-      <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">What happens to the district maps now?</button>
+      <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">What has my representative done?</button>
+      <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">How do I contact my rep?</button>
+      <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">What committees does my rep serve on?</button>
+      <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">What bills has my delegate sponsored?</button>
+      <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">What is my senator's voting record?</button>
     </div>
     <div class="viq-chat-input-row">
-      <input class="viq-chat-input" id="viqInput" type="text" placeholder="Ask anything about your district..." />
+      <input class="viq-chat-input" id="viqInput" type="text" placeholder="Ask about your representatives..." />
       <button class="viq-chat-send" id="viqSendBtn" onclick="viqSendMessage()">Ask →</button>
     </div>
     <div class="viq-chat-footer">Powered by VoteIQ · Verify important info at elections.virginia.gov</div>
@@ -387,7 +387,12 @@
         '</div>';
       const districtNum = d.district_number;
       const districtCode = 'VA-' + (districtNum && districtNum.startsWith('0') ? districtNum : '0' + (districtNum || '0'));
-      initViqChat(districtCode, d.locality, del ? del.district_number : null, sen ? sen.district_number : null);
+      const repNames = [
+        usRep ? usRep.rep : null,
+        del ? del.delegate : null,
+        sen ? sen.senator : null,
+      ].filter(Boolean);
+      initViqChat(districtCode, d.locality, del ? del.district_number : null, sen ? sen.district_number : null, repNames);
       document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
       const mapEl = document.getElementById('map');
@@ -411,19 +416,20 @@
     let viqLocality = '';
     let viqHod = null, viqSd = null;
     const viqMsgs = [];
-    window.initViqChat = function (districtCode, locality, hod, sd) {
+    window.initViqChat = function (districtCode, locality, hod, sd, repNames) {
       viqDistrict = districtCode || 'VA-00';
       viqLocality = locality || '';
       viqHod = hod || null;
       viqSd = sd || null;
       viqMsgs.length = 0;
-      document.getElementById('viqDistrictBadge').textContent = viqDistrict === 'VA-00' ? 'Statewide' : viqDistrict;
+      document.getElementById('viqDistrictBadge').textContent = viqLocality || (viqDistrict === 'VA-00' ? 'Virginia' : viqDistrict);
       document.getElementById('viqMsgList').innerHTML = '';
       document.getElementById('viqChips').style.display = 'flex';
       document.getElementById('viqChatPanel').style.display = 'flex';
-      viqAddMsg('assistant', viqDistrict === 'VA-00'
-        ? "Hi! I'm VoteIQ. The April 21 referendum results are in — ask me what the Yes result means, how Virginia voted, or anything about the election."
-        : "Hi! I'm your VoteIQ assistant for " + viqDistrict + ". The April 21 results are in — ask me how your area voted, what the outcome means, or about your district.");
+      const greeting = repNames && repNames.length
+        ? "Hi! I'm VoteIQ. You're represented by " + repNames.join(', ') + ". Ask me anything about their roles, voting records, or how to contact them."
+        : "Hi! I'm VoteIQ. Enter your address above to find your representatives, then ask me anything about them.";
+      viqAddMsg('assistant', greeting);
     };
     document.addEventListener('DOMContentLoaded', () => initViqChat('VA-00'));
     function viqAddMsg(role, text, isTyping) {
