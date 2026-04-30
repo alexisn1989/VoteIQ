@@ -614,5 +614,89 @@
         "email": "",
         "jurisdiction": "Hampton",
         "party": ""
+    },
+    {
+        "name": "Phillip D. Jones",
+        "district": "Newport News Mayor",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": ""
+    },
+    {
+        "name": "Curtis D. Bethany III",
+        "district": "Newport News Vice Mayor",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": ""
+    },
+    {
+        "name": "Gabriel \"Gabe\" Morgan Sr.",
+        "district": "Newport News Sheriff",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": "Democrat (nonpartisan)"
+    },
+    {
+        "name": "Shannon M. Jones",
+        "district": "Newport News Commonwealth's Attorney",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": "Democrat (nonpartisan)"
+    },
+    {
+        "name": "Tiffany Boyle",
+        "district": "Newport News Commissioner of the Revenue",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": "Democrat (nonpartisan)"
+    },
+    {
+        "name": "Sanu Dieng Cooper",
+        "district": "Newport News City Treasurer",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": "Democrat (nonpartisan)"
+    },
+    {
+        "name": "Angela Reason",
+        "district": "Newport News Clerk of the Circuit Court",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": "Democrat (nonpartisan)"
+    },
+    {
+        "name": "Robert Coleman",
+        "district": "Newport News Council",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": ""
+    },
+    {
+        "name": "John R. Eley III",
+        "district": "Newport News Council",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": ""
+    },
+    {
+        "name": "Marcellus L. Harris III, D. Div.",
+        "district": "Newport News Council",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": ""
+    },
+    {
+        "name": "Cleon M. Long, P.E.",
+        "district": "Newport News Council",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": ""
+    },
+    {
+        "name": "Tina L. Vick",
+        "district": "Newport News Council",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": ""
     }
 ]
