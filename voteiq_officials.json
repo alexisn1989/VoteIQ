@@ -714,36 +714,36 @@
         "party": "Democrat (nonpartisan)"
     },
     {
-        "name": "Robert Coleman",
-        "district": "Newport News Council",
-        "email": "",
-        "jurisdiction": "Newport News",
-        "party": ""
-    },
-    {
-        "name": "John R. Eley III",
-        "district": "Newport News Council",
-        "email": "",
-        "jurisdiction": "Newport News",
-        "party": ""
-    },
-    {
         "name": "Marcellus L. Harris III, D. Div.",
-        "district": "Newport News Council",
+        "district": "Newport News Council 1",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": ""
+    },
+    {
+        "name": "Robert Coleman",
+        "district": "Newport News Council 2",
         "email": "",
         "jurisdiction": "Newport News",
         "party": ""
     },
     {
         "name": "Cleon M. Long, P.E.",
-        "district": "Newport News Council",
+        "district": "Newport News Council 2",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": ""
+    },
+    {
+        "name": "John R. Eley III",
+        "district": "Newport News Council 3",
         "email": "",
         "jurisdiction": "Newport News",
         "party": ""
     },
     {
         "name": "Tina L. Vick",
-        "district": "Newport News Council",
+        "district": "Newport News Council 3",
         "email": "",
         "jurisdiction": "Newport News",
         "party": ""

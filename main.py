@@ -610,7 +610,9 @@ def lookup(address: str):
             "commissioner":           (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_newport_news_officials.get("commissioner")),
             "treasurer":              (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_newport_news_officials.get("treasurer")),
             "clerk":                  (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_newport_news_officials.get("clerk")),
-            "council": [{"name": m["name"], "party": m.get("party", "")} for m in _newport_news_officials.get("council", [])],
+            "council_district": result.get("nn_council_district"),
+            "council_district_name": result.get("nn_council_district_name"),
+            "council": [{"name": m["name"], "party": m.get("party", "")} for m in _newport_news_officials.get(f"council_{result.get('nn_council_district')}", [])],
             "school_board": [{"name": m["name"], "party": m.get("party", "")} for m in _newport_news_officials.get("school_board", [])],
         } if "newport news" in result.get("locality", "").lower() else None,
         "vb_school_board": {

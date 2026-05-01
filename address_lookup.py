@@ -15,6 +15,7 @@ va_hod   = None
 va_sd    = None
 vb_council_gdf = None  # VB city council district boundaries
 norfolk_combined_gdf = None    # Norfolk wards + superwards merged into one GDF
+nn_council_gdf = None  # Newport News city council district boundaries
 _loaded  = False
 
 # VB council lookup: district number (int) -> {name, email}
@@ -112,8 +113,9 @@ try:
                 _newport_news_officials["treasurer"] = _entry
             elif _d == "Newport News Clerk of the Circuit Court":
                 _newport_news_officials["clerk"] = _entry
-            elif _d == "Newport News Council":
-                _newport_news_officials.setdefault("council", []).append(_entry)
+            elif _d.startswith("Newport News Council "):
+                _num = int(_d.replace("Newport News Council ", "").strip())
+                _newport_news_officials.setdefault(f"council_{_num}", []).append(_entry)
             elif _d == "Newport News School Board":
                 _newport_news_officials.setdefault("school_board", []).append(_entry)
             elif _d == "School Board At-Large":
@@ -129,7 +131,7 @@ except Exception as _e:
 
 
 def _load_shapefiles():
-    global va_cd, vb_local, va_hod, va_sd, vb_council_gdf, norfolk_combined_gdf, _loaded
+    global va_cd, vb_local, va_hod, va_sd, vb_council_gdf, norfolk_combined_gdf, nn_council_gdf, _loaded
     if _loaded:
         return
     _loaded = True
@@ -170,6 +172,14 @@ def _load_shapefiles():
         print("address_lookup: vb_council_gdf loaded")
     except Exception as e:
         print(f"address_lookup: could not load vb_council_gdf: {e}")
+
+    try:
+        nn_council_gdf = gpd.read_file(os.path.join(BASE_DIR, "City_Council_District.shp"))
+        nn_council_gdf = nn_council_gdf.to_crs(epsg=4326)
+        nn_council_gdf = nn_council_gdf[['DISTRICT', 'LONGNAME', 'geometry']]
+        print("address_lookup: nn_council_gdf loaded")
+    except Exception as e:
+        print(f"address_lookup: could not load nn_council_gdf: {e}")
 
     try:
         import geopandas as _gpd
@@ -304,6 +314,15 @@ def find_district(address):
                     norfolk_superward_sbm = row['SWARD_SBM']
                     break
 
+        nn_council_district = None
+        nn_council_district_name = None
+        if "newport news" in (locality or "").lower() and nn_council_gdf is not None:
+            for _, row in nn_council_gdf.iterrows():
+                if row['geometry'].contains(point):
+                    nn_council_district = int(row['DISTRICT'])
+                    nn_council_district_name = row['LONGNAME']
+                    break
+
         return {
             "locality": locality or "Virginia",
             "district": district or "Not found",
@@ -317,6 +336,8 @@ def find_district(address):
             "norfolk_superward": norfolk_superward,
             "norfolk_superward_rep": norfolk_superward_rep,
             "norfolk_superward_sbm": norfolk_superward_sbm,
+            "nn_council_district": nn_council_district,
+            "nn_council_district_name": nn_council_district_name,
             "precinct": precinct or "Not found",
             "lat": lat,
             "lng": lng
