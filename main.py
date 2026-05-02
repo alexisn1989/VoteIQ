@@ -613,7 +613,10 @@ def lookup(address: str):
             "council_district": result.get("nn_council_district"),
             "council_district_name": result.get("nn_council_district_name"),
             "council": [{"name": m["name"], "party": m.get("party", "")} for m in _newport_news_officials.get(f"council_{result.get('nn_council_district')}", [])],
-            "school_board": [{"name": m["name"], "party": m.get("party", "")} for m in _newport_news_officials.get("school_board", [])],
+            "school_board": (
+                [{"name": m["name"], "party": m.get("party", "")} for m in _newport_news_officials.get(f"school_board_{result.get('nn_council_district')}", [])] +
+                [{"name": m["name"], "party": m.get("party", "")} for m in _newport_news_officials.get("school_board_at_large", [])]
+            ),
         } if "newport news" in result.get("locality", "").lower() else None,
         "vb_school_board": {
             "member": (lambda o: {"name": o["name"], "party": o.get("party", "")} if o else None)(_vb_school_board.get(vb_num)),

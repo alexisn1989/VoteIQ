@@ -116,8 +116,11 @@ try:
             elif _d.startswith("Newport News Council "):
                 _num = int(_d.replace("Newport News Council ", "").strip())
                 _newport_news_officials.setdefault(f"council_{_num}", []).append(_entry)
-            elif _d == "Newport News School Board":
-                _newport_news_officials.setdefault("school_board", []).append(_entry)
+            elif _d == "Newport News School Board At-Large":
+                _newport_news_officials.setdefault("school_board_at_large", []).append(_entry)
+            elif _d.startswith("Newport News School Board "):
+                _num = int(_d.replace("Newport News School Board ", "").strip())
+                _newport_news_officials.setdefault(f"school_board_{_num}", []).append(_entry)
             elif _d == "School Board At-Large":
                 _vb_school_board["at_large"] = _entry
             elif _d.startswith("School Board District"):
