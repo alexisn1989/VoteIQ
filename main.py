@@ -8,6 +8,7 @@ import folium
 import geopandas as gpd
 import os
 import json
+from html import escape
 import requests
 import anthropic
 from address_lookup import find_district
@@ -892,7 +893,7 @@ def district_map(layer: str = "congressional", lat: float = None, lng: float = N
             try:
                 _district_maps[layer] = _build_district_map(layer)
             except Exception as e:
-                return f"<p style='font-family:sans-serif;padding:40px'>Could not build map: {e}</p>"
+                return f"<p style='font-family:sans-serif;padding:40px'>Could not build map: {escape(str(e))}</p>"
         return _district_maps[layer]
     else:
         try:
@@ -900,7 +901,7 @@ def district_map(layer: str = "congressional", lat: float = None, lng: float = N
         except Exception as e:
             import traceback
             traceback.print_exc()
-            return f"<p style='font-family:sans-serif;padding:40px'>Could not build {layer} map: {e}</p>"
+            return f"<p style='font-family:sans-serif;padding:40px'>Could not build {escape(layer)} map: {escape(str(e))}</p>"
 
 
 @app.post("/chat", response_model=ChatResponse)
