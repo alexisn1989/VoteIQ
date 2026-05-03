@@ -437,6 +437,41 @@ def _load_2025_statewide_locality_results(office: str) -> dict:
     return results
 
 
+def _build_2025_hod_flips(hod_data: dict) -> list[dict]:
+    flips = []
+    for district, race in sorted(hod_data.items()):
+        candidates = race.get("candidates", [])
+        if not candidates:
+            continue
+        winner = candidates[0]
+        party_2023 = HOD_2023_PARTY.get(int(district), "Democrat")
+        party_2025 = winner.get("party", "")
+        if "democrat" in party_2025.lower():
+            normalized_2025 = "Democrat"
+        elif "republican" in party_2025.lower():
+            normalized_2025 = "Republican"
+        else:
+            normalized_2025 = party_2025 or "Other"
+        if party_2023 == normalized_2025:
+            continue
+        flips.append({
+            "district": int(district),
+            "winner": winner.get("name", "Unknown"),
+            "from_party": party_2023,
+            "to_party": normalized_2025,
+            "winner_pct": winner.get("pct", 0.0),
+            "votes": winner.get("votes", 0),
+            "direction": (
+                "Flipped Democratic"
+                if normalized_2025 == "Democrat"
+                else "Flipped Republican"
+                if normalized_2025 == "Republican"
+                else f"Flipped {normalized_2025}"
+            ),
+        })
+    return flips
+
+
 # All district GDFs are lazy — borrowed from address_lookup on first use
 _va_cd_gdf  = None
 _va_hod_gdf = None
@@ -737,7 +772,7 @@ def lookup(address: str):
         cd_key = "VA-00"
     cd_info = DISTRICT_CONTEXT.get(cd_key, {})
 
-    from address_lookup import _vb_council, _vb_school_board, _norfolk_officials, _chesapeake_officials, _portsmouth_officials, _hampton_officials, _newport_news_officials
+    from address_lookup import _vb_council, _vb_school_board, _norfolk_officials, _chesapeake_officials, _portsmouth_officials, _hampton_officials, _newport_news_officials, _suffolk_officials
     vb_num = result.get("vb_council_district")
     vb_info = _vb_council.get(vb_num) if vb_num is not None else None
     mayor_info = _vb_council.get(0)
@@ -823,6 +858,16 @@ def lookup(address: str):
                 [{"name": m["name"], "party": m.get("party", "")} for m in _newport_news_officials.get("school_board_at_large", [])]
             ),
         } if "newport news" in result.get("locality", "").lower() else None,
+        "suffolk": {
+            "mayor":                  (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_suffolk_officials.get("mayor")),
+            "vice_mayor":             (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_suffolk_officials.get("vice_mayor")),
+            "sheriff":                (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_suffolk_officials.get("sheriff")),
+            "commonwealths_attorney": (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_suffolk_officials.get("commonwealths_attorney")),
+            "commissioner":           (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_suffolk_officials.get("commissioner")),
+            "treasurer":              (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_suffolk_officials.get("treasurer")),
+            "clerk":                  (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_suffolk_officials.get("clerk")),
+            "council": [{"name": m["name"], "party": m.get("party", "")} for m in _suffolk_officials.get("council", [])],
+        } if "suffolk" in result.get("locality", "").lower() else None,
         "vb_school_board": {
             "member": (lambda o: {"name": o["name"], "party": o.get("party", "")} if o else None)(_vb_school_board.get(vb_num)),
             "at_large": (lambda o: {"name": o["name"], "party": o.get("party", "")} if o else None)(_vb_school_board.get("at_large")),
@@ -1903,7 +1948,11 @@ def election_results_page():
             locality_results[_office] = _load_2025_statewide_locality_results(_office)
         except Exception:
             locality_results[_office] = {}
-    all_data = {**results, "locality_results": locality_results}
+    all_data = {
+        **results,
+        "locality_results": locality_results,
+        "hod_flips": _build_2025_hod_flips(results.get("hod", {})),
+    }
     safe_json = json.dumps(all_data, default=str).replace("</script>", "<\\/script>")
     with open(os.path.join(BASE_DIR, "templates", "election_results.html"), "r", encoding="utf-8") as f:
         html = f.read()

@@ -26,6 +26,7 @@ _chesapeake_officials = {}  # "mayor", "vice_mayor", "sheriff", etc. -> entry; "
 _portsmouth_officials = {}  # "mayor", "vice_mayor", "sheriff", etc. -> entry; "council" -> list
 _hampton_officials = {}       # "mayor", "vice_mayor", "sheriff", etc. -> entry; "council" -> list
 _newport_news_officials = {}  # "mayor", "vice_mayor", "sheriff", etc. -> entry; "council" -> list
+_suffolk_officials = {}       # "mayor", "vice_mayor", "sheriff", etc. -> entry; "council" -> list
 try:
     with open(os.path.join(BASE_DIR, "voteiq_officials.json"), encoding="utf-8") as _f:
         for _m in json.load(_f):
@@ -121,6 +122,22 @@ try:
             elif _d.startswith("Newport News School Board "):
                 _num = int(_d.replace("Newport News School Board ", "").strip())
                 _newport_news_officials.setdefault(f"school_board_{_num}", []).append(_entry)
+            elif _d == "Suffolk Mayor":
+                _suffolk_officials["mayor"] = _entry
+            elif _d == "Suffolk Vice Mayor":
+                _suffolk_officials["vice_mayor"] = _entry
+            elif _d == "Suffolk Sheriff":
+                _suffolk_officials["sheriff"] = _entry
+            elif _d == "Suffolk Commonwealth's Attorney":
+                _suffolk_officials["commonwealths_attorney"] = _entry
+            elif _d == "Suffolk Commissioner of the Revenue":
+                _suffolk_officials["commissioner"] = _entry
+            elif _d == "Suffolk City Treasurer":
+                _suffolk_officials["treasurer"] = _entry
+            elif _d == "Suffolk Clerk of the Circuit Court":
+                _suffolk_officials["clerk"] = _entry
+            elif _d == "Suffolk Council":
+                _suffolk_officials.setdefault("council", []).append(_entry)
             elif _d == "School Board At-Large":
                 _vb_school_board["at_large"] = _entry
             elif _d.startswith("School Board District"):
