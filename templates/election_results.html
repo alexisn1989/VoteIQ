@@ -236,6 +236,21 @@
       <div style="border:1px solid var(--mid);overflow:hidden;margin-bottom:20px;box-shadow:3px 3px 0 var(--navy);">
         <iframe data-src="/district-map?layer=hod_flip" style="width:100%;height:520px;border:none;display:block;" title="2025 HOD Flip Map"></iframe>
       </div>
+      <div class="hod-table-wrap" style="margin-top:16px;">
+        <table>
+          <thead>
+            <tr>
+              <th>District</th>
+              <th>Winner</th>
+              <th>Flip</th>
+              <th>2023 Party</th>
+              <th>2025 Party</th>
+              <th>Winner Pct.</th>
+            </tr>
+          </thead>
+          <tbody id="hod-flips-tbody"></tbody>
+        </table>
+      </div>
     </div>
 
     <!-- Tab 3: Governor Map -->
@@ -530,6 +545,29 @@
   };
 
   // ── Render from server-injected data ─────────────────────────────────────────
+  function renderHODFlips(flips) {
+    const tbody = document.getElementById('hod-flips-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!flips || !flips.length) {
+      tbody.innerHTML = '<tr class="no-results-row"><td colspan="6">No House districts flipped party control.</td></tr>';
+      return;
+    }
+    flips.forEach(function (flip) {
+      const pc = partyClass(flip.to_party);
+      const tr = document.createElement('tr');
+      tr.className = pc + '-row';
+      tr.innerHTML =
+        '<td class="td-dist">' + esc(flip.district) + '</td>' +
+        '<td class="td-winner">' + esc(flip.winner) + '<span class="inline-badge ' + pc + '">' + esc(partyLabel(flip.to_party)) + '</span></td>' +
+        '<td>' + esc(flip.direction) + '</td>' +
+        '<td>' + esc(flip.from_party) + '</td>' +
+        '<td>' + esc(flip.to_party) + '</td>' +
+        '<td class="td-pct">' + Number(flip.winner_pct || 0).toFixed(1) + '%</td>';
+      tbody.appendChild(tr);
+    });
+  }
+
   var data = window._ELECTION_DATA || {};
   if (data.statewide && data.statewide.length) {
     renderStatewide(data.statewide);
@@ -539,6 +577,7 @@
   }
   if (data.hod && Object.keys(data.hod).length) {
     renderHODTable(data.hod);
+    renderHODFlips(data.hod_flips || []);
   } else {
     document.getElementById('hod-loading').innerHTML =
       '<p style="color:var(--muted);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:0.1em;text-transform:uppercase;font-size:0.8rem;">No district data available.</p>';
@@ -634,6 +673,51 @@
   // Load first tab's iframe immediately
   lazyLoadIframe(document.querySelector('.tab-panel.active'));
 
+})();
+</script>
+
+<!-- Election AI Chat Widget -->
+<style>
+  .echat-btn { position:fixed; bottom:28px; right:28px; z-index:1000; width:56px; height:56px; border-radius:50%; background:var(--navy); color:white; border:none; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; font-size:1.4rem; transition:background 0.2s; }
+  .echat-btn:hover { background:var(--red); }
+  .echat-panel { position:fixed; bottom:96px; right:28px; z-index:1000; width:340px; max-height:480px; background:white; border:2px solid var(--navy); box-shadow:4px 4px 0 var(--navy); display:none; flex-direction:column; }
+  .echat-panel.open { display:flex; }
+  .echat-header { background:var(--navy); color:white; padding:12px 16px; font-family:'Barlow Condensed',sans-serif; font-size:0.78rem; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; display:flex; align-items:center; justify-content:space-between; }
+  .echat-close { background:none; border:none; color:white; cursor:pointer; font-size:1.1rem; line-height:1; }
+  .echat-messages { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px; min-height:0; }
+  .echat-msg { max-width:90%; padding:9px 12px; border-radius:4px; font-size:0.85rem; line-height:1.5; }
+  .echat-msg.user { background:var(--navy); color:white; align-self:flex-end; border-radius:4px 4px 0 4px; }
+  .echat-msg.assistant { background:#f4f1eb; color:var(--navy); align-self:flex-start; border:1px solid var(--mid); border-radius:4px 4px 4px 0; }
+  .echat-msg.typing { color:var(--muted); font-style:italic; }
+  .echat-input-row { display:flex; border-top:1px solid var(--mid); flex-shrink:0; }
+  .echat-input { flex:1; border:none; padding:11px 14px; font-family:'Barlow',sans-serif; font-size:0.85rem; outline:none; color:var(--navy); }
+  .echat-send { background:var(--navy); color:white; border:none; padding:0 16px; cursor:pointer; font-family:'Barlow Condensed',sans-serif; font-size:0.75rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; transition:background 0.2s; }
+  .echat-send:hover { background:var(--red); }
+  .echat-chips { display:flex; flex-wrap:wrap; gap:6px; padding:0 14px 10px; flex-shrink:0; }
+  .echat-chip { background:var(--light); border:1px solid var(--mid); color:var(--navy); font-family:'Barlow Condensed',sans-serif; font-size:0.68rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; padding:4px 10px; cursor:pointer; border-radius:2px; }
+  .echat-chip:hover { background:var(--navy); color:white; }
+  @media(max-width:400px){ .echat-panel{width:calc(100vw - 32px); right:16px;} .echat-btn{right:16px;bottom:16px;} }
+</style>
+<button class="echat-btn" id="echat-toggle" title="Ask about election results">💬</button>
+<div class="echat-panel" id="echat-panel">
+  <div class="echat-header"><span>Ask About Results</span><button class="echat-close" id="echat-close">✕</button></div>
+  <div class="echat-messages" id="echat-messages"><div class="echat-msg assistant">Hi! Ask me anything about the <strong id="echat-year-label"></strong> Virginia election results.</div></div>
+  <div class="echat-chips" id="echat-chips"></div>
+  <div class="echat-input-row"><input class="echat-input" id="echat-input" type="text" placeholder="Ask a question…" maxlength="300" /><button class="echat-send" id="echat-send">Send</button></div>
+</div>
+<script>
+(function(){
+  const YEAR=(window._ELECTION_DATA||{}).election_year||'2025';
+  document.getElementById('echat-year-label').textContent=YEAR;
+  const CHIPS={'2025':['Who won Governor?','HOD seat count?','Who won Lt. Governor?'],'2024':['Who won Virginia?','Who won VA-2?','How did Kaine do?'],'2023':['Who won Senate District 7?','Seat changes?','Competitive races?'],'2022':['Who won VA-2?','Democrats or Republicans?','Closest race?'],'2021':['Who won Governor?','Margin in AG race?','HOD results?']};
+  (CHIPS[YEAR]||[]).forEach(t=>{const b=document.createElement('button');b.className='echat-chip';b.textContent=t;b.onclick=()=>send(t);document.getElementById('echat-chips').appendChild(b);});
+  const hist=[],msgs=document.getElementById('echat-messages'),inp=document.getElementById('echat-input');
+  document.getElementById('echat-toggle').onclick=()=>{document.getElementById('echat-panel').classList.toggle('open');if(document.getElementById('echat-panel').classList.contains('open'))inp.focus();};
+  document.getElementById('echat-close').onclick=()=>document.getElementById('echat-panel').classList.remove('open');
+  document.getElementById('echat-send').onclick=()=>send(inp.value.trim());
+  inp.onkeydown=e=>{if(e.key==='Enter')send(inp.value.trim());};
+  function addMsg(role,text){const d=document.createElement('div');d.className='echat-msg '+role;d.textContent=text;msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;return d;}
+  async function send(text){if(!text)return;inp.value='';addMsg('user',text);hist.push({role:'user',content:text});const t=addMsg('assistant','Thinking…');t.classList.add('typing');try{const r=await fetch('/api/election-chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:YEAR,messages:hist})});const d=await r.json();const reply=d.reply||'Sorry, no response.';t.classList.remove('typing');t.textContent=reply;hist.push({role:'assistant',content:reply});}catch(e){t.classList.remove('typing');t.textContent='Error connecting.';}msgs.scrollTop=msgs.scrollHeight;}
 })();
 </script>
 </body>

@@ -741,6 +741,10 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
 
+class ElectionChatRequest(BaseModel):
+    year: str
+    messages: list[ChatMessage]
+
 @app.get("/election-map", response_class=HTMLResponse)
 @app.get("/results-map", response_class=HTMLResponse)
 def election_map(mode: str = "total"):
@@ -1690,15 +1694,28 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         ).add_to(m)
         title = "2024 Virginia — Congressional District Results"
 
-    elif layer in ("gov_2021", "ltgov_2021", "ag_2021"):
-        race_map = {"gov_2021": "Governor", "ltgov_2021": "Lieutenant Governor", "ag_2021": "Attorney General"}
+    elif layer in ("gov_2021", "ltgov_2021", "ag_2021", "gov_2017", "ltgov_2017", "ag_2017"):
+        year = "2017" if layer.endswith("_2017") else "2021"
+        race_map = {
+            "gov_2021": "Governor",
+            "ltgov_2021": "Lieutenant Governor",
+            "ag_2021": "Attorney General",
+            "gov_2017": "Governor",
+            "ltgov_2017": "Lieutenant Governor",
+            "ag_2017": "Attorney General",
+        }
         title_map = {
             "gov_2021": "2021 Virginia — Governor by Locality",
             "ltgov_2021": "2021 Virginia — Lt. Governor by Locality",
             "ag_2021": "2021 Virginia — Attorney General by Locality",
         }
+        title_map.update({
+            "gov_2017": "2017 Virginia Governor by Locality",
+            "ltgov_2017": "2017 Virginia Lt. Governor by Locality",
+            "ag_2017": "2017 Virginia Attorney General by Locality",
+        })
         race_name = race_map[layer]
-        raw21 = _load_2021_results()
+        raw21 = _load_2021_results() if year == "2021" else _load_historical_results(year)
         cand_party = {}
         for _race in raw21.get("statewide", []):
             if _race["race"] == race_name:
@@ -1749,6 +1766,75 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             ),
         ).add_to(m)
         title = title_map[layer]
+
+    elif layer in ("senate_2019_results", "hod_2019_results"):
+        from shapely.geometry import mapping as _mapping
+        chamber = "senate" if layer == "senate_2019_results" else "hod"
+        chamber_label = "State Senate" if chamber == "senate" else "House of Delegates"
+        if chamber == "senate":
+            if _va_sd_gdf is None:
+                import address_lookup as _al2
+                if _al2.va_sd is not None:
+                    _va_sd_gdf = _al2.va_sd
+                else:
+                    _va_sd_gdf = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL SD.shp"))
+                    _va_sd_gdf = _va_sd_gdf.to_crs(epsg=4326)
+                    _al2.va_sd = _va_sd_gdf
+            gdf = _va_sd_gdf
+        else:
+            if _va_hod_gdf is None:
+                import address_lookup as _al2
+                if _al2.va_hod is not None:
+                    _va_hod_gdf = _al2.va_hod
+                else:
+                    _va_hod_gdf = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL HOD.shp"))
+                    _va_hod_gdf = _va_hod_gdf.to_crs(epsg=4326)
+                    _al2.va_hod = _va_hod_gdf
+            gdf = _va_hod_gdf
+
+        results_2019 = _load_historical_results("2019").get(chamber, {})
+        for _, row in gdf.iterrows():
+            try:
+                d = int(row["DISTRICT"])
+                race = results_2019.get(str(d), results_2019.get(d, {}))
+                cands = race.get("candidates", [])
+                winner = cands[0] if cands else {}
+                runner = cands[1] if len(cands) > 1 else {}
+                w_name = winner.get("name", "No data")
+                w_party = winner.get("party", "")
+                w_pct = float(winner.get("pct", 0.0))
+                r_label = f"{runner.get('name','-')} ({float(runner.get('pct') or 0.0):.1f}%)" if runner else "Uncontested"
+                margin = max(0.0, w_pct - 50.0)
+                opacity = round(0.25 + min(margin / 40.0, 1.0) * 0.55, 3)
+                features.append({"type": "Feature",
+                    "geometry": _mapping(row.geometry.simplify(0.01, preserve_topology=True)),
+                    "properties": {
+                        "_district": f"{chamber_label} District {d}",
+                        "_winner": w_name,
+                        "_party": w_party,
+                        "_pct": f"{w_pct:.1f}%",
+                        "_runner": r_label,
+                        "_opacity": opacity if cands else 0.1,
+                    }})
+            except Exception:
+                continue
+
+        def _state_leg_2019_style(feat):
+            party = feat["properties"].get("_party", "")
+            op = feat["properties"].get("_opacity", 0.4)
+            fill = "#1a52c8" if "democrat" in party.lower() else "#c8102e" if "republican" in party.lower() else "#888"
+            return {"fillColor": fill, "color": "#555", "weight": 0.5, "fillOpacity": op}
+
+        folium.GeoJson(
+            {"type": "FeatureCollection", "features": features},
+            style_function=_state_leg_2019_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["_district", "_winner", "_party", "_pct", "_runner"],
+                aliases=["District:", "Winner:", "Party:", "Vote Share:", "Runner-Up:"],
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        title = f"2019 Virginia {chamber_label} - Numbered District Results"
 
     elif layer == "congress_2022":
         from shapely.geometry import mapping as _mapping
@@ -2096,7 +2182,7 @@ _district_maps: dict[str, str] = {}
 
 @app.get("/district-map", response_class=HTMLResponse)
 def district_map(layer: str = "congressional", lat: float = None, lng: float = None, district: int = None):
-    if layer in ("congressional", "hod_results", "hod_flip", "gov_results", "ltgov_results", "ag_results", "pres_2024", "senate_2024", "congress_2024", "senate_2023_results", "hod_2023_results", "senate_2023_flip_2019", "hod_2023_flip_2021", "gov_2021", "ltgov_2021", "ag_2021", "congress_2022") and lat is None:
+    if layer in ("congressional", "hod_results", "hod_flip", "gov_results", "ltgov_results", "ag_results", "pres_2024", "senate_2024", "congress_2024", "senate_2023_results", "hod_2023_results", "senate_2023_flip_2019", "hod_2023_flip_2021", "gov_2021", "ltgov_2021", "ag_2021", "congress_2022", "gov_2017", "ltgov_2017", "ag_2017", "senate_2019_results", "hod_2019_results") and lat is None:
         if layer not in _district_maps:
             try:
                 _district_maps[layer] = _build_district_map(layer)
@@ -2237,6 +2323,7 @@ _2024_data_cache = None
 _2023_data_cache = None
 _2022_data_cache = None
 _2021_data_cache = None
+_historical_data_cache = {}
 
 
 def _build_2023_race(cands_dict):
@@ -2369,6 +2456,55 @@ def _load_2021_results():
     return _2021_data_cache
 
 
+HISTORICAL_ELECTION_META = {
+    "2020": {
+        "title": "2020 Virginia Local Elections",
+        "subtitle": "June 4 town election results from the uploaded CSV.",
+        "date": "June 4, 2020",
+        "kind": "local",
+        "maps": [],
+        "notes": ["This CSV contains local town races only, so no statewide choropleth map is available."],
+    },
+    "2019": {
+        "title": "2019 Virginia State Legislative Elections",
+        "subtitle": "State Senate and House of Delegates results from the November 5, 2019 general election.",
+        "date": "November 5, 2019",
+        "kind": "district",
+        "maps": [
+            {"tab": "senate-map", "label": "Senate Map", "title": "State Senate - Results Map", "layer": "senate_2019_results"},
+            {"tab": "hod-map", "label": "HOD Map", "title": "House of Delegates - Results Map", "layer": "hod_2019_results"},
+        ],
+        "notes": ["The 2019 legislative elections used pre-redistricting district boundaries; these maps display numbered district results on the available district map layer."],
+    },
+    "2017": {
+        "title": "2017 Virginia State Elections",
+        "subtitle": "Governor, Lieutenant Governor, Attorney General, and House of Delegates results from the November 7, 2017 general election.",
+        "date": "November 7, 2017",
+        "kind": "statewide",
+        "maps": [
+            {"tab": "governor-map", "label": "Governor Map", "title": "Governor - Locality Map", "layer": "gov_2017"},
+            {"tab": "ltgov-map", "label": "Lt. Gov Map", "title": "Lieutenant Governor - Locality Map", "layer": "ltgov_2017"},
+            {"tab": "ag-map", "label": "AG Map", "title": "Attorney General - Locality Map", "layer": "ag_2017"},
+        ],
+        "notes": [],
+    },
+}
+
+
+def _load_historical_results(year: str):
+    year = str(year)
+    if year in _historical_data_cache:
+        return _historical_data_cache[year]
+    path = os.path.join(BASE_DIR, f"election_results_{year}.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            _historical_data_cache[year] = json.load(f)
+    except Exception as e:
+        print(f"_load_historical_results {year}: {e}")
+        _historical_data_cache[year] = {}
+    return _historical_data_cache[year]
+
+
 @app.get("/past-elections/2022", response_class=HTMLResponse)
 def election_results_2022_page():
     data = _load_2022_results()
@@ -2387,6 +2523,117 @@ def election_results_2021_page():
         html = f.read()
     html = html.replace("</head>", f"<script>window._ELECTION_DATA={safe_json};</script></head>", 1)
     return html
+
+
+@app.get("/past-elections/{year}", response_class=HTMLResponse)
+def election_results_historical_page(year: str):
+    year = str(year)
+    if year not in HISTORICAL_ELECTION_META:
+        raise HTTPException(status_code=404, detail="Election year not found")
+    data = _load_historical_results(year)
+    meta = HISTORICAL_ELECTION_META[year]
+    safe_json = json.dumps(data, default=str).replace("</script>", "<\\/script>")
+    safe_meta = json.dumps(meta, default=str).replace("</script>", "<\\/script>")
+    with open(os.path.join(BASE_DIR, "templates", "election_results_historical.html"), "r", encoding="utf-8") as f:
+        html = f.read()
+    html = html.replace(
+        "</head>",
+        f"<script>window._ELECTION_DATA={safe_json};window._ELECTION_META={safe_meta};</script></head>",
+        1,
+    )
+    return html
+
+
+def _build_election_summary(year: str) -> str:
+    try:
+        if year == "2025":
+            data = _load_2025_results()
+            lines = ["2025 Virginia State Election results:"]
+            for race in data.get("statewide", []):
+                cands = race.get("candidates", [])
+                if cands:
+                    w, r = cands[0], cands[1] if len(cands) > 1 else {}
+                    lines.append(f"  {race['race']}: {w['name']} ({w['party']}) {w['pct']}% vs {r.get('name','—')} {r.get('pct',0)}%")
+            hod = data.get("hod", {})
+            dem_w = sum(1 for d in hod.values() if (d.get("candidates") or [{}])[0].get("party","").lower().startswith("d"))
+            lines.append(f"  House of Delegates: Democrats {dem_w} seats, Republicans {len(hod)-dem_w} seats")
+            return "\n".join(lines)
+        elif year == "2024":
+            data = _load_2024_results()
+            lines = ["2024 Virginia Federal Election results:"]
+            for race in data.get("statewide", []):
+                cands = race.get("candidates", [])
+                if cands:
+                    w, r = cands[0], cands[1] if len(cands) > 1 else {}
+                    lines.append(f"  {race['race']}: {w['name']} ({w['party']}) {w['pct']}% vs {r.get('name','—')} {r.get('pct',0)}%")
+            for dist, race in sorted(data.get("congress", {}).items()):
+                cands = race.get("candidates", [])
+                if cands:
+                    w, r = cands[0], cands[1] if len(cands) > 1 else {}
+                    lines.append(f"  VA-{dist}: {w['name']} ({w['party']}) {w['pct']}% vs {r.get('name','—')} {r.get('pct',0)}%")
+            return "\n".join(lines)
+        elif year == "2023":
+            data = _load_2023_results()
+            lines = ["2023 Virginia State Election results:"]
+            for dist, race in sorted(data.get("senate", {}).items(), key=lambda x: int(x[0])):
+                cands = race.get("candidates", [])
+                if cands:
+                    w = cands[0]
+                    lines.append(f"  Senate District {dist}: {w['name']} ({w['party']}) {w['pct']}%")
+            for dist, race in sorted(data.get("hod", {}).items(), key=lambda x: int(x[0])):
+                cands = race.get("candidates", [])
+                if cands:
+                    w = cands[0]
+                    lines.append(f"  HOD District {dist}: {w['name']} ({w['party']}) {w['pct']}%")
+            return "\n".join(lines)
+        elif year == "2022":
+            data = _load_2022_results()
+            lines = ["2022 Virginia Midterm Election (U.S. House) results:"]
+            for dist, race in data.get("congress", {}).items():
+                cands = race.get("candidates", [])
+                if cands:
+                    w, r = cands[0], cands[1] if len(cands) > 1 else {}
+                    lines.append(f"  VA-{dist}: {w['name']} ({w['party']}) {w['pct']}% vs {r.get('name','—')} {r.get('pct',0)}%")
+            return "\n".join(lines)
+        elif year == "2021":
+            data = _load_2021_results()
+            lines = ["2021 Virginia State Election results:"]
+            for race in data.get("statewide", []):
+                cands = race.get("candidates", [])
+                if cands:
+                    w, r = cands[0], cands[1] if len(cands) > 1 else {}
+                    lines.append(f"  {race['race']}: {w['name']} ({w['party']}) {w['pct']}% vs {r.get('name','—')} {r.get('pct',0)}%")
+            hod = data.get("hod", {})
+            dem_w = sum(1 for d in hod.values() if (d.get("candidates") or [{}])[0].get("party","").lower().startswith("d"))
+            lines.append(f"  House of Delegates: Democrats {dem_w} seats, Republicans {len(hod)-dem_w} seats")
+            return "\n".join(lines)
+    except Exception as e:
+        print(f"_build_election_summary: {e}")
+    return f"{year} Virginia election results."
+
+
+class ElectionChatRequest(BaseModel):
+    year: str
+    messages: list[ChatMessage]
+
+
+@app.post("/api/election-chat", response_model=ChatResponse)
+async def election_chat(req: ElectionChatRequest):
+    summary = _build_election_summary(req.year)
+    system_prompt = f"""You are a friendly Virginia election results assistant on the VoteIQ platform.
+
+Here are the official {req.year} Virginia election results:
+
+{summary}
+
+Answer questions about these results clearly and concisely (2-4 sentences). Be factual and nonpartisan. Give specific numbers when asked about candidates, margins, or localities. If you don't have the data, say so honestly. Never express opinions on candidates or tell users how to vote."""
+    response = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=400,
+        system=system_prompt,
+        messages=[{"role": m.role, "content": m.content} for m in req.messages],
+    )
+    return ChatResponse(reply=response.content[0].text)
 
 
 if __name__ == "__main__":
