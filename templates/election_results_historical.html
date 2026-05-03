@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Historical Virginia Election Results - VoteIQ</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root { --navy:#0d1b2a; --red:#c8102e; --light:#f4f1eb; --mid:#ddd8cc; --muted:#7a7468; --dem:#1a52c8; --rep:#c8102e; }
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--light); color:var(--navy); font-family:'Barlow',sans-serif; min-height:100vh; }
+  body::before { content:''; position:fixed; inset:0; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f4f1eb'/%3E%3Crect width='1' height='1' fill='%23e8e4dc' opacity='0.4'/%3E%3C/svg%3E"); pointer-events:none; z-index:0; }
+  .topbar { background:var(--navy); color:var(--mid); font-family:'Barlow Condensed',sans-serif; font-size:.72rem; font-weight:600; letter-spacing:.18em; text-transform:uppercase; text-align:center; padding:7px 16px; position:relative; z-index:10; }
+  .topbar span { color:var(--red); margin:0 6px; }
+  header { position:relative; z-index:10; border-bottom:3px double var(--navy); padding:28px 48px 22px; display:flex; align-items:center; justify-content:space-between; background:var(--light); }
+  .election-badge { display:inline-block; background:var(--red); color:white; font-family:'Barlow Condensed',sans-serif; font-size:.72rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; padding:5px 12px; margin-bottom:6px; }
+  .header-date { font-family:'Barlow Condensed',sans-serif; font-size:.78rem; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; text-align:right; }
+  .back-link { display:inline-block; font-family:'Barlow Condensed',sans-serif; font-size:.8rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--navy); text-decoration:none; border:1.5px solid var(--navy); padding:9px 20px; transition:all .2s; }
+  .back-link:hover { background:var(--navy); color:white; }
+  .page-hero { position:relative; z-index:10; max-width:960px; margin:0 auto; padding:48px 32px 32px; text-align:center; }
+  .page-hero-eyebrow { font-family:'Barlow Condensed',sans-serif; font-size:.78rem; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--red); margin-bottom:14px; display:flex; align-items:center; justify-content:center; gap:10px; }
+  .page-hero-eyebrow::before, .page-hero-eyebrow::after { content:''; flex:1; max-width:60px; height:1px; background:var(--red); }
+  h1 { font-family:'Playfair Display',serif; font-size:clamp(1.8rem,4vw,2.8rem); font-weight:900; line-height:1.1; color:var(--navy); margin-bottom:14px; }
+  h1 em { font-style:italic; color:var(--red); }
+  .page-hero p { font-size:1rem; color:var(--muted); max-width:620px; margin:0 auto; line-height:1.6; }
+  .section-wrap { position:relative; z-index:10; max-width:960px; margin:0 auto; padding:0 32px 48px; }
+  .section-label { font-family:'Barlow Condensed',sans-serif; font-size:.72rem; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--muted); margin:24px 0 16px; display:flex; align-items:center; gap:12px; }
+  .section-label::after { content:''; flex:1; height:1px; background:var(--mid); }
+  .section-label span { color:var(--red); }
+  .notice { background:white; border:1px solid var(--mid); border-left:4px solid var(--red); padding:14px 18px; color:var(--muted); font-size:.88rem; line-height:1.5; margin-bottom:18px; }
+  .race-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-bottom:28px; }
+  .race-card { background:white; border:1px solid var(--mid); border-top:4px solid var(--navy); padding:20px 18px; }
+  .race-card-office { font-family:'Barlow Condensed',sans-serif; font-size:.65rem; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+  .race-winner-name { font-family:'Playfair Display',serif; font-size:1.05rem; font-weight:700; margin-bottom:6px; }
+  .party-badge, .inline-badge { display:inline-block; font-family:'Barlow Condensed',sans-serif; font-size:.6rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:2px 7px; border-radius:2px; color:white; margin-left:6px; }
+  .party-badge { margin:0 0 10px; }
+  .dem { background:var(--dem); } .rep { background:var(--rep); } .ind { background:#777; }
+  .vote-stats { font-size:.83rem; color:var(--navy); }
+  .results-tabs { margin-top:16px; }
+  .tab-nav { display:flex; flex-wrap:wrap; gap:4px; border-bottom:2px solid var(--navy); margin-bottom:20px; }
+  .tab-btn { font-family:'Barlow Condensed',sans-serif; font-size:.72rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; padding:8px 16px; border:1.5px solid var(--navy); border-bottom:none; background:white; color:var(--navy); cursor:pointer; position:relative; bottom:-2px; }
+  .tab-btn.active { background:var(--navy); color:white; }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
+  .legend-row { display:flex; align-items:center; gap:20px; margin-bottom:12px; flex-wrap:wrap; }
+  .legend-item { display:flex; align-items:center; gap:6px; }
+  .swatch { display:inline-block; width:14px; height:14px; border-radius:3px; }
+  .legend-text { font-family:'Barlow Condensed',sans-serif; font-size:.72rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--navy); }
+  .map-shell { border:1px solid var(--mid); overflow:hidden; margin-bottom:20px; box-shadow:3px 3px 0 var(--navy); }
+  .table-wrap { overflow-x:auto; border:1px solid var(--mid); margin-bottom:26px; }
+  table { width:100%; border-collapse:collapse; font-size:.84rem; background:white; }
+  thead tr { background:var(--navy); }
+  thead th { font-family:'Barlow Condensed',sans-serif; font-size:.65rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:white; padding:11px 14px; text-align:left; white-space:nowrap; }
+  tbody tr { border-bottom:1px solid #f0ede6; }
+  tbody tr:hover { background:#faf8f3; }
+  tbody tr.dem-row { border-left:3px solid var(--dem); }
+  tbody tr.rep-row { border-left:3px solid var(--rep); }
+  td { padding:9px 14px; color:var(--navy); }
+  td.td-dist { font-family:'Barlow Condensed',sans-serif; font-weight:700; color:var(--muted); white-space:nowrap; }
+  td.td-winner { font-weight:600; }
+  td.td-pct { font-family:'Barlow Condensed',sans-serif; font-weight:700; color:var(--muted); }
+  footer { position:relative; z-index:10; margin-top:56px; border-top:3px double var(--navy); padding:20px 48px; background:var(--light); }
+  footer p { font-family:'Barlow Condensed',sans-serif; font-size:.72rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  footer span { color:var(--red); }
+  @media (max-width:700px) { header { padding:20px; flex-wrap:wrap; gap:12px; } .race-cards { grid-template-columns:1fr; } .section-wrap, .page-hero { padding-left:20px; padding-right:20px; } .tab-btn { font-size:.65rem; padding:7px 10px; } }
+</style>
+</head>
+<body>
+<div class="topbar"><span id="top-year">Historical</span> Virginia Election Results <span>|</span> VoteIQ</div>
+<header>
+  <a href="/"><img src="/static/logo.png" alt="VoteIQ Logo" style="width:120px;height:120px;object-fit:contain;" /></a>
+  <div>
+    <div class="election-badge">Past Results</div>
+    <div class="header-date" id="header-date">Virginia Election</div>
+  </div>
+</header>
+<div class="page-hero">
+  <div class="page-hero-eyebrow">Past Elections</div>
+  <h1 id="page-title">Virginia <em>Election Results</em></h1>
+  <p id="page-subtitle"></p>
+  <div style="margin-top:28px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+    <a href="/past-elections/2021" class="back-link">2021 Results</a>
+    <a href="/past-elections/2022" class="back-link">2022 Results</a>
+    <a href="/past-elections/2023" class="back-link">2023 Results</a>
+    <a href="/past-elections/2024" class="back-link">2024 Results</a>
+    <a href="/past-elections" class="back-link">2025 Results</a>
+  </div>
+</div>
+<div class="section-wrap">
+  <div id="notes"></div>
+  <div id="statewide-block"></div>
+  <div id="tabs-block"></div>
+  <div id="tables-block"></div>
+</div>
+<footer><p>© 2026 <span>VoteIQ</span> · voteiq.io · Nonpartisan civic data for Virginia voters</p></footer>
+<script>
+(function () {
+  const data = window._ELECTION_DATA || {};
+  const meta = window._ELECTION_META || {};
+  const esc = str => String(str ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const fmt = n => Number(n || 0).toLocaleString('en-US');
+  function pc(party) {
+    const p = String(party || '').toLowerCase();
+    if (p.includes('democrat')) return 'dem';
+    if (p.includes('republican')) return 'rep';
+    return 'ind';
+  }
+  function pl(party) {
+    const p = String(party || '').toLowerCase();
+    if (p.includes('democrat')) return 'Dem';
+    if (p.includes('republican')) return 'Rep';
+    return party || 'Other';
+  }
+  function raceWinner(race) { return (race.candidates || [])[0] || {}; }
+  document.title = (meta.title || 'Historical Virginia Election Results') + ' - VoteIQ';
+  document.getElementById('top-year').textContent = data.election_year || '';
+  document.getElementById('header-date').textContent = 'Virginia Election · ' + (meta.date || data.election_year || '');
+  document.getElementById('page-title').innerHTML = esc(meta.title || 'Virginia Election Results').replace('Virginia ', 'Virginia <em>') + (String(meta.title || '').includes('Virginia ') ? '</em>' : '');
+  document.getElementById('page-subtitle').textContent = meta.subtitle || '';
+
+  const notes = document.getElementById('notes');
+  (meta.notes || []).forEach(note => {
+    const div = document.createElement('div');
+    div.className = 'notice';
+    div.textContent = note;
+    notes.appendChild(div);
+  });
+
+  const statewide = data.statewide || [];
+  if (statewide.length) {
+    const wrap = document.getElementById('statewide-block');
+    wrap.innerHTML = '<div class="section-label"><span>01</span> Statewide Winners</div><div class="race-cards" id="race-cards"></div>';
+    const cards = document.getElementById('race-cards');
+    statewide.forEach(race => {
+      const w = raceWinner(race);
+      const cls = pc(w.party);
+      const div = document.createElement('div');
+      div.className = 'race-card';
+      div.innerHTML =
+        '<div class="race-card-office">' + esc(race.race) + '</div>' +
+        '<div class="race-winner-name">' + esc(w.name || 'No data') + '</div>' +
+        '<span class="party-badge ' + cls + '">' + esc(pl(w.party)) + '</span>' +
+        '<div class="vote-stats"><strong>' + esc(w.pct != null ? Number(w.pct).toFixed(1) + '%' : '-') + '</strong> · ' + fmt(w.votes) + ' votes</div>';
+      cards.appendChild(div);
+    });
+  }
+
+  if ((meta.maps || []).length) {
+    const tabs = document.getElementById('tabs-block');
+    tabs.innerHTML = '<div class="section-label"><span>02</span> Maps</div><div class="results-tabs"><div class="tab-nav" id="tab-nav"></div><div id="tab-panels"></div></div>';
+    const nav = document.getElementById('tab-nav');
+    const panels = document.getElementById('tab-panels');
+    meta.maps.forEach((map, idx) => {
+      const btn = document.createElement('button');
+      btn.className = 'tab-btn' + (idx === 0 ? ' active' : '');
+      btn.dataset.tab = map.tab;
+      btn.textContent = map.label;
+      nav.appendChild(btn);
+      const panel = document.createElement('div');
+      panel.className = 'tab-panel' + (idx === 0 ? ' active' : '');
+      panel.id = 'tab-' + map.tab;
+      panel.innerHTML =
+        '<div class="section-label"><span>' + String(idx + 1).padStart(2, '0') + '</span> ' + esc(map.title) + '</div>' +
+        '<div class="legend-row"><div class="legend-item"><span class="swatch" style="background:var(--dem);"></span><span class="legend-text">Democrat</span></div><div class="legend-item"><span class="swatch" style="background:var(--rep);"></span><span class="legend-text">Republican</span></div><span class="legend-text" style="color:var(--muted);">Darker shade = larger margin</span></div>' +
+        '<div class="map-shell"><iframe data-src="/district-map?layer=' + encodeURIComponent(map.layer) + '" style="width:100%;height:520px;border:none;display:block;" title="' + esc(map.title) + '"></iframe></div>';
+      panels.appendChild(panel);
+    });
+  }
+
+  function renderRaceTable(title, races, prefix) {
+    const wrap = document.createElement('div');
+    wrap.innerHTML = '<div class="section-label"><span>•</span> ' + esc(title) + '</div><div class="table-wrap"><table><thead><tr><th>Race</th><th>Winner</th><th>Party</th><th>Votes</th><th>Runner-Up</th><th>Pct.</th></tr></thead><tbody></tbody></table></div>';
+    const tbody = wrap.querySelector('tbody');
+    Object.keys(races || {}).sort((a, b) => {
+      const na = Number(a), nb = Number(b);
+      if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+      return String(a).localeCompare(String(b));
+    }).forEach(key => {
+      const race = races[key] || {};
+      const cands = race.candidates || [];
+      const w = cands[0] || {};
+      const r = cands[1] || null;
+      const cls = pc(w.party);
+      const tr = document.createElement('tr');
+      tr.className = cls + '-row';
+      tr.innerHTML =
+        '<td class="td-dist">' + esc(prefix ? prefix + ' ' + key : key) + '</td>' +
+        '<td class="td-winner">' + esc(w.name || 'No data') + '<span class="inline-badge ' + cls + '">' + esc(pl(w.party)) + '</span></td>' +
+        '<td>' + esc(w.party || '-') + '</td>' +
+        '<td>' + fmt(w.votes) + '</td>' +
+        '<td>' + (r ? esc(r.name) + ' (' + fmt(r.votes) + ')' : '<span style="color:#bbb">Uncontested</span>') + '</td>' +
+        '<td class="td-pct">' + (w.pct != null ? Number(w.pct).toFixed(1) : '-') + '%</td>';
+      tbody.appendChild(tr);
+    });
+    document.getElementById('tables-block').appendChild(wrap);
+  }
+  if (data.senate) renderRaceTable('State Senate Results', data.senate, 'SD');
+  if (data.hod) renderRaceTable('House of Delegates Results', data.hod, 'HD');
+  if (data.congress) renderRaceTable('Congressional Results', data.congress, 'VA');
+  if (data.local_races) renderRaceTable('Local Race Results', data.local_races, '');
+  Object.keys(data.locality_results || {}).forEach(office => {
+    const races = {};
+    Object.keys(data.locality_results[office] || {}).forEach(locality => {
+      races[locality] = data.locality_results[office][locality];
+    });
+    renderRaceTable(office + ' Locality Results', races, '');
+  });
+
+  function lazyLoad(panel) {
+    const iframe = panel && panel.querySelector('iframe[data-src]');
+    if (iframe) { iframe.src = iframe.dataset.src; iframe.removeAttribute('data-src'); }
+  }
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      const panel = document.getElementById('tab-' + btn.dataset.tab);
+      panel.classList.add('active');
+      lazyLoad(panel);
+    });
+  });
+  lazyLoad(document.querySelector('.tab-panel.active'));
+})();
+</script>
+</body>
+</html>

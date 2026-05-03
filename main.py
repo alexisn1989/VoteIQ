@@ -1736,6 +1736,13 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             geo_key = _nloc21(f"{name} {lsad}")
             result = race_lookup21.get(geo_key, {})
             if result:
+                if isinstance(result, dict) and "candidates" in result:
+                    for candidate in result.get("candidates", []):
+                        cand_party[candidate.get("name", "")] = candidate.get("party", "")
+                    result = {
+                        candidate.get("name", ""): float(candidate.get("pct") or 0.0)
+                        for candidate in result.get("candidates", [])
+                    }
                 sorted_cands = sorted(result.items(), key=lambda x: -x[1])
                 w_name, w_pct = sorted_cands[0]
                 r_name, r_pct = sorted_cands[1] if len(sorted_cands) > 1 else ("—", 0)
@@ -1794,30 +1801,27 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
 
         results_2019 = _load_historical_results("2019").get(chamber, {})
         for _, row in gdf.iterrows():
-            try:
-                d = int(row["DISTRICT"])
-                race = results_2019.get(str(d), results_2019.get(d, {}))
-                cands = race.get("candidates", [])
-                winner = cands[0] if cands else {}
-                runner = cands[1] if len(cands) > 1 else {}
-                w_name = winner.get("name", "No data")
-                w_party = winner.get("party", "")
-                w_pct = float(winner.get("pct", 0.0))
-                r_label = f"{runner.get('name','-')} ({float(runner.get('pct') or 0.0):.1f}%)" if runner else "Uncontested"
-                margin = max(0.0, w_pct - 50.0)
-                opacity = round(0.25 + min(margin / 40.0, 1.0) * 0.55, 3)
-                features.append({"type": "Feature",
-                    "geometry": _mapping(row.geometry.simplify(0.01, preserve_topology=True)),
-                    "properties": {
-                        "_district": f"{chamber_label} District {d}",
-                        "_winner": w_name,
-                        "_party": w_party,
-                        "_pct": f"{w_pct:.1f}%",
-                        "_runner": r_label,
-                        "_opacity": opacity if cands else 0.1,
-                    }})
-            except Exception:
-                continue
+            d = int(row["DISTRICT"])
+            race = results_2019.get(str(d), results_2019.get(d, {}))
+            cands = race.get("candidates", [])
+            winner = cands[0] if cands else {}
+            runner = cands[1] if len(cands) > 1 else {}
+            w_name = winner.get("name", "No data")
+            w_party = winner.get("party", "")
+            w_pct = float(winner.get("pct", 0.0))
+            r_label = f"{runner.get('name','-')} ({float(runner.get('pct') or 0.0):.1f}%)" if runner else "Uncontested"
+            margin = max(0.0, w_pct - 50.0)
+            opacity = round(0.25 + min(margin / 40.0, 1.0) * 0.55, 3)
+            features.append({"type": "Feature",
+                "geometry": _mapping(row.geometry.simplify(0.01, preserve_topology=True)),
+                "properties": {
+                    "_district": f"{chamber_label} District {d}",
+                    "_winner": w_name,
+                    "_party": w_party,
+                    "_pct": f"{w_pct:.1f}%",
+                    "_runner": r_label,
+                    "_opacity": opacity if cands else 0.1,
+                }})
 
         def _state_leg_2019_style(feat):
             party = feat["properties"].get("_party", "")

@@ -1,0 +1,155 @@
+{
+  "election_year": "2020",
+  "election_name": "2020 June 4 Local Elections",
+  "local_races": {
+    "Mayor - Lovettsville": {
+      "total": 461,
+      "candidates": [
+        {
+          "name": "NATHANIEL ORION FONTAINE",
+          "party": "Independent",
+          "votes": 461,
+          "pct": 100.0
+        }
+      ]
+    },
+    "Mayor - Middleburg": {
+      "total": 115,
+      "candidates": [
+        {
+          "name": "TROWBRIDGE MONTAGUE LITTLETON",
+          "party": "Independent",
+          "votes": 115,
+          "pct": 100.0
+        }
+      ]
+    },
+    "Mayor - Purcellville": {
+      "total": 2101,
+      "candidates": [
+        {
+          "name": "KWASI AYODELE FRASER",
+          "party": "Independent",
+          "votes": 1160,
+          "pct": 55.2
+        },
+        {
+          "name": "BEVERLY MACDONALD CHIASSON",
+          "party": "Independent",
+          "votes": 941,
+          "pct": 44.8
+        }
+      ]
+    },
+    "Member Town Council - Lovettsville": {
+      "total": 1531,
+      "candidates": [
+        {
+          "name": "JOY MARIE PRITZ",
+          "party": "Independent",
+          "votes": 303,
+          "pct": 19.8
+        },
+        {
+          "name": "BUCHANAN MORGAN SMITH",
+          "party": "Independent",
+          "votes": 289,
+          "pct": 18.9
+        },
+        {
+          "name": "DAVID CHARLES EARL",
+          "party": "Independent",
+          "votes": 277,
+          "pct": 18.1
+        },
+        {
+          "name": "MICHAEL DAVID DUNLAP",
+          "party": "Independent",
+          "votes": 237,
+          "pct": 15.5
+        },
+        {
+          "name": "SHERYL CHRISTINE FRYE",
+          "party": "Independent",
+          "votes": 229,
+          "pct": 15.0
+        },
+        {
+          "name": "KENNETH BRUCE TANNENBAUM",
+          "party": "Independent",
+          "votes": 196,
+          "pct": 12.8
+        }
+      ]
+    },
+    "Member Town Council - Middleburg": {
+      "total": 296,
+      "candidates": [
+        {
+          "name": "CHRISTOPHER WHEELER BERNARD",
+          "party": "Independent",
+          "votes": 102,
+          "pct": 34.5
+        },
+        {
+          "name": "JOHN KEVIN DALY",
+          "party": "Independent",
+          "votes": 99,
+          "pct": 33.4
+        },
+        {
+          "name": "PHILIP MCNEIL MILLER",
+          "party": "Independent",
+          "votes": 95,
+          "pct": 32.1
+        }
+      ]
+    },
+    "Member Town Council - Purcellville": {
+      "total": 5616,
+      "candidates": [
+        {
+          "name": "MARY JANE WILLIAMS",
+          "party": "Independent",
+          "votes": 1295,
+          "pct": 23.1
+        },
+        {
+          "name": "STANLEY JOE MILAN Sr.",
+          "party": "Independent",
+          "votes": 1171,
+          "pct": 20.9
+        },
+        {
+          "name": "CHRISTOPHER MARTIN BERTAUT",
+          "party": "Independent",
+          "votes": 1167,
+          "pct": 20.8
+        },
+        {
+          "name": "ERIN KIMBERLEE RAYNER",
+          "party": "Independent",
+          "votes": 1020,
+          "pct": 18.2
+        },
+        {
+          "name": "MARY LYNN HICKEY",
+          "party": "Independent",
+          "votes": 963,
+          "pct": 17.1
+        }
+      ]
+    },
+    "Member Town Council - Special ? Middleburg": {
+      "total": 110,
+      "candidates": [
+        {
+          "name": "MORRIS EUGENE JACOBS",
+          "party": "Independent",
+          "votes": 110,
+          "pct": 100.0
+        }
+      ]
+    }
+  }
+}

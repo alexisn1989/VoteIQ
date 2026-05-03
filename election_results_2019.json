@@ -1,0 +1,2185 @@
+{
+  "election_year": "2019",
+  "statewide": [],
+  "locality_results": {},
+  "hod": {
+    "1": {
+      "total": 16748,
+      "candidates": [
+        {
+          "name": "TERRY GENE KILGORE",
+          "party": "Republican",
+          "votes": 16748,
+          "pct": 100.0
+        }
+      ]
+    },
+    "2": {
+      "total": 19391,
+      "candidates": [
+        {
+          "name": "JENNIFER DENISE CARROLL FOY",
+          "party": "Democratic",
+          "votes": 11828,
+          "pct": 61.0
+        },
+        {
+          "name": "HEATHER FUNDERBURK MITCHELL",
+          "party": "Republican",
+          "votes": 7563,
+          "pct": 39.0
+        }
+      ]
+    },
+    "3": {
+      "total": 17099,
+      "candidates": [
+        {
+          "name": "JAMES WILLIAM JOSEPH MOREFIELD",
+          "party": "Republican",
+          "votes": 17099,
+          "pct": 100.0
+        }
+      ]
+    },
+    "4": {
+      "total": 22850,
+      "candidates": [
+        {
+          "name": "William Creed Wampler III",
+          "party": "Republican",
+          "votes": 14389,
+          "pct": 63.0
+        },
+        {
+          "name": "STARLA JO KISER",
+          "party": "Democratic",
+          "votes": 8461,
+          "pct": 37.0
+        }
+      ]
+    },
+    "5": {
+      "total": 18490,
+      "candidates": [
+        {
+          "name": "ISRAEL DEAN OQUINN",
+          "party": "Republican",
+          "votes": 18490,
+          "pct": 100.0
+        }
+      ]
+    },
+    "6": {
+      "total": 21929,
+      "candidates": [
+        {
+          "name": "JEFFREY LYNN CAMPBELL",
+          "party": "Republican",
+          "votes": 16879,
+          "pct": 77.0
+        },
+        {
+          "name": "JAMES ROBERT BARKER",
+          "party": "Democratic",
+          "votes": 5050,
+          "pct": 23.0
+        }
+      ]
+    },
+    "7": {
+      "total": 20725,
+      "candidates": [
+        {
+          "name": "LARRY NICHOLAS RUSH",
+          "party": "Republican",
+          "votes": 13842,
+          "pct": 66.8
+        },
+        {
+          "name": "RHONDA GAIL SELTZ",
+          "party": "Democratic",
+          "votes": 6883,
+          "pct": 33.2
+        }
+      ]
+    },
+    "8": {
+      "total": 22868,
+      "candidates": [
+        {
+          "name": "JOSEPH PATRICK MCNAMARA",
+          "party": "Republican",
+          "votes": 15195,
+          "pct": 66.4
+        },
+        {
+          "name": "DARLENE W LEWIS",
+          "party": "Democratic",
+          "votes": 7673,
+          "pct": 33.6
+        }
+      ]
+    },
+    "9": {
+      "total": 19040,
+      "candidates": [
+        {
+          "name": "CHARLES DOUGLAS POINDEXTER",
+          "party": "Republican",
+          "votes": 19040,
+          "pct": 100.0
+        }
+      ]
+    },
+    "10": {
+      "total": 30428,
+      "candidates": [
+        {
+          "name": "GWENDOLYN WALLACE GOODITIS",
+          "party": "Democratic",
+          "votes": 15928,
+          "pct": 52.3
+        },
+        {
+          "name": "JOHN RANDALL MINCHEW",
+          "party": "Republican",
+          "votes": 14500,
+          "pct": 47.7
+        }
+      ]
+    },
+    "11": {
+      "total": 10269,
+      "candidates": [
+        {
+          "name": "SALAM RASOUL",
+          "party": "Democratic",
+          "votes": 10269,
+          "pct": 100.0
+        }
+      ]
+    },
+    "12": {
+      "total": 20778,
+      "candidates": [
+        {
+          "name": "CHRISTOPHER LAIRD HURST",
+          "party": "Democratic",
+          "votes": 11135,
+          "pct": 53.6
+        },
+        {
+          "name": "Travis Forrest Hite",
+          "party": "Republican",
+          "votes": 9643,
+          "pct": 46.4
+        }
+      ]
+    },
+    "13": {
+      "total": 21534,
+      "candidates": [
+        {
+          "name": "DANICA ANTHONY ROEM",
+          "party": "Democratic",
+          "votes": 12066,
+          "pct": 56.0
+        },
+        {
+          "name": "KELLY SWEENEY MCGINN",
+          "party": "Republican",
+          "votes": 9468,
+          "pct": 44.0
+        }
+      ]
+    },
+    "14": {
+      "total": 19793,
+      "candidates": [
+        {
+          "name": "DANIEL WEBSTER MARSHALL III",
+          "party": "Republican",
+          "votes": 12139,
+          "pct": 61.3
+        },
+        {
+          "name": "ERIC WAYNE STAMPS",
+          "party": "Democratic",
+          "votes": 7654,
+          "pct": 38.7
+        }
+      ]
+    },
+    "15": {
+      "total": 25407,
+      "candidates": [
+        {
+          "name": "CHRISTOPHER TODD GILBERT",
+          "party": "Republican",
+          "votes": 18914,
+          "pct": 74.4
+        },
+        {
+          "name": "BEVERLY HARRISON",
+          "party": "Democratic",
+          "votes": 6493,
+          "pct": 25.6
+        }
+      ]
+    },
+    "16": {
+      "total": 17548,
+      "candidates": [
+        {
+          "name": "LESLIE RAY ADAMS",
+          "party": "Republican",
+          "votes": 13146,
+          "pct": 74.9
+        },
+        {
+          "name": "DUSTIN WILSON EVANS",
+          "party": "Libertarian",
+          "votes": 4402,
+          "pct": 25.1
+        }
+      ]
+    },
+    "17": {
+      "total": 15288,
+      "candidates": [
+        {
+          "name": "CHRISTOPHER TRACY HEAD",
+          "party": "Republican",
+          "votes": 15288,
+          "pct": 100.0
+        }
+      ]
+    },
+    "18": {
+      "total": 27375,
+      "candidates": [
+        {
+          "name": "MICHAEL JAMES WEBERT",
+          "party": "Republican",
+          "votes": 16648,
+          "pct": 60.8
+        },
+        {
+          "name": "LAURA LEIGH GALANTE",
+          "party": "Democratic",
+          "votes": 10727,
+          "pct": 39.2
+        }
+      ]
+    },
+    "19": {
+      "total": 19331,
+      "candidates": [
+        {
+          "name": "TERRY LEE AUSTIN",
+          "party": "Republican",
+          "votes": 19331,
+          "pct": 100.0
+        }
+      ]
+    },
+    "20": {
+      "total": 25115,
+      "candidates": [
+        {
+          "name": "GIANFRANCO AVOLI",
+          "party": "Republican",
+          "votes": 14707,
+          "pct": 58.6
+        },
+        {
+          "name": "JENNIFER LYNN LEWIS",
+          "party": "Democratic",
+          "votes": 10408,
+          "pct": 41.4
+        }
+      ]
+    },
+    "21": {
+      "total": 22702,
+      "candidates": [
+        {
+          "name": "KELLY KRISTEN CONVIRS-FOWLER",
+          "party": "Democratic",
+          "votes": 12402,
+          "pct": 54.6
+        },
+        {
+          "name": "SHANNON DENISE SNYDER KANE",
+          "party": "Republican",
+          "votes": 10300,
+          "pct": 45.4
+        }
+      ]
+    },
+    "22": {
+      "total": 20842,
+      "candidates": [
+        {
+          "name": "KATHY JAYNE BYRON",
+          "party": "Republican",
+          "votes": 14390,
+          "pct": 69.0
+        },
+        {
+          "name": "JENNIFER KAY WOOFTER",
+          "party": "Democratic",
+          "votes": 6452,
+          "pct": 31.0
+        }
+      ]
+    },
+    "23": {
+      "total": 21138,
+      "candidates": [
+        {
+          "name": "WENDELL SCOTT WALKER",
+          "party": "Republican",
+          "votes": 13529,
+          "pct": 64.0
+        },
+        {
+          "name": "DAVID ARTHUR ZILLES",
+          "party": "Democratic",
+          "votes": 7609,
+          "pct": 36.0
+        }
+      ]
+    },
+    "24": {
+      "total": 23682,
+      "candidates": [
+        {
+          "name": "RONNIE RAY CAMPBELL",
+          "party": "Republican",
+          "votes": 15653,
+          "pct": 66.1
+        },
+        {
+          "name": "CHRISTIAN RENAU WORTH",
+          "party": "Democratic",
+          "votes": 7737,
+          "pct": 32.7
+        },
+        {
+          "name": "BILLY ELI FISHPAW",
+          "party": "Independent",
+          "votes": 292,
+          "pct": 1.2
+        }
+      ]
+    },
+    "25": {
+      "total": 28779,
+      "candidates": [
+        {
+          "name": "CHRISTOPHER SCOTT RUNION",
+          "party": "Republican",
+          "votes": 16747,
+          "pct": 58.2
+        },
+        {
+          "name": "JENNIFER LEIGH KITCHEN",
+          "party": "Democratic",
+          "votes": 11517,
+          "pct": 40.0
+        },
+        {
+          "name": "JANICE LEE ALLEN",
+          "party": "Independent",
+          "votes": 515,
+          "pct": 1.8
+        }
+      ]
+    },
+    "26": {
+      "total": 18998,
+      "candidates": [
+        {
+          "name": "TONY OBRIAN WILT",
+          "party": "Republican",
+          "votes": 10273,
+          "pct": 54.1
+        },
+        {
+          "name": "BRENT MICHAEL LEWIS FINNEGAN",
+          "party": "Democratic",
+          "votes": 8725,
+          "pct": 45.9
+        }
+      ]
+    },
+    "27": {
+      "total": 30391,
+      "candidates": [
+        {
+          "name": "ROXANN LAINE ROBINSON",
+          "party": "Republican",
+          "votes": 15290,
+          "pct": 50.3
+        },
+        {
+          "name": "LAWRENCE VINCENT BARNETT",
+          "party": "Democratic",
+          "votes": 15101,
+          "pct": 49.7
+        }
+      ]
+    },
+    "28": {
+      "total": 25628,
+      "candidates": [
+        {
+          "name": "JOSHUA GREGORY COLE",
+          "party": "Democratic",
+          "votes": 13334,
+          "pct": 52.0
+        },
+        {
+          "name": "PAUL VINCENT MILDE III",
+          "party": "Republican",
+          "votes": 12294,
+          "pct": 48.0
+        }
+      ]
+    },
+    "29": {
+      "total": 24115,
+      "candidates": [
+        {
+          "name": "CHRISTOPHER EDMAN COLLINS",
+          "party": "Republican",
+          "votes": 15532,
+          "pct": 64.4
+        },
+        {
+          "name": "IRINA BORIS KHANIN",
+          "party": "Democratic",
+          "votes": 8583,
+          "pct": 35.6
+        }
+      ]
+    },
+    "30": {
+      "total": 25705,
+      "candidates": [
+        {
+          "name": "NICHOLAS J FREITAS",
+          "party": "Write-In",
+          "votes": 14694,
+          "pct": 57.2
+        },
+        {
+          "name": "ANN FAULKNER RIDGEWAY",
+          "party": "Democratic",
+          "votes": 11011,
+          "pct": 42.8
+        }
+      ]
+    },
+    "31": {
+      "total": 27755,
+      "candidates": [
+        {
+          "name": "ELIZABETH ROSALINA GUZMAN",
+          "party": "Democratic",
+          "votes": 14630,
+          "pct": 52.7
+        },
+        {
+          "name": "DARRELL HAMILTON JORDAN Jr.",
+          "party": "Republican",
+          "votes": 13125,
+          "pct": 47.3
+        }
+      ]
+    },
+    "32": {
+      "total": 20462,
+      "candidates": [
+        {
+          "name": "DAVID ALAN REID",
+          "party": "Democratic",
+          "votes": 20462,
+          "pct": 100.0
+        }
+      ]
+    },
+    "33": {
+      "total": 31104,
+      "candidates": [
+        {
+          "name": "DAVID ALFRED LAROCK",
+          "party": "Republican",
+          "votes": 17671,
+          "pct": 56.8
+        },
+        {
+          "name": "MAVIS BUNKER TAINTOR",
+          "party": "Democratic",
+          "votes": 13433,
+          "pct": 43.2
+        }
+      ]
+    },
+    "34": {
+      "total": 29356,
+      "candidates": [
+        {
+          "name": "KATHLEEN JOHNSON MURPHY",
+          "party": "Democratic",
+          "votes": 17143,
+          "pct": 58.4
+        },
+        {
+          "name": "GARY G PAN",
+          "party": "Republican",
+          "votes": 12213,
+          "pct": 41.6
+        }
+      ]
+    },
+    "35": {
+      "total": 17198,
+      "candidates": [
+        {
+          "name": "MARK LEE KEAM",
+          "party": "Democratic",
+          "votes": 17198,
+          "pct": 100.0
+        }
+      ]
+    },
+    "36": {
+      "total": 19558,
+      "candidates": [
+        {
+          "name": "KENNETH RAY PLUM",
+          "party": "Democratic",
+          "votes": 19558,
+          "pct": 100.0
+        }
+      ]
+    },
+    "37": {
+      "total": 14279,
+      "candidates": [
+        {
+          "name": "DAVID LAWRENCE BULOVA",
+          "party": "Democratic",
+          "votes": 14279,
+          "pct": 100.0
+        }
+      ]
+    },
+    "38": {
+      "total": 13934,
+      "candidates": [
+        {
+          "name": "LAURA KAYE KORY",
+          "party": "Democratic",
+          "votes": 13934,
+          "pct": 100.0
+        }
+      ]
+    },
+    "39": {
+      "total": 23017,
+      "candidates": [
+        {
+          "name": "VIVIAN EDNA WATTS",
+          "party": "Democratic",
+          "votes": 15769,
+          "pct": 68.5
+        },
+        {
+          "name": "NICHOLAS O'CONNELL BELL",
+          "party": "Republican",
+          "votes": 7248,
+          "pct": 31.5
+        }
+      ]
+    },
+    "40": {
+      "total": 30370,
+      "candidates": [
+        {
+          "name": "DANIEL ISAAC HELMER",
+          "party": "Democratic",
+          "votes": 15913,
+          "pct": 52.4
+        },
+        {
+          "name": "TIMOTHY DOUGLAS HUGO",
+          "party": "Republican",
+          "votes": 14457,
+          "pct": 47.6
+        }
+      ]
+    },
+    "41": {
+      "total": 23758,
+      "candidates": [
+        {
+          "name": "EILEEN FILLER-CORN",
+          "party": "Democratic",
+          "votes": 17312,
+          "pct": 72.9
+        },
+        {
+          "name": "JOHN M WOLFE",
+          "party": "Independent",
+          "votes": 4571,
+          "pct": 19.2
+        },
+        {
+          "name": "RACHEL DOROTHY MACE",
+          "party": "Libertarian",
+          "votes": 1875,
+          "pct": 7.9
+        }
+      ]
+    },
+    "42": {
+      "total": 27087,
+      "candidates": [
+        {
+          "name": "KATHY KHANH LINH TRAN",
+          "party": "Democratic",
+          "votes": 16178,
+          "pct": 59.7
+        },
+        {
+          "name": "STEVEN PAUL ADRAGNA",
+          "party": "Republican",
+          "votes": 10909,
+          "pct": 40.3
+        }
+      ]
+    },
+    "43": {
+      "total": 20156,
+      "candidates": [
+        {
+          "name": "MARK DAVID SICKLES",
+          "party": "Democratic",
+          "votes": 15939,
+          "pct": 79.1
+        },
+        {
+          "name": "GLENDA GAIL PARKER",
+          "party": "Independent",
+          "votes": 4217,
+          "pct": 20.9
+        }
+      ]
+    },
+    "44": {
+      "total": 19395,
+      "candidates": [
+        {
+          "name": "PAUL EUGENE KRIZEK",
+          "party": "Democratic",
+          "votes": 13726,
+          "pct": 70.8
+        },
+        {
+          "name": "RICHARD TERRENCE HAYDEN",
+          "party": "Republican",
+          "votes": 5669,
+          "pct": 29.2
+        }
+      ]
+    },
+    "45": {
+      "total": 19824,
+      "candidates": [
+        {
+          "name": "MARK HERBERT LEVINE",
+          "party": "Democratic",
+          "votes": 19824,
+          "pct": 100.0
+        }
+      ]
+    },
+    "46": {
+      "total": 12287,
+      "candidates": [
+        {
+          "name": "CHARNIELE LE RHONDA HERRING",
+          "party": "Democratic",
+          "votes": 12287,
+          "pct": 100.0
+        }
+      ]
+    },
+    "47": {
+      "total": 20860,
+      "candidates": [
+        {
+          "name": "PATRICK A HOPE",
+          "party": "Democratic",
+          "votes": 20860,
+          "pct": 100.0
+        }
+      ]
+    },
+    "48": {
+      "total": 19762,
+      "candidates": [
+        {
+          "name": "RICHARD C SULLIVAN Jr.",
+          "party": "Democratic",
+          "votes": 19762,
+          "pct": 100.0
+        }
+      ]
+    },
+    "49": {
+      "total": 16153,
+      "candidates": [
+        {
+          "name": "ALFONSO HOFFMAN LOPEZ",
+          "party": "Democratic",
+          "votes": 13594,
+          "pct": 84.2
+        },
+        {
+          "name": "TERRENCE WAYNE MODGLIN",
+          "party": "Independent",
+          "votes": 2559,
+          "pct": 15.8
+        }
+      ]
+    },
+    "50": {
+      "total": 20037,
+      "candidates": [
+        {
+          "name": "LEE JIN CARTER",
+          "party": "Democratic",
+          "votes": 10701,
+          "pct": 53.4
+        },
+        {
+          "name": "IAN TRAVIS LOVEJOY",
+          "party": "Republican",
+          "votes": 9336,
+          "pct": 46.6
+        }
+      ]
+    },
+    "51": {
+      "total": 28390,
+      "candidates": [
+        {
+          "name": "hala sophia ayala",
+          "party": "Democratic",
+          "votes": 15508,
+          "pct": 54.6
+        },
+        {
+          "name": "richard lee anderson",
+          "party": "Republican",
+          "votes": 12882,
+          "pct": 45.4
+        }
+      ]
+    },
+    "52": {
+      "total": 15762,
+      "candidates": [
+        {
+          "name": "LUKE EDWARD TORIAN",
+          "party": "Democratic",
+          "votes": 11554,
+          "pct": 73.3
+        },
+        {
+          "name": "MARIA EUGENIA MARTIN",
+          "party": "Republican",
+          "votes": 4208,
+          "pct": 26.7
+        }
+      ]
+    },
+    "53": {
+      "total": 16618,
+      "candidates": [
+        {
+          "name": "MARCUS B SIMON",
+          "party": "Democratic",
+          "votes": 16618,
+          "pct": 100.0
+        }
+      ]
+    },
+    "54": {
+      "total": 23466,
+      "candidates": [
+        {
+          "name": "ROBERT DICKSON ORROCK Sr.",
+          "party": "Republican",
+          "votes": 13614,
+          "pct": 58.0
+        },
+        {
+          "name": "NERI NEFTALI CANAHUI-ORTIZ",
+          "party": "Democratic",
+          "votes": 9852,
+          "pct": 42.0
+        }
+      ]
+    },
+    "55": {
+      "total": 28864,
+      "candidates": [
+        {
+          "name": "HYLAND FRANKLIN FOWLER Jr.",
+          "party": "Republican",
+          "votes": 17356,
+          "pct": 60.1
+        },
+        {
+          "name": "MORGAN KATHLEEN GOODMAN",
+          "party": "Democratic",
+          "votes": 11508,
+          "pct": 39.9
+        }
+      ]
+    },
+    "56": {
+      "total": 33179,
+      "candidates": [
+        {
+          "name": "John Joseph McGuire III",
+          "party": "Republican",
+          "votes": 20250,
+          "pct": 61.0
+        },
+        {
+          "name": "JUANITA JOAN MATKINS",
+          "party": "Democratic",
+          "votes": 12929,
+          "pct": 39.0
+        }
+      ]
+    },
+    "57": {
+      "total": 21365,
+      "candidates": [
+        {
+          "name": "sally lindquist hudson",
+          "party": "Democratic",
+          "votes": 21365,
+          "pct": 100.0
+        }
+      ]
+    },
+    "58": {
+      "total": 29139,
+      "candidates": [
+        {
+          "name": "ROBERT BERNARD BELL III",
+          "party": "Republican",
+          "votes": 18217,
+          "pct": 62.5
+        },
+        {
+          "name": "ELIZABETH ANN ALCORN",
+          "party": "Democratic",
+          "votes": 10922,
+          "pct": 37.5
+        }
+      ]
+    },
+    "59": {
+      "total": 25990,
+      "candidates": [
+        {
+          "name": "CHARLES MATTHEW FARISS",
+          "party": "Republican",
+          "votes": 16447,
+          "pct": 63.3
+        },
+        {
+          "name": "TIMOTHY JOSEPH HICKEY",
+          "party": "Democratic",
+          "votes": 9543,
+          "pct": 36.7
+        }
+      ]
+    },
+    "60": {
+      "total": 21812,
+      "candidates": [
+        {
+          "name": "JAMES EASLEY EDMUNDS II",
+          "party": "Republican",
+          "votes": 14461,
+          "pct": 66.3
+        },
+        {
+          "name": "JANIE SUE ZIMMERMAN",
+          "party": "Democratic",
+          "votes": 7351,
+          "pct": 33.7
+        }
+      ]
+    },
+    "61": {
+      "total": 23141,
+      "candidates": [
+        {
+          "name": "THOMAS COLE WRIGHT Jr.",
+          "party": "Republican",
+          "votes": 15474,
+          "pct": 66.9
+        },
+        {
+          "name": "TRUDY BELL BERRY",
+          "party": "Democratic",
+          "votes": 7667,
+          "pct": 33.1
+        }
+      ]
+    },
+    "62": {
+      "total": 23883,
+      "candidates": [
+        {
+          "name": "CARRIE EMERSON COYNER",
+          "party": "Republican",
+          "votes": 13182,
+          "pct": 55.2
+        },
+        {
+          "name": "LINDSEY MICHELLE DOUGHERTY",
+          "party": "Democratic",
+          "votes": 10701,
+          "pct": 44.8
+        }
+      ]
+    },
+    "63": {
+      "total": 23087,
+      "candidates": [
+        {
+          "name": "LASHRECSE DIANNA JONES AIRD",
+          "party": "Democratic",
+          "votes": 12796,
+          "pct": 55.4
+        },
+        {
+          "name": "LAWRENCE CHARLES HAAKE III",
+          "party": "Independent",
+          "votes": 10291,
+          "pct": 44.6
+        }
+      ]
+    },
+    "64": {
+      "total": 26885,
+      "candidates": [
+        {
+          "name": "EMILY MARIE BREWER",
+          "party": "Republican",
+          "votes": 16181,
+          "pct": 60.2
+        },
+        {
+          "name": "MICHELE ERB JOYCE",
+          "party": "Democratic",
+          "votes": 10704,
+          "pct": 39.8
+        }
+      ]
+    },
+    "65": {
+      "total": 38024,
+      "candidates": [
+        {
+          "name": "ROBERT LEE WARE Jr.",
+          "party": "Republican",
+          "votes": 24751,
+          "pct": 65.1
+        },
+        {
+          "name": "MICHAEL PATRICK ASIP",
+          "party": "Democratic",
+          "votes": 13273,
+          "pct": 34.9
+        }
+      ]
+    },
+    "66": {
+      "total": 27933,
+      "candidates": [
+        {
+          "name": "MARVIN KIRKLAND COX",
+          "party": "Republican",
+          "votes": 14443,
+          "pct": 51.7
+        },
+        {
+          "name": "SHEILA CAROL BYNUM-COLEMAN",
+          "party": "Democratic",
+          "votes": 13147,
+          "pct": 47.1
+        },
+        {
+          "name": "LINNARD KEITH HARRIS",
+          "party": "Independent",
+          "votes": 343,
+          "pct": 1.2
+        }
+      ]
+    },
+    "67": {
+      "total": 16859,
+      "candidates": [
+        {
+          "name": "KARRIE KRISTINE DELANEY",
+          "party": "Democratic",
+          "votes": 16859,
+          "pct": 100.0
+        }
+      ]
+    },
+    "68": {
+      "total": 38226,
+      "candidates": [
+        {
+          "name": "DAWN MARIE ADAMS",
+          "party": "Democratic",
+          "votes": 20897,
+          "pct": 54.7
+        },
+        {
+          "name": "GARRISON RASHAD COWARD",
+          "party": "Republican",
+          "votes": 17329,
+          "pct": 45.3
+        }
+      ]
+    },
+    "69": {
+      "total": 18935,
+      "candidates": [
+        {
+          "name": "BETSY BROOKS CARR",
+          "party": "Democratic",
+          "votes": 18935,
+          "pct": 100.0
+        }
+      ]
+    },
+    "70": {
+      "total": 19584,
+      "candidates": [
+        {
+          "name": "DELORES LOUISE MCQUINN",
+          "party": "Democratic",
+          "votes": 19584,
+          "pct": 100.0
+        }
+      ]
+    },
+    "71": {
+      "total": 22948,
+      "candidates": [
+        {
+          "name": "JEFFREY MICHAEL BOURNE",
+          "party": "Democratic",
+          "votes": 20311,
+          "pct": 88.5
+        },
+        {
+          "name": "PETER JOSEPH WELLS",
+          "party": "Libertarian",
+          "votes": 2637,
+          "pct": 11.5
+        }
+      ]
+    },
+    "72": {
+      "total": 30657,
+      "candidates": [
+        {
+          "name": "SCHUYLER THOMAS VanValkenburg",
+          "party": "Democratic",
+          "votes": 16345,
+          "pct": 53.3
+        },
+        {
+          "name": "GAY DONNA VANDERGRIFF",
+          "party": "Republican",
+          "votes": 14312,
+          "pct": 46.7
+        }
+      ]
+    },
+    "73": {
+      "total": 28493,
+      "candidates": [
+        {
+          "name": "RODNEY TURNER WILLETT",
+          "party": "Democratic",
+          "votes": 14893,
+          "pct": 52.3
+        },
+        {
+          "name": "MARY MARGARET KASTELBERG",
+          "party": "Republican",
+          "votes": 13600,
+          "pct": 47.7
+        }
+      ]
+    },
+    "74": {
+      "total": 20449,
+      "candidates": [
+        {
+          "name": "LAMONT BAGBY",
+          "party": "Democratic",
+          "votes": 20449,
+          "pct": 100.0
+        }
+      ]
+    },
+    "75": {
+      "total": 24186,
+      "candidates": [
+        {
+          "name": "ROSLYN CAIN TYLER",
+          "party": "Democratic",
+          "votes": 12346,
+          "pct": 51.0
+        },
+        {
+          "name": "HOWARD OTTO WACHSMANN Jr.",
+          "party": "Republican",
+          "votes": 11840,
+          "pct": 49.0
+        }
+      ]
+    },
+    "76": {
+      "total": 26487,
+      "candidates": [
+        {
+          "name": "CLINTON LEROY JENKINS",
+          "party": "Democratic",
+          "votes": 14943,
+          "pct": 56.4
+        },
+        {
+          "name": "STEVEN CHRISTOPHER JONES",
+          "party": "Republican",
+          "votes": 11544,
+          "pct": 43.6
+        }
+      ]
+    },
+    "77": {
+      "total": 14108,
+      "candidates": [
+        {
+          "name": "CLIFTON EUGENE HAYES Jr.",
+          "party": "Democratic",
+          "votes": 14108,
+          "pct": 100.0
+        }
+      ]
+    },
+    "78": {
+      "total": 16648,
+      "candidates": [
+        {
+          "name": "JAMES ASBURY LEFTWICH Jr.",
+          "party": "Republican",
+          "votes": 16648,
+          "pct": 100.0
+        }
+      ]
+    },
+    "79": {
+      "total": 9209,
+      "candidates": [
+        {
+          "name": "STEPHEN EDWARD HERETICK",
+          "party": "Democratic",
+          "votes": 9209,
+          "pct": 100.0
+        }
+      ]
+    },
+    "80": {
+      "total": 18193,
+      "candidates": [
+        {
+          "name": "DON LEONARD SCOTT Jr.",
+          "party": "Democratic",
+          "votes": 12027,
+          "pct": 66.1
+        },
+        {
+          "name": "JAMES WILLIAM EVANS",
+          "party": "Republican",
+          "votes": 4236,
+          "pct": 23.3
+        },
+        {
+          "name": "RYAN COLLIN BENTON",
+          "party": "Independent",
+          "votes": 1930,
+          "pct": 10.6
+        }
+      ]
+    },
+    "81": {
+      "total": 22184,
+      "candidates": [
+        {
+          "name": "BARRY DEAN KNIGHT",
+          "party": "Republican",
+          "votes": 11577,
+          "pct": 52.2
+        },
+        {
+          "name": "LENARD TYRONE MYERS II",
+          "party": "Democratic",
+          "votes": 10607,
+          "pct": 47.8
+        }
+      ]
+    },
+    "82": {
+      "total": 26611,
+      "candidates": [
+        {
+          "name": "JASON STUART REDDING MIYARES",
+          "party": "Republican",
+          "votes": 15771,
+          "pct": 59.3
+        },
+        {
+          "name": "GAYLE HARRISON JOHNSON",
+          "party": "Democratic",
+          "votes": 10840,
+          "pct": 40.7
+        }
+      ]
+    },
+    "83": {
+      "total": 21915,
+      "candidates": [
+        {
+          "name": "NANCY DAHLMAN GUY",
+          "party": "Democratic",
+          "votes": 10971,
+          "pct": 50.1
+        },
+        {
+          "name": "CHRISTOPHER PATRICK STOLLE",
+          "party": "Republican",
+          "votes": 10944,
+          "pct": 49.9
+        }
+      ]
+    },
+    "84": {
+      "total": 20664,
+      "candidates": [
+        {
+          "name": "GLENN RAY DAVIS Jr.",
+          "party": "Republican",
+          "votes": 10582,
+          "pct": 51.2
+        },
+        {
+          "name": "KAREN POWERS MALLARD",
+          "party": "Democratic",
+          "votes": 10082,
+          "pct": 48.8
+        }
+      ]
+    },
+    "85": {
+      "total": 23356,
+      "candidates": [
+        {
+          "name": "ALEX QUENTIN ASKEW",
+          "party": "Democratic",
+          "votes": 12079,
+          "pct": 51.7
+        },
+        {
+          "name": "NORMAN DEWEY HOLCOMB III",
+          "party": "Republican",
+          "votes": 11277,
+          "pct": 48.3
+        }
+      ]
+    },
+    "86": {
+      "total": 14730,
+      "candidates": [
+        {
+          "name": "IBRAHEEM SABRI SAMIRAH",
+          "party": "Democratic",
+          "votes": 14730,
+          "pct": 100.0
+        }
+      ]
+    },
+    "87": {
+      "total": 28511,
+      "candidates": [
+        {
+          "name": "SUHAS SUBRAMANYAM",
+          "party": "Democratic",
+          "votes": 17693,
+          "pct": 62.1
+        },
+        {
+          "name": "WILLIAM M DRENNAN Jr.",
+          "party": "Republican",
+          "votes": 10818,
+          "pct": 37.9
+        }
+      ]
+    },
+    "88": {
+      "total": 27162,
+      "candidates": [
+        {
+          "name": "MARK LANZE COLE",
+          "party": "Republican",
+          "votes": 15149,
+          "pct": 55.8
+        },
+        {
+          "name": "JESSICA HARBESON FOSTER",
+          "party": "Democratic",
+          "votes": 12013,
+          "pct": 44.2
+        }
+      ]
+    },
+    "89": {
+      "total": 14398,
+      "candidates": [
+        {
+          "name": "JERRAULD CHARLES COREY JONES",
+          "party": "Democratic",
+          "votes": 14398,
+          "pct": 100.0
+        }
+      ]
+    },
+    "90": {
+      "total": 12584,
+      "candidates": [
+        {
+          "name": "JOSEPH CARNELL LINDSEY",
+          "party": "Democratic",
+          "votes": 12584,
+          "pct": 100.0
+        }
+      ]
+    },
+    "91": {
+      "total": 21022,
+      "candidates": [
+        {
+          "name": "MARTHA MARTIN MUGLER",
+          "party": "Democratic",
+          "votes": 11535,
+          "pct": 54.9
+        },
+        {
+          "name": "COLLEEN HOLMES HOLCOMB",
+          "party": "Republican",
+          "votes": 9487,
+          "pct": 45.1
+        }
+      ]
+    },
+    "92": {
+      "total": 15608,
+      "candidates": [
+        {
+          "name": "JEION ANTONIA WARD",
+          "party": "Democratic",
+          "votes": 15608,
+          "pct": 100.0
+        }
+      ]
+    },
+    "93": {
+      "total": 25750,
+      "candidates": [
+        {
+          "name": "MICHAEL PAUL MULLIN",
+          "party": "Democratic",
+          "votes": 14348,
+          "pct": 55.7
+        },
+        {
+          "name": "HEATHER LYNN CORDASCO",
+          "party": "Republican",
+          "votes": 11402,
+          "pct": 44.3
+        }
+      ]
+    },
+    "94": {
+      "total": 20009,
+      "candidates": [
+        {
+          "name": "SHELLY ANNE SIMONDS",
+          "party": "Democratic",
+          "votes": 11563,
+          "pct": 57.8
+        },
+        {
+          "name": "DAVID ETIENNE YANCEY",
+          "party": "Republican",
+          "votes": 8070,
+          "pct": 40.3
+        },
+        {
+          "name": "MICHAEL DAVID BARTLEY",
+          "party": "Libertarian",
+          "votes": 376,
+          "pct": 1.9
+        }
+      ]
+    },
+    "95": {
+      "total": 11847,
+      "candidates": [
+        {
+          "name": "MARCIA SIMONE PRICE",
+          "party": "Democratic",
+          "votes": 11847,
+          "pct": 100.0
+        }
+      ]
+    },
+    "96": {
+      "total": 32640,
+      "candidates": [
+        {
+          "name": "AMANDA ETTER BATTEN",
+          "party": "Republican",
+          "votes": 17142,
+          "pct": 52.5
+        },
+        {
+          "name": "MARK COLLINS DOWNEY",
+          "party": "Democratic",
+          "votes": 15141,
+          "pct": 46.4
+        },
+        {
+          "name": "JAMES WALTER JOBE",
+          "party": "Libertarian",
+          "votes": 357,
+          "pct": 1.1
+        }
+      ]
+    },
+    "97": {
+      "total": 26996,
+      "candidates": [
+        {
+          "name": "SCOTT ANDREW WYATT",
+          "party": "Republican",
+          "votes": 18279,
+          "pct": 67.7
+        },
+        {
+          "name": "KEVIN DWAYNE WASHINGTON",
+          "party": "Democratic",
+          "votes": 8717,
+          "pct": 32.3
+        }
+      ]
+    },
+    "98": {
+      "total": 27102,
+      "candidates": [
+        {
+          "name": "MYRON KEITH HODGES",
+          "party": "Republican",
+          "votes": 18703,
+          "pct": 69.0
+        },
+        {
+          "name": "ELIZABETH BELT WEBSTER",
+          "party": "Democratic",
+          "votes": 8399,
+          "pct": 31.0
+        }
+      ]
+    },
+    "99": {
+      "total": 28332,
+      "candidates": [
+        {
+          "name": "MARGARET BEVANS RANSONE",
+          "party": "Republican",
+          "votes": 17701,
+          "pct": 62.5
+        },
+        {
+          "name": "Francis Edwards",
+          "party": "Democratic",
+          "votes": 10631,
+          "pct": 37.5
+        }
+      ]
+    },
+    "100": {
+      "total": 22857,
+      "candidates": [
+        {
+          "name": "ROBERT SPURGEON BLOXOM Jr.",
+          "party": "Republican",
+          "votes": 11869,
+          "pct": 51.9
+        },
+        {
+          "name": "PHILIP MYCHAEL HERNANDEZ",
+          "party": "Democratic",
+          "votes": 10988,
+          "pct": 48.1
+        }
+      ]
+    }
+  },
+  "senate": {
+    "1": {
+      "total": 36869,
+      "candidates": [
+        {
+          "name": "TAYLOR MONTGOMERY MASON",
+          "party": "Democratic",
+          "votes": 36869,
+          "pct": 100.0
+        }
+      ]
+    },
+    "2": {
+      "total": 36551,
+      "candidates": [
+        {
+          "name": "MAMIE EVELYN LOCKE",
+          "party": "Democratic",
+          "votes": 36551,
+          "pct": 100.0
+        }
+      ]
+    },
+    "3": {
+      "total": 81504,
+      "candidates": [
+        {
+          "name": "THOMAS KENT NORMENT Jr.",
+          "party": "Republican",
+          "votes": 50448,
+          "pct": 61.9
+        },
+        {
+          "name": "HERBERT CARROLL JONES Jr.",
+          "party": "Democratic",
+          "votes": 31056,
+          "pct": 38.1
+        }
+      ]
+    },
+    "4": {
+      "total": 72368,
+      "candidates": [
+        {
+          "name": "RYAN TODD MCDOUGLE",
+          "party": "Republican",
+          "votes": 45714,
+          "pct": 63.2
+        },
+        {
+          "name": "RAYMOND STANTON SCOTT",
+          "party": "Democratic",
+          "votes": 26654,
+          "pct": 36.8
+        }
+      ]
+    },
+    "5": {
+      "total": 39388,
+      "candidates": [
+        {
+          "name": "LIONELL SPRUILL Sr.",
+          "party": "Democratic",
+          "votes": 31576,
+          "pct": 80.2
+        },
+        {
+          "name": "JEFFREY BENNETT STAPLES",
+          "party": "Independent",
+          "votes": 7812,
+          "pct": 19.8
+        }
+      ]
+    },
+    "6": {
+      "total": 43129,
+      "candidates": [
+        {
+          "name": "LYNWOOD WAYNE LEWIS Jr.",
+          "party": "Democratic",
+          "votes": 25772,
+          "pct": 59.8
+        },
+        {
+          "name": "ELIZABETH ANNE LANKFORD",
+          "party": "Republican",
+          "votes": 17357,
+          "pct": 40.2
+        }
+      ]
+    },
+    "7": {
+      "total": 58707,
+      "candidates": [
+        {
+          "name": "JENNIFER ANN KIGGANS",
+          "party": "Republican",
+          "votes": 29609,
+          "pct": 50.4
+        },
+        {
+          "name": "CHERYL BALDWIN TURPIN",
+          "party": "Democratic",
+          "votes": 29098,
+          "pct": 49.6
+        }
+      ]
+    },
+    "8": {
+      "total": 54879,
+      "candidates": [
+        {
+          "name": "WILLIAM ROBERT DESTEPH",
+          "party": "Republican",
+          "votes": 28637,
+          "pct": 52.2
+        },
+        {
+          "name": "MELISSA COTTER SMASAL",
+          "party": "Democratic",
+          "votes": 26242,
+          "pct": 47.8
+        }
+      ]
+    },
+    "9": {
+      "total": 61158,
+      "candidates": [
+        {
+          "name": "JENNIFER LEIGH MCCLELLAN",
+          "party": "Democratic",
+          "votes": 49451,
+          "pct": 80.9
+        },
+        {
+          "name": "MARK EDWARD LEWIS Jr.",
+          "party": "Libertarian",
+          "votes": 11707,
+          "pct": 19.1
+        }
+      ]
+    },
+    "10": {
+      "total": 82285,
+      "candidates": [
+        {
+          "name": "GHAZALA FIRDOUS HASHMI",
+          "party": "Democratic",
+          "votes": 44548,
+          "pct": 54.1
+        },
+        {
+          "name": "GLEN STURTEVANT Jr.",
+          "party": "Republican",
+          "votes": 37737,
+          "pct": 45.9
+        }
+      ]
+    },
+    "11": {
+      "total": 80979,
+      "candidates": [
+        {
+          "name": "AMANDA FREEMAN CHASE",
+          "party": "Republican",
+          "votes": 44245,
+          "pct": 54.6
+        },
+        {
+          "name": "AMANDA LEONARD POHL",
+          "party": "Democratic",
+          "votes": 36734,
+          "pct": 45.4
+        }
+      ]
+    },
+    "12": {
+      "total": 78131,
+      "candidates": [
+        {
+          "name": "SIOBHAN STOLLE DUNNAVANT",
+          "party": "Republican",
+          "votes": 39730,
+          "pct": 50.9
+        },
+        {
+          "name": "debra hain rodman",
+          "party": "Democratic",
+          "votes": 38401,
+          "pct": 49.1
+        }
+      ]
+    },
+    "13": {
+      "total": 82407,
+      "candidates": [
+        {
+          "name": "JOHN JOSEPH BELL",
+          "party": "Democratic",
+          "votes": 44762,
+          "pct": 54.3
+        },
+        {
+          "name": "GEARY MICHAEL HIGGINS",
+          "party": "Republican",
+          "votes": 37645,
+          "pct": 45.7
+        }
+      ]
+    },
+    "14": {
+      "total": 60319,
+      "candidates": [
+        {
+          "name": "JOHN ALOYSIUS COSGROVE Jr.",
+          "party": "Republican",
+          "votes": 36370,
+          "pct": 60.3
+        },
+        {
+          "name": "REBECCA EAMES RAVESON",
+          "party": "Democratic",
+          "votes": 23949,
+          "pct": 39.7
+        }
+      ]
+    },
+    "15": {
+      "total": 56264,
+      "candidates": [
+        {
+          "name": "FRANK MILLER RUFF Jr.",
+          "party": "Republican",
+          "votes": 38471,
+          "pct": 68.4
+        },
+        {
+          "name": "VIRGINIA MAE SMITH",
+          "party": "Democratic",
+          "votes": 17793,
+          "pct": 31.6
+        }
+      ]
+    },
+    "16": {
+      "total": 45029,
+      "candidates": [
+        {
+          "name": "JOSEPH DEE MORRISSEY",
+          "party": "Democratic",
+          "votes": 29304,
+          "pct": 65.1
+        },
+        {
+          "name": "WAYLIN K ROSS",
+          "party": "Independent",
+          "votes": 15725,
+          "pct": 34.9
+        }
+      ]
+    },
+    "17": {
+      "total": 66670,
+      "candidates": [
+        {
+          "name": "BRYCE E REEVES",
+          "party": "Republican",
+          "votes": 34494,
+          "pct": 51.7
+        },
+        {
+          "name": "AMY JOSEPHINE LAUFER",
+          "party": "Democratic",
+          "votes": 32176,
+          "pct": 48.3
+        }
+      ]
+    },
+    "18": {
+      "total": 43021,
+      "candidates": [
+        {
+          "name": "LILLIE LOUISE BOONE LUCAS",
+          "party": "Democratic",
+          "votes": 43021,
+          "pct": 100.0
+        }
+      ]
+    },
+    "19": {
+      "total": 57774,
+      "candidates": [
+        {
+          "name": "DAVID ROBERT SUETTERLEIN",
+          "party": "Republican",
+          "votes": 41290,
+          "pct": 71.5
+        },
+        {
+          "name": "FLOURETTE MARIE MOORE KETNER",
+          "party": "Democratic",
+          "votes": 16484,
+          "pct": 28.5
+        }
+      ]
+    },
+    "20": {
+      "total": 45921,
+      "candidates": [
+        {
+          "name": "WILLIAM MARTIN STANLEY Jr.",
+          "party": "Republican",
+          "votes": 32527,
+          "pct": 70.8
+        },
+        {
+          "name": "SHERMAN DAVID WITCHER Sr.",
+          "party": "Independent",
+          "votes": 13394,
+          "pct": 29.2
+        }
+      ]
+    },
+    "21": {
+      "total": 40759,
+      "candidates": [
+        {
+          "name": "JOHN SAUL EDWARDS",
+          "party": "Democratic",
+          "votes": 26877,
+          "pct": 65.9
+        },
+        {
+          "name": "STEVEN LEE NELSON",
+          "party": "Independent",
+          "votes": 13882,
+          "pct": 34.1
+        }
+      ]
+    },
+    "22": {
+      "total": 59884,
+      "candidates": [
+        {
+          "name": "MARK JOSEPH PEAKE",
+          "party": "Republican",
+          "votes": 37630,
+          "pct": 62.8
+        },
+        {
+          "name": "DAKOTA SCOTT CLAYTOR",
+          "party": "Democratic",
+          "votes": 22254,
+          "pct": 37.2
+        }
+      ]
+    },
+    "23": {
+      "total": 47374,
+      "candidates": [
+        {
+          "name": "STEPHEN DWAYNE NEWMAN",
+          "party": "Republican",
+          "votes": 47374,
+          "pct": 100.0
+        }
+      ]
+    },
+    "24": {
+      "total": 65623,
+      "candidates": [
+        {
+          "name": "EMMETT WILSON HANGER Jr.",
+          "party": "Republican",
+          "votes": 46890,
+          "pct": 71.5
+        },
+        {
+          "name": "ANNETTE HEATHCOCK HYDE",
+          "party": "Democratic",
+          "votes": 18733,
+          "pct": 28.5
+        }
+      ]
+    },
+    "25": {
+      "total": 66097,
+      "candidates": [
+        {
+          "name": "ROBERT CREIGH DEEDS",
+          "party": "Democratic",
+          "votes": 44778,
+          "pct": 67.7
+        },
+        {
+          "name": "ELLIOTT MICHAEL HARDING",
+          "party": "Independent",
+          "votes": 21319,
+          "pct": 32.3
+        }
+      ]
+    },
+    "26": {
+      "total": 56946,
+      "candidates": [
+        {
+          "name": "MARK DUDLEY OBENSHAIN",
+          "party": "Republican",
+          "votes": 36998,
+          "pct": 65.0
+        },
+        {
+          "name": "APRIL DOROTHEA MOORE",
+          "party": "Democratic",
+          "votes": 19948,
+          "pct": 35.0
+        }
+      ]
+    },
+    "27": {
+      "total": 67467,
+      "candidates": [
+        {
+          "name": "JILL HOLTZMAN VOGEL",
+          "party": "Republican",
+          "votes": 43353,
+          "pct": 64.3
+        },
+        {
+          "name": "RONALD JOSEPH ROSS III",
+          "party": "Democratic",
+          "votes": 24114,
+          "pct": 35.7
+        }
+      ]
+    },
+    "28": {
+      "total": 69889,
+      "candidates": [
+        {
+          "name": "RICHARD HENRY STUART",
+          "party": "Republican",
+          "votes": 40193,
+          "pct": 57.5
+        },
+        {
+          "name": "qasim rashid",
+          "party": "Democratic",
+          "votes": 29696,
+          "pct": 42.5
+        }
+      ]
+    },
+    "29": {
+      "total": 35148,
+      "candidates": [
+        {
+          "name": "JEREMY SCOTT MCPIKE",
+          "party": "Democratic",
+          "votes": 35148,
+          "pct": 100.0
+        }
+      ]
+    },
+    "30": {
+      "total": 42850,
+      "candidates": [
+        {
+          "name": "ADAM PAUL EBBIN",
+          "party": "Democratic",
+          "votes": 42850,
+          "pct": 100.0
+        }
+      ]
+    },
+    "31": {
+      "total": 46655,
+      "candidates": [
+        {
+          "name": "BARBARA Ann FAVOLA",
+          "party": "Democratic",
+          "votes": 46655,
+          "pct": 100.0
+        }
+      ]
+    },
+    "32": {
+      "total": 65957,
+      "candidates": [
+        {
+          "name": "JANET DENISON HOWELL",
+          "party": "Democratic",
+          "votes": 48581,
+          "pct": 73.7
+        },
+        {
+          "name": "ARTHUR GRAHAME PURVES",
+          "party": "Republican",
+          "votes": 17376,
+          "pct": 26.3
+        }
+      ]
+    },
+    "33": {
+      "total": 53132,
+      "candidates": [
+        {
+          "name": "JENNIFER BARTON BOYSKO",
+          "party": "Democratic",
+          "votes": 34517,
+          "pct": 65.0
+        },
+        {
+          "name": "SUZANNE DENISE FOX",
+          "party": "Republican",
+          "votes": 18615,
+          "pct": 35.0
+        }
+      ]
+    },
+    "34": {
+      "total": 44058,
+      "candidates": [
+        {
+          "name": "JOHN CHAPMAN PETERSEN",
+          "party": "Democratic",
+          "votes": 44058,
+          "pct": 100.0
+        }
+      ]
+    },
+    "35": {
+      "total": 35131,
+      "candidates": [
+        {
+          "name": "RICHARD LAWRENCE SASLAW",
+          "party": "Democratic",
+          "votes": 35131,
+          "pct": 100.0
+        }
+      ]
+    },
+    "36": {
+      "total": 37518,
+      "candidates": [
+        {
+          "name": "SCOTT A SUROVELL",
+          "party": "Democratic",
+          "votes": 37518,
+          "pct": 100.0
+        }
+      ]
+    },
+    "37": {
+      "total": 41278,
+      "candidates": [
+        {
+          "name": "DAVID WILLIAM MARSDEN",
+          "party": "Democratic",
+          "votes": 41278,
+          "pct": 100.0
+        }
+      ]
+    },
+    "38": {
+      "total": 47169,
+      "candidates": [
+        {
+          "name": "AUGUSTUS BENTON CHAFIN Jr.",
+          "party": "Republican",
+          "votes": 30295,
+          "pct": 64.2
+        },
+        {
+          "name": "GEORGE WILLIAM MCCALL III",
+          "party": "Independent",
+          "votes": 16874,
+          "pct": 35.8
+        }
+      ]
+    },
+    "39": {
+      "total": 61016,
+      "candidates": [
+        {
+          "name": "GEORGE LINCOLN BARKER",
+          "party": "Democratic",
+          "votes": 40259,
+          "pct": 66.0
+        },
+        {
+          "name": "SAMUEL WAYNE HILLENBURG",
+          "party": "Republican",
+          "votes": 20757,
+          "pct": 34.0
+        }
+      ]
+    },
+    "40": {
+      "total": 52393,
+      "candidates": [
+        {
+          "name": "TODD EDWARD PILLION",
+          "party": "Republican",
+          "votes": 40122,
+          "pct": 76.6
+        },
+        {
+          "name": "KENNETH WILLIAM HEATH",
+          "party": "Independent",
+          "votes": 12271,
+          "pct": 23.4
+        }
+      ]
+    }
+  }
+}
