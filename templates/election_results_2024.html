@@ -156,13 +156,73 @@
   <!-- Tabbed sections -->
   <div class="results-tabs">
     <div class="tab-nav">
-      <button class="tab-btn active" data-tab="congress">Congressional Districts</button>
+      <button class="tab-btn active" data-tab="pres-map">President Map</button>
+      <button class="tab-btn" data-tab="senate-map">Senate Map</button>
+      <button class="tab-btn" data-tab="congress-map">Congress Map</button>
+      <button class="tab-btn" data-tab="congress">Congress Table</button>
       <button class="tab-btn" data-tab="pres-locality">President by Locality</button>
       <button class="tab-btn" data-tab="senate-locality">Senate by Locality</button>
     </div>
 
-    <!-- Tab 1: Congress table -->
-    <div class="tab-panel active" id="tab-congress">
+    <!-- Tab 1: President Map -->
+    <div class="tab-panel active" id="tab-pres-map">
+      <div class="section-label"><span>02</span> President — Results by Locality</div>
+      <div style="display:flex;align-items:center;gap:20px;margin-bottom:12px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#1a52c8;"></span>
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--navy);">Harris (D)</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#c8102e;"></span>
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--navy);">Trump (R)</span>
+        </div>
+        <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Darker shade = larger margin · Hover for vote share</span>
+      </div>
+      <div style="border:1px solid var(--mid);overflow:hidden;margin-bottom:20px;box-shadow:3px 3px 0 var(--navy);">
+        <iframe data-src="/district-map?layer=pres_2024" style="width:100%;height:520px;border:none;display:block;" title="2024 President Map"></iframe>
+      </div>
+    </div>
+
+    <!-- Tab 2: Senate Map -->
+    <div class="tab-panel" id="tab-senate-map">
+      <div class="section-label"><span>03</span> U.S. Senate — Results by Locality</div>
+      <div style="display:flex;align-items:center;gap:20px;margin-bottom:12px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#1a52c8;"></span>
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--navy);">Kaine (D)</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#c8102e;"></span>
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--navy);">Hung Cao (R)</span>
+        </div>
+        <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Darker shade = larger margin · Hover for vote share</span>
+      </div>
+      <div style="border:1px solid var(--mid);overflow:hidden;margin-bottom:20px;box-shadow:3px 3px 0 var(--navy);">
+        <iframe data-src="/district-map?layer=senate_2024" style="width:100%;height:520px;border:none;display:block;" title="2024 Senate Map"></iframe>
+      </div>
+    </div>
+
+    <!-- Tab 3: Congress Map -->
+    <div class="tab-panel" id="tab-congress-map">
+      <div class="section-label"><span>04</span> U.S. House — Congressional District Results</div>
+      <div style="display:flex;align-items:center;gap:20px;margin-bottom:12px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#1a52c8;"></span>
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--navy);">Democrat</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#c8102e;"></span>
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--navy);">Republican</span>
+        </div>
+        <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Darker shade = larger margin · Hover for results</span>
+      </div>
+      <div style="border:1px solid var(--mid);overflow:hidden;margin-bottom:20px;box-shadow:3px 3px 0 var(--navy);">
+        <iframe data-src="/district-map?layer=congress_2024" style="width:100%;height:520px;border:none;display:block;" title="2024 Congress Map"></iframe>
+      </div>
+    </div>
+
+    <!-- Tab 4: Congress table -->
+    <div class="tab-panel" id="tab-congress">
       <div class="section-label"><span>02</span> U.S. House — All 11 Virginia Districts</div>
       <div id="congress-section">
         <div class="loading-state" id="congress-loading">
@@ -428,15 +488,25 @@
       '<p style="color:var(--muted);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:0.1em;text-transform:uppercase;font-size:0.8rem;">No locality data available.</p>';
   }
 
-  // ── Tab switching ─────────────────────────────────────────────────────────────
+  // ── Tab switching with lazy iframe loading ────────────────────────────────────
+  function lazyLoadIframe(panel) {
+    var iframe = panel.querySelector('iframe[data-src]');
+    if (iframe) { iframe.src = iframe.dataset.src; iframe.removeAttribute('data-src'); }
+  }
+
   document.querySelectorAll('.tab-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
       document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
       btn.classList.add('active');
-      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      var panel = document.getElementById('tab-' + btn.dataset.tab);
+      panel.classList.add('active');
+      lazyLoadIframe(panel);
     });
   });
+
+  // Load first tab's iframe immediately
+  lazyLoadIframe(document.querySelector('.tab-panel.active'));
 
 })();
 </script>

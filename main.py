@@ -1475,6 +1475,116 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         ).add_to(m)
         title = office_config["title"]
 
+    elif layer in ("pres_2024", "senate_2024"):
+        office_label = "President" if layer == "pres_2024" else "U.S. Senate"
+        map_title = (
+            "2024 Virginia — President by Locality" if layer == "pres_2024"
+            else "2024 Virginia — U.S. Senate by Locality"
+        )
+        raw = _load_2024_results()
+        race_data = raw.get("locality_results", {}).get(office_label, {})
+
+        def _nloc24(n):
+            return n.upper().replace("&", "AND").strip()
+
+        race_lookup24 = {_nloc24(k): v for k, v in race_data.items()}
+
+        counties_path = os.path.join(BASE_DIR, "va_counties.json")
+        with open(counties_path, encoding="utf-8") as _cf:
+            counties_geojson = json.load(_cf)
+
+        for feat in counties_geojson.get("features", []):
+            props = feat.get("properties", {})
+            name = props.get("NAME", "")
+            lsad = props.get("LSAD", "")
+            geo_key = _nloc24(f"{name} {lsad}")
+            result = race_lookup24.get(geo_key, {})
+            winner = result.get("winner", {})
+            winner_party = winner.get("party", "")
+            dem = result.get("dem", {})
+            rep = result.get("rep", {})
+            dem_pct = float(dem.get("pct") or 0.0)
+            rep_pct = float(rep.get("pct") or 0.0)
+            margin = max(0.0, float(winner.get("pct") or 0.0) - 50.0)
+            opacity = round(0.2 + min(margin / 35.0, 1.0) * 0.6, 3)
+            props["_locality"] = f"{name} {lsad}".title()
+            props["_democrat"] = f"{dem.get('name','Dem')} ({dem_pct:.1f}%)"
+            props["_republican"] = f"{rep.get('name','Rep')} ({rep_pct:.1f}%)"
+            props["_winner"] = (
+                f"{winner.get('name','N/A')} ({'D' if 'democrat' in winner_party.lower() else 'R' if 'republican' in winner_party.lower() else winner_party})"
+                if winner else "N/A"
+            )
+            props["_party"] = winner_party
+            props["_opacity"] = opacity if result else 0.1
+
+        def _2024_locality_style(feat):
+            party = feat["properties"].get("_party", "")
+            op = feat["properties"].get("_opacity", 0.1)
+            fill = "#1a52c8" if "democrat" in party.lower() else "#c8102e" if "republican" in party.lower() else "#aaaaaa"
+            return {"fillColor": fill, "color": "#555", "weight": 0.5, "fillOpacity": op}
+
+        folium.GeoJson(
+            counties_geojson,
+            style_function=_2024_locality_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["_locality", "_winner", "_democrat", "_republican"],
+                aliases=["Locality:", "Winner:", "Democratic:", "Republican:"],
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        title = map_title
+
+    elif layer == "congress_2024":
+        from shapely.geometry import mapping as _mapping
+        raw = _load_2024_results()
+        congress_data = raw.get("congress", {})
+        _ORDINALS = {1:"1st",2:"2nd",3:"3rd",4:"4th",5:"5th",6:"6th",7:"7th",8:"8th",9:"9th",10:"10th",11:"11th"}
+        va_cd = _get_va_cd()
+        features = []
+        for _, row in va_cd.iterrows():
+            try:
+                dist_num = int(row["CD118FP"])
+                dist_key = _ORDINALS.get(dist_num, f"{dist_num}th")
+                race = congress_data.get(dist_key, {})
+                cands = race.get("candidates", [])
+                winner = cands[0] if cands else {}
+                runner = cands[1] if len(cands) > 1 else {}
+                w_name = winner.get("name", "Unknown")
+                w_party = winner.get("party", "")
+                w_pct = float(winner.get("pct") or 0.0)
+                r_label = f"{runner.get('name','—')} ({float(runner.get('pct') or 0.0):.1f}%)" if runner else "Uncontested"
+                margin = max(0.0, w_pct - 50.0)
+                opacity = round(0.25 + min(margin / 40.0, 1.0) * 0.55, 3)
+                features.append({"type": "Feature",
+                    "geometry": _mapping(row.geometry.simplify(0.005, preserve_topology=True)),
+                    "properties": {
+                        "_district": f"VA-{dist_num}",
+                        "_winner": w_name,
+                        "_party": w_party,
+                        "_winner_pct": f"{w_pct:.1f}%",
+                        "_runner": r_label,
+                        "_opacity": opacity if race else 0.1,
+                    }})
+            except Exception:
+                continue
+
+        def _congress_2024_style(feat):
+            party = feat["properties"].get("_party", "")
+            op = feat["properties"].get("_opacity", 0.1)
+            fill = "#1a52c8" if "democrat" in party.lower() else "#c8102e" if "republican" in party.lower() else "#aaaaaa"
+            return {"fillColor": fill, "color": "#555", "weight": 1.0, "fillOpacity": op}
+
+        folium.GeoJson(
+            {"type": "FeatureCollection", "features": features},
+            style_function=_congress_2024_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["_district", "_winner", "_party", "_winner_pct", "_runner"],
+                aliases=["District:", "Winner:", "Party:", "Winner %:", "Runner-Up:"],
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        title = "2024 Virginia — Congressional District Results"
+
     elif layer == "hod_results":
         from shapely.geometry import mapping as _mapping
         if _va_hod_gdf is None:
@@ -1613,7 +1723,7 @@ _district_maps: dict[str, str] = {}
 
 @app.get("/district-map", response_class=HTMLResponse)
 def district_map(layer: str = "congressional", lat: float = None, lng: float = None, district: int = None):
-    if layer in ("congressional", "hod_results", "hod_flip", "gov_results", "ltgov_results", "ag_results") and lat is None:
+    if layer in ("congressional", "hod_results", "hod_flip", "gov_results", "ltgov_results", "ag_results", "pres_2024", "senate_2024", "congress_2024") and lat is None:
         if layer not in _district_maps:
             try:
                 _district_maps[layer] = _build_district_map(layer)
