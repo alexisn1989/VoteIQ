@@ -1493,8 +1493,13 @@ Keep answers 2-4 sentences. Be factual and nonpartisan. For official contact inf
 
 @app.get("/past-elections", response_class=HTMLResponse)
 def election_results_page():
+    results = _load_2025_results()
+    # Embed data inline so the page never needs a separate API round-trip
+    safe_json = json.dumps(results, default=str).replace("</script>", "<\\/script>")
     with open(os.path.join(BASE_DIR, "templates", "election_results.html"), "r", encoding="utf-8") as f:
-        return f.read()
+        html = f.read()
+    html = html.replace("</head>", f"<script>window._ELECTION_DATA={safe_json};</script></head>", 1)
+    return html
 
 
 @app.get("/api/election-results-2025")

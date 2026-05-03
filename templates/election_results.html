@@ -369,23 +369,20 @@
     updateHODCount(visible, hodAllRows.length);
   };
 
-  // ── Fetch and render ─────────────────────────────────────────────────────────
-  fetch('/api/election-results-2025')
-    .then(function (res) {
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.json();
-    })
-    .then(function (data) {
-      if (data.statewide) renderStatewide(data.statewide);
-      if (data.hod)       renderHODTable(data.hod);
-    })
-    .catch(function (err) {
-      document.getElementById('statewide-loading').innerHTML =
-        '<p style="color:var(--red);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:0.1em;text-transform:uppercase;font-size:0.8rem;">Could not load results. Please try again later.</p>';
-      document.getElementById('hod-loading').innerHTML =
-        '<p style="color:var(--red);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:0.1em;text-transform:uppercase;font-size:0.8rem;">Could not load results. Please try again later.</p>';
-      console.error('Election results fetch error:', err);
-    });
+  // ── Render from server-injected data ─────────────────────────────────────────
+  var data = window._ELECTION_DATA || {};
+  if (data.statewide && data.statewide.length) {
+    renderStatewide(data.statewide);
+  } else {
+    document.getElementById('statewide-loading').innerHTML =
+      '<p style="color:var(--muted);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:0.1em;text-transform:uppercase;font-size:0.8rem;">No statewide data available.</p>';
+  }
+  if (data.hod && Object.keys(data.hod).length) {
+    renderHODTable(data.hod);
+  } else {
+    document.getElementById('hod-loading').innerHTML =
+      '<p style="color:var(--muted);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:0.1em;text-transform:uppercase;font-size:0.8rem;">No district data available.</p>';
+  }
 })();
 </script>
 </body>
