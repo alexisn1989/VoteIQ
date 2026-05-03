@@ -1247,6 +1247,62 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         m.location = [36.851, -76.286]
         m.zoom_start = 12
 
+    elif layer == "hod_results":
+        from shapely.geometry import mapping as _mapping
+        if _va_hod_gdf is None:
+            import address_lookup as _al2
+            if _al2.va_hod is not None:
+                _va_hod_gdf = _al2.va_hod
+            else:
+                _va_hod_gdf = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL HOD.shp"))
+                _va_hod_gdf = _va_hod_gdf.to_crs(epsg=4326)
+                _al2.va_hod = _va_hod_gdf
+        results = _load_2025_results()
+        hod_data = results.get("hod", {})
+        for _, row in _va_hod_gdf.iterrows():
+            try:
+                d = int(row["DISTRICT"])
+                race = hod_data.get(d, {})
+                cands = race.get("candidates", [])
+                winner = cands[0] if cands else {}
+                runner = cands[1] if len(cands) > 1 else {}
+                w_name = winner.get("name", "Uncontested")
+                w_party = winner.get("party", "")
+                w_pct = float(winner.get("pct", 0.0))
+                r_name = runner.get("name", "—") if runner else "—"
+                r_pct = float(runner.get("pct", 0.0)) if runner else 0.0
+                margin = max(0.0, w_pct - 50.0)
+                opacity = round(0.25 + min(margin / 40.0, 1.0) * 0.55, 3)
+                runner_label = f"{r_name} ({r_pct:.1f}%)" if r_name != "—" else "Uncontested"
+                features.append({"type": "Feature",
+                    "geometry": _mapping(row.geometry.simplify(0.01, preserve_topology=True)),
+                    "properties": {"DISTRICT": d,
+                        "_district": f"HOD District {d}",
+                        "_winner": w_name,
+                        "_party": w_party,
+                        "_pct": f"{w_pct:.1f}%",
+                        "_runner": runner_label,
+                        "_opacity": opacity}})
+            except Exception:
+                continue
+
+        def hod_results_style(feat):
+            party = feat["properties"].get("_party", "")
+            op = feat["properties"].get("_opacity", 0.4)
+            fill = "#1a52c8" if "democrat" in party.lower() else "#c8102e" if "republican" in party.lower() else "#888"
+            return {"fillColor": fill, "color": "#555", "weight": 0.5, "fillOpacity": op}
+
+        folium.GeoJson(
+            {"type": "FeatureCollection", "features": features},
+            style_function=hod_results_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["_district", "_winner", "_party", "_pct", "_runner"],
+                aliases=["District:", "Winner:", "Party:", "Vote Share:", "Runner-Up:"],
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        title = "2025 Virginia House of Delegates — Election Results"
+
     # Rep name label at centroid of the user's highlighted district
     highlighted = [f for f in features if f["properties"].get("_highlight")] if district else []
     if highlighted:
@@ -1329,7 +1385,7 @@ _district_maps: dict[str, str] = {}
 
 @app.get("/district-map", response_class=HTMLResponse)
 def district_map(layer: str = "congressional", lat: float = None, lng: float = None, district: int = None):
-    if layer == "congressional" and lat is None:
+    if layer in ("congressional", "hod_results") and lat is None:
         if layer not in _district_maps:
             try:
                 _district_maps[layer] = _build_district_map(layer)
