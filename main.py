@@ -251,6 +251,7 @@ import glob
 import csv
 
 _results_2025_cache: dict = {}
+_statewide_locality_2025_cache: dict[str, dict] = {}
 
 def _load_2025_results() -> dict:
     """Load 2025 election results from pre-built JSON (preferred) or raw CSV."""
@@ -359,6 +360,81 @@ def _load_2025_results() -> dict:
     _results_2025_cache["statewide"] = statewide_list
     _results_2025_cache["hod"] = hod_dict
     return _results_2025_cache
+
+
+def _load_2025_statewide_locality_results(office: str) -> dict:
+    """Load 2025 statewide-office results by locality from pre-built JSON, or fall back to CSV."""
+    if office in _statewide_locality_2025_cache:
+        return _statewide_locality_2025_cache[office]
+
+    # Fast path: pre-built combined JSON
+    json_path = os.path.join(BASE_DIR, "statewide_locality_results_2025.json")
+    if os.path.exists(json_path):
+        with open(json_path, encoding="utf-8") as _jf:
+            raw = json.load(_jf)
+        for _office, _data in raw.items():
+            _statewide_locality_2025_cache[_office] = _data
+        if office in _statewide_locality_2025_cache:
+            return _statewide_locality_2025_cache[office]
+
+    # Fallback: parse raw CSV
+    pattern = os.path.join(BASE_DIR, "Election Results_*.csv")
+    matches = glob.glob(pattern)
+    if not matches:
+        raise RuntimeError("2025 election CSV not found")
+
+    by_locality: dict = {}
+    with open(matches[0], newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if row.get("WriteInVote") == "1":
+                continue
+            if row.get("CandidateName", "").strip().upper() == "WRITE IN VOTES":
+                continue
+            if row.get("DistrictType", "").strip() != "state":
+                continue
+            if row.get("OfficeTitle", "").strip() != office:
+                continue
+
+            locality = row.get("LocalityName", "").strip().upper()
+            name = row.get("CandidateName", "").strip()
+            party = row.get("Party", "").strip()
+            try:
+                votes = int(row.get("TOTAL_VOTES", "").strip())
+            except (ValueError, TypeError):
+                votes = 0
+
+            locality_data = by_locality.setdefault(locality, {"candidates": {}})
+            candidate = locality_data["candidates"].setdefault(
+                name, {"name": name, "party": party, "votes": 0}
+            )
+            candidate["votes"] += votes
+
+    results = {}
+    for locality, data in by_locality.items():
+        candidates = sorted(
+            data["candidates"].values(),
+            key=lambda candidate: candidate["votes"],
+            reverse=True,
+        )
+        total = sum(candidate["votes"] for candidate in candidates)
+        for candidate in candidates:
+            candidate["pct"] = round(candidate["votes"] / total * 100, 1) if total else 0.0
+
+        winner = candidates[0] if candidates else {}
+        dem = next((candidate for candidate in candidates if "democrat" in candidate.get("party", "").lower()), {})
+        rep = next((candidate for candidate in candidates if "republican" in candidate.get("party", "").lower()), {})
+        results[locality] = {
+            "total": total,
+            "winner": winner,
+            "winner_pct": winner.get("pct", 0.0),
+            "dem": dem,
+            "rep": rep,
+            "candidates": candidates,
+        }
+
+    _statewide_locality_2025_cache[office] = results
+    return results
 
 
 # All district GDFs are lazy — borrowed from address_lookup on first use
@@ -1327,46 +1403,62 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         ).add_to(m)
         title = "2025 Virginia HOD — District Flips vs 2023"
 
-    elif layer == "gov_results":
-        gov_path = os.path.join(BASE_DIR, "governor_results_2025.json")
-        if not os.path.exists(gov_path):
-            raise RuntimeError("Governor results data not found")
-        with open(gov_path, encoding="utf-8") as _gf:
-            gov_data = json.load(_gf)
+    elif layer in ("gov_results", "ltgov_results", "ag_results"):
+        office_config = {
+            "gov_results": {
+                "office": "Governor",
+                "title": "2025 Virginia Governor's Race - by Locality",
+            },
+            "ltgov_results": {
+                "office": "Lieutenant Governor",
+                "title": "2025 Virginia Lieutenant Governor's Race - by Locality",
+            },
+            "ag_results": {
+                "office": "Attorney General",
+                "title": "2025 Virginia Attorney General's Race - by Locality",
+            },
+        }[layer]
+        race_data = _load_2025_statewide_locality_results(office_config["office"])
 
         # Normalize locality names for matching
         def _nloc(n):
             return n.upper().replace("&", "AND").strip()
 
-        gov_lookup = {_nloc(k): v for k, v in gov_data.items()}
+        race_lookup = {_nloc(k): v for k, v in race_data.items()}
 
         counties_path = os.path.join(BASE_DIR, "va_counties.json")
         with open(counties_path, encoding="utf-8") as _cf:
             counties_geojson = json.load(_cf)
+        features = counties_geojson.get("features", [])
 
-        for feat in counties_geojson.get("features", []):
+        for feat in features:
             props = feat.get("properties", {})
             name = props.get("NAME", "")
             lsad = props.get("LSAD", "")
             geo_key = _nloc(f"{name} {lsad}")
-            result = gov_lookup.get(geo_key, {})
-            winner = result.get("winner", "")
-            dem = result.get("dem", 0)
-            rep = result.get("rep", 0)
-            total = result.get("total", 1) or 1
-            dem_pct = round(dem / total * 100, 1)
-            rep_pct = round(rep / total * 100, 1)
+            result = race_lookup.get(geo_key, {})
+            winner = result.get("winner", {})
+            winner_party = winner.get("party", "")
+            dem = result.get("dem", {})
+            rep = result.get("rep", {})
+            dem_name = dem.get("name", "Democratic")
+            rep_name = rep.get("name", "Republican")
+            dem_pct = float(dem.get("pct", 0.0))
+            rep_pct = float(rep.get("pct", 0.0))
             winner_pct = result.get("winner_pct", 0.0)
             margin = max(0.0, winner_pct - 50.0)
             opacity = round(0.2 + min(margin / 35.0, 1.0) * 0.6, 3)
             props["_locality"] = f"{name} {lsad}".title()
-            props["_spanberger"] = f"{dem_pct}%"
-            props["_sears"] = f"{rep_pct}%"
-            props["_winner"] = "Spanberger (D)" if "democrat" in winner.lower() else "Earle-Sears (R)" if "republican" in winner.lower() else "N/A"
-            props["_party"] = winner
+            props["_democrat"] = f"{dem_name} ({dem_pct:.1f}%)"
+            props["_republican"] = f"{rep_name} ({rep_pct:.1f}%)"
+            props["_winner"] = (
+                f"{winner.get('name', 'N/A')} ({'D' if 'democrat' in winner_party.lower() else 'R' if 'republican' in winner_party.lower() else winner_party})"
+                if winner else "N/A"
+            )
+            props["_party"] = winner_party
             props["_opacity"] = opacity if result else 0.1
 
-        def gov_style(feat):
+        def statewide_results_style(feat):
             party = feat["properties"].get("_party", "")
             op = feat["properties"].get("_opacity", 0.1)
             fill = "#1a52c8" if "democrat" in party.lower() else "#c8102e" if "republican" in party.lower() else "#aaaaaa"
@@ -1374,14 +1466,14 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
 
         folium.GeoJson(
             counties_geojson,
-            style_function=gov_style,
+            style_function=statewide_results_style,
             tooltip=folium.GeoJsonTooltip(
-                fields=["_locality", "_winner", "_spanberger", "_sears"],
-                aliases=["Locality:", "Winner:", "Spanberger:", "Earle-Sears:"],
+                fields=["_locality", "_winner", "_democrat", "_republican"],
+                aliases=["Locality:", "Winner:", "Democratic:", "Republican:"],
                 localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
             ),
         ).add_to(m)
-        title = "2025 Virginia Governor's Race — by Locality"
+        title = office_config["title"]
 
     elif layer == "hod_results":
         from shapely.geometry import mapping as _mapping
@@ -1521,7 +1613,7 @@ _district_maps: dict[str, str] = {}
 
 @app.get("/district-map", response_class=HTMLResponse)
 def district_map(layer: str = "congressional", lat: float = None, lng: float = None, district: int = None):
-    if layer in ("congressional", "hod_results", "hod_flip", "gov_results") and lat is None:
+    if layer in ("congressional", "hod_results", "hod_flip", "gov_results", "ltgov_results", "ag_results") and lat is None:
         if layer not in _district_maps:
             try:
                 _district_maps[layer] = _build_district_map(layer)
