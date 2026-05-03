@@ -249,6 +249,9 @@ except Exception as e:
 _va_cd_gdf  = None
 _va_hod_gdf = None
 _va_sd_gdf  = None
+_vb_council_map_gdf   = None
+_nn_council_map_gdf   = None
+_norfolk_ward_map_gdf = None
 
 def _get_va_cd():
     global _va_cd_gdf
@@ -665,8 +668,8 @@ def get_map(address: str):
 
 
 def _build_district_map(layer: str, user_lat: float = None, user_lng: float = None, district: int = None) -> str:
-    """Build a party-shaded folium map for congressional, HOD, or SD districts."""
-    global _va_hod_gdf, _va_sd_gdf
+    """Build a party-shaded folium map for congressional, HOD, SD, or city council districts."""
+    global _va_hod_gdf, _va_sd_gdf, _vb_council_map_gdf, _nn_council_map_gdf, _norfolk_ward_map_gdf
 
     import address_lookup as _al
     if layer == "hod":
@@ -691,7 +694,32 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                 _al.va_sd = _va_sd_gdf  # share back so address_lookup can use it too
         if _va_sd_gdf is None:
             raise RuntimeError("SD shapefile could not be loaded")
+    if layer == "vb_council":
+        if _vb_council_map_gdf is None:
+            if _al.vb_council_gdf is not None:
+                _vb_council_map_gdf = _al.vb_council_gdf
+            else:
+                _vb_council_map_gdf = gpd.read_file(os.path.join(BASE_DIR, "City_Council_Districts.shp")).to_crs(epsg=4326)
+                _al.vb_council_gdf = _vb_council_map_gdf
+        if _vb_council_map_gdf is None:
+            raise RuntimeError("VB council shapefile could not be loaded")
+    if layer == "nn_council":
+        if _nn_council_map_gdf is None:
+            if _al.nn_council_gdf is not None:
+                _nn_council_map_gdf = _al.nn_council_gdf
+            else:
+                _nn_council_map_gdf = gpd.read_file(os.path.join(BASE_DIR, "City_Council_District.shp")).to_crs(epsg=4326)
+                _nn_council_map_gdf = _nn_council_map_gdf[['DISTRICT', 'LONGNAME', 'geometry']]
+                _al.nn_council_gdf = _nn_council_map_gdf
+        if _nn_council_map_gdf is None:
+            raise RuntimeError("Newport News council shapefile could not be loaded")
+    if layer == "norfolk_ward":
+        if _norfolk_ward_map_gdf is None:
+            _norfolk_ward_map_gdf = gpd.read_file(os.path.join(BASE_DIR, "Wards.shp")).to_crs(epsg=4326)
+        if _norfolk_ward_map_gdf is None:
+            raise RuntimeError("Norfolk wards shapefile could not be loaded")
 
+    features = []
     m = folium.Map(location=[37.5, -79.0], zoom_start=7, tiles="CartoDB positron", min_zoom=6)
     map_var = m.get_name()
 
@@ -769,9 +797,8 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         ctx = HOD_CONTEXT.get(district, {}) if district else {}
         title = f"HOD District {district} — {ctx.get('delegate','')}" if district else "VA House of Delegates"
 
-    else:  # sd
+    elif layer == "sd":
         from shapely.geometry import mapping as _mapping
-        features = []
         for _, row in _va_sd_gdf.iterrows():
             try:
                 d = int(row["DISTRICT"])
@@ -806,13 +833,276 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         ctx = SD_CONTEXT.get(district, {}) if district else {}
         title = f"Senate District {district} — {ctx.get('senator','')}" if district else "VA State Senate"
 
+    elif layer == "vb_council":
+        from shapely.geometry import mapping as _mapping
+        from address_lookup import _vb_council as _vb_ctx
+        for _, row in _vb_council_map_gdf.iterrows():
+            try:
+                d = int(row["District"])
+                ctx = _vb_ctx.get(d, {})
+                features.append({"type": "Feature",
+                    "geometry": _mapping(row.geometry.simplify(0.002, preserve_topology=True)),
+                    "properties": {"DISTRICT": d,
+                        "_district": f"District {d}",
+                        "_rep": ctx.get("name", "Unknown"),
+                        "_party": ctx.get("party", ""),
+                        "_highlight": (d == district) if district else False}})
+            except Exception:
+                continue
+
+        def vb_style(feat):
+            party = feat["properties"].get("_party", "")
+            hi = feat["properties"].get("_highlight", False)
+            fill = "#0a3a9e" if party == "Democrat" else "#b01020" if party == "Republican" else "#888"
+            return {"fillColor": fill, "color": "#333", "weight": 2 if hi else 0.6,
+                    "fillOpacity": 0.85 if hi else 0.3}
+
+        folium.GeoJson(
+            {"type": "FeatureCollection", "features": features},
+            style_function=vb_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["_district", "_rep", "_party"],
+                aliases=["District:", "Council Member:", "Party:"],
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        ctx = _vb_ctx.get(district, {}) if district else {}
+        title = f"VB Council District {district} — {ctx.get('name','')}" if district else "Virginia Beach City Council Districts"
+        m.location = [36.852, -76.085]
+        m.zoom_start = 11
+
+    elif layer == "nn_council":
+        from shapely.geometry import mapping as _mapping
+        from address_lookup import _newport_news_officials as _nn_ctx
+        for _, row in _nn_council_map_gdf.iterrows():
+            try:
+                d = int(row["DISTRICT"])
+                long_name = str(row.get("LONGNAME", f"District {d}"))
+                members = _nn_ctx.get(f"council_{d}", [])
+                member_name = members[0]["name"] if members else "Unknown"
+                member_party = members[0].get("party", "") if members else ""
+                features.append({"type": "Feature",
+                    "geometry": _mapping(row.geometry.simplify(0.002, preserve_topology=True)),
+                    "properties": {"DISTRICT": d,
+                        "_district": long_name,
+                        "_rep": member_name,
+                        "_party": member_party,
+                        "_highlight": (d == district) if district else False}})
+            except Exception:
+                continue
+
+        def nn_style(feat):
+            party = feat["properties"].get("_party", "")
+            hi = feat["properties"].get("_highlight", False)
+            fill = "#0a3a9e" if party == "Democrat" else "#b01020" if party == "Republican" else "#888"
+            return {"fillColor": fill, "color": "#333", "weight": 2 if hi else 0.6,
+                    "fillOpacity": 0.85 if hi else 0.3}
+
+        folium.GeoJson(
+            {"type": "FeatureCollection", "features": features},
+            style_function=nn_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["_district", "_rep", "_party"],
+                aliases=["District:", "Council Member:", "Party:"],
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        if district:
+            matched = [f for f in features if f["properties"]["DISTRICT"] == district]
+            d_name = matched[0]["properties"]["_district"] if matched else f"District {district}"
+            d_rep  = matched[0]["properties"]["_rep"]      if matched else ""
+            title = f"Newport News {d_name} — {d_rep}"
+        else:
+            title = "Newport News City Council Districts"
+        m.location = [37.085, -76.493]
+        m.zoom_start = 11
+
+    elif layer == "norfolk_ward":
+        from shapely.geometry import mapping as _mapping
+        for _, row in _norfolk_ward_map_gdf.iterrows():
+            try:
+                w = int(row["WARD"])
+                rep = str(row.get("WARD_REP", "Unknown"))
+                features.append({"type": "Feature",
+                    "geometry": _mapping(row.geometry.simplify(0.002, preserve_topology=True)),
+                    "properties": {"WARD": w,
+                        "_district": f"Ward {w}",
+                        "_rep": rep,
+                        "_party": "",
+                        "_highlight": (w == district) if district else False}})
+            except Exception:
+                continue
+
+        def norfolk_style(feat):
+            hi = feat["properties"].get("_highlight", False)
+            return {"fillColor": "#2a6496", "color": "#333", "weight": 2 if hi else 0.6,
+                    "fillOpacity": 0.85 if hi else 0.3}
+
+        folium.GeoJson(
+            {"type": "FeatureCollection", "features": features},
+            style_function=norfolk_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["_district", "_rep"],
+                aliases=["Ward:", "Council Member:"],
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        if district:
+            matched = [f for f in features if f["properties"]["WARD"] == district]
+            rep = matched[0]["properties"]["_rep"] if matched else ""
+            title = f"Norfolk Ward {district} — {rep}"
+        else:
+            title = "Norfolk City Council Wards"
+        m.location = [36.851, -76.286]
+        m.zoom_start = 12
+
+    elif layer == "vb_school_board":
+        from shapely.geometry import mapping as _mapping
+        from address_lookup import _vb_school_board as _vb_sb_ctx
+        if _vb_council_map_gdf is None:
+            import address_lookup as _al2
+            if _al2.vb_council_gdf is not None:
+                _vb_council_map_gdf = _al2.vb_council_gdf
+            else:
+                _vb_council_map_gdf = gpd.read_file(os.path.join(BASE_DIR, "City_Council_Districts.shp")).to_crs(epsg=4326)
+                _al2.vb_council_gdf = _vb_council_map_gdf
+        for _, row in _vb_council_map_gdf.iterrows():
+            try:
+                d = int(row["District"])
+                ctx = _vb_sb_ctx.get(d, {})
+                features.append({"type": "Feature",
+                    "geometry": _mapping(row.geometry.simplify(0.002, preserve_topology=True)),
+                    "properties": {"DISTRICT": d,
+                        "_district": f"District {d}",
+                        "_rep": ctx.get("name", "Unknown"),
+                        "_party": ctx.get("party", ""),
+                        "_highlight": (d == district) if district else False}})
+            except Exception:
+                continue
+
+        def vb_sb_style(feat):
+            party = feat["properties"].get("_party", "")
+            hi = feat["properties"].get("_highlight", False)
+            fill = "#0a3a9e" if party == "Democrat" else "#b01020" if party == "Republican" else "#888"
+            return {"fillColor": fill, "color": "#333", "weight": 2 if hi else 0.6,
+                    "fillOpacity": 0.85 if hi else 0.3}
+
+        folium.GeoJson(
+            {"type": "FeatureCollection", "features": features},
+            style_function=vb_sb_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["_district", "_rep", "_party"],
+                aliases=["District:", "School Board Member:", "Party:"],
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        ctx = _vb_sb_ctx.get(district, {}) if district else {}
+        title = f"VB School Board District {district} — {ctx.get('name','')}" if district else "Virginia Beach School Board Districts"
+        m.location = [36.852, -76.085]
+        m.zoom_start = 11
+
+    elif layer == "nn_school_board":
+        from shapely.geometry import mapping as _mapping
+        from address_lookup import _newport_news_officials as _nn_sb_ctx
+        if _nn_council_map_gdf is None:
+            import address_lookup as _al2
+            if _al2.nn_council_gdf is not None:
+                _nn_council_map_gdf = _al2.nn_council_gdf
+            else:
+                _nn_council_map_gdf = gpd.read_file(os.path.join(BASE_DIR, "City_Council_District.shp")).to_crs(epsg=4326)
+                _nn_council_map_gdf = _nn_council_map_gdf[['DISTRICT', 'LONGNAME', 'geometry']]
+                _al2.nn_council_gdf = _nn_council_map_gdf
+        for _, row in _nn_council_map_gdf.iterrows():
+            try:
+                d = int(row["DISTRICT"])
+                long_name = str(row.get("LONGNAME", f"District {d}"))
+                members = _nn_sb_ctx.get(f"school_board_{d}", [])
+                member_name = members[0]["name"] if members else "Unknown"
+                member_party = members[0].get("party", "") if members else ""
+                features.append({"type": "Feature",
+                    "geometry": _mapping(row.geometry.simplify(0.002, preserve_topology=True)),
+                    "properties": {"DISTRICT": d,
+                        "_district": long_name,
+                        "_rep": member_name,
+                        "_party": member_party,
+                        "_highlight": (d == district) if district else False}})
+            except Exception:
+                continue
+
+        def nn_sb_style(feat):
+            party = feat["properties"].get("_party", "")
+            hi = feat["properties"].get("_highlight", False)
+            fill = "#0a3a9e" if party == "Democrat" else "#b01020" if party == "Republican" else "#888"
+            return {"fillColor": fill, "color": "#333", "weight": 2 if hi else 0.6,
+                    "fillOpacity": 0.85 if hi else 0.3}
+
+        folium.GeoJson(
+            {"type": "FeatureCollection", "features": features},
+            style_function=nn_sb_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["_district", "_rep", "_party"],
+                aliases=["District:", "School Board Member:", "Party:"],
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        if district:
+            matched = [f for f in features if f["properties"]["DISTRICT"] == district]
+            d_name = matched[0]["properties"]["_district"] if matched else f"District {district}"
+            d_rep  = matched[0]["properties"]["_rep"]      if matched else ""
+            title = f"Newport News School Board {d_name} — {d_rep}"
+        else:
+            title = "Newport News School Board Districts"
+        m.location = [37.085, -76.493]
+        m.zoom_start = 11
+
+    elif layer == "norfolk_ward_sb":
+        from shapely.geometry import mapping as _mapping
+        if _norfolk_ward_map_gdf is None:
+            _norfolk_ward_map_gdf = gpd.read_file(os.path.join(BASE_DIR, "Wards.shp")).to_crs(epsg=4326)
+        for _, row in _norfolk_ward_map_gdf.iterrows():
+            try:
+                w = int(row["WARD"])
+                sbm = str(row.get("WARD_SBM", "Unknown"))
+                features.append({"type": "Feature",
+                    "geometry": _mapping(row.geometry.simplify(0.002, preserve_topology=True)),
+                    "properties": {"WARD": w,
+                        "_district": f"Ward {w}",
+                        "_rep": sbm,
+                        "_party": "",
+                        "_highlight": (w == district) if district else False}})
+            except Exception:
+                continue
+
+        def norfolk_sb_style(feat):
+            hi = feat["properties"].get("_highlight", False)
+            return {"fillColor": "#2a6496", "color": "#333", "weight": 2 if hi else 0.6,
+                    "fillOpacity": 0.85 if hi else 0.3}
+
+        folium.GeoJson(
+            {"type": "FeatureCollection", "features": features},
+            style_function=norfolk_sb_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["_district", "_rep"],
+                aliases=["Ward:", "School Board Member:"],
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        if district:
+            matched = [f for f in features if f["properties"]["WARD"] == district]
+            sbm = matched[0]["properties"]["_rep"] if matched else ""
+            title = f"Norfolk School Board Ward {district} — {sbm}"
+        else:
+            title = "Norfolk School Board Wards"
+        m.location = [36.851, -76.286]
+        m.zoom_start = 12
+
     # Rep name label at centroid of the user's highlighted district
     highlighted = [f for f in features if f["properties"].get("_highlight")] if district else []
     if highlighted:
         from shapely.geometry import shape as _shape
         try:
             centroid = _shape(highlighted[0]["geometry"]).centroid
-            name_field = "_delegate" if layer == "hod" else "_senator"
+            name_field = "_delegate" if layer == "hod" else "_senator" if layer == "sd" else "_rep"
             rep_name = highlighted[0]["properties"].get(name_field, "")
             party = features[0]["properties"].get("_party", "")
             bg = "#1a52c8" if party == "Democrat" else "#e03030" if party == "Republican" else "#555"

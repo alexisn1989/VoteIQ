@@ -103,6 +103,7 @@
   .viq-chat-send:hover { background: #c8102e; }
   .viq-chat-send:disabled { opacity: 0.4; cursor: default; }
   .viq-chat-footer { font-size: 11px; color: #8892a4; text-align: center; padding: 6px 16px 10px; background: #fff; font-family: 'Barlow', sans-serif; }
+  .map-btn-hidden { display: none !important; }
 </style>
 </head>
 <body>
@@ -127,7 +128,7 @@
   <p class="hero-sub">Enter your Virginia address to see all your elected representatives — from Congress down to your city council and school board. Plus see how the proposed congressional redistricting would change your representation.</p>
 
   <div class="search-box">
-    <input type="text" id="address" placeholder="e.g. 2000 Atlantic Ave, Virginia Beach, VA 23451" />
+    <input type="text" id="address" name="address" autocomplete="street-address" placeholder="e.g. 2000 Atlantic Ave, Virginia Beach, VA 23451" />
     <button onclick="lookup()">Find My District →</button>
   </div>
   <p class="search-note">🔒 Your address is never stored &nbsp;·&nbsp; Free for all registered Virginia voters</p>
@@ -165,6 +166,8 @@
   <div id="district-links" style="display:none; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:20px;">
     <a id="hod-map-link" href="/district-map?layer=hod" target="_blank" style="font-family:'Barlow Condensed',sans-serif;font-size:0.8rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#0d1b2a;text-decoration:none;border:1.5px solid #0d1b2a;padding:9px 20px;transition:all .2s;" onmouseover="this.style.background='#0d1b2a';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='#0d1b2a'">House of Delegates Map →</a>
     <a id="sd-map-link" href="/district-map?layer=sd" target="_blank" style="font-family:'Barlow Condensed',sans-serif;font-size:0.8rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#0d1b2a;text-decoration:none;border:1.5px solid #0d1b2a;padding:9px 20px;transition:all .2s;" onmouseover="this.style.background='#0d1b2a';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='#0d1b2a'">State Senate Map →</a>
+    <a id="council-map-link" href="#" target="_blank" class="map-btn-hidden" style="font-family:'Barlow Condensed',sans-serif;font-size:0.8rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#0d1b2a;text-decoration:none;border:1.5px solid #0d1b2a;padding:9px 20px;transition:all .2s;" onmouseover="this.style.background='#0d1b2a';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='#0d1b2a'">City Council Map →</a>
+    <a id="school-board-map-link" href="#" target="_blank" class="map-btn-hidden" style="font-family:'Barlow Condensed',sans-serif;font-size:0.8rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#0d1b2a;text-decoration:none;border:1.5px solid #0d1b2a;padding:9px 20px;transition:all .2s;" onmouseover="this.style.background='#0d1b2a';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='#0d1b2a'">School Board Map →</a>
   </div>
 
   <div class="divider"><span>How it works</span></div>
@@ -288,28 +291,35 @@
       const schoolBoard = data.vb_school_board;
       const vaStatewide = data.va_statewide || [];
       const president = data.us_president;
+      const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[ch]));
       const partyColor = p => p === 'Democrat' ? '#1a52c8' : p === 'Republican' ? '#c8102e' : '#555';
       const partyTag = p => p
-        ? '<span style="display:inline-block;background:' + partyColor(p) + ';color:#fff;font-size:0.68rem;font-family:Barlow Condensed,sans-serif;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1px 7px;border-radius:3px;margin-left:5px;">' + p[0] + '</span>'
+        ? '<span style="display:inline-block;background:' + partyColor(p) + ';color:#fff;font-size:0.68rem;font-family:Barlow Condensed,sans-serif;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1px 7px;border-radius:3px;margin-left:5px;">' + escapeHtml(p[0]) + '</span>'
         : '';
       const repBlock = (label, num, name, party, sub) =>
         '<div style="margin-bottom:8px;padding:8px 10px;background:#faf9f6;border-left:3px solid ' + partyColor(party) + ';font-size:0.86rem;line-height:1.7;">' +
-        '<div style="font-family:Barlow Condensed,sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:3px;">' + label + (num ? ' · District ' + num : '') + '</div>' +
-        '<div><strong>' + name + '</strong>' + partyTag(party) + '</div>' +
-        '<div style="font-size:0.75rem;color:#7a7468;">' + (sub || '').substring(0, 55) + ((sub || '').length > 55 ? '…' : '') + '</div>' +
+        '<div style="font-family:Barlow Condensed,sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:3px;">' + escapeHtml(label) + (num ? ' · District ' + escapeHtml(num) : '') + '</div>' +
+        '<div><strong>' + escapeHtml(name) + '</strong>' + partyTag(party) + '</div>' +
+        '<div style="font-size:0.75rem;color:#7a7468;">' + escapeHtml((sub || '').substring(0, 55)) + ((sub || '').length > 55 ? '…' : '') + '</div>' +
         '</div>';
       const partyBadge = (party) => {
         if (!party) return '';
         const bg = party.includes('Democrat') ? '#1a52c8' : party.includes('Republican') ? '#c8102e' : '#555';
         const label = party.replace('Republican', 'R').replace('Democrat', 'D');
-        return '<span style="display:inline-block;background:' + bg + ';color:#fff;font-size:0.68rem;font-family:Barlow Condensed,sans-serif;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1px 7px;border-radius:3px;margin-left:5px;">' + label + '</span>';
+        return '<span style="display:inline-block;background:' + bg + ';color:#fff;font-size:0.68rem;font-family:Barlow Condensed,sans-serif;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1px 7px;border-radius:3px;margin-left:5px;">' + escapeHtml(label) + '</span>';
       };
       const partyBorder = (party) => party && party.includes('Democrat') ? '#1a52c8' : party && party.includes('Republican') ? '#c8102e' : '#7a7468';
       const officialCard = (label, name, city, party) =>
         '<div style="margin-bottom:8px;padding:8px 10px;background:#faf9f6;border-left:3px solid ' + partyBorder(party) + ';font-size:0.86rem;line-height:1.7;">' +
-        '<div style="font-family:Barlow Condensed,sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:3px;">' + label + '</div>' +
-        '<div><strong>' + name + '</strong>' + partyBadge(party) + '</div>' +
-        (city ? '<div style="font-size:0.75rem;color:#7a7468;">' + city + '</div>' : '') +
+        '<div style="font-family:Barlow Condensed,sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:3px;">' + escapeHtml(label) + '</div>' +
+        '<div><strong>' + escapeHtml(name) + '</strong>' + partyBadge(party) + '</div>' +
+        (city ? '<div style="font-size:0.75rem;color:#7a7468;">' + escapeHtml(city) + '</div>' : '') +
         '</div>';
       const councilBlock = council
         ? (council.mayor                  ? officialCard('Mayor',                          council.mayor.name,                  'Virginia Beach', council.mayor.party)                  : '') +
@@ -379,7 +389,7 @@
       document.getElementById('result').innerHTML =
         '<div style="background:white;border:1px solid #ddd8cc;border-top:4px solid #c8102e;padding:20px 24px;margin-top:20px;">' +
         '<h3 style="font-family:Barlow Condensed,sans-serif;font-size:0.8rem;color:#c8102e;margin-bottom:12px;letter-spacing:0.12em;text-transform:uppercase;">Your Representatives</h3>' +
-        '<p style="margin-bottom:10px;font-size:0.9rem;">📍 <strong>' + d.locality + '</strong></p>' +
+        '<p style="margin-bottom:10px;font-size:0.9rem;">📍 <strong>' + escapeHtml(d.locality) + '</strong></p>' +
         '<div style="display:grid;grid-template-columns:' + gridCols + ';gap:0 16px;">' +
         allCards +
         '</div>' +
@@ -403,6 +413,38 @@
       const sdNum  = sen ? sen.district_number : '';
       document.getElementById('hod-map-link').href = `/district-map?layer=hod&lat=${userLat}&lng=${userLng}${hodNum ? '&district='+hodNum : ''}`;
       document.getElementById('sd-map-link').href  = `/district-map?layer=sd&lat=${userLat}&lng=${userLng}${sdNum  ? '&district='+sdNum  : ''}`;
+      const locality = (d.locality || '').toLowerCase();
+      console.log('[VoteIQ] locality:', JSON.stringify(d.locality));
+      const councilLinkEl = document.getElementById('council-map-link');
+      const sbLinkEl = document.getElementById('school-board-map-link');
+      let councilMapUrl = null;
+      let sbMapUrl = null;
+      if (locality.includes('virginia beach')) {
+        const distNum = council && council.district_number != null ? council.district_number : null;
+        const distParam = distNum != null ? '&district=' + distNum : '';
+        councilLinkEl.textContent = 'Virginia Beach Council Map →';
+        councilMapUrl = `/district-map?layer=vb_council&lat=${userLat}&lng=${userLng}${distParam}`;
+        sbLinkEl.textContent = 'Virginia Beach School Board Map →';
+        sbMapUrl = `/district-map?layer=vb_school_board&lat=${userLat}&lng=${userLng}${distParam}`;
+      } else if (locality.includes('norfolk')) {
+        const wardNum = norfolk && norfolk.ward != null ? norfolk.ward : null;
+        const wardParam = wardNum != null ? '&district=' + wardNum : '';
+        councilLinkEl.textContent = 'Norfolk Ward Map →';
+        councilMapUrl = `/district-map?layer=norfolk_ward&lat=${userLat}&lng=${userLng}${wardParam}`;
+        sbLinkEl.textContent = 'Norfolk School Board Map →';
+        sbMapUrl = `/district-map?layer=norfolk_ward_sb&lat=${userLat}&lng=${userLng}${wardParam}`;
+      } else if (locality.includes('newport news')) {
+        const distNum = newportNews && newportNews.council_district != null ? newportNews.council_district : null;
+        const distParam = distNum != null ? '&district=' + distNum : '';
+        councilLinkEl.textContent = 'Newport News Council Map →';
+        councilMapUrl = `/district-map?layer=nn_council&lat=${userLat}&lng=${userLng}${distParam}`;
+        sbLinkEl.textContent = 'Newport News School Board Map →';
+        sbMapUrl = `/district-map?layer=nn_school_board&lat=${userLat}&lng=${userLng}${distParam}`;
+      }
+      councilLinkEl.href = councilMapUrl || '#';
+      if (councilMapUrl) { councilLinkEl.classList.remove('map-btn-hidden'); } else { councilLinkEl.classList.add('map-btn-hidden'); }
+      sbLinkEl.href = sbMapUrl || '#';
+      if (sbMapUrl) { sbLinkEl.classList.remove('map-btn-hidden'); } else { sbLinkEl.classList.add('map-btn-hidden'); }
       mapEl.removeAttribute('srcdoc');
       mapEl.src = `/district-map?layer=congressional&lat=${userLat}&lng=${userLng}`;
     } catch (error) {
