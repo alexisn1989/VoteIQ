@@ -245,6 +245,112 @@ except Exception as e:
     _results = None
     print(f"Warning: could not load election results: {e}")
 
+
+# ── 2025 General Election results — loaded once on first request ──────────────
+import glob
+import csv
+
+_results_2025_cache: dict = {}
+
+def _load_2025_results() -> dict:
+    """Parse Election Results_*.csv and aggregate vote totals by race and candidate."""
+    if _results_2025_cache:
+        return _results_2025_cache
+
+    # Locate the CSV
+    pattern = os.path.join(BASE_DIR, "Election Results_*.csv")
+    matches = glob.glob(pattern)
+    if not matches:
+        return {"statewide": [], "hod": {}}
+    csv_path = matches[0]
+
+    # Aggregate: (DistrictType, DistrictName, OfficeTitle, CandidateName, Party) -> total votes
+    agg: dict = {}
+
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            # Skip write-in rows
+            if row.get("WriteInVote") == "1":
+                continue
+            if row.get("CandidateName", "").strip().upper() == "WRITE IN VOTES":
+                continue
+
+            d_type = row.get("DistrictType", "").strip()
+            d_name = row.get("DistrictName", "").strip()
+            office = row.get("OfficeTitle", "").strip()
+            name   = row.get("CandidateName", "").strip()
+            party  = row.get("Party", "").strip()
+
+            raw_votes = row.get("TOTAL_VOTES", "").strip()
+            try:
+                votes = int(raw_votes)
+            except (ValueError, TypeError):
+                votes = 0
+
+            key = (d_type, d_name, office, name, party)
+            agg[key] = agg.get(key, 0) + votes
+
+    # Build statewide races list
+    OFFICE_ORDER = ["Governor", "Lieutenant Governor", "Attorney General"]
+
+    statewide_races: dict = {}  # office -> {total, candidates: {name -> {party, votes}}}
+    hod_races: dict = {}        # district_num (int) -> {total, candidates: {name -> {party, votes}}}
+
+    for (d_type, d_name, office, name, party), votes in agg.items():
+        if d_type == "state":
+            if office not in statewide_races:
+                statewide_races[office] = {"candidates": {}}
+            cands = statewide_races[office]["candidates"]
+            if name not in cands:
+                cands[name] = {"party": party, "votes": 0}
+            cands[name]["votes"] += votes
+
+        elif d_type == "state-house":
+            try:
+                dist_num = int(d_name)
+            except (ValueError, TypeError):
+                continue
+            if dist_num not in hod_races:
+                hod_races[dist_num] = {"candidates": {}}
+            cands = hod_races[dist_num]["candidates"]
+            if name not in cands:
+                cands[name] = {"party": party, "votes": 0}
+            cands[name]["votes"] += votes
+
+    def _build_race(office_or_dist, cands_dict):
+        total = sum(c["votes"] for c in cands_dict.values())
+        candidates = []
+        for cname, cdata in cands_dict.items():
+            votes = cdata["votes"]
+            pct = round(votes / total * 100, 1) if total else 0.0
+            candidates.append({"name": cname, "party": cdata["party"], "votes": votes, "pct": pct})
+        candidates.sort(key=lambda c: c["votes"], reverse=True)
+        return {"office": office_or_dist, "total": total, "candidates": candidates}
+
+    # Sort statewide races: Governor, LG, AG first, then anything else alphabetically
+    def _office_sort_key(office):
+        try:
+            return OFFICE_ORDER.index(office)
+        except ValueError:
+            return len(OFFICE_ORDER)
+
+    statewide_list = []
+    for office in sorted(statewide_races.keys(), key=_office_sort_key):
+        race = _build_race(office, statewide_races[office]["candidates"])
+        statewide_list.append(race)
+
+    hod_dict = {}
+    for dist_num in sorted(hod_races.keys()):
+        race = _build_race(f"House of Delegates — District {dist_num}", hod_races[dist_num]["candidates"])
+        # Remove the "office" key from hod entries to keep payload clean; add district number
+        hod_dict[dist_num] = {"total": race["total"], "candidates": race["candidates"]}
+
+    _results_2025_cache["statewide"] = statewide_list
+    _results_2025_cache["hod"] = hod_dict
+    return _results_2025_cache
+
+
 # All district GDFs are lazy — borrowed from address_lookup on first use
 _va_cd_gdf  = None
 _va_hod_gdf = None
@@ -1318,6 +1424,17 @@ Keep answers 2-4 sentences. Be factual and nonpartisan. For official contact inf
         messages=[{"role": m.role, "content": m.content} for m in req.messages],
     )
     return ChatResponse(reply=response.content[0].text)
+
+@app.get("/past-elections", response_class=HTMLResponse)
+def election_results_page():
+    with open(os.path.join(BASE_DIR, "templates", "election_results.html"), "r", encoding="utf-8") as f:
+        return f.read()
+
+
+@app.get("/api/election-results-2025")
+def election_results_2025_api():
+    return _load_2025_results()
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))

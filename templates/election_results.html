@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Past Elections — VoteIQ</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root { --navy:#0d1b2a; --red:#c8102e; --light:#f4f1eb; --mid:#ddd8cc; --muted:#7a7468; --dem:#1a52c8; --rep:#c8102e; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--light); color: var(--navy); font-family: 'Barlow', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f4f1eb'/%3E%3Crect width='1' height='1' fill='%23e8e4dc' opacity='0.4'/%3E%3C/svg%3E"); pointer-events: none; z-index: 0; }
+
+  /* ── Top bar ── */
+  .topbar { background: var(--navy); color: var(--mid); font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; text-align: center; padding: 7px 16px; position: relative; z-index: 10; }
+  .topbar span { color: var(--red); margin: 0 6px; }
+
+  /* ── Header ── */
+  header { position: relative; z-index: 10; border-bottom: 3px double var(--navy); padding: 28px 48px 22px; display: flex; align-items: center; justify-content: space-between; background: var(--light); }
+  .logo-wrap { display: flex; align-items: center; gap: 16px; }
+  .election-badge { display: inline-block; background: var(--red); color: white; font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; padding: 5px 12px; margin-bottom: 6px; }
+  .header-date { font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; text-align: right; }
+
+  /* ── Back link ── */
+  .back-link { display: inline-block; font-family: 'Barlow Condensed', sans-serif; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--navy); text-decoration: none; border: 1.5px solid var(--navy); padding: 9px 20px; transition: all .2s; position: relative; z-index: 10; }
+  .back-link:hover { background: var(--navy); color: white; }
+
+  /* ── Page hero ── */
+  .page-hero { position: relative; z-index: 10; max-width: 960px; margin: 0 auto; padding: 48px 32px 32px; text-align: center; }
+  .page-hero-eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--red); margin-bottom: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .page-hero-eyebrow::before, .page-hero-eyebrow::after { content: ''; flex: 1; max-width: 60px; height: 1px; background: var(--red); }
+  .page-hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 900; line-height: 1.1; color: var(--navy); margin-bottom: 14px; letter-spacing: -0.02em; }
+  .page-hero h1 em { font-style: italic; color: var(--red); }
+  .page-hero p { font-size: 1rem; color: var(--muted); max-width: 520px; margin: 0 auto; line-height: 1.6; }
+
+  /* ── Section headers ── */
+  .section-wrap { position: relative; z-index: 10; max-width: 960px; margin: 0 auto; padding: 0 32px 48px; }
+  .section-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--mid); }
+  .section-label span { color: var(--red); }
+
+  /* ── Loading spinner ── */
+  .loading-state { text-align: center; padding: 60px 20px; }
+  .spinner { display: inline-block; width: 36px; height: 36px; border: 3px solid var(--mid); border-top-color: var(--navy); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-state p { font-family: 'Barlow Condensed', sans-serif; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
+
+  /* ── Statewide race cards ── */
+  .race-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 48px; }
+  .race-card { background: white; border: 1px solid var(--mid); border-top: 4px solid var(--navy); padding: 22px 20px 18px; }
+  .race-card-office { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .race-winner-name { font-family: 'Playfair Display', serif; font-size: 1.15rem; font-weight: 700; color: var(--navy); margin-bottom: 6px; line-height: 1.2; }
+  .party-badge { display: inline-block; font-family: 'Barlow Condensed', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 8px; border-radius: 3px; color: white; margin-bottom: 12px; }
+  .party-badge.dem { background: var(--dem); }
+  .party-badge.rep { background: var(--rep); }
+  .party-badge.ind { background: #555; }
+  .vote-stats { font-size: 0.83rem; color: var(--navy); margin-bottom: 10px; }
+  .vote-stats strong { font-size: 1.05rem; }
+  .vote-bar-wrap { margin-top: 10px; }
+  .vote-bar-track { height: 6px; background: var(--mid); border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
+  .vote-bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+  .vote-bar-fill.dem { background: var(--dem); }
+  .vote-bar-fill.rep { background: var(--rep); }
+  .vote-bar-labels { display: flex; justify-content: space-between; font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .race-runners-up { margin-top: 12px; border-top: 1px solid var(--mid); padding-top: 10px; }
+  .runner-row { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: var(--muted); padding: 3px 0; }
+  .runner-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .runner-dot.dem { background: var(--dem); }
+  .runner-dot.rep { background: var(--rep); }
+  .runner-dot.ind { background: #555; }
+
+  /* ── HOD filter ── */
+  .filter-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .filter-input { flex: 1; max-width: 320px; border: 2px solid var(--navy); padding: 10px 14px; font-family: 'Barlow', sans-serif; font-size: 0.88rem; color: var(--navy); background: white; outline: none; box-shadow: 3px 3px 0 var(--navy); transition: box-shadow 0.2s; }
+  .filter-input:focus { box-shadow: 4px 4px 0 var(--red); border-color: var(--red); }
+  .filter-input::placeholder { color: #aaa8a2; }
+  .filter-count { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+
+  /* ── HOD table ── */
+  .hod-table-wrap { overflow-x: auto; border: 1px solid var(--mid); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.84rem; background: white; }
+  thead tr { background: var(--navy); }
+  thead th { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: white; padding: 11px 14px; text-align: left; white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid #f0ede6; transition: background 0.12s; }
+  tbody tr:hover { background: #faf8f3; }
+  tbody tr.dem-row { border-left: 3px solid var(--dem); }
+  tbody tr.rep-row { border-left: 3px solid var(--rep); }
+  tbody tr.ind-row { border-left: 3px solid #888; }
+  td { padding: 9px 14px; color: var(--navy); }
+  td.td-dist { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 0.9rem; color: var(--muted); }
+  td.td-winner { font-weight: 600; }
+  td.td-pct { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; color: var(--muted); }
+  td .inline-badge { display: inline-block; font-family: 'Barlow Condensed', sans-serif; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 1px 6px; border-radius: 2px; color: white; margin-left: 6px; vertical-align: middle; }
+  td .inline-badge.dem { background: var(--dem); }
+  td .inline-badge.rep { background: var(--rep); }
+  td .inline-badge.ind { background: #555; }
+  .no-results-row td { text-align: center; padding: 40px; color: var(--muted); font-style: italic; }
+
+  /* ── Footer ── */
+  footer { position: relative; z-index: 10; margin-top: 56px; border-top: 3px double var(--navy); padding: 20px 48px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: var(--light); }
+  footer p { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  footer p span { color: var(--red); }
+  .footer-links { display: flex; gap: 20px; }
+  .footer-links a { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+  .footer-links a:hover { color: var(--red); }
+
+  @media (max-width: 700px) {
+    header { padding: 20px 20px 16px; flex-wrap: wrap; gap: 12px; }
+    .page-hero { padding: 32px 20px 24px; }
+    .section-wrap { padding: 0 20px 40px; }
+    .race-cards { grid-template-columns: 1fr; }
+    footer { padding: 16px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  2025 Virginia General Election &nbsp;<span>◆</span>&nbsp; November 4, 2025 &nbsp;<span>◆</span>&nbsp; Official Results
+</div>
+
+<header>
+  <div class="logo-wrap">
+    <a href="/">
+      <img src="/static/logo.png" alt="VoteIQ Logo" style="width:120px;height:120px;object-fit:contain;" />
+    </a>
+  </div>
+  <div>
+    <div class="election-badge">Past Results</div>
+    <div class="header-date">Virginia General Election &nbsp;·&nbsp; November 4, 2025</div>
+  </div>
+</header>
+
+<div class="page-hero">
+  <div class="page-hero-eyebrow">Past Elections</div>
+  <h1>2025 Virginia <em>General Election</em></h1>
+  <p>Official results for the November 4, 2025 statewide races and all 100 House of Delegates districts.</p>
+  <div style="margin-top:28px;">
+    <a href="/" class="back-link">&#8592; Back to VoteIQ</a>
+  </div>
+</div>
+
+<div class="section-wrap">
+
+  <!-- Section 1: Statewide Races -->
+  <div class="section-label"><span>01</span> Statewide Races</div>
+  <div id="statewide-section">
+    <div class="loading-state" id="statewide-loading">
+      <div class="spinner"></div>
+      <p>Loading statewide results&hellip;</p>
+    </div>
+    <div class="race-cards" id="statewide-cards" style="display:none;"></div>
+  </div>
+
+  <!-- Section 2: House of Delegates -->
+  <div class="section-label" style="margin-top:16px;"><span>02</span> House of Delegates — All 100 Districts</div>
+  <div id="hod-section">
+    <div class="loading-state" id="hod-loading">
+      <div class="spinner"></div>
+      <p>Loading district results&hellip;</p>
+    </div>
+    <div id="hod-controls" style="display:none;">
+      <div class="filter-row">
+        <input type="text" class="filter-input" id="hod-filter" placeholder="Filter by district #, name, or party&hellip;" oninput="filterHOD()" />
+        <span class="filter-count" id="hod-count"></span>
+      </div>
+      <div class="hod-table-wrap">
+        <table id="hod-table">
+          <thead>
+            <tr>
+              <th>Dist.</th>
+              <th>Winner</th>
+              <th>Party</th>
+              <th>Votes</th>
+              <th>Runner-Up</th>
+              <th>Pct.</th>
+            </tr>
+          </thead>
+          <tbody id="hod-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /section-wrap -->
+
+<footer>
+  <p>© 2026 <span>VoteIQ</span> &nbsp;·&nbsp; voteiq.io &nbsp;·&nbsp; Nonpartisan civic data for Virginia voters</p>
+  <div class="footer-links">
+    <a href="/">Home</a>
+    <a href="#">About</a>
+    <a href="#">Data Sources</a>
+  </div>
+</footer>
+
+<script>
+(function () {
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+  function partyClass(party) {
+    if (!party) return 'ind';
+    const p = party.toLowerCase();
+    if (p.includes('democrat')) return 'dem';
+    if (p.includes('republican')) return 'rep';
+    return 'ind';
+  }
+
+  function partyLabel(party) {
+    if (!party) return 'Ind';
+    const p = party.toLowerCase();
+    if (p.includes('democrat')) return 'Dem';
+    if (p.includes('republican')) return 'Rep';
+    return party.substring(0, 4);
+  }
+
+  function fmtVotes(n) {
+    return Number(n).toLocaleString('en-US');
+  }
+
+  function esc(str) {
+    return String(str ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  }
+
+  // ── Render statewide cards ───────────────────────────────────────────────────
+  function renderStatewide(races) {
+    const container = document.getElementById('statewide-cards');
+    container.innerHTML = '';
+
+    races.forEach(function (race) {
+      if (!race.candidates || race.candidates.length === 0) return;
+      const winner = race.candidates[0];
+      const rest   = race.candidates.slice(1);
+      const pc     = partyClass(winner.party);
+      const total  = race.total || 1;
+
+      // Build runner-up bar label spans
+      const labels = race.candidates.map(function (c) {
+        return '<span>' + esc(partyLabel(c.party)) + ' ' + (c.pct != null ? c.pct.toFixed(1) : '0.0') + '%</span>';
+      });
+
+      // Vote bar (winner pct)
+      const winnerPct = winner.pct != null ? winner.pct : 0;
+
+      // Runner-up rows
+      let runnerHtml = '';
+      rest.forEach(function (c) {
+        const rc = partyClass(c.party);
+        runnerHtml +=
+          '<div class="runner-row">' +
+          '<div class="runner-dot ' + rc + '"></div>' +
+          '<span>' + esc(c.name) + ' &nbsp;·&nbsp; ' + fmtVotes(c.votes) + ' votes (' + (c.pct != null ? c.pct.toFixed(1) : '0.0') + '%)</span>' +
+          '</div>';
+      });
+
+      const card = document.createElement('div');
+      card.className = 'race-card';
+      card.innerHTML =
+        '<div class="race-card-office">' + esc(race.office) + '</div>' +
+        '<div class="race-winner-name">' + esc(winner.name) + '</div>' +
+        '<div><span class="party-badge ' + pc + '">' + esc(partyLabel(winner.party)) + '</span></div>' +
+        '<div class="vote-stats" style="margin-top:10px;">' +
+        '<strong>' + fmtVotes(winner.votes) + '</strong> votes &nbsp;·&nbsp; ' +
+        (winnerPct != null ? winnerPct.toFixed(1) : '0.0') + '%' +
+        '</div>' +
+        '<div class="vote-bar-wrap">' +
+        '<div class="vote-bar-track"><div class="vote-bar-fill ' + pc + '" style="width:' + Math.min(100, winnerPct || 0) + '%"></div></div>' +
+        '<div class="vote-bar-labels">' + labels.join('') + '</div>' +
+        '</div>' +
+        (runnerHtml ? '<div class="race-runners-up">' + runnerHtml + '</div>' : '');
+      container.appendChild(card);
+    });
+
+    document.getElementById('statewide-loading').style.display = 'none';
+    container.style.display = 'grid';
+  }
+
+  // ── HOD table row builder ────────────────────────────────────────────────────
+  var hodAllRows = [];   // store for filtering
+
+  function renderHODTable(hodData) {
+    const tbody = document.getElementById('hod-tbody');
+    tbody.innerHTML = '';
+    hodAllRows = [];
+
+    // hodData is a dict keyed by district number string
+    const districts = Object.keys(hodData).map(Number).sort(function (a, b) { return a - b; });
+
+    districts.forEach(function (dNum) {
+      const race = hodData[dNum];
+      if (!race || !race.candidates || race.candidates.length === 0) return;
+
+      const winner  = race.candidates[0];
+      const runnerUp = race.candidates[1] || null;
+      const pc = partyClass(winner.party);
+      const winnerPct = winner.pct != null ? winner.pct.toFixed(1) : '—';
+
+      const tr = document.createElement('tr');
+      tr.className = pc + '-row';
+      tr.innerHTML =
+        '<td class="td-dist">' + dNum + '</td>' +
+        '<td class="td-winner">' + esc(winner.name) + '<span class="inline-badge ' + pc + '">' + esc(partyLabel(winner.party)) + '</span></td>' +
+        '<td>' + esc(winner.party || '—') + '</td>' +
+        '<td>' + fmtVotes(winner.votes) + '</td>' +
+        '<td>' + (runnerUp ? esc(runnerUp.name) + ' (' + fmtVotes(runnerUp.votes) + ')' : '<span style="color:#bbb">Uncontested</span>') + '</td>' +
+        '<td class="td-pct">' + winnerPct + '%</td>';
+
+      // Store searchable text for filter
+      tr.dataset.search = [
+        dNum,
+        winner.name,
+        winner.party,
+        runnerUp ? runnerUp.name : ''
+      ].join(' ').toLowerCase();
+
+      tbody.appendChild(tr);
+      hodAllRows.push(tr);
+    });
+
+    document.getElementById('hod-loading').style.display = 'none';
+    document.getElementById('hod-controls').style.display = 'block';
+    updateHODCount(hodAllRows.length, hodAllRows.length);
+  }
+
+  function updateHODCount(visible, total) {
+    const el = document.getElementById('hod-count');
+    el.textContent = visible === total
+      ? total + ' districts'
+      : visible + ' of ' + total + ' districts';
+  }
+
+  window.filterHOD = function () {
+    const q = document.getElementById('hod-filter').value.trim().toLowerCase();
+    let visible = 0;
+
+    // Remove any existing no-results row
+    const existing = document.querySelector('.no-results-row');
+    if (existing) existing.remove();
+
+    hodAllRows.forEach(function (tr) {
+      const show = !q || tr.dataset.search.includes(q);
+      tr.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+
+    if (visible === 0 && hodAllRows.length > 0) {
+      const tbody = document.getElementById('hod-tbody');
+      const tr = document.createElement('tr');
+      tr.className = 'no-results-row';
+      tr.innerHTML = '<td colspan="6">No districts match &ldquo;' + esc(q) + '&rdquo;</td>';
+      tbody.appendChild(tr);
+    }
+
+    updateHODCount(visible, hodAllRows.length);
+  };
+
+  // ── Fetch and render ─────────────────────────────────────────────────────────
+  fetch('/api/election-results-2025')
+    .then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    })
+    .then(function (data) {
+      if (data.statewide) renderStatewide(data.statewide);
+      if (data.hod)       renderHODTable(data.hod);
+    })
+    .catch(function (err) {
+      document.getElementById('statewide-loading').innerHTML =
+        '<p style="color:var(--red);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:0.1em;text-transform:uppercase;font-size:0.8rem;">Could not load results. Please try again later.</p>';
+      document.getElementById('hod-loading').innerHTML =
+        '<p style="color:var(--red);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:0.1em;text-transform:uppercase;font-size:0.8rem;">Could not load results. Please try again later.</p>';
+      console.error('Election results fetch error:', err);
+    });
+})();
+</script>
+</body>
+</html>
