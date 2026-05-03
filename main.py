@@ -1731,5 +1731,31 @@ def election_results_2025_api():
     return _load_2025_results()
 
 
+_2024_data_cache = None
+
+def _load_2024_results():
+    global _2024_data_cache
+    if _2024_data_cache is not None:
+        return _2024_data_cache
+    path = os.path.join(BASE_DIR, "election_results_2024.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            _2024_data_cache = json.load(f)
+    except Exception as e:
+        print(f"_load_2024_results: {e}")
+        _2024_data_cache = {"statewide": [], "locality_results": {}, "congress": {}}
+    return _2024_data_cache
+
+
+@app.get("/past-elections/2024", response_class=HTMLResponse)
+def election_results_2024_page():
+    data = _load_2024_results()
+    safe_json = json.dumps(data, default=str).replace("</script>", "<\\/script>")
+    with open(os.path.join(BASE_DIR, "templates", "election_results_2024.html"), "r", encoding="utf-8") as f:
+        html = f.read()
+    html = html.replace("</head>", f"<script>window._ELECTION_DATA={safe_json};</script></head>", 1)
+    return html
+
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))

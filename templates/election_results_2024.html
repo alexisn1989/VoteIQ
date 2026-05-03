@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>2024 Federal Election — VoteIQ</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root { --navy:#0d1b2a; --red:#c8102e; --light:#f4f1eb; --mid:#ddd8cc; --muted:#7a7468; --dem:#1a52c8; --rep:#c8102e; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--light); color: var(--navy); font-family: 'Barlow', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f4f1eb'/%3E%3Crect width='1' height='1' fill='%23e8e4dc' opacity='0.4'/%3E%3C/svg%3E"); pointer-events: none; z-index: 0; }
+
+  .topbar { background: var(--navy); color: var(--mid); font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; text-align: center; padding: 7px 16px; position: relative; z-index: 10; }
+  .topbar span { color: var(--red); margin: 0 6px; }
+
+  header { position: relative; z-index: 10; border-bottom: 3px double var(--navy); padding: 28px 48px 22px; display: flex; align-items: center; justify-content: space-between; background: var(--light); }
+  .logo-wrap { display: flex; align-items: center; gap: 16px; }
+  .election-badge { display: inline-block; background: var(--red); color: white; font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; padding: 5px 12px; margin-bottom: 6px; }
+  .header-date { font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; text-align: right; }
+
+  .back-link { display: inline-block; font-family: 'Barlow Condensed', sans-serif; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--navy); text-decoration: none; border: 1.5px solid var(--navy); padding: 9px 20px; transition: all .2s; position: relative; z-index: 10; }
+  .back-link:hover { background: var(--navy); color: white; }
+
+  .page-hero { position: relative; z-index: 10; max-width: 960px; margin: 0 auto; padding: 48px 32px 32px; text-align: center; }
+  .page-hero-eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--red); margin-bottom: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .page-hero-eyebrow::before, .page-hero-eyebrow::after { content: ''; flex: 1; max-width: 60px; height: 1px; background: var(--red); }
+  .page-hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 900; line-height: 1.1; color: var(--navy); margin-bottom: 14px; letter-spacing: -0.02em; }
+  .page-hero h1 em { font-style: italic; color: var(--red); }
+  .page-hero p { font-size: 1rem; color: var(--muted); max-width: 520px; margin: 0 auto; line-height: 1.6; }
+
+  .section-wrap { position: relative; z-index: 10; max-width: 960px; margin: 0 auto; padding: 0 32px 48px; }
+  .section-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--mid); }
+  .section-label span { color: var(--red); }
+
+  .loading-state { text-align: center; padding: 60px 20px; }
+  .spinner { display: inline-block; width: 36px; height: 36px; border: 3px solid var(--mid); border-top-color: var(--navy); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-state p { font-family: 'Barlow Condensed', sans-serif; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
+
+  .race-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 48px; }
+  .race-card { background: white; border: 1px solid var(--mid); border-top: 4px solid var(--navy); padding: 22px 20px 18px; }
+  .race-card-office { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .race-winner-name { font-family: 'Playfair Display', serif; font-size: 1.15rem; font-weight: 700; color: var(--navy); margin-bottom: 6px; line-height: 1.2; }
+  .party-badge { display: inline-block; font-family: 'Barlow Condensed', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 8px; border-radius: 3px; color: white; margin-bottom: 12px; }
+  .party-badge.dem { background: var(--dem); }
+  .party-badge.rep { background: var(--rep); }
+  .party-badge.ind { background: #555; }
+  .vote-stats { font-size: 0.83rem; color: var(--navy); margin-bottom: 10px; }
+  .vote-stats strong { font-size: 1.05rem; }
+  .vote-bar-wrap { margin-top: 10px; }
+  .vote-bar-track { height: 6px; background: var(--mid); border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
+  .vote-bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+  .vote-bar-fill.dem { background: var(--dem); }
+  .vote-bar-fill.rep { background: var(--rep); }
+  .vote-bar-labels { display: flex; justify-content: space-between; font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .race-runners-up { margin-top: 12px; border-top: 1px solid var(--mid); padding-top: 10px; }
+  .runner-row { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: var(--muted); padding: 3px 0; }
+  .runner-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .runner-dot.dem { background: var(--dem); }
+  .runner-dot.rep { background: var(--rep); }
+  .runner-dot.ind { background: #555; }
+
+  .filter-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .filter-input { flex: 1; max-width: 320px; border: 2px solid var(--navy); padding: 10px 14px; font-family: 'Barlow', sans-serif; font-size: 0.88rem; color: var(--navy); background: white; outline: none; box-shadow: 3px 3px 0 var(--navy); transition: box-shadow 0.2s; }
+  .filter-input:focus { box-shadow: 4px 4px 0 var(--red); border-color: var(--red); }
+  .filter-input::placeholder { color: #aaa8a2; }
+  .filter-count { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+
+  .hod-table-wrap { overflow-x: auto; border: 1px solid var(--mid); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.84rem; background: white; }
+  thead tr { background: var(--navy); }
+  thead th { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: white; padding: 11px 14px; text-align: left; white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid #f0ede6; transition: background 0.12s; }
+  tbody tr:hover { background: #faf8f3; }
+  tbody tr.dem-row { border-left: 3px solid var(--dem); }
+  tbody tr.rep-row { border-left: 3px solid var(--rep); }
+  tbody tr.ind-row { border-left: 3px solid #888; }
+  td { padding: 9px 14px; color: var(--navy); }
+  td.td-dist { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 0.9rem; color: var(--muted); }
+  td.td-winner { font-weight: 600; }
+  td.td-pct { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; color: var(--muted); }
+  td .inline-badge { display: inline-block; font-family: 'Barlow Condensed', sans-serif; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 1px 6px; border-radius: 2px; color: white; margin-left: 6px; vertical-align: middle; }
+  td .inline-badge.dem { background: var(--dem); }
+  td .inline-badge.rep { background: var(--rep); }
+  td .inline-badge.ind { background: #555; }
+  .no-results-row td { text-align: center; padding: 40px; color: var(--muted); font-style: italic; }
+
+  /* Tab navigation */
+  .results-tabs { margin-top: 16px; }
+  .tab-nav { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 2px solid var(--navy); margin-bottom: 20px; }
+  .tab-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; padding: 8px 16px; border: 1.5px solid var(--navy); border-bottom: none; background: white; color: var(--navy); cursor: pointer; transition: all 0.15s; position: relative; bottom: -2px; }
+  .tab-btn:hover { background: var(--light); }
+  .tab-btn.active { background: var(--navy); color: white; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  footer { position: relative; z-index: 10; margin-top: 56px; border-top: 3px double var(--navy); padding: 20px 48px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: var(--light); }
+  footer p { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  footer p span { color: var(--red); }
+  .footer-links { display: flex; gap: 20px; }
+  .footer-links a { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+  .footer-links a:hover { color: var(--red); }
+
+  @media (max-width: 700px) {
+    header { padding: 20px 20px 16px; flex-wrap: wrap; gap: 12px; }
+    .page-hero { padding: 32px 20px 24px; }
+    .section-wrap { padding: 0 20px 40px; }
+    .race-cards { grid-template-columns: 1fr; }
+    footer { padding: 16px 20px; }
+    .tab-btn { font-size: 0.65rem; padding: 7px 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  2024 Virginia Federal Election &nbsp;<span>◆</span>&nbsp; November 5, 2024 &nbsp;<span>◆</span>&nbsp; Official Results
+</div>
+
+<header>
+  <div class="logo-wrap">
+    <a href="/">
+      <img src="/static/logo.png" alt="VoteIQ Logo" style="width:120px;height:120px;object-fit:contain;" />
+    </a>
+  </div>
+  <div>
+    <div class="election-badge">Past Results</div>
+    <div class="header-date">Virginia Federal Election &nbsp;·&nbsp; November 5, 2024</div>
+  </div>
+</header>
+
+<div class="page-hero">
+  <div class="page-hero-eyebrow">Past Elections</div>
+  <h1>2024 Virginia <em>Federal Election</em></h1>
+  <p>Official results for the November 5, 2024 presidential, U.S. Senate, and all 11 congressional district races in Virginia.</p>
+  <div style="margin-top:28px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+    <a href="/past-elections" class="back-link">&#8592; 2025 State Elections</a>
+    <a href="/" class="back-link">&#8592; Back to VoteIQ</a>
+  </div>
+</div>
+
+<div class="section-wrap">
+
+  <!-- Statewide cards -->
+  <div class="section-label"><span>01</span> Statewide Federal Races</div>
+  <div id="statewide-section">
+    <div class="loading-state" id="statewide-loading">
+      <div class="spinner"></div>
+      <p>Loading results&hellip;</p>
+    </div>
+    <div class="race-cards" id="statewide-cards" style="display:none;"></div>
+  </div>
+
+  <!-- Tabbed sections -->
+  <div class="results-tabs">
+    <div class="tab-nav">
+      <button class="tab-btn active" data-tab="congress">Congressional Districts</button>
+      <button class="tab-btn" data-tab="pres-locality">President by Locality</button>
+      <button class="tab-btn" data-tab="senate-locality">Senate by Locality</button>
+    </div>
+
+    <!-- Tab 1: Congress table -->
+    <div class="tab-panel active" id="tab-congress">
+      <div class="section-label"><span>02</span> U.S. House — All 11 Virginia Districts</div>
+      <div id="congress-section">
+        <div class="loading-state" id="congress-loading">
+          <div class="spinner"></div>
+          <p>Loading district results&hellip;</p>
+        </div>
+        <div id="congress-controls" style="display:none;">
+          <div class="hod-table-wrap">
+            <table id="congress-table">
+              <thead>
+                <tr>
+                  <th>District</th>
+                  <th>Winner</th>
+                  <th>Party</th>
+                  <th>Votes</th>
+                  <th>Runner-Up</th>
+                  <th>Pct.</th>
+                </tr>
+              </thead>
+              <tbody id="congress-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: President by Locality -->
+    <div class="tab-panel" id="tab-pres-locality">
+      <div class="section-label"><span>03</span> President — Results by County &amp; City</div>
+      <div id="pres-locality-section">
+        <div class="loading-state" id="pres-locality-loading">
+          <div class="spinner"></div>
+          <p>Loading locality results&hellip;</p>
+        </div>
+        <div id="pres-locality-controls" style="display:none;">
+          <div class="filter-row">
+            <input type="text" class="filter-input" id="pres-locality-filter" placeholder="Filter by locality name&hellip;" oninput="filterPresLocality()" />
+            <span class="filter-count" id="pres-locality-count"></span>
+          </div>
+          <div class="hod-table-wrap">
+            <table id="pres-locality-table">
+              <thead>
+                <tr>
+                  <th>Locality</th>
+                  <th>Winner</th>
+                  <th>Dem %</th>
+                  <th>Rep %</th>
+                  <th>Total Votes</th>
+                </tr>
+              </thead>
+              <tbody id="pres-locality-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 3: Senate by Locality -->
+    <div class="tab-panel" id="tab-senate-locality">
+      <div class="section-label"><span>04</span> U.S. Senate — Results by County &amp; City</div>
+      <div id="senate-locality-section">
+        <div class="loading-state" id="senate-locality-loading">
+          <div class="spinner"></div>
+          <p>Loading locality results&hellip;</p>
+        </div>
+        <div id="senate-locality-controls" style="display:none;">
+          <div class="filter-row">
+            <input type="text" class="filter-input" id="senate-locality-filter" placeholder="Filter by locality name&hellip;" oninput="filterSenateLocality()" />
+            <span class="filter-count" id="senate-locality-count"></span>
+          </div>
+          <div class="hod-table-wrap">
+            <table id="senate-locality-table">
+              <thead>
+                <tr>
+                  <th>Locality</th>
+                  <th>Winner</th>
+                  <th>Dem %</th>
+                  <th>Rep %</th>
+                  <th>Total Votes</th>
+                </tr>
+              </thead>
+              <tbody id="senate-locality-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /results-tabs -->
+
+</div><!-- /section-wrap -->
+
+<footer>
+  <p>© 2026 <span>VoteIQ</span> &nbsp;·&nbsp; voteiq.io &nbsp;·&nbsp; Nonpartisan civic data for Virginia voters</p>
+  <div class="footer-links">
+    <a href="/">Home</a>
+    <a href="/past-elections">2025 Results</a>
+    <a href="#">Data Sources</a>
+  </div>
+</footer>
+
+<script>
+(function () {
+  function partyClass(party) {
+    if (!party) return 'ind';
+    const p = party.toLowerCase();
+    if (p.includes('democrat')) return 'dem';
+    if (p.includes('republican')) return 'rep';
+    return 'ind';
+  }
+  function partyLabel(party) {
+    if (!party) return 'Ind';
+    const p = party.toLowerCase();
+    if (p.includes('democrat')) return 'Dem';
+    if (p.includes('republican')) return 'Rep';
+    return party.substring(0, 4);
+  }
+  function fmtVotes(n) { return Number(n).toLocaleString('en-US'); }
+  function esc(str) {
+    return String(str ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  }
+  function titleCase(str) {
+    return str.replace(/ COUNTY$/, ' County').replace(/ CITY$/, ' City')
+      .replace(/\b\w/g, c => c.toUpperCase()).replace(/\bOf\b/g, 'of');
+  }
+
+  // ── Statewide cards ───────────────────────────────────────────────────────────
+  function renderStatewide(races) {
+    const container = document.getElementById('statewide-cards');
+    container.innerHTML = '';
+    races.forEach(function(race) {
+      if (!race.candidates || !race.candidates.length) return;
+      const winner = race.candidates[0];
+      const rest   = race.candidates.slice(1);
+      const pc     = partyClass(winner.party);
+      const labels = race.candidates.map(c =>
+        '<span>' + esc(partyLabel(c.party)) + ' ' + (c.pct != null ? c.pct.toFixed(1) : '0.0') + '%</span>');
+      let runnerHtml = '';
+      rest.forEach(function(c) {
+        const rc = partyClass(c.party);
+        runnerHtml += '<div class="runner-row"><div class="runner-dot ' + rc + '"></div><span>' +
+          esc(c.name) + ' &nbsp;·&nbsp; ' + fmtVotes(c.votes) + ' votes (' + (c.pct != null ? c.pct.toFixed(1) : '0.0') + '%)</span></div>';
+      });
+      const card = document.createElement('div');
+      card.className = 'race-card';
+      card.innerHTML =
+        '<div class="race-card-office">' + esc(race.office) + '</div>' +
+        '<div class="race-winner-name">' + esc(winner.name) + '</div>' +
+        '<div><span class="party-badge ' + pc + '">' + esc(partyLabel(winner.party)) + '</span></div>' +
+        '<div class="vote-stats" style="margin-top:10px;"><strong>' + fmtVotes(winner.votes) + '</strong> votes &nbsp;·&nbsp; ' + (winner.pct || 0).toFixed(1) + '%</div>' +
+        '<div class="vote-bar-wrap"><div class="vote-bar-track"><div class="vote-bar-fill ' + pc + '" style="width:' + Math.min(100, winner.pct || 0) + '%"></div></div>' +
+        '<div class="vote-bar-labels">' + labels.join('') + '</div></div>' +
+        (runnerHtml ? '<div class="race-runners-up">' + runnerHtml + '</div>' : '');
+      container.appendChild(card);
+    });
+    document.getElementById('statewide-loading').style.display = 'none';
+    container.style.display = 'grid';
+  }
+
+  // ── Congress table ────────────────────────────────────────────────────────────
+  function renderCongress(congress) {
+    const tbody = document.getElementById('congress-tbody');
+    tbody.innerHTML = '';
+    var ORDER = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th'];
+    ORDER.forEach(function(dist) {
+      var race = congress[dist];
+      if (!race || !race.candidates || !race.candidates.length) return;
+      var winner   = race.candidates[0];
+      var runnerUp = race.candidates[1] || null;
+      var pc = partyClass(winner.party);
+      var tr = document.createElement('tr');
+      tr.className = pc + '-row';
+      tr.innerHTML =
+        '<td class="td-dist">VA-' + esc(dist.replace(' District','').replace('th','').replace('st','').replace('nd','').replace('rd','')) + '</td>' +
+        '<td class="td-winner">' + esc(winner.name) + '<span class="inline-badge ' + pc + '">' + esc(partyLabel(winner.party)) + '</span></td>' +
+        '<td>' + esc(winner.party || '—') + '</td>' +
+        '<td>' + fmtVotes(winner.votes) + '</td>' +
+        '<td>' + (runnerUp ? esc(runnerUp.name) + ' (' + fmtVotes(runnerUp.votes) + ')' : '<span style="color:#bbb">Uncontested</span>') + '</td>' +
+        '<td class="td-pct">' + (winner.pct != null ? winner.pct.toFixed(1) : '—') + '%</td>';
+      tbody.appendChild(tr);
+    });
+    document.getElementById('congress-loading').style.display = 'none';
+    document.getElementById('congress-controls').style.display = 'block';
+  }
+
+  // ── Locality table (generic) ──────────────────────────────────────────────────
+  var _presRows = [], _senRows = [];
+
+  function renderLocalityRace(locData, tbodyId, loadingId, controlsId, countId, rowsArr) {
+    var tbody = document.getElementById(tbodyId);
+    tbody.innerHTML = '';
+    rowsArr.length = 0;
+    Object.keys(locData).sort().forEach(function(loc) {
+      var d = locData[loc];
+      var winner = d.winner || {};
+      var dem = d.dem || {};
+      var rep = d.rep || {};
+      var pc = partyClass(winner.party);
+      var demPct = dem.pct != null ? dem.pct.toFixed(1) : '—';
+      var repPct = rep.pct != null ? rep.pct.toFixed(1) : '—';
+      var display = titleCase(loc);
+      var tr = document.createElement('tr');
+      tr.className = pc + '-row';
+      tr.innerHTML =
+        '<td style="font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:0.88rem;">' + esc(display) + '</td>' +
+        '<td class="td-winner"><span class="inline-badge ' + pc + '">' + (pc === 'dem' ? 'D' : pc === 'rep' ? 'R' : 'I') + '</span> ' + esc((winner.name || '').split(' ').pop()) + ' <span style="color:var(--muted);font-size:0.8em;">' + (winner.pct != null ? winner.pct.toFixed(1) : '0.0') + '%</span></td>' +
+        '<td class="td-pct" style="color:var(--dem);">' + demPct + '%</td>' +
+        '<td class="td-pct" style="color:var(--rep);">' + repPct + '%</td>' +
+        '<td>' + fmtVotes(d.total || 0) + '</td>';
+      tr.dataset.search = display.toLowerCase();
+      tbody.appendChild(tr);
+      rowsArr.push(tr);
+    });
+    document.getElementById(loadingId).style.display = 'none';
+    document.getElementById(controlsId).style.display = 'block';
+    document.getElementById(countId).textContent = rowsArr.length + ' localities';
+  }
+
+  function makeFilter(inputId, countId, rowsArr) {
+    return function() {
+      var q = document.getElementById(inputId).value.trim().toLowerCase();
+      var visible = 0;
+      rowsArr.forEach(function(tr) {
+        var show = !q || tr.dataset.search.includes(q);
+        tr.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+      document.getElementById(countId).textContent =
+        visible === rowsArr.length ? rowsArr.length + ' localities' : visible + ' of ' + rowsArr.length + ' localities';
+    };
+  }
+  window.filterPresLocality   = makeFilter('pres-locality-filter',   'pres-locality-count',   _presRows);
+  window.filterSenateLocality = makeFilter('senate-locality-filter', 'senate-locality-count', _senRows);
+
+  // ── Load data ─────────────────────────────────────────────────────────────────
+  var data = window._ELECTION_DATA || {};
+
+  if (data.statewide && data.statewide.length) {
+    renderStatewide(data.statewide);
+  } else {
+    document.getElementById('statewide-loading').innerHTML =
+      '<p style="color:var(--muted);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:0.1em;text-transform:uppercase;font-size:0.8rem;">No statewide data available.</p>';
+  }
+
+  if (data.congress && Object.keys(data.congress).length) {
+    renderCongress(data.congress);
+  } else {
+    document.getElementById('congress-loading').innerHTML =
+      '<p style="color:var(--muted);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:0.1em;text-transform:uppercase;font-size:0.8rem;">No congressional data available.</p>';
+  }
+
+  var lr = data.locality_results || {};
+  if (lr['President'] && Object.keys(lr['President']).length) {
+    renderLocalityRace(lr['President'], 'pres-locality-tbody', 'pres-locality-loading', 'pres-locality-controls', 'pres-locality-count', _presRows);
+  } else {
+    document.getElementById('pres-locality-loading').innerHTML =
+      '<p style="color:var(--muted);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:0.1em;text-transform:uppercase;font-size:0.8rem;">No locality data available.</p>';
+  }
+  if (lr['U.S. Senate'] && Object.keys(lr['U.S. Senate']).length) {
+    renderLocalityRace(lr['U.S. Senate'], 'senate-locality-tbody', 'senate-locality-loading', 'senate-locality-controls', 'senate-locality-count', _senRows);
+  } else {
+    document.getElementById('senate-locality-loading').innerHTML =
+      '<p style="color:var(--muted);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:0.1em;text-transform:uppercase;font-size:0.8rem;">No locality data available.</p>';
+  }
+
+  // ── Tab switching ─────────────────────────────────────────────────────────────
+  document.querySelectorAll('.tab-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+      document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,5947 @@
+{
+  "statewide": [
+    {
+      "office": "President",
+      "candidates": [
+        {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2335395,
+          "pct": 52.1
+        },
+        {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 2075085,
+          "pct": 46.3
+        },
+        {
+          "name": "Jill E. Stein",
+          "party": "Green",
+          "votes": 34888,
+          "pct": 0.8
+        },
+        {
+          "name": "Chase R. Oliver",
+          "party": "Libertarian",
+          "votes": 19814,
+          "pct": 0.4
+        },
+        {
+          "name": "Cornel R. West",
+          "party": "Independent",
+          "votes": 8984,
+          "pct": 0.2
+        },
+        {
+          "name": "Claudia De la Cruz",
+          "party": "Independent",
+          "votes": 8410,
+          "pct": 0.2
+        },
+        {
+          "name": "WRITE IN VOTES",
+          "party": "",
+          "votes": 0,
+          "pct": 0.0
+        }
+      ],
+      "total": 4482576
+    },
+    {
+      "office": "U.S. Senate",
+      "candidates": [
+        {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2417115,
+          "pct": 54.5
+        },
+        {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 2019911,
+          "pct": 45.5
+        },
+        {
+          "name": "WRITE IN VOTES",
+          "party": "",
+          "votes": 0,
+          "pct": 0.0
+        }
+      ],
+      "total": 4437026
+    }
+  ],
+  "locality_results": {
+    "President": {
+      "ACCOMACK COUNTY": {
+        "total": 17144,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 9659,
+          "pct": 56.3
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 7374,
+          "pct": 43.0
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 9659,
+          "pct": 56.3
+        }
+      },
+      "ALBEMARLE COUNTY": {
+        "total": 66740,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 44279,
+          "pct": 66.3
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 44279,
+          "pct": 66.3
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 21513,
+          "pct": 32.2
+        }
+      },
+      "ALEXANDRIA CITY": {
+        "total": 80062,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 62326,
+          "pct": 77.8
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 62326,
+          "pct": 77.8
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 16112,
+          "pct": 20.1
+        }
+      },
+      "ALLEGHANY COUNTY": {
+        "total": 8277,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 6093,
+          "pct": 73.6
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2114,
+          "pct": 25.5
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 6093,
+          "pct": 73.6
+        }
+      },
+      "AMELIA COUNTY": {
+        "total": 8032,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 5776,
+          "pct": 71.9
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2214,
+          "pct": 27.6
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 5776,
+          "pct": 71.9
+        }
+      },
+      "AMHERST COUNTY": {
+        "total": 17303,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 11742,
+          "pct": 67.9
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 5429,
+          "pct": 31.4
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 11742,
+          "pct": 67.9
+        }
+      },
+      "APPOMATTOX COUNTY": {
+        "total": 9642,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 7243,
+          "pct": 75.1
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2324,
+          "pct": 24.1
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 7243,
+          "pct": 75.1
+        }
+      },
+      "ARLINGTON COUNTY": {
+        "total": 128362,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 100446,
+          "pct": 78.3
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 100446,
+          "pct": 78.3
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 25223,
+          "pct": 19.6
+        }
+      },
+      "AUGUSTA COUNTY": {
+        "total": 44223,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 32429,
+          "pct": 73.3
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 11403,
+          "pct": 25.8
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 32429,
+          "pct": 73.3
+        }
+      },
+      "BATH COUNTY": {
+        "total": 2582,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 1976,
+          "pct": 76.5
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 588,
+          "pct": 22.8
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 1976,
+          "pct": 76.5
+        }
+      },
+      "BEDFORD COUNTY": {
+        "total": 50830,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 38017,
+          "pct": 74.8
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 12414,
+          "pct": 24.4
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 38017,
+          "pct": 74.8
+        }
+      },
+      "BLAND COUNTY": {
+        "total": 3548,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 2998,
+          "pct": 84.5
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 524,
+          "pct": 14.8
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 2998,
+          "pct": 84.5
+        }
+      },
+      "BOTETOURT COUNTY": {
+        "total": 21893,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 15796,
+          "pct": 72.2
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 5915,
+          "pct": 27.0
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 15796,
+          "pct": 72.2
+        }
+      },
+      "BRISTOL CITY": {
+        "total": 7479,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 5197,
+          "pct": 69.5
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2231,
+          "pct": 29.8
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 5197,
+          "pct": 69.5
+        }
+      },
+      "BRUNSWICK COUNTY": {
+        "total": 7738,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 4184,
+          "pct": 54.1
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 4184,
+          "pct": 54.1
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 3523,
+          "pct": 45.5
+        }
+      },
+      "BUCHANAN COUNTY": {
+        "total": 9327,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 7939,
+          "pct": 85.1
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 1355,
+          "pct": 14.5
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 7939,
+          "pct": 85.1
+        }
+      },
+      "BUCKINGHAM COUNTY": {
+        "total": 7915,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 4847,
+          "pct": 61.2
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2988,
+          "pct": 37.8
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 4847,
+          "pct": 61.2
+        }
+      },
+      "BUENA VISTA CITY": {
+        "total": 2853,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 2035,
+          "pct": 71.3
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 767,
+          "pct": 26.9
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 2035,
+          "pct": 71.3
+        }
+      },
+      "CAMPBELL COUNTY": {
+        "total": 31171,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 23032,
+          "pct": 73.9
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 7890,
+          "pct": 25.3
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 23032,
+          "pct": 73.9
+        }
+      },
+      "CAROLINE COUNTY": {
+        "total": 17653,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 9511,
+          "pct": 53.9
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 7957,
+          "pct": 45.1
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 9511,
+          "pct": 53.9
+        }
+      },
+      "CARROLL COUNTY": {
+        "total": 16160,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 13152,
+          "pct": 81.4
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2925,
+          "pct": 18.1
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 13152,
+          "pct": 81.4
+        }
+      },
+      "CHARLES CITY COUNTY": {
+        "total": 4341,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2384,
+          "pct": 54.9
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2384,
+          "pct": 54.9
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 1917,
+          "pct": 44.2
+        }
+      },
+      "CHARLOTTE COUNTY": {
+        "total": 6006,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 3963,
+          "pct": 66.0
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2008,
+          "pct": 33.4
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 3963,
+          "pct": 66.0
+        }
+      },
+      "CHARLOTTESVILLE CITY": {
+        "total": 23303,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 19435,
+          "pct": 83.4
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 19435,
+          "pct": 83.4
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 3428,
+          "pct": 14.7
+        }
+      },
+      "CHESAPEAKE CITY": {
+        "total": 127493,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 65399,
+          "pct": 51.3
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 65399,
+          "pct": 51.3
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 60550,
+          "pct": 47.5
+        }
+      },
+      "CHESTERFIELD COUNTY": {
+        "total": 209730,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 112869,
+          "pct": 53.8
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 112869,
+          "pct": 53.8
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 94030,
+          "pct": 44.8
+        }
+      },
+      "CLARKE COUNTY": {
+        "total": 9782,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 5641,
+          "pct": 57.7
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 3993,
+          "pct": 40.8
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 5641,
+          "pct": 57.7
+        }
+      },
+      "COLONIAL HEIGHTS CITY": {
+        "total": 8941,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 5883,
+          "pct": 65.8
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2982,
+          "pct": 33.4
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 5883,
+          "pct": 65.8
+        }
+      },
+      "COVINGTON CITY": {
+        "total": 2475,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 1642,
+          "pct": 66.3
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 818,
+          "pct": 33.1
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 1642,
+          "pct": 66.3
+        }
+      },
+      "CRAIG COUNTY": {
+        "total": 3121,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 2562,
+          "pct": 82.1
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 542,
+          "pct": 17.4
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 2562,
+          "pct": 82.1
+        }
+      },
+      "CULPEPER COUNTY": {
+        "total": 28553,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 17685,
+          "pct": 61.9
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 10557,
+          "pct": 37.0
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 17685,
+          "pct": 61.9
+        }
+      },
+      "CUMBERLAND COUNTY": {
+        "total": 5486,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 3335,
+          "pct": 60.8
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2117,
+          "pct": 38.6
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 3335,
+          "pct": 60.8
+        }
+      },
+      "DANVILLE CITY": {
+        "total": 17667,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 10615,
+          "pct": 60.1
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 10615,
+          "pct": 60.1
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 6894,
+          "pct": 39.0
+        }
+      },
+      "DICKENSON COUNTY": {
+        "total": 7047,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 5701,
+          "pct": 80.9
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 1316,
+          "pct": 18.7
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 5701,
+          "pct": 80.9
+        }
+      },
+      "DINWIDDIE COUNTY": {
+        "total": 15589,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 9549,
+          "pct": 61.3
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 5942,
+          "pct": 38.1
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 9549,
+          "pct": 61.3
+        }
+      },
+      "EMPORIA CITY": {
+        "total": 2178,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 1419,
+          "pct": 65.2
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 1419,
+          "pct": 65.2
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 744,
+          "pct": 34.2
+        }
+      },
+      "ESSEX COUNTY": {
+        "total": 6064,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 3245,
+          "pct": 53.5
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2775,
+          "pct": 45.8
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 3245,
+          "pct": 53.5
+        }
+      },
+      "FAIRFAX CITY": {
+        "total": 13445,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 8797,
+          "pct": 65.4
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 8797,
+          "pct": 65.4
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 4302,
+          "pct": 32.0
+        }
+      },
+      "FAIRFAX COUNTY": {
+        "total": 584387,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 386438,
+          "pct": 66.1
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 386438,
+          "pct": 66.1
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 181895,
+          "pct": 31.1
+        }
+      },
+      "FALLS CHURCH CITY": {
+        "total": 8969,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 7200,
+          "pct": 80.3
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 7200,
+          "pct": 80.3
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 1620,
+          "pct": 18.1
+        }
+      },
+      "FAUQUIER COUNTY": {
+        "total": 44537,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 26825,
+          "pct": 60.2
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 17180,
+          "pct": 38.6
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 26825,
+          "pct": 60.2
+        }
+      },
+      "FLOYD COUNTY": {
+        "total": 9625,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 6551,
+          "pct": 68.1
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2968,
+          "pct": 30.8
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 6551,
+          "pct": 68.1
+        }
+      },
+      "FLUVANNA COUNTY": {
+        "total": 16678,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 8777,
+          "pct": 52.6
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 7731,
+          "pct": 46.4
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 8777,
+          "pct": 52.6
+        }
+      },
+      "FRANKLIN CITY": {
+        "total": 3876,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2359,
+          "pct": 60.9
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2359,
+          "pct": 60.9
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 1476,
+          "pct": 38.1
+        }
+      },
+      "FRANKLIN COUNTY": {
+        "total": 30912,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 22319,
+          "pct": 72.2
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 8321,
+          "pct": 26.9
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 22319,
+          "pct": 72.2
+        }
+      },
+      "FREDERICK COUNTY": {
+        "total": 52040,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 33117,
+          "pct": 63.6
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 18331,
+          "pct": 35.2
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 33117,
+          "pct": 63.6
+        }
+      },
+      "FREDERICKSBURG CITY": {
+        "total": 13495,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 8760,
+          "pct": 64.9
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 8760,
+          "pct": 64.9
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 4480,
+          "pct": 33.2
+        }
+      },
+      "GALAX CITY": {
+        "total": 2717,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 1946,
+          "pct": 71.6
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 753,
+          "pct": 27.7
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 1946,
+          "pct": 71.6
+        }
+      },
+      "GILES COUNTY": {
+        "total": 9234,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 7102,
+          "pct": 76.9
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2069,
+          "pct": 22.4
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 7102,
+          "pct": 76.9
+        }
+      },
+      "GLOUCESTER COUNTY": {
+        "total": 23149,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 15918,
+          "pct": 68.8
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 7034,
+          "pct": 30.4
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 15918,
+          "pct": 68.8
+        }
+      },
+      "GOOCHLAND COUNTY": {
+        "total": 19616,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 11521,
+          "pct": 58.7
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 7875,
+          "pct": 40.1
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 11521,
+          "pct": 58.7
+        }
+      },
+      "GRAYSON COUNTY": {
+        "total": 8104,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 6544,
+          "pct": 80.8
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 1503,
+          "pct": 18.5
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 6544,
+          "pct": 80.8
+        }
+      },
+      "GREENE COUNTY": {
+        "total": 12038,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 7432,
+          "pct": 61.7
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 4456,
+          "pct": 37.0
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 7432,
+          "pct": 61.7
+        }
+      },
+      "GREENSVILLE COUNTY": {
+        "total": 4296,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2334,
+          "pct": 54.3
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2334,
+          "pct": 54.3
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 1936,
+          "pct": 45.1
+        }
+      },
+      "HALIFAX COUNTY": {
+        "total": 17844,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 10741,
+          "pct": 60.2
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 6984,
+          "pct": 39.1
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 10741,
+          "pct": 60.2
+        }
+      },
+      "HAMPTON CITY": {
+        "total": 62632,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 43357,
+          "pct": 69.2
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 43357,
+          "pct": 69.2
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 18383,
+          "pct": 29.4
+        }
+      },
+      "HANOVER COUNTY": {
+        "total": 73087,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 45569,
+          "pct": 62.3
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 26733,
+          "pct": 36.6
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 45569,
+          "pct": 62.3
+        }
+      },
+      "HARRISONBURG CITY": {
+        "total": 17245,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 10641,
+          "pct": 61.7
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 10641,
+          "pct": 61.7
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 6266,
+          "pct": 36.3
+        }
+      },
+      "HENRICO COUNTY": {
+        "total": 180642,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 115040,
+          "pct": 63.7
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 115040,
+          "pct": 63.7
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 62882,
+          "pct": 34.8
+        }
+      },
+      "HENRY COUNTY": {
+        "total": 25413,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 16800,
+          "pct": 66.1
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 8457,
+          "pct": 33.3
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 16800,
+          "pct": 66.1
+        }
+      },
+      "HIGHLAND COUNTY": {
+        "total": 1529,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 1095,
+          "pct": 71.6
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 416,
+          "pct": 27.2
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 1095,
+          "pct": 71.6
+        }
+      },
+      "HOPEWELL CITY": {
+        "total": 9006,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 5078,
+          "pct": 56.4
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 5078,
+          "pct": 56.4
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 3838,
+          "pct": 42.6
+        }
+      },
+      "ISLE OF WIGHT COUNTY": {
+        "total": 24672,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 14659,
+          "pct": 59.4
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 9779,
+          "pct": 39.6
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 14659,
+          "pct": 59.4
+        }
+      },
+      "JAMES CITY COUNTY": {
+        "total": 50892,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 26742,
+          "pct": 52.5
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 26742,
+          "pct": 52.5
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 23575,
+          "pct": 46.3
+        }
+      },
+      "KING & QUEEN COUNTY": {
+        "total": 4173,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 2608,
+          "pct": 62.5
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 1536,
+          "pct": 36.8
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 2608,
+          "pct": 62.5
+        }
+      },
+      "KING GEORGE COUNTY": {
+        "total": 15362,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 9500,
+          "pct": 61.8
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 5657,
+          "pct": 36.8
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 9500,
+          "pct": 61.8
+        }
+      },
+      "KING WILLIAM COUNTY": {
+        "total": 11561,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 8080,
+          "pct": 69.9
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 3388,
+          "pct": 29.3
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 8080,
+          "pct": 69.9
+        }
+      },
+      "LANCASTER COUNTY": {
+        "total": 7279,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 3866,
+          "pct": 53.1
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 3355,
+          "pct": 46.1
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 3866,
+          "pct": 53.1
+        }
+      },
+      "LEE COUNTY": {
+        "total": 10108,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 8674,
+          "pct": 85.8
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 1391,
+          "pct": 13.8
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 8674,
+          "pct": 85.8
+        }
+      },
+      "LEXINGTON CITY": {
+        "total": 2863,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 1795,
+          "pct": 62.7
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 1795,
+          "pct": 62.7
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 1030,
+          "pct": 36.0
+        }
+      },
+      "LOUDOUN COUNTY": {
+        "total": 228208,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 129280,
+          "pct": 56.7
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 129280,
+          "pct": 56.7
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 92107,
+          "pct": 40.4
+        }
+      },
+      "LOUISA COUNTY": {
+        "total": 24067,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 15084,
+          "pct": 62.7
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 8779,
+          "pct": 36.5
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 15084,
+          "pct": 62.7
+        }
+      },
+      "LUNENBURG COUNTY": {
+        "total": 5879,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 3594,
+          "pct": 61.1
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2253,
+          "pct": 38.3
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 3594,
+          "pct": 61.1
+        }
+      },
+      "LYNCHBURG CITY": {
+        "total": 36715,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 19574,
+          "pct": 53.3
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 16664,
+          "pct": 45.4
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 19574,
+          "pct": 53.3
+        }
+      },
+      "MADISON COUNTY": {
+        "total": 8439,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 5671,
+          "pct": 67.2
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2700,
+          "pct": 32.0
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 5671,
+          "pct": 67.2
+        }
+      },
+      "MANASSAS CITY": {
+        "total": 16021,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 9048,
+          "pct": 56.5
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 9048,
+          "pct": 56.5
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 6670,
+          "pct": 41.6
+        }
+      },
+      "MANASSAS PARK CITY": {
+        "total": 5967,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 3506,
+          "pct": 58.8
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 3506,
+          "pct": 58.8
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 2314,
+          "pct": 38.8
+        }
+      },
+      "MARTINSVILLE CITY": {
+        "total": 5658,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 3435,
+          "pct": 60.7
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 3435,
+          "pct": 60.7
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 2155,
+          "pct": 38.1
+        }
+      },
+      "MATHEWS COUNTY": {
+        "total": 5929,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 4106,
+          "pct": 69.3
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 1774,
+          "pct": 29.9
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 4106,
+          "pct": 69.3
+        }
+      },
+      "MECKLENBURG COUNTY": {
+        "total": 16266,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 9791,
+          "pct": 60.2
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 6404,
+          "pct": 39.4
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 9791,
+          "pct": 60.2
+        }
+      },
+      "MIDDLESEX COUNTY": {
+        "total": 6882,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 4357,
+          "pct": 63.3
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2473,
+          "pct": 35.9
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 4357,
+          "pct": 63.3
+        }
+      },
+      "MONTGOMERY COUNTY": {
+        "total": 46767,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 23811,
+          "pct": 50.9
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 23811,
+          "pct": 50.9
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 22179,
+          "pct": 47.4
+        }
+      },
+      "NELSON COUNTY": {
+        "total": 9388,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 5004,
+          "pct": 53.3
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 4298,
+          "pct": 45.8
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 5004,
+          "pct": 53.3
+        }
+      },
+      "NEW KENT COUNTY": {
+        "total": 16744,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 10974,
+          "pct": 65.5
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 5641,
+          "pct": 33.7
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 10974,
+          "pct": 65.5
+        }
+      },
+      "NEWPORT NEWS CITY": {
+        "total": 75629,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 48169,
+          "pct": 63.7
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 48169,
+          "pct": 63.7
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 26385,
+          "pct": 34.9
+        }
+      },
+      "NORFOLK CITY": {
+        "total": 85643,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 59941,
+          "pct": 70.0
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 59941,
+          "pct": 70.0
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 24377,
+          "pct": 28.5
+        }
+      },
+      "NORTHAMPTON COUNTY": {
+        "total": 6832,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 3603,
+          "pct": 52.7
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 3603,
+          "pct": 52.7
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 3183,
+          "pct": 46.6
+        }
+      },
+      "NORTHUMBERLAND COUNTY": {
+        "total": 8205,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 4938,
+          "pct": 60.2
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 3202,
+          "pct": 39.0
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 4938,
+          "pct": 60.2
+        }
+      },
+      "NORTON CITY": {
+        "total": 1643,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 1174,
+          "pct": 71.5
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 458,
+          "pct": 27.9
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 1174,
+          "pct": 71.5
+        }
+      },
+      "NOTTOWAY COUNTY": {
+        "total": 6853,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 4168,
+          "pct": 60.8
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2636,
+          "pct": 38.5
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 4168,
+          "pct": 60.8
+        }
+      },
+      "ORANGE COUNTY": {
+        "total": 22247,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 13764,
+          "pct": 61.9
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 8274,
+          "pct": 37.2
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 13764,
+          "pct": 61.9
+        }
+      },
+      "PAGE COUNTY": {
+        "total": 13211,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 10123,
+          "pct": 76.6
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2976,
+          "pct": 22.5
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 10123,
+          "pct": 76.6
+        }
+      },
+      "PATRICK COUNTY": {
+        "total": 9698,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 7746,
+          "pct": 79.9
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 1886,
+          "pct": 19.4
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 7746,
+          "pct": 79.9
+        }
+      },
+      "PETERSBURG CITY": {
+        "total": 13077,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 11219,
+          "pct": 85.8
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 11219,
+          "pct": 85.8
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 1702,
+          "pct": 13.0
+        }
+      },
+      "PITTSYLVANIA COUNTY": {
+        "total": 34100,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 24310,
+          "pct": 71.3
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 9599,
+          "pct": 28.1
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 24310,
+          "pct": 71.3
+        }
+      },
+      "POQUOSON CITY": {
+        "total": 8024,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 5800,
+          "pct": 72.3
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2119,
+          "pct": 26.4
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 5800,
+          "pct": 72.3
+        }
+      },
+      "PORTSMOUTH CITY": {
+        "total": 41252,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 28306,
+          "pct": 68.6
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 28306,
+          "pct": 68.6
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 12370,
+          "pct": 30.0
+        }
+      },
+      "POWHATAN COUNTY": {
+        "total": 20841,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 14918,
+          "pct": 71.6
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 5734,
+          "pct": 27.5
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 14918,
+          "pct": 71.6
+        }
+      },
+      "PRINCE EDWARD COUNTY": {
+        "total": 9424,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 4782,
+          "pct": 50.7
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 4539,
+          "pct": 48.2
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 4782,
+          "pct": 50.7
+        }
+      },
+      "PRINCE GEORGE COUNTY": {
+        "total": 17596,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 10590,
+          "pct": 60.2
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 6842,
+          "pct": 38.9
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 10590,
+          "pct": 60.2
+        }
+      },
+      "PRINCE WILLIAM COUNTY": {
+        "total": 227591,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 131128,
+          "pct": 57.6
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 131128,
+          "pct": 57.6
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 90203,
+          "pct": 39.6
+        }
+      },
+      "PULASKI COUNTY": {
+        "total": 17690,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 12732,
+          "pct": 72.0
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 4830,
+          "pct": 27.3
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 12732,
+          "pct": 72.0
+        }
+      },
+      "RADFORD CITY": {
+        "total": 6550,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 3231,
+          "pct": 49.3
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 3231,
+          "pct": 49.3
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 3197,
+          "pct": 48.8
+        }
+      },
+      "RAPPAHANNOCK COUNTY": {
+        "total": 5038,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 2943,
+          "pct": 58.4
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2041,
+          "pct": 40.5
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 2943,
+          "pct": 58.4
+        }
+      },
+      "RICHMOND CITY": {
+        "total": 108143,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 88710,
+          "pct": 82.0
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 88710,
+          "pct": 82.0
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 17041,
+          "pct": 15.8
+        }
+      },
+      "RICHMOND COUNTY": {
+        "total": 4161,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 2697,
+          "pct": 64.8
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 1439,
+          "pct": 34.6
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 2697,
+          "pct": 64.8
+        }
+      },
+      "ROANOKE CITY": {
+        "total": 42128,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 25737,
+          "pct": 61.1
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 25737,
+          "pct": 61.1
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 15787,
+          "pct": 37.5
+        }
+      },
+      "ROANOKE COUNTY": {
+        "total": 56789,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 34453,
+          "pct": 60.7
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 21693,
+          "pct": 38.2
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 34453,
+          "pct": 60.7
+        }
+      },
+      "ROCKBRIDGE COUNTY": {
+        "total": 12752,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 8468,
+          "pct": 66.4
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 4160,
+          "pct": 32.6
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 8468,
+          "pct": 66.4
+        }
+      },
+      "ROCKINGHAM COUNTY": {
+        "total": 48581,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 33033,
+          "pct": 68.0
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 15035,
+          "pct": 30.9
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 33033,
+          "pct": 68.0
+        }
+      },
+      "RUSSELL COUNTY": {
+        "total": 13525,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 11303,
+          "pct": 83.6
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2172,
+          "pct": 16.1
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 11303,
+          "pct": 83.6
+        }
+      },
+      "SALEM CITY": {
+        "total": 13148,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 7769,
+          "pct": 59.1
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 5237,
+          "pct": 39.8
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 7769,
+          "pct": 59.1
+        }
+      },
+      "SCOTT COUNTY": {
+        "total": 11057,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 9392,
+          "pct": 84.9
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 1607,
+          "pct": 14.5
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 9392,
+          "pct": 84.9
+        }
+      },
+      "SHENANDOAH COUNTY": {
+        "total": 24380,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 17215,
+          "pct": 70.6
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 6914,
+          "pct": 28.4
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 17215,
+          "pct": 70.6
+        }
+      },
+      "SMYTH COUNTY": {
+        "total": 14420,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 11521,
+          "pct": 79.9
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2805,
+          "pct": 19.5
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 11521,
+          "pct": 79.9
+        }
+      },
+      "SOUTHAMPTON COUNTY": {
+        "total": 9831,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 6133,
+          "pct": 62.4
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 3626,
+          "pct": 36.9
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 6133,
+          "pct": 62.4
+        }
+      },
+      "SPOTSYLVANIA COUNTY": {
+        "total": 79209,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 42531,
+          "pct": 53.7
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 35747,
+          "pct": 45.1
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 42531,
+          "pct": 53.7
+        }
+      },
+      "STAFFORD COUNTY": {
+        "total": 83123,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 41252,
+          "pct": 49.6
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 41252,
+          "pct": 49.6
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 40590,
+          "pct": 48.8
+        }
+      },
+      "STAUNTON CITY": {
+        "total": 13562,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 7592,
+          "pct": 56.0
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 7592,
+          "pct": 56.0
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 5778,
+          "pct": 42.6
+        }
+      },
+      "SUFFOLK CITY": {
+        "total": 53352,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 30597,
+          "pct": 57.3
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 30597,
+          "pct": 57.3
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 22112,
+          "pct": 41.4
+        }
+      },
+      "SURRY COUNTY": {
+        "total": 4429,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 2205,
+          "pct": 49.8
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2176,
+          "pct": 49.1
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 2205,
+          "pct": 49.8
+        }
+      },
+      "SUSSEX COUNTY": {
+        "total": 4892,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2539,
+          "pct": 51.9
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 2539,
+          "pct": 51.9
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 2322,
+          "pct": 47.5
+        }
+      },
+      "TAZEWELL COUNTY": {
+        "total": 19858,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 16711,
+          "pct": 84.2
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 3030,
+          "pct": 15.3
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 16711,
+          "pct": 84.2
+        }
+      },
+      "VIRGINIA BEACH CITY": {
+        "total": 227770,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 115412,
+          "pct": 50.7
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 115412,
+          "pct": 50.7
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 109375,
+          "pct": 48.0
+        }
+      },
+      "WARREN COUNTY": {
+        "total": 22561,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 15400,
+          "pct": 68.3
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 6910,
+          "pct": 30.6
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 15400,
+          "pct": 68.3
+        }
+      },
+      "WASHINGTON COUNTY": {
+        "total": 29412,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 22455,
+          "pct": 76.3
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 6772,
+          "pct": 23.0
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 22455,
+          "pct": 76.3
+        }
+      },
+      "WAYNESBORO CITY": {
+        "total": 11274,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 5882,
+          "pct": 52.2
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 5240,
+          "pct": 46.5
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 5882,
+          "pct": 52.2
+        }
+      },
+      "WESTMORELAND COUNTY": {
+        "total": 10581,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 6003,
+          "pct": 56.7
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 4491,
+          "pct": 42.4
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 6003,
+          "pct": 56.7
+        }
+      },
+      "WILLIAMSBURG CITY": {
+        "total": 7851,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 5613,
+          "pct": 71.5
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 5613,
+          "pct": 71.5
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 2119,
+          "pct": 27.0
+        }
+      },
+      "WINCHESTER CITY": {
+        "total": 11822,
+        "winner": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 6407,
+          "pct": 54.2
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 6407,
+          "pct": 54.2
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 5252,
+          "pct": 44.4
+        }
+      },
+      "WISE COUNTY": {
+        "total": 16776,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 13655,
+          "pct": 81.4
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 3036,
+          "pct": 18.1
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 13655,
+          "pct": 81.4
+        }
+      },
+      "WYTHE COUNTY": {
+        "total": 15439,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 12267,
+          "pct": 79.5
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 3075,
+          "pct": 19.9
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 12267,
+          "pct": 79.5
+        }
+      },
+      "YORK COUNTY": {
+        "total": 39540,
+        "winner": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 20722,
+          "pct": 52.4
+        },
+        "dem": {
+          "name": "Kamala D. Harris",
+          "party": "Democrat",
+          "votes": 18296,
+          "pct": 46.3
+        },
+        "rep": {
+          "name": "Donald J. Trump",
+          "party": "Republican",
+          "votes": 20722,
+          "pct": 52.4
+        }
+      }
+    },
+    "U.S. Senate": {
+      "ACCOMACK COUNTY": {
+        "total": 17011,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 9339,
+          "pct": 54.9
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 7672,
+          "pct": 45.1
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 9339,
+          "pct": 54.9
+        }
+      },
+      "ALBEMARLE COUNTY": {
+        "total": 65880,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 43968,
+          "pct": 66.7
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 43968,
+          "pct": 66.7
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 21912,
+          "pct": 33.3
+        }
+      },
+      "ALEXANDRIA CITY": {
+        "total": 79772,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 62597,
+          "pct": 78.5
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 62597,
+          "pct": 78.5
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 17175,
+          "pct": 21.5
+        }
+      },
+      "ALLEGHANY COUNTY": {
+        "total": 8144,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 5358,
+          "pct": 65.8
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2786,
+          "pct": 34.2
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 5358,
+          "pct": 65.8
+        }
+      },
+      "AMELIA COUNTY": {
+        "total": 7914,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 5600,
+          "pct": 70.8
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2314,
+          "pct": 29.2
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 5600,
+          "pct": 70.8
+        }
+      },
+      "AMHERST COUNTY": {
+        "total": 17204,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 11414,
+          "pct": 66.3
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 5790,
+          "pct": 33.7
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 11414,
+          "pct": 66.3
+        }
+      },
+      "APPOMATTOX COUNTY": {
+        "total": 9485,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 6923,
+          "pct": 73.0
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2562,
+          "pct": 27.0
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 6923,
+          "pct": 73.0
+        }
+      },
+      "ARLINGTON COUNTY": {
+        "total": 127994,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 100725,
+          "pct": 78.7
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 100725,
+          "pct": 78.7
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 27269,
+          "pct": 21.3
+        }
+      },
+      "AUGUSTA COUNTY": {
+        "total": 44122,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 31605,
+          "pct": 71.6
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 12517,
+          "pct": 28.4
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 31605,
+          "pct": 71.6
+        }
+      },
+      "BATH COUNTY": {
+        "total": 2565,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 1881,
+          "pct": 73.3
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 684,
+          "pct": 26.7
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 1881,
+          "pct": 73.3
+        }
+      },
+      "BEDFORD COUNTY": {
+        "total": 50604,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 37536,
+          "pct": 74.2
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 13068,
+          "pct": 25.8
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 37536,
+          "pct": 74.2
+        }
+      },
+      "BLAND COUNTY": {
+        "total": 3416,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 2707,
+          "pct": 79.2
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 709,
+          "pct": 20.8
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 2707,
+          "pct": 79.2
+        }
+      },
+      "BOTETOURT COUNTY": {
+        "total": 21558,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 14950,
+          "pct": 69.3
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 6608,
+          "pct": 30.7
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 14950,
+          "pct": 69.3
+        }
+      },
+      "BRISTOL CITY": {
+        "total": 7328,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 4699,
+          "pct": 64.1
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2629,
+          "pct": 35.9
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 4699,
+          "pct": 64.1
+        }
+      },
+      "BRUNSWICK COUNTY": {
+        "total": 7696,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 4324,
+          "pct": 56.2
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 4324,
+          "pct": 56.2
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 3372,
+          "pct": 43.8
+        }
+      },
+      "BUCHANAN COUNTY": {
+        "total": 9017,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 6686,
+          "pct": 74.1
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2331,
+          "pct": 25.9
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 6686,
+          "pct": 74.1
+        }
+      },
+      "BUCKINGHAM COUNTY": {
+        "total": 7823,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 4581,
+          "pct": 58.6
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 3242,
+          "pct": 41.4
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 4581,
+          "pct": 58.6
+        }
+      },
+      "BUENA VISTA CITY": {
+        "total": 2816,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 1881,
+          "pct": 66.8
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 935,
+          "pct": 33.2
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 1881,
+          "pct": 66.8
+        }
+      },
+      "CAMPBELL COUNTY": {
+        "total": 30975,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 22449,
+          "pct": 72.5
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 8526,
+          "pct": 27.5
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 22449,
+          "pct": 72.5
+        }
+      },
+      "CAROLINE COUNTY": {
+        "total": 17467,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 9218,
+          "pct": 52.8
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 8249,
+          "pct": 47.2
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 9218,
+          "pct": 52.8
+        }
+      },
+      "CARROLL COUNTY": {
+        "total": 15955,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 12318,
+          "pct": 77.2
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 3637,
+          "pct": 22.8
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 12318,
+          "pct": 77.2
+        }
+      },
+      "CHARLES CITY COUNTY": {
+        "total": 4199,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2397,
+          "pct": 57.1
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2397,
+          "pct": 57.1
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 1802,
+          "pct": 42.9
+        }
+      },
+      "CHARLOTTE COUNTY": {
+        "total": 5963,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 3815,
+          "pct": 64.0
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2148,
+          "pct": 36.0
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 3815,
+          "pct": 64.0
+        }
+      },
+      "CHARLOTTESVILLE CITY": {
+        "total": 23089,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 19439,
+          "pct": 84.2
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 19439,
+          "pct": 84.2
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 3650,
+          "pct": 15.8
+        }
+      },
+      "CHESAPEAKE CITY": {
+        "total": 126881,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 67224,
+          "pct": 53.0
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 67224,
+          "pct": 53.0
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 59657,
+          "pct": 47.0
+        }
+      },
+      "CHESTERFIELD COUNTY": {
+        "total": 208700,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 115364,
+          "pct": 55.3
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 115364,
+          "pct": 55.3
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 93336,
+          "pct": 44.7
+        }
+      },
+      "CLARKE COUNTY": {
+        "total": 9669,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 5487,
+          "pct": 56.7
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 4182,
+          "pct": 43.3
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 5487,
+          "pct": 56.7
+        }
+      },
+      "COLONIAL HEIGHTS CITY": {
+        "total": 8715,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 5456,
+          "pct": 62.6
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 3259,
+          "pct": 37.4
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 5456,
+          "pct": 62.6
+        }
+      },
+      "COVINGTON CITY": {
+        "total": 2443,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 1418,
+          "pct": 58.0
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 1025,
+          "pct": 42.0
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 1418,
+          "pct": 58.0
+        }
+      },
+      "CRAIG COUNTY": {
+        "total": 3086,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 2415,
+          "pct": 78.3
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 671,
+          "pct": 21.7
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 2415,
+          "pct": 78.3
+        }
+      },
+      "CULPEPER COUNTY": {
+        "total": 28316,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 17105,
+          "pct": 60.4
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 11211,
+          "pct": 39.6
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 17105,
+          "pct": 60.4
+        }
+      },
+      "CUMBERLAND COUNTY": {
+        "total": 5420,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 3256,
+          "pct": 60.1
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2164,
+          "pct": 39.9
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 3256,
+          "pct": 60.1
+        }
+      },
+      "DANVILLE CITY": {
+        "total": 17321,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 10986,
+          "pct": 63.4
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 10986,
+          "pct": 63.4
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 6335,
+          "pct": 36.6
+        }
+      },
+      "DICKENSON COUNTY": {
+        "total": 6813,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 4884,
+          "pct": 71.7
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 1929,
+          "pct": 28.3
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 4884,
+          "pct": 71.7
+        }
+      },
+      "DINWIDDIE COUNTY": {
+        "total": 15498,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 9163,
+          "pct": 59.1
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 6335,
+          "pct": 40.9
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 9163,
+          "pct": 59.1
+        }
+      },
+      "EMPORIA CITY": {
+        "total": 2088,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 1415,
+          "pct": 67.8
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 1415,
+          "pct": 67.8
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 673,
+          "pct": 32.2
+        }
+      },
+      "ESSEX COUNTY": {
+        "total": 5930,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 3072,
+          "pct": 51.8
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2858,
+          "pct": 48.2
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 3072,
+          "pct": 51.8
+        }
+      },
+      "FAIRFAX CITY": {
+        "total": 13289,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 8882,
+          "pct": 66.8
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 8882,
+          "pct": 66.8
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 4407,
+          "pct": 33.2
+        }
+      },
+      "FAIRFAX COUNTY": {
+        "total": 580172,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 393906,
+          "pct": 67.9
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 393906,
+          "pct": 67.9
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 186266,
+          "pct": 32.1
+        }
+      },
+      "FALLS CHURCH CITY": {
+        "total": 8954,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 7163,
+          "pct": 80.0
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 7163,
+          "pct": 80.0
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 1791,
+          "pct": 20.0
+        }
+      },
+      "FAUQUIER COUNTY": {
+        "total": 44412,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 26971,
+          "pct": 60.7
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 17441,
+          "pct": 39.3
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 26971,
+          "pct": 60.7
+        }
+      },
+      "FLOYD COUNTY": {
+        "total": 9553,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 6251,
+          "pct": 65.4
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 3302,
+          "pct": 34.6
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 6251,
+          "pct": 65.4
+        }
+      },
+      "FLUVANNA COUNTY": {
+        "total": 16573,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 8581,
+          "pct": 51.8
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 7992,
+          "pct": 48.2
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 8581,
+          "pct": 51.8
+        }
+      },
+      "FRANKLIN CITY": {
+        "total": 3726,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2367,
+          "pct": 63.5
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2367,
+          "pct": 63.5
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 1359,
+          "pct": 36.5
+        }
+      },
+      "FRANKLIN COUNTY": {
+        "total": 30683,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 21569,
+          "pct": 70.3
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 9114,
+          "pct": 29.7
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 21569,
+          "pct": 70.3
+        }
+      },
+      "FREDERICK COUNTY": {
+        "total": 51428,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 31659,
+          "pct": 61.6
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 19769,
+          "pct": 38.4
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 31659,
+          "pct": 61.6
+        }
+      },
+      "FREDERICKSBURG CITY": {
+        "total": 13204,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 8858,
+          "pct": 67.1
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 8858,
+          "pct": 67.1
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 4346,
+          "pct": 32.9
+        }
+      },
+      "GALAX CITY": {
+        "total": 2681,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 1788,
+          "pct": 66.7
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 893,
+          "pct": 33.3
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 1788,
+          "pct": 66.7
+        }
+      },
+      "GILES COUNTY": {
+        "total": 9028,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 6435,
+          "pct": 71.3
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2593,
+          "pct": 28.7
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 6435,
+          "pct": 71.3
+        }
+      },
+      "GLOUCESTER COUNTY": {
+        "total": 22913,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 15391,
+          "pct": 67.2
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 7522,
+          "pct": 32.8
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 15391,
+          "pct": 67.2
+        }
+      },
+      "GOOCHLAND COUNTY": {
+        "total": 19611,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 11655,
+          "pct": 59.4
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 7956,
+          "pct": 40.6
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 11655,
+          "pct": 59.4
+        }
+      },
+      "GRAYSON COUNTY": {
+        "total": 7933,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 6045,
+          "pct": 76.2
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 1888,
+          "pct": 23.8
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 6045,
+          "pct": 76.2
+        }
+      },
+      "GREENE COUNTY": {
+        "total": 11924,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 7193,
+          "pct": 60.3
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 4731,
+          "pct": 39.7
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 7193,
+          "pct": 60.3
+        }
+      },
+      "GREENSVILLE COUNTY": {
+        "total": 4186,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2416,
+          "pct": 57.7
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2416,
+          "pct": 57.7
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 1770,
+          "pct": 42.3
+        }
+      },
+      "HALIFAX COUNTY": {
+        "total": 17615,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 10218,
+          "pct": 58.0
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 7397,
+          "pct": 42.0
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 10218,
+          "pct": 58.0
+        }
+      },
+      "HAMPTON CITY": {
+        "total": 61812,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 44201,
+          "pct": 71.5
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 44201,
+          "pct": 71.5
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 17611,
+          "pct": 28.5
+        }
+      },
+      "HANOVER COUNTY": {
+        "total": 71922,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 44715,
+          "pct": 62.2
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 27207,
+          "pct": 37.8
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 44715,
+          "pct": 62.2
+        }
+      },
+      "HARRISONBURG CITY": {
+        "total": 16868,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 10922,
+          "pct": 64.7
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 10922,
+          "pct": 64.7
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 5946,
+          "pct": 35.3
+        }
+      },
+      "HENRICO COUNTY": {
+        "total": 177496,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 116336,
+          "pct": 65.5
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 116336,
+          "pct": 65.5
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 61160,
+          "pct": 34.5
+        }
+      },
+      "HENRY COUNTY": {
+        "total": 25009,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 15426,
+          "pct": 61.7
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 9583,
+          "pct": 38.3
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 15426,
+          "pct": 61.7
+        }
+      },
+      "HIGHLAND COUNTY": {
+        "total": 1509,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 1012,
+          "pct": 67.1
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 497,
+          "pct": 32.9
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 1012,
+          "pct": 67.1
+        }
+      },
+      "HOPEWELL CITY": {
+        "total": 8611,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 5173,
+          "pct": 60.1
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 5173,
+          "pct": 60.1
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 3438,
+          "pct": 39.9
+        }
+      },
+      "ISLE OF WIGHT COUNTY": {
+        "total": 24455,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 14163,
+          "pct": 57.9
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 10292,
+          "pct": 42.1
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 14163,
+          "pct": 57.9
+        }
+      },
+      "JAMES CITY COUNTY": {
+        "total": 51024,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 26991,
+          "pct": 52.9
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 26991,
+          "pct": 52.9
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 24033,
+          "pct": 47.1
+        }
+      },
+      "KING & QUEEN COUNTY": {
+        "total": 4141,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 2513,
+          "pct": 60.7
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 1628,
+          "pct": 39.3
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 2513,
+          "pct": 60.7
+        }
+      },
+      "KING GEORGE COUNTY": {
+        "total": 15302,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 9459,
+          "pct": 61.8
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 5843,
+          "pct": 38.2
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 9459,
+          "pct": 61.8
+        }
+      },
+      "KING WILLIAM COUNTY": {
+        "total": 11337,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 7678,
+          "pct": 67.7
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 3659,
+          "pct": 32.3
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 7678,
+          "pct": 67.7
+        }
+      },
+      "LANCASTER COUNTY": {
+        "total": 7252,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 3888,
+          "pct": 53.6
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 3364,
+          "pct": 46.4
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 3888,
+          "pct": 53.6
+        }
+      },
+      "LEE COUNTY": {
+        "total": 9758,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 7452,
+          "pct": 76.4
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2306,
+          "pct": 23.6
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 7452,
+          "pct": 76.4
+        }
+      },
+      "LEXINGTON CITY": {
+        "total": 2848,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 1817,
+          "pct": 63.8
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 1817,
+          "pct": 63.8
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 1031,
+          "pct": 36.2
+        }
+      },
+      "LOUDOUN COUNTY": {
+        "total": 226877,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 133436,
+          "pct": 58.8
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 133436,
+          "pct": 58.8
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 93441,
+          "pct": 41.2
+        }
+      },
+      "LOUISA COUNTY": {
+        "total": 23850,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 14726,
+          "pct": 61.7
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 9124,
+          "pct": 38.3
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 14726,
+          "pct": 61.7
+        }
+      },
+      "LUNENBURG COUNTY": {
+        "total": 5668,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 3324,
+          "pct": 58.6
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2344,
+          "pct": 41.4
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 3324,
+          "pct": 58.6
+        }
+      },
+      "LYNCHBURG CITY": {
+        "total": 36498,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 19478,
+          "pct": 53.4
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 17020,
+          "pct": 46.6
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 19478,
+          "pct": 53.4
+        }
+      },
+      "MADISON COUNTY": {
+        "total": 8385,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 5546,
+          "pct": 66.1
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2839,
+          "pct": 33.9
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 5546,
+          "pct": 66.1
+        }
+      },
+      "MANASSAS CITY": {
+        "total": 15813,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 9375,
+          "pct": 59.3
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 9375,
+          "pct": 59.3
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 6438,
+          "pct": 40.7
+        }
+      },
+      "MANASSAS PARK CITY": {
+        "total": 5825,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 3713,
+          "pct": 63.7
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 3713,
+          "pct": 63.7
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 2112,
+          "pct": 36.3
+        }
+      },
+      "MARTINSVILLE CITY": {
+        "total": 5457,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 3515,
+          "pct": 64.4
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 3515,
+          "pct": 64.4
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 1942,
+          "pct": 35.6
+        }
+      },
+      "MATHEWS COUNTY": {
+        "total": 5887,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 4015,
+          "pct": 68.2
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 1872,
+          "pct": 31.8
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 4015,
+          "pct": 68.2
+        }
+      },
+      "MECKLENBURG COUNTY": {
+        "total": 15869,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 9170,
+          "pct": 57.8
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 6699,
+          "pct": 42.2
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 9170,
+          "pct": 57.8
+        }
+      },
+      "MIDDLESEX COUNTY": {
+        "total": 6835,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 4265,
+          "pct": 62.4
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2570,
+          "pct": 37.6
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 4265,
+          "pct": 62.4
+        }
+      },
+      "MONTGOMERY COUNTY": {
+        "total": 46612,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 25037,
+          "pct": 53.7
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 25037,
+          "pct": 53.7
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 21575,
+          "pct": 46.3
+        }
+      },
+      "NELSON COUNTY": {
+        "total": 9369,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 4849,
+          "pct": 51.8
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 4520,
+          "pct": 48.2
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 4849,
+          "pct": 51.8
+        }
+      },
+      "NEW KENT COUNTY": {
+        "total": 16395,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 10695,
+          "pct": 65.2
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 5700,
+          "pct": 34.8
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 10695,
+          "pct": 65.2
+        }
+      },
+      "NEWPORT NEWS CITY": {
+        "total": 74822,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 49499,
+          "pct": 66.2
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 49499,
+          "pct": 66.2
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 25323,
+          "pct": 33.8
+        }
+      },
+      "NORFOLK CITY": {
+        "total": 84991,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 61334,
+          "pct": 72.2
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 61334,
+          "pct": 72.2
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 23657,
+          "pct": 27.8
+        }
+      },
+      "NORTHAMPTON COUNTY": {
+        "total": 6734,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 3687,
+          "pct": 54.8
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 3687,
+          "pct": 54.8
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 3047,
+          "pct": 45.2
+        }
+      },
+      "NORTHUMBERLAND COUNTY": {
+        "total": 8165,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 4912,
+          "pct": 60.2
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 3253,
+          "pct": 39.8
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 4912,
+          "pct": 60.2
+        }
+      },
+      "NORTON CITY": {
+        "total": 1579,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 973,
+          "pct": 61.6
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 606,
+          "pct": 38.4
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 973,
+          "pct": 61.6
+        }
+      },
+      "NOTTOWAY COUNTY": {
+        "total": 6800,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 4000,
+          "pct": 58.8
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2800,
+          "pct": 41.2
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 4000,
+          "pct": 58.8
+        }
+      },
+      "ORANGE COUNTY": {
+        "total": 22014,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 13289,
+          "pct": 60.4
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 8725,
+          "pct": 39.6
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 13289,
+          "pct": 60.4
+        }
+      },
+      "PAGE COUNTY": {
+        "total": 12972,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 9354,
+          "pct": 72.1
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 3618,
+          "pct": 27.9
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 9354,
+          "pct": 72.1
+        }
+      },
+      "PATRICK COUNTY": {
+        "total": 9396,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 7005,
+          "pct": 74.6
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2391,
+          "pct": 25.4
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 7005,
+          "pct": 74.6
+        }
+      },
+      "PETERSBURG CITY": {
+        "total": 12837,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 11254,
+          "pct": 87.7
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 11254,
+          "pct": 87.7
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 1583,
+          "pct": 12.3
+        }
+      },
+      "PITTSYLVANIA COUNTY": {
+        "total": 33248,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 22725,
+          "pct": 68.3
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 10523,
+          "pct": 31.7
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 22725,
+          "pct": 68.3
+        }
+      },
+      "POQUOSON CITY": {
+        "total": 8002,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 5729,
+          "pct": 71.6
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2273,
+          "pct": 28.4
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 5729,
+          "pct": 71.6
+        }
+      },
+      "PORTSMOUTH CITY": {
+        "total": 40372,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 28791,
+          "pct": 71.3
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 28791,
+          "pct": 71.3
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 11581,
+          "pct": 28.7
+        }
+      },
+      "POWHATAN COUNTY": {
+        "total": 20793,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 14844,
+          "pct": 71.4
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 5949,
+          "pct": 28.6
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 14844,
+          "pct": 71.4
+        }
+      },
+      "PRINCE EDWARD COUNTY": {
+        "total": 9184,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 4617,
+          "pct": 50.3
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 4617,
+          "pct": 50.3
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 4567,
+          "pct": 49.7
+        }
+      },
+      "PRINCE GEORGE COUNTY": {
+        "total": 17058,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 10010,
+          "pct": 58.7
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 7048,
+          "pct": 41.3
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 10010,
+          "pct": 58.7
+        }
+      },
+      "PRINCE WILLIAM COUNTY": {
+        "total": 224370,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 137060,
+          "pct": 61.1
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 137060,
+          "pct": 61.1
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 87310,
+          "pct": 38.9
+        }
+      },
+      "PULASKI COUNTY": {
+        "total": 17398,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 11743,
+          "pct": 67.5
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 5655,
+          "pct": 32.5
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 11743,
+          "pct": 67.5
+        }
+      },
+      "RADFORD CITY": {
+        "total": 6474,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 3423,
+          "pct": 52.9
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 3423,
+          "pct": 52.9
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 3051,
+          "pct": 47.1
+        }
+      },
+      "RAPPAHANNOCK COUNTY": {
+        "total": 5000,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 2947,
+          "pct": 58.9
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2053,
+          "pct": 41.1
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 2947,
+          "pct": 58.9
+        }
+      },
+      "RICHMOND CITY": {
+        "total": 107072,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 89672,
+          "pct": 83.7
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 89672,
+          "pct": 83.7
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 17400,
+          "pct": 16.3
+        }
+      },
+      "RICHMOND COUNTY": {
+        "total": 4112,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 2550,
+          "pct": 62.0
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 1562,
+          "pct": 38.0
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 2550,
+          "pct": 62.0
+        }
+      },
+      "ROANOKE CITY": {
+        "total": 41758,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 26676,
+          "pct": 63.9
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 26676,
+          "pct": 63.9
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 15082,
+          "pct": 36.1
+        }
+      },
+      "ROANOKE COUNTY": {
+        "total": 56587,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 33609,
+          "pct": 59.4
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 22978,
+          "pct": 40.6
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 33609,
+          "pct": 59.4
+        }
+      },
+      "ROCKBRIDGE COUNTY": {
+        "total": 12725,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 8199,
+          "pct": 64.4
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 4526,
+          "pct": 35.6
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 8199,
+          "pct": 64.4
+        }
+      },
+      "ROCKINGHAM COUNTY": {
+        "total": 48261,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 32081,
+          "pct": 66.5
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 16180,
+          "pct": 33.5
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 32081,
+          "pct": 66.5
+        }
+      },
+      "RUSSELL COUNTY": {
+        "total": 13211,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 9885,
+          "pct": 74.8
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 3326,
+          "pct": 25.2
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 9885,
+          "pct": 74.8
+        }
+      },
+      "SALEM CITY": {
+        "total": 13005,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 7352,
+          "pct": 56.5
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 5653,
+          "pct": 43.5
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 7352,
+          "pct": 56.5
+        }
+      },
+      "SCOTT COUNTY": {
+        "total": 10790,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 8359,
+          "pct": 77.5
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2431,
+          "pct": 22.5
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 8359,
+          "pct": 77.5
+        }
+      },
+      "SHENANDOAH COUNTY": {
+        "total": 24065,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 16097,
+          "pct": 66.9
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 7968,
+          "pct": 33.1
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 16097,
+          "pct": 66.9
+        }
+      },
+      "SMYTH COUNTY": {
+        "total": 14224,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 10339,
+          "pct": 72.7
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 3885,
+          "pct": 27.3
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 10339,
+          "pct": 72.7
+        }
+      },
+      "SOUTHAMPTON COUNTY": {
+        "total": 9715,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 5801,
+          "pct": 59.7
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 3914,
+          "pct": 40.3
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 5801,
+          "pct": 59.7
+        }
+      },
+      "SPOTSYLVANIA COUNTY": {
+        "total": 78538,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 41199,
+          "pct": 52.5
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 37339,
+          "pct": 47.5
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 41199,
+          "pct": 52.5
+        }
+      },
+      "STAFFORD COUNTY": {
+        "total": 82367,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 42603,
+          "pct": 51.7
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 42603,
+          "pct": 51.7
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 39764,
+          "pct": 48.3
+        }
+      },
+      "STAUNTON CITY": {
+        "total": 13372,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 7820,
+          "pct": 58.5
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 7820,
+          "pct": 58.5
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 5552,
+          "pct": 41.5
+        }
+      },
+      "SUFFOLK CITY": {
+        "total": 52842,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 31587,
+          "pct": 59.8
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 31587,
+          "pct": 59.8
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 21255,
+          "pct": 40.2
+        }
+      },
+      "SURRY COUNTY": {
+        "total": 4332,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2232,
+          "pct": 51.5
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2232,
+          "pct": 51.5
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 2100,
+          "pct": 48.5
+        }
+      },
+      "SUSSEX COUNTY": {
+        "total": 4831,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2605,
+          "pct": 53.9
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 2605,
+          "pct": 53.9
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 2226,
+          "pct": 46.1
+        }
+      },
+      "TAZEWELL COUNTY": {
+        "total": 19048,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 14096,
+          "pct": 74.0
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 4952,
+          "pct": 26.0
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 14096,
+          "pct": 74.0
+        }
+      },
+      "VIRGINIA BEACH CITY": {
+        "total": 225396,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 118920,
+          "pct": 52.8
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 118920,
+          "pct": 52.8
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 106476,
+          "pct": 47.2
+        }
+      },
+      "WARREN COUNTY": {
+        "total": 22300,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 14771,
+          "pct": 66.2
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 7529,
+          "pct": 33.8
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 14771,
+          "pct": 66.2
+        }
+      },
+      "WASHINGTON COUNTY": {
+        "total": 29110,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 20851,
+          "pct": 71.6
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 8259,
+          "pct": 28.4
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 20851,
+          "pct": 71.6
+        }
+      },
+      "WAYNESBORO CITY": {
+        "total": 11119,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 5598,
+          "pct": 50.3
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 5521,
+          "pct": 49.7
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 5598,
+          "pct": 50.3
+        }
+      },
+      "WESTMORELAND COUNTY": {
+        "total": 10389,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 5615,
+          "pct": 54.0
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 4774,
+          "pct": 46.0
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 5615,
+          "pct": 54.0
+        }
+      },
+      "WILLIAMSBURG CITY": {
+        "total": 7786,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 5635,
+          "pct": 72.4
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 5635,
+          "pct": 72.4
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 2151,
+          "pct": 27.6
+        }
+      },
+      "WINCHESTER CITY": {
+        "total": 11709,
+        "winner": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 6804,
+          "pct": 58.1
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 6804,
+          "pct": 58.1
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 4905,
+          "pct": 41.9
+        }
+      },
+      "WISE COUNTY": {
+        "total": 16296,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 11802,
+          "pct": 72.4
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 4494,
+          "pct": 27.6
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 11802,
+          "pct": 72.4
+        }
+      },
+      "WYTHE COUNTY": {
+        "total": 15000,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 11268,
+          "pct": 75.1
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 3732,
+          "pct": 24.9
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 11268,
+          "pct": 75.1
+        }
+      },
+      "YORK COUNTY": {
+        "total": 39411,
+        "winner": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 20685,
+          "pct": 52.5
+        },
+        "dem": {
+          "name": "Timothy M. Kaine",
+          "party": "Democrat",
+          "votes": 18726,
+          "pct": 47.5
+        },
+        "rep": {
+          "name": "Hung Cao",
+          "party": "Republican",
+          "votes": 20685,
+          "pct": 52.5
+        }
+      }
+    }
+  },
+  "congress": {
+    "1st": {
+      "candidates": [
+        {
+          "name": "Robert J. Wittman",
+          "party": "Republican",
+          "votes": 269657,
+          "pct": 56.4
+        },
+        {
+          "name": "Leslie C. Mehta",
+          "party": "Democrat",
+          "votes": 208445,
+          "pct": 43.6
+        },
+        {
+          "name": "WRITE IN VOTES",
+          "party": "",
+          "votes": 0,
+          "pct": 0.0
+        }
+      ],
+      "total": 478102
+    },
+    "2nd": {
+      "candidates": [
+        {
+          "name": "Jen A. Kiggans",
+          "party": "Republican",
+          "votes": 207368,
+          "pct": 50.8
+        },
+        {
+          "name": "Missy Cotter Smasal",
+          "party": "Democrat",
+          "votes": 191666,
+          "pct": 47.0
+        },
+        {
+          "name": "Robert E. Reid, Jr. ",
+          "party": "Independent",
+          "votes": 9197,
+          "pct": 2.3
+        },
+        {
+          "name": "WRITE IN VOTES",
+          "party": "",
+          "votes": 0,
+          "pct": 0.0
+        }
+      ],
+      "total": 408231
+    },
+    "3rd": {
+      "candidates": [
+        {
+          "name": "Robert C. \"Bobby\" Scott",
+          "party": "Democrat",
+          "votes": 219926,
+          "pct": 70.1
+        },
+        {
+          "name": "John Sitka, III",
+          "party": "Republican",
+          "votes": 93801,
+          "pct": 29.9
+        },
+        {
+          "name": "WRITE IN VOTES",
+          "party": "",
+          "votes": 0,
+          "pct": 0.0
+        }
+      ],
+      "total": 313727
+    },
+    "4th": {
+      "candidates": [
+        {
+          "name": "Jennifer L. McClellan",
+          "party": "Democrat",
+          "votes": 252885,
+          "pct": 67.5
+        },
+        {
+          "name": "William J. \"Bill\" Moher III",
+          "party": "Republican",
+          "votes": 121814,
+          "pct": 32.5
+        },
+        {
+          "name": "WRITE IN VOTES",
+          "party": "",
+          "votes": 0,
+          "pct": 0.0
+        }
+      ],
+      "total": 374699
+    },
+    "5th": {
+      "candidates": [
+        {
+          "name": "John J. McGuire III",
+          "party": "Republican",
+          "votes": 249564,
+          "pct": 57.5
+        },
+        {
+          "name": "Gloria Tinsley Witt",
+          "party": "Democrat",
+          "votes": 184229,
+          "pct": 42.5
+        },
+        {
+          "name": "WRITE IN VOTES",
+          "party": "",
+          "votes": 0,
+          "pct": 0.0
+        }
+      ],
+      "total": 433793
+    },
+    "6th": {
+      "candidates": [
+        {
+          "name": "Ben L. Cline",
+          "party": "Republican",
+          "votes": 256933,
+          "pct": 63.2
+        },
+        {
+          "name": "Ken L. Mitchell",
+          "party": "Democrat",
+          "votes": 141612,
+          "pct": 34.8
+        },
+        {
+          "name": "Robert C. \"Robby\" Wells, Jr.",
+          "party": "Independent",
+          "votes": 7980,
+          "pct": 2.0
+        },
+        {
+          "name": "WRITE IN VOTES",
+          "party": "",
+          "votes": 0,
+          "pct": 0.0
+        }
+      ],
+      "total": 406525
+    },
+    "7th": {
+      "candidates": [
+        {
+          "name": "Eugene S. Vindman",
+          "party": "Democrat",
+          "votes": 203336,
+          "pct": 51.3
+        },
+        {
+          "name": "Derrick M. Anderson",
+          "party": "Republican",
+          "votes": 192847,
+          "pct": 48.7
+        },
+        {
+          "name": "WRITE IN VOTES",
+          "party": "",
+          "votes": 0,
+          "pct": 0.0
+        }
+      ],
+      "total": 396183
+    },
+    "8th": {
+      "candidates": [
+        {
+          "name": "Donald S. Beyer, Jr.",
+          "party": "Democrat",
+          "votes": 274593,
+          "pct": 71.7
+        },
+        {
+          "name": "Jerry W. Torres",
+          "party": "Republican",
+          "votes": 94676,
+          "pct": 24.7
+        },
+        {
+          "name": "David R. Kennedy",
+          "party": "Independent",
+          "votes": 9956,
+          "pct": 2.6
+        },
+        {
+          "name": "Bentley F. Hensel",
+          "party": "Independent",
+          "votes": 3656,
+          "pct": 1.0
+        },
+        {
+          "name": "WRITE IN VOTES",
+          "party": "",
+          "votes": 0,
+          "pct": 0.0
+        }
+      ],
+      "total": 382881
+    },
+    "9th": {
+      "candidates": [
+        {
+          "name": "H. Morgan Griffith",
+          "party": "Republican",
+          "votes": 290645,
+          "pct": 72.6
+        },
+        {
+          "name": "Karen G. H. Baker",
+          "party": "Democrat",
+          "votes": 109570,
+          "pct": 27.4
+        },
+        {
+          "name": "WRITE IN VOTES",
+          "party": "",
+          "votes": 0,
+          "pct": 0.0
+        }
+      ],
+      "total": 400215
+    },
+    "10th": {
+      "candidates": [
+        {
+          "name": "Suhas Subramanyam",
+          "party": "Democrat",
+          "votes": 215131,
+          "pct": 52.3
+        },
+        {
+          "name": "Mike W. Clancy",
+          "party": "Republican",
+          "votes": 196343,
+          "pct": 47.7
+        },
+        {
+          "name": "WRITE IN VOTES",
+          "party": "",
+          "votes": 0,
+          "pct": 0.0
+        }
+      ],
+      "total": 411474
+    },
+    "11th": {
+      "candidates": [
+        {
+          "name": "Gerald E. \"Gerry\" Connolly",
+          "party": "Democrat",
+          "votes": 273529,
+          "pct": 67.0
+        },
+        {
+          "name": "Mike L. Van Meter",
+          "party": "Republican",
+          "votes": 134802,
+          "pct": 33.0
+        },
+        {
+          "name": "WRITE IN VOTES",
+          "party": "",
+          "votes": 0,
+          "pct": 0.0
+        }
+      ],
+      "total": 408331
+    }
+  }
+}
