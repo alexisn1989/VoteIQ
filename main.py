@@ -472,6 +472,45 @@ def _build_2025_hod_flips(hod_data: dict) -> list[dict]:
     return flips
 
 
+def _normalize_major_party(party: str) -> str:
+    party_lower = str(party or "").lower()
+    if "democrat" in party_lower:
+        return "Democrat"
+    if "republican" in party_lower:
+        return "Republican"
+    return party or "Other"
+
+
+def _build_2023_state_leg_flips(chamber: str, results: dict) -> list[dict]:
+    baseline = SD_2019_PARTY if chamber == "senate" else HOD_2021_PARTY
+    flips = []
+    for district, race in sorted(results.items()):
+        candidates = race.get("candidates", [])
+        if not candidates:
+            continue
+        winner = candidates[0]
+        from_party = baseline.get(int(district), "Unknown")
+        to_party = _normalize_major_party(winner.get("party", ""))
+        if from_party == to_party:
+            continue
+        flips.append({
+            "district": int(district),
+            "winner": winner.get("name", "Unknown"),
+            "from_party": from_party,
+            "to_party": to_party,
+            "winner_pct": winner.get("pct", 0.0),
+            "votes": winner.get("votes", 0),
+            "direction": (
+                "Flipped Democratic"
+                if to_party == "Democrat"
+                else "Flipped Republican"
+                if to_party == "Republican"
+                else f"Flipped {to_party}"
+            ),
+        })
+    return flips
+
+
 # All district GDFs are lazy — borrowed from address_lookup on first use
 _va_cd_gdf  = None
 _va_hod_gdf = None
@@ -622,6 +661,27 @@ HOD_2023_PARTY = {d: "Republican" for d in [
     56, 57, 59, 60, 61, 62, 63, 64, 66, 67, 68, 69,
     71, 72, 73, 74, 75, 82, 83, 86, 89, 90, 97, 98, 99, 100,
 ]}
+
+# Prior-cycle numbered district baselines. These were elected under pre-2021
+# redistricting boundaries, so 2023 flip views label them as numbered-district
+# comparisons rather than same-boundary seat flips.
+HOD_2021_PARTY = {d: "Republican" for d in [
+    1, 3, 4, 5, 6, 7, 8, 9, 12, 14, 15, 16, 17, 18, 19, 20,
+    22, 23, 24, 25, 26, 27, 28, 29, 30, 33, 54, 55, 56, 58,
+    59, 60, 61, 62, 63, 64, 65, 66, 75, 78, 81, 82, 83, 84,
+    85, 88, 91, 96, 97, 98, 99, 100,
+]}
+HOD_2021_PARTY.update({
+    d: "Democrat" for d in range(1, 101) if d not in HOD_2021_PARTY
+})
+
+SD_2019_PARTY = {d: "Republican" for d in [
+    3, 4, 7, 8, 11, 12, 14, 15, 17, 19, 20, 22, 23, 24, 26,
+    27, 28, 38, 40,
+]}
+SD_2019_PARTY.update({
+    d: "Democrat" for d in range(1, 41) if d not in SD_2019_PARTY
+})
 
 # Virginia State Senate — 40 districts (2021 redistricting, 2026 session members)
 SD_CONTEXT = {
@@ -1630,6 +1690,88 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         ).add_to(m)
         title = "2024 Virginia — Congressional District Results"
 
+    elif layer in ("senate_2023_flip_2019", "hod_2023_flip_2021"):
+        from shapely.geometry import mapping as _mapping
+        chamber = "senate" if layer == "senate_2023_flip_2019" else "hod"
+        baseline = SD_2019_PARTY if chamber == "senate" else HOD_2021_PARTY
+        baseline_year = "2019" if chamber == "senate" else "2021"
+        chamber_label = "State Senate" if chamber == "senate" else "House of Delegates"
+
+        if chamber == "senate":
+            if _va_sd_gdf is None:
+                import address_lookup as _al2
+                if _al2.va_sd is not None:
+                    _va_sd_gdf = _al2.va_sd
+                else:
+                    _va_sd_gdf = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL SD.shp"))
+                    _va_sd_gdf = _va_sd_gdf.to_crs(epsg=4326)
+                    _al2.va_sd = _va_sd_gdf
+            gdf = _va_sd_gdf
+        else:
+            if _va_hod_gdf is None:
+                import address_lookup as _al2
+                if _al2.va_hod is not None:
+                    _va_hod_gdf = _al2.va_hod
+                else:
+                    _va_hod_gdf = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL HOD.shp"))
+                    _va_hod_gdf = _va_hod_gdf.to_crs(epsg=4326)
+                    _al2.va_hod = _va_hod_gdf
+            gdf = _va_hod_gdf
+
+        results_2023 = _load_2023_results().get(chamber, {})
+        for _, row in gdf.iterrows():
+            d = int(row["DISTRICT"])
+            race = results_2023.get(d, {})
+            candidates = race.get("candidates", [])
+            winner = candidates[0] if candidates else {}
+            winner_name = winner.get("name", "No data")
+            party_2023 = _normalize_major_party(winner.get("party", ""))
+            party_prior = baseline.get(d, "Unknown")
+            flipped = party_prior != party_2023 and party_prior != "Unknown"
+            if flipped and party_2023 == "Democrat":
+                status = "Flipped Democratic"
+            elif flipped and party_2023 == "Republican":
+                status = "Flipped Republican"
+            elif party_2023 == "Democrat":
+                status = "Held Democratic"
+            elif party_2023 == "Republican":
+                status = "Held Republican"
+            else:
+                status = "No data"
+
+            features.append({"type": "Feature",
+                "geometry": _mapping(row.geometry.simplify(0.01, preserve_topology=True)),
+                "properties": {
+                    "_district": f"{chamber_label} District {d}",
+                    "_winner": winner_name,
+                    "_status": status,
+                    "_prior": party_prior,
+                    "_2023": party_2023,
+                }})
+
+        def state_leg_2023_flip_style(feat):
+            status = feat["properties"].get("_status", "")
+            if status == "Flipped Democratic":
+                return {"fillColor": "#1a52c8", "color": "#111", "weight": 1.5, "fillOpacity": 0.85}
+            if status == "Flipped Republican":
+                return {"fillColor": "#c8102e", "color": "#111", "weight": 1.5, "fillOpacity": 0.85}
+            if status == "Held Democratic":
+                return {"fillColor": "#6b9fd4", "color": "#555", "weight": 0.4, "fillOpacity": 0.35}
+            if status == "Held Republican":
+                return {"fillColor": "#e8807a", "color": "#555", "weight": 0.4, "fillOpacity": 0.35}
+            return {"fillColor": "#999999", "color": "#555", "weight": 0.4, "fillOpacity": 0.2}
+
+        folium.GeoJson(
+            {"type": "FeatureCollection", "features": features},
+            style_function=state_leg_2023_flip_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["_district", "_winner", "_status", "_prior", "_2023"],
+                aliases=["District:", "2023 Winner:", "Result:", f"{baseline_year} Party:", "2023 Party:"],
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        title = f"2023 Virginia {chamber_label} — Party Change vs {baseline_year} Numbered District"
+
     elif layer in ("senate_2023_results", "hod_2023_results"):
         from shapely.geometry import mapping as _mapping
         chamber = "senate" if layer == "senate_2023_results" else "hod"
@@ -1843,7 +1985,7 @@ _district_maps: dict[str, str] = {}
 
 @app.get("/district-map", response_class=HTMLResponse)
 def district_map(layer: str = "congressional", lat: float = None, lng: float = None, district: int = None):
-    if layer in ("congressional", "hod_results", "hod_flip", "gov_results", "ltgov_results", "ag_results", "pres_2024", "senate_2024", "congress_2024", "senate_2023_results", "hod_2023_results") and lat is None:
+    if layer in ("congressional", "hod_results", "hod_flip", "gov_results", "ltgov_results", "ag_results", "pres_2024", "senate_2024", "congress_2024", "senate_2023_results", "hod_2023_results", "senate_2023_flip_2019", "hod_2023_flip_2021") and lat is None:
         if layer not in _district_maps:
             try:
                 _district_maps[layer] = _build_district_map(layer)
@@ -1968,6 +2110,11 @@ def election_results_2025_api():
 @app.get("/past-elections/2023", response_class=HTMLResponse)
 def election_results_2023_page():
     data = _load_2023_results()
+    data = {
+        **data,
+        "senate_flips": _build_2023_state_leg_flips("senate", data.get("senate", {})),
+        "hod_flips": _build_2023_state_leg_flips("hod", data.get("hod", {})),
+    }
     safe_json = json.dumps(data, default=str).replace("</script>", "<\\/script>")
     with open(os.path.join(BASE_DIR, "templates", "election_results_2023.html"), "r", encoding="utf-8") as f:
         html = f.read()
