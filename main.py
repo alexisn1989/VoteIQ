@@ -251,7 +251,8 @@ _va_hod_gdf = None
 _va_sd_gdf  = None
 _vb_council_map_gdf   = None
 _nn_council_map_gdf   = None
-_norfolk_ward_map_gdf = None
+_norfolk_ward_map_gdf      = None
+_norfolk_superward_map_gdf = None
 
 def _get_va_cd():
     global _va_cd_gdf
@@ -669,7 +670,7 @@ def get_map(address: str):
 
 def _build_district_map(layer: str, user_lat: float = None, user_lng: float = None, district: int = None) -> str:
     """Build a party-shaded folium map for congressional, HOD, SD, or city council districts."""
-    global _va_hod_gdf, _va_sd_gdf, _vb_council_map_gdf, _nn_council_map_gdf, _norfolk_ward_map_gdf
+    global _va_hod_gdf, _va_sd_gdf, _vb_council_map_gdf, _nn_council_map_gdf, _norfolk_ward_map_gdf, _norfolk_superward_map_gdf
 
     import address_lookup as _al
     if layer == "hod":
@@ -718,6 +719,11 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             _norfolk_ward_map_gdf = gpd.read_file(os.path.join(BASE_DIR, "Wards.shp")).to_crs(epsg=4326)
         if _norfolk_ward_map_gdf is None:
             raise RuntimeError("Norfolk wards shapefile could not be loaded")
+    if layer == "norfolk_superward":
+        if _norfolk_superward_map_gdf is None:
+            _norfolk_superward_map_gdf = gpd.read_file(os.path.join(BASE_DIR, "Superwards.geojson")).to_crs(epsg=4326)
+        if _norfolk_superward_map_gdf is None:
+            raise RuntimeError("Norfolk superwards file could not be loaded")
 
     features = []
     m = folium.Map(location=[37.5, -79.0], zoom_start=7, tiles="CartoDB positron", min_zoom=6)
@@ -1093,6 +1099,45 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             title = f"Norfolk School Board Ward {district} — {sbm}"
         else:
             title = "Norfolk School Board Wards"
+        m.location = [36.851, -76.286]
+        m.zoom_start = 12
+
+    elif layer == "norfolk_superward":
+        from shapely.geometry import mapping as _mapping
+        for _, row in _norfolk_superward_map_gdf.iterrows():
+            try:
+                sw = int(row["SUPWARD"])
+                rep = str(row.get("SWARD_REP", "Unknown"))
+                features.append({"type": "Feature",
+                    "geometry": _mapping(row.geometry.simplify(0.002, preserve_topology=True)),
+                    "properties": {"SUPWARD": sw,
+                        "_district": f"Superward {sw}",
+                        "_rep": rep,
+                        "_party": "",
+                        "_highlight": (sw == district) if district else False}})
+            except Exception:
+                continue
+
+        def norfolk_sw_style(feat):
+            hi = feat["properties"].get("_highlight", False)
+            return {"fillColor": "#1a6b3c", "color": "#333", "weight": 2 if hi else 0.6,
+                    "fillOpacity": 0.85 if hi else 0.3}
+
+        folium.GeoJson(
+            {"type": "FeatureCollection", "features": features},
+            style_function=norfolk_sw_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["_district", "_rep"],
+                aliases=["Superward:", "Council Member:"],
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        if district:
+            matched = [f for f in features if f["properties"]["SUPWARD"] == district]
+            rep = matched[0]["properties"]["_rep"] if matched else ""
+            title = f"Norfolk Superward {district} — {rep}"
+        else:
+            title = "Norfolk City Council Superwards"
         m.location = [36.851, -76.286]
         m.zoom_start = 12
 

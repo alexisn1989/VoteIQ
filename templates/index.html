@@ -168,6 +168,7 @@
     <a id="sd-map-link" href="/district-map?layer=sd" target="_blank" style="font-family:'Barlow Condensed',sans-serif;font-size:0.8rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#0d1b2a;text-decoration:none;border:1.5px solid #0d1b2a;padding:9px 20px;transition:all .2s;" onmouseover="this.style.background='#0d1b2a';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='#0d1b2a'">State Senate Map →</a>
     <a id="council-map-link" href="#" target="_blank" class="map-btn-hidden" style="font-family:'Barlow Condensed',sans-serif;font-size:0.8rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#0d1b2a;text-decoration:none;border:1.5px solid #0d1b2a;padding:9px 20px;transition:all .2s;" onmouseover="this.style.background='#0d1b2a';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='#0d1b2a'">City Council Map →</a>
     <a id="school-board-map-link" href="#" target="_blank" class="map-btn-hidden" style="font-family:'Barlow Condensed',sans-serif;font-size:0.8rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#0d1b2a;text-decoration:none;border:1.5px solid #0d1b2a;padding:9px 20px;transition:all .2s;" onmouseover="this.style.background='#0d1b2a';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='#0d1b2a'">School Board Map →</a>
+    <a id="superward-map-link" href="#" target="_blank" class="map-btn-hidden" style="font-family:'Barlow Condensed',sans-serif;font-size:0.8rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#0d1b2a;text-decoration:none;border:1.5px solid #0d1b2a;padding:9px 20px;transition:all .2s;" onmouseover="this.style.background='#0d1b2a';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='#0d1b2a'">Superward Map →</a>
   </div>
 
   <div class="divider"><span>How it works</span></div>
@@ -417,8 +418,10 @@
       console.log('[VoteIQ] locality:', JSON.stringify(d.locality));
       const councilLinkEl = document.getElementById('council-map-link');
       const sbLinkEl = document.getElementById('school-board-map-link');
+      const swLinkEl = document.getElementById('superward-map-link');
       let councilMapUrl = null;
       let sbMapUrl = null;
+      let swMapUrl = null;
       if (locality.includes('virginia beach')) {
         const distNum = council && council.district_number != null ? council.district_number : null;
         const distParam = distNum != null ? '&district=' + distNum : '';
@@ -429,10 +432,14 @@
       } else if (locality.includes('norfolk')) {
         const wardNum = norfolk && norfolk.ward != null ? norfolk.ward : null;
         const wardParam = wardNum != null ? '&district=' + wardNum : '';
+        const swNum = norfolk && norfolk.superward != null ? norfolk.superward : null;
+        const swParam = swNum != null ? '&district=' + swNum : '';
         councilLinkEl.textContent = 'Norfolk Ward Map →';
         councilMapUrl = `/district-map?layer=norfolk_ward&lat=${userLat}&lng=${userLng}${wardParam}`;
         sbLinkEl.textContent = 'Norfolk School Board Map →';
         sbMapUrl = `/district-map?layer=norfolk_ward_sb&lat=${userLat}&lng=${userLng}${wardParam}`;
+        swLinkEl.textContent = 'Norfolk Superward Map →';
+        swMapUrl = `/district-map?layer=norfolk_superward&lat=${userLat}&lng=${userLng}${swParam}`;
       } else if (locality.includes('newport news')) {
         const distNum = newportNews && newportNews.council_district != null ? newportNews.council_district : null;
         const distParam = distNum != null ? '&district=' + distNum : '';
@@ -445,6 +452,7 @@
       if (councilMapUrl) { councilLinkEl.classList.remove('map-btn-hidden'); } else { councilLinkEl.classList.add('map-btn-hidden'); }
       sbLinkEl.href = sbMapUrl || '#';
       if (sbMapUrl) { sbLinkEl.classList.remove('map-btn-hidden'); } else { sbLinkEl.classList.add('map-btn-hidden'); }
+      if (swMapUrl) { swLinkEl.classList.remove('map-btn-hidden'); } else { swLinkEl.classList.add('map-btn-hidden'); }
       mapEl.removeAttribute('srcdoc');
       mapEl.src = `/district-map?layer=congressional&lat=${userLat}&lng=${userLng}`;
     } catch (error) {
