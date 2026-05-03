@@ -1,0 +1,2218 @@
+{
+  "senate": {
+    "1": {
+      "total": 58787,
+      "candidates": [
+        {
+          "name": "Timmy F. French",
+          "party": "Republican",
+          "votes": 37453,
+          "pct": 63.7
+        },
+        {
+          "name": "Emily G. Scott",
+          "party": "Democratic",
+          "votes": 21334,
+          "pct": 36.3
+        }
+      ]
+    },
+    "2": {
+      "total": 57276,
+      "candidates": [
+        {
+          "name": "Mark D. Obenshain",
+          "party": "Republican",
+          "votes": 39770,
+          "pct": 69.4
+        },
+        {
+          "name": "Kathy A. Beery",
+          "party": "Democratic",
+          "votes": 16398,
+          "pct": 28.6
+        },
+        {
+          "name": "Joshua J. Huffman",
+          "party": "Libertarian",
+          "votes": 1108,
+          "pct": 1.9
+        }
+      ]
+    },
+    "3": {
+      "total": 62734,
+      "candidates": [
+        {
+          "name": "Christopher T. Head",
+          "party": "Republican",
+          "votes": 41381,
+          "pct": 66.0
+        },
+        {
+          "name": "Jade D. Harris",
+          "party": "Democratic",
+          "votes": 21353,
+          "pct": 34.0
+        }
+      ]
+    },
+    "4": {
+      "total": 60236,
+      "candidates": [
+        {
+          "name": "David Robert Suetterlein",
+          "party": "Republican",
+          "votes": 32127,
+          "pct": 53.3
+        },
+        {
+          "name": "P. A. \"Trish\" White-Boyd",
+          "party": "Democratic",
+          "votes": 28109,
+          "pct": 46.7
+        }
+      ]
+    },
+    "5": {
+      "total": 54620,
+      "candidates": [
+        {
+          "name": "T. Travis Hackworth",
+          "party": "Republican",
+          "votes": 36528,
+          "pct": 66.9
+        },
+        {
+          "name": "Robert W. Beckman",
+          "party": "Democratic",
+          "votes": 18092,
+          "pct": 33.1
+        }
+      ]
+    },
+    "6": {
+      "total": 43641,
+      "candidates": [
+        {
+          "name": "Todd E. Pillion",
+          "party": "Republican",
+          "votes": 43641,
+          "pct": 100.0
+        }
+      ]
+    },
+    "7": {
+      "total": 56952,
+      "candidates": [
+        {
+          "name": "William M. \"Bill\" Stanley, Jr.",
+          "party": "Republican",
+          "votes": 43158,
+          "pct": 75.8
+        },
+        {
+          "name": "Deborah I. \"Renie\" Gates",
+          "party": "Democratic",
+          "votes": 13794,
+          "pct": 24.2
+        }
+      ]
+    },
+    "8": {
+      "total": 59498,
+      "candidates": [
+        {
+          "name": "Mark J. Peake",
+          "party": "Republican",
+          "votes": 41754,
+          "pct": 70.2
+        },
+        {
+          "name": "Donna M. St. Clair",
+          "party": "Democratic",
+          "votes": 17744,
+          "pct": 29.8
+        }
+      ]
+    },
+    "9": {
+      "total": 41877,
+      "candidates": [
+        {
+          "name": "Frank M. Ruff Jr.",
+          "party": "Republican",
+          "votes": 41877,
+          "pct": 100.0
+        }
+      ]
+    },
+    "10": {
+      "total": 59013,
+      "candidates": [
+        {
+          "name": "John J. McGuire III",
+          "party": "Republican",
+          "votes": 59013,
+          "pct": 100.0
+        }
+      ]
+    },
+    "11": {
+      "total": 74091,
+      "candidates": [
+        {
+          "name": "R. Creigh Deeds",
+          "party": "Democratic",
+          "votes": 48675,
+          "pct": 65.7
+        },
+        {
+          "name": "Philip A. Hamilton",
+          "party": "Republican",
+          "votes": 25416,
+          "pct": 34.3
+        }
+      ]
+    },
+    "12": {
+      "total": 81286,
+      "candidates": [
+        {
+          "name": "Glen H. Sturtevant Jr.",
+          "party": "Republican",
+          "votes": 44597,
+          "pct": 54.9
+        },
+        {
+          "name": "Natan D. McKenzie",
+          "party": "Democratic",
+          "votes": 36689,
+          "pct": 45.1
+        }
+      ]
+    },
+    "13": {
+      "total": 59199,
+      "candidates": [
+        {
+          "name": "Lashrecse D. Aird",
+          "party": "Democratic",
+          "votes": 35472,
+          "pct": 59.9
+        },
+        {
+          "name": "Eric F. Ditri",
+          "party": "Republican",
+          "votes": 23727,
+          "pct": 40.1
+        }
+      ]
+    },
+    "14": {
+      "total": 61127,
+      "candidates": [
+        {
+          "name": "Lamont Bagby",
+          "party": "Democratic",
+          "votes": 61127,
+          "pct": 100.0
+        }
+      ]
+    },
+    "15": {
+      "total": 53295,
+      "candidates": [
+        {
+          "name": "Ghazala F. Hashmi",
+          "party": "Democratic",
+          "votes": 33253,
+          "pct": 62.4
+        },
+        {
+          "name": "Douglass Hayden Fisher",
+          "party": "Republican",
+          "votes": 20042,
+          "pct": 37.6
+        }
+      ]
+    },
+    "16": {
+      "total": 81803,
+      "candidates": [
+        {
+          "name": "Schuyler T. VanValkenburg",
+          "party": "Democratic",
+          "votes": 44803,
+          "pct": 54.8
+        },
+        {
+          "name": "Siobhan S. Dunnavant",
+          "party": "Republican",
+          "votes": 37000,
+          "pct": 45.2
+        }
+      ]
+    },
+    "17": {
+      "total": 75835,
+      "candidates": [
+        {
+          "name": "Emily Marie Brewer",
+          "party": "Republican",
+          "votes": 39752,
+          "pct": 52.4
+        },
+        {
+          "name": "Clinton L. Jenkins",
+          "party": "Democratic",
+          "votes": 36083,
+          "pct": 47.6
+        }
+      ]
+    },
+    "18": {
+      "total": 48496,
+      "candidates": [
+        {
+          "name": "L. Louise Lucas",
+          "party": "Democratic",
+          "votes": 28668,
+          "pct": 59.1
+        },
+        {
+          "name": "Anthony W. \"Tony\" Goodwin",
+          "party": "Republican",
+          "votes": 19828,
+          "pct": 40.9
+        }
+      ]
+    },
+    "19": {
+      "total": 60387,
+      "candidates": [
+        {
+          "name": "Christie New Craig",
+          "party": "Republican",
+          "votes": 35186,
+          "pct": 58.3
+        },
+        {
+          "name": "Myra J. Payne",
+          "party": "Democratic",
+          "votes": 25201,
+          "pct": 41.7
+        }
+      ]
+    },
+    "20": {
+      "total": 64105,
+      "candidates": [
+        {
+          "name": "William R. \"Bill\" DeSteph",
+          "party": "Republican",
+          "votes": 36545,
+          "pct": 57.0
+        },
+        {
+          "name": "Victoria A. Luevanos",
+          "party": "Democratic",
+          "votes": 27560,
+          "pct": 43.0
+        }
+      ]
+    },
+    "21": {
+      "total": 35984,
+      "candidates": [
+        {
+          "name": "Angelia Williams Graves",
+          "party": "Democratic",
+          "votes": 28071,
+          "pct": 78.0
+        },
+        {
+          "name": "Giovanni G. \"Gio\" Dolmo",
+          "party": "Independent",
+          "votes": 7913,
+          "pct": 22.0
+        }
+      ]
+    },
+    "22": {
+      "total": 54367,
+      "candidates": [
+        {
+          "name": "Aaron R. Rouse",
+          "party": "Democratic",
+          "votes": 29999,
+          "pct": 55.2
+        },
+        {
+          "name": "Kevin H. Adams",
+          "party": "Republican",
+          "votes": 24368,
+          "pct": 44.8
+        }
+      ]
+    },
+    "23": {
+      "total": 35132,
+      "candidates": [
+        {
+          "name": "Mamie E. Locke",
+          "party": "Democratic",
+          "votes": 35132,
+          "pct": 100.0
+        }
+      ]
+    },
+    "24": {
+      "total": 67179,
+      "candidates": [
+        {
+          "name": "J. D. \"Danny\" Diggs",
+          "party": "Republican",
+          "votes": 33952,
+          "pct": 50.5
+        },
+        {
+          "name": "T. Monty Mason",
+          "party": "Democratic",
+          "votes": 33227,
+          "pct": 49.5
+        }
+      ]
+    },
+    "25": {
+      "total": 68937,
+      "candidates": [
+        {
+          "name": "Richard H. Stuart",
+          "party": "Republican",
+          "votes": 42650,
+          "pct": 61.9
+        },
+        {
+          "name": "Jolicia A. Ward",
+          "party": "Democratic",
+          "votes": 26287,
+          "pct": 38.1
+        }
+      ]
+    },
+    "26": {
+      "total": 91710,
+      "candidates": [
+        {
+          "name": "Ryan T. McDougle",
+          "party": "Republican",
+          "votes": 57026,
+          "pct": 62.2
+        },
+        {
+          "name": "Pamela R. Garner",
+          "party": "Democratic",
+          "votes": 34684,
+          "pct": 37.8
+        }
+      ]
+    },
+    "27": {
+      "total": 70389,
+      "candidates": [
+        {
+          "name": "Tara A. Durant",
+          "party": "Republican",
+          "votes": 34180,
+          "pct": 48.6
+        },
+        {
+          "name": "Joel L. Griffin",
+          "party": "Democratic",
+          "votes": 32927,
+          "pct": 46.8
+        },
+        {
+          "name": "Monica L. Gary",
+          "party": "Independent",
+          "votes": 3282,
+          "pct": 4.7
+        }
+      ]
+    },
+    "28": {
+      "total": 71394,
+      "candidates": [
+        {
+          "name": "Bryce E. Reeves",
+          "party": "Republican",
+          "votes": 44718,
+          "pct": 62.6
+        },
+        {
+          "name": "Jason A. Ford",
+          "party": "Democratic",
+          "votes": 24374,
+          "pct": 34.1
+        },
+        {
+          "name": "Elizabeth G. Melson",
+          "party": "Independent",
+          "votes": 2302,
+          "pct": 3.2
+        }
+      ]
+    },
+    "29": {
+      "total": 52513,
+      "candidates": [
+        {
+          "name": "Jeremy S. McPike",
+          "party": "Democratic",
+          "votes": 29641,
+          "pct": 56.4
+        },
+        {
+          "name": "Nikki N. Rattray Baldwin",
+          "party": "Republican",
+          "votes": 22872,
+          "pct": 43.6
+        }
+      ]
+    },
+    "30": {
+      "total": 58739,
+      "candidates": [
+        {
+          "name": "Danica A. Roem",
+          "party": "Democratic",
+          "votes": 30499,
+          "pct": 51.9
+        },
+        {
+          "name": "Bill C. Woolf, III",
+          "party": "Republican",
+          "votes": 28240,
+          "pct": 48.1
+        }
+      ]
+    },
+    "31": {
+      "total": 88576,
+      "candidates": [
+        {
+          "name": "Russet W. Perry",
+          "party": "Democratic",
+          "votes": 46821,
+          "pct": 52.9
+        },
+        {
+          "name": "Juan Pablo Segura",
+          "party": "Republican",
+          "votes": 41755,
+          "pct": 47.1
+        }
+      ]
+    },
+    "32": {
+      "total": 60131,
+      "candidates": [
+        {
+          "name": "Suhas Subramanyam",
+          "party": "Democratic",
+          "votes": 36590,
+          "pct": 60.9
+        },
+        {
+          "name": "Gregory J. Moulthrop",
+          "party": "Republican",
+          "votes": 23541,
+          "pct": 39.1
+        }
+      ]
+    },
+    "33": {
+      "total": 55528,
+      "candidates": [
+        {
+          "name": "Jennifer D. Carroll Foy",
+          "party": "Democratic",
+          "votes": 35003,
+          "pct": 63.0
+        },
+        {
+          "name": "Mike L. Van Meter",
+          "party": "Republican",
+          "votes": 20525,
+          "pct": 37.0
+        }
+      ]
+    },
+    "34": {
+      "total": 54529,
+      "candidates": [
+        {
+          "name": "Scott A. Surovell",
+          "party": "Democratic",
+          "votes": 38140,
+          "pct": 69.9
+        },
+        {
+          "name": "Mark A. Springman",
+          "party": "Republican",
+          "votes": 16389,
+          "pct": 30.1
+        }
+      ]
+    },
+    "35": {
+      "total": 58118,
+      "candidates": [
+        {
+          "name": "David W. Marsden",
+          "party": "Democratic",
+          "votes": 39441,
+          "pct": 67.9
+        },
+        {
+          "name": "Mark B. Vafiades",
+          "party": "Republican",
+          "votes": 18677,
+          "pct": 32.1
+        }
+      ]
+    },
+    "36": {
+      "total": 60260,
+      "candidates": [
+        {
+          "name": "Stella G. Pekarsky",
+          "party": "Democratic",
+          "votes": 36802,
+          "pct": 61.1
+        },
+        {
+          "name": "Julie Anna Perry",
+          "party": "Republican",
+          "votes": 23458,
+          "pct": 38.9
+        }
+      ]
+    },
+    "37": {
+      "total": 59374,
+      "candidates": [
+        {
+          "name": "Saddam Azlan Salim",
+          "party": "Democratic",
+          "votes": 40947,
+          "pct": 69.0
+        },
+        {
+          "name": "Kenneth D. \"Ken\" Reid",
+          "party": "Republican",
+          "votes": 18427,
+          "pct": 31.0
+        }
+      ]
+    },
+    "38": {
+      "total": 69365,
+      "candidates": [
+        {
+          "name": "Jennifer B. Boysko",
+          "party": "Democratic",
+          "votes": 47623,
+          "pct": 68.7
+        },
+        {
+          "name": "Matthew J. \"Matt\" Lang",
+          "party": "Republican",
+          "votes": 21742,
+          "pct": 31.3
+        }
+      ]
+    },
+    "39": {
+      "total": 51775,
+      "candidates": [
+        {
+          "name": "Adam P. Ebbin",
+          "party": "Democratic",
+          "votes": 40675,
+          "pct": 78.6
+        },
+        {
+          "name": "Sophia C. Moshasha",
+          "party": "Republican",
+          "votes": 11100,
+          "pct": 21.4
+        }
+      ]
+    },
+    "40": {
+      "total": 59204,
+      "candidates": [
+        {
+          "name": "Barbara A. Favola",
+          "party": "Democratic",
+          "votes": 48055,
+          "pct": 81.2
+        },
+        {
+          "name": "David A. Henshaw",
+          "party": "Republican",
+          "votes": 11149,
+          "pct": 18.8
+        }
+      ]
+    }
+  },
+  "hod": {
+    "1": {
+      "total": 24483,
+      "candidates": [
+        {
+          "name": "Patrick A. Hope",
+          "party": "Democratic",
+          "votes": 24483,
+          "pct": 100.0
+        }
+      ]
+    },
+    "2": {
+      "total": 17409,
+      "candidates": [
+        {
+          "name": "Adele Y. McClure",
+          "party": "Democratic",
+          "votes": 17409,
+          "pct": 100.0
+        }
+      ]
+    },
+    "3": {
+      "total": 21067,
+      "candidates": [
+        {
+          "name": "Alfonso H. Lopez",
+          "party": "Democratic",
+          "votes": 17416,
+          "pct": 82.7
+        },
+        {
+          "name": "Major Mike Webb",
+          "party": "Independent",
+          "votes": 3651,
+          "pct": 17.3
+        }
+      ]
+    },
+    "4": {
+      "total": 10843,
+      "candidates": [
+        {
+          "name": "Charniele L. Herring",
+          "party": "Democratic",
+          "votes": 10843,
+          "pct": 100.0
+        }
+      ]
+    },
+    "5": {
+      "total": 22359,
+      "candidates": [
+        {
+          "name": "Elizabeth B. Bennett-Parker",
+          "party": "Democratic",
+          "votes": 22359,
+          "pct": 100.0
+        }
+      ]
+    },
+    "6": {
+      "total": 32447,
+      "candidates": [
+        {
+          "name": "Richard C. \"Rip\" Sullivan Jr.",
+          "party": "Democratic",
+          "votes": 20144,
+          "pct": 62.1
+        },
+        {
+          "name": "Kristin L. Hoffman",
+          "party": "Republican",
+          "votes": 12303,
+          "pct": 37.9
+        }
+      ]
+    },
+    "7": {
+      "total": 30904,
+      "candidates": [
+        {
+          "name": "Karen A. Keys-Gamarra",
+          "party": "Democratic",
+          "votes": 22705,
+          "pct": 73.5
+        },
+        {
+          "name": "Luellen Hoffman Maskeny",
+          "party": "Republican",
+          "votes": 8199,
+          "pct": 26.5
+        }
+      ]
+    },
+    "8": {
+      "total": 21874,
+      "candidates": [
+        {
+          "name": "Irene Shin",
+          "party": "Democratic",
+          "votes": 14851,
+          "pct": 67.9
+        },
+        {
+          "name": "Max B. Fisher",
+          "party": "Republican",
+          "votes": 7023,
+          "pct": 32.1
+        }
+      ]
+    },
+    "9": {
+      "total": 23215,
+      "candidates": [
+        {
+          "name": "Karrie K. Delaney",
+          "party": "Democratic",
+          "votes": 14226,
+          "pct": 61.3
+        },
+        {
+          "name": "Nhan C. Huynh",
+          "party": "Republican",
+          "votes": 8989,
+          "pct": 38.7
+        }
+      ]
+    },
+    "10": {
+      "total": 26116,
+      "candidates": [
+        {
+          "name": "Dan I. Helmer",
+          "party": "Democratic",
+          "votes": 15569,
+          "pct": 59.6
+        },
+        {
+          "name": "James A. Thomas, Jr.",
+          "party": "Republican",
+          "votes": 10547,
+          "pct": 40.4
+        }
+      ]
+    },
+    "11": {
+      "total": 22393,
+      "candidates": [
+        {
+          "name": "David L. Bulova",
+          "party": "Democratic",
+          "votes": 15863,
+          "pct": 70.8
+        },
+        {
+          "name": "Almira Mohammed",
+          "party": "Republican",
+          "votes": 6530,
+          "pct": 29.2
+        }
+      ]
+    },
+    "12": {
+      "total": 18550,
+      "candidates": [
+        {
+          "name": "Holly M. Seibold",
+          "party": "Democratic",
+          "votes": 18550,
+          "pct": 100.0
+        }
+      ]
+    },
+    "13": {
+      "total": 21101,
+      "candidates": [
+        {
+          "name": "Marcus B. Simon",
+          "party": "Democratic",
+          "votes": 16778,
+          "pct": 79.5
+        },
+        {
+          "name": "Dave A. Crance Jr.",
+          "party": "Libertarian",
+          "votes": 4323,
+          "pct": 20.5
+        }
+      ]
+    },
+    "14": {
+      "total": 19926,
+      "candidates": [
+        {
+          "name": "Vivian E. Watts",
+          "party": "Democratic",
+          "votes": 13870,
+          "pct": 69.6
+        },
+        {
+          "name": "Curtis L. Wells Jr.",
+          "party": "Republican",
+          "votes": 6056,
+          "pct": 30.4
+        }
+      ]
+    },
+    "15": {
+      "total": 31274,
+      "candidates": [
+        {
+          "name": "Laura Jane H. Cohen",
+          "party": "Democratic",
+          "votes": 19394,
+          "pct": 62.0
+        },
+        {
+          "name": "Marcus T. Evans",
+          "party": "Republican",
+          "votes": 11880,
+          "pct": 38.0
+        }
+      ]
+    },
+    "16": {
+      "total": 16985,
+      "candidates": [
+        {
+          "name": "Paul E. Krizek",
+          "party": "Democratic",
+          "votes": 16985,
+          "pct": 100.0
+        }
+      ]
+    },
+    "17": {
+      "total": 17931,
+      "candidates": [
+        {
+          "name": "Mark D. Sickles",
+          "party": "Democratic",
+          "votes": 17931,
+          "pct": 100.0
+        }
+      ]
+    },
+    "18": {
+      "total": 24266,
+      "candidates": [
+        {
+          "name": "Kathy K. L. Tran",
+          "party": "Democratic",
+          "votes": 15973,
+          "pct": 65.8
+        },
+        {
+          "name": "Edward F. McGovern",
+          "party": "Republican",
+          "votes": 8293,
+          "pct": 34.2
+        }
+      ]
+    },
+    "19": {
+      "total": 9937,
+      "candidates": [
+        {
+          "name": "Rozia A. \"J.R.\" Henson, Jr.",
+          "party": "Democratic",
+          "votes": 9937,
+          "pct": 100.0
+        }
+      ]
+    },
+    "20": {
+      "total": 17162,
+      "candidates": [
+        {
+          "name": "Michelle-Ann E. Lopes Maldonado",
+          "party": "Democratic",
+          "votes": 9740,
+          "pct": 56.8
+        },
+        {
+          "name": "Sharon E. Ashurst",
+          "party": "Republican",
+          "votes": 7422,
+          "pct": 43.2
+        }
+      ]
+    },
+    "21": {
+      "total": 26877,
+      "candidates": [
+        {
+          "name": "Josh E. Thomas",
+          "party": "Democratic",
+          "votes": 13926,
+          "pct": 51.8
+        },
+        {
+          "name": "John T. Stirrup",
+          "party": "Republican",
+          "votes": 12951,
+          "pct": 48.2
+        }
+      ]
+    },
+    "22": {
+      "total": 30648,
+      "candidates": [
+        {
+          "name": "Ian Travis Lovejoy",
+          "party": "Republican",
+          "votes": 16032,
+          "pct": 52.3
+        },
+        {
+          "name": "Travis S. Nembhard",
+          "party": "Democratic",
+          "votes": 14616,
+          "pct": 47.7
+        }
+      ]
+    },
+    "23": {
+      "total": 14888,
+      "candidates": [
+        {
+          "name": "Candi Patrice Mundon King",
+          "party": "Democratic",
+          "votes": 10155,
+          "pct": 68.2
+        },
+        {
+          "name": "James V. Tully",
+          "party": "Republican",
+          "votes": 4733,
+          "pct": 31.8
+        }
+      ]
+    },
+    "24": {
+      "total": 14614,
+      "candidates": [
+        {
+          "name": "Luke E. Torian",
+          "party": "Democratic",
+          "votes": 14614,
+          "pct": 100.0
+        }
+      ]
+    },
+    "25": {
+      "total": 21667,
+      "candidates": [
+        {
+          "name": "Briana D. Sewell",
+          "party": "Democratic",
+          "votes": 13404,
+          "pct": 61.9
+        },
+        {
+          "name": "John S. Gray",
+          "party": "Republican",
+          "votes": 8263,
+          "pct": 38.1
+        }
+      ]
+    },
+    "26": {
+      "total": 21481,
+      "candidates": [
+        {
+          "name": "Kannan Srinivasan",
+          "party": "Democratic",
+          "votes": 13119,
+          "pct": 61.1
+        },
+        {
+          "name": "Rafi M. Khaja",
+          "party": "Republican",
+          "votes": 8362,
+          "pct": 38.9
+        }
+      ]
+    },
+    "27": {
+      "total": 22949,
+      "candidates": [
+        {
+          "name": "Atoosa R. Reaser",
+          "party": "Democratic",
+          "votes": 13191,
+          "pct": 57.5
+        },
+        {
+          "name": "Chris K. Harnisch",
+          "party": "Republican",
+          "votes": 9758,
+          "pct": 42.5
+        }
+      ]
+    },
+    "28": {
+      "total": 28631,
+      "candidates": [
+        {
+          "name": "David A. Reid",
+          "party": "Democratic",
+          "votes": 17583,
+          "pct": 61.4
+        },
+        {
+          "name": "Paul K. Lott",
+          "party": "Republican",
+          "votes": 11048,
+          "pct": 38.6
+        }
+      ]
+    },
+    "29": {
+      "total": 31746,
+      "candidates": [
+        {
+          "name": "Fernando J. \"Marty\" Martinez",
+          "party": "Democratic",
+          "votes": 18125,
+          "pct": 57.1
+        },
+        {
+          "name": "Jonathan Mark Rogers",
+          "party": "Republican",
+          "votes": 13621,
+          "pct": 42.9
+        }
+      ]
+    },
+    "30": {
+      "total": 38979,
+      "candidates": [
+        {
+          "name": "Geary M. Higgins",
+          "party": "Republican",
+          "votes": 20741,
+          "pct": 53.2
+        },
+        {
+          "name": "Robert L. \"Rob\" Banse Jr.",
+          "party": "Democratic",
+          "votes": 18238,
+          "pct": 46.8
+        }
+      ]
+    },
+    "31": {
+      "total": 27742,
+      "candidates": [
+        {
+          "name": "Delores R. Oates",
+          "party": "Republican",
+          "votes": 16745,
+          "pct": 60.4
+        },
+        {
+          "name": "Steven E. Foreman",
+          "party": "Democratic",
+          "votes": 9745,
+          "pct": 35.1
+        },
+        {
+          "name": "Grace E. Morrison",
+          "party": "Independent",
+          "votes": 1252,
+          "pct": 4.5
+        }
+      ]
+    },
+    "32": {
+      "total": 21853,
+      "candidates": [
+        {
+          "name": "William D. \"Bill\" Wiley",
+          "party": "Republican",
+          "votes": 13320,
+          "pct": 61.0
+        },
+        {
+          "name": "Madelyn \"Mady\" Rodriguez",
+          "party": "Democratic",
+          "votes": 8533,
+          "pct": 39.0
+        }
+      ]
+    },
+    "33": {
+      "total": 27693,
+      "candidates": [
+        {
+          "name": "C. Todd Gilbert",
+          "party": "Republican",
+          "votes": 21554,
+          "pct": 77.8
+        },
+        {
+          "name": "Bob W. Smith",
+          "party": "Democratic",
+          "votes": 6139,
+          "pct": 22.2
+        }
+      ]
+    },
+    "34": {
+      "total": 18214,
+      "candidates": [
+        {
+          "name": "Tony O. Wilt",
+          "party": "Republican",
+          "votes": 10368,
+          "pct": 56.9
+        },
+        {
+          "name": "Esther M. Nizer",
+          "party": "Democratic",
+          "votes": 7846,
+          "pct": 43.1
+        }
+      ]
+    },
+    "35": {
+      "total": 22104,
+      "candidates": [
+        {
+          "name": "Chris S. Runion",
+          "party": "Republican",
+          "votes": 22104,
+          "pct": 100.0
+        }
+      ]
+    },
+    "36": {
+      "total": 23537,
+      "candidates": [
+        {
+          "name": "Ellen H. Campbell",
+          "party": "Republican",
+          "votes": 14154,
+          "pct": 60.1
+        },
+        {
+          "name": "Randall K. Wolf",
+          "party": "Democratic",
+          "votes": 9383,
+          "pct": 39.9
+        }
+      ]
+    },
+    "37": {
+      "total": 26966,
+      "candidates": [
+        {
+          "name": "Terry L. Austin",
+          "party": "Republican",
+          "votes": 18707,
+          "pct": 69.4
+        },
+        {
+          "name": "Stephanie R. Clark",
+          "party": "Democratic",
+          "votes": 8259,
+          "pct": 30.6
+        }
+      ]
+    },
+    "38": {
+      "total": 12632,
+      "candidates": [
+        {
+          "name": "S. \"Sam\" Rasoul",
+          "party": "Democratic",
+          "votes": 12632,
+          "pct": 100.0
+        }
+      ]
+    },
+    "39": {
+      "total": 19077,
+      "candidates": [
+        {
+          "name": "William P. Davis",
+          "party": "Republican",
+          "votes": 19077,
+          "pct": 100.0
+        }
+      ]
+    },
+    "40": {
+      "total": 26556,
+      "candidates": [
+        {
+          "name": "Joseph P. \"Joe\" McNamara",
+          "party": "Republican",
+          "votes": 15889,
+          "pct": 59.8
+        },
+        {
+          "name": "Misty Dawn Vickers",
+          "party": "Democratic",
+          "votes": 10667,
+          "pct": 40.2
+        }
+      ]
+    },
+    "41": {
+      "total": 24875,
+      "candidates": [
+        {
+          "name": "J. Christian \"Chris\" Obenshain",
+          "party": "Republican",
+          "votes": 12529,
+          "pct": 50.4
+        },
+        {
+          "name": "Lily V. Franklin",
+          "party": "Democratic",
+          "votes": 12346,
+          "pct": 49.6
+        }
+      ]
+    },
+    "42": {
+      "total": 18743,
+      "candidates": [
+        {
+          "name": "Jason S. Ballard",
+          "party": "Republican",
+          "votes": 18743,
+          "pct": 100.0
+        }
+      ]
+    },
+    "43": {
+      "total": 22227,
+      "candidates": [
+        {
+          "name": "James W. \"Will\" Morefield",
+          "party": "Republican",
+          "votes": 19016,
+          "pct": 85.6
+        },
+        {
+          "name": "David M. \"Tiger Dave\" Ratliff",
+          "party": "Independent",
+          "votes": 3211,
+          "pct": 14.4
+        }
+      ]
+    },
+    "44": {
+      "total": 19367,
+      "candidates": [
+        {
+          "name": "Israel D. O'Quinn",
+          "party": "Republican",
+          "votes": 19367,
+          "pct": 100.0
+        }
+      ]
+    },
+    "45": {
+      "total": 14815,
+      "candidates": [
+        {
+          "name": "Terry G. Kilgore",
+          "party": "Republican",
+          "votes": 14815,
+          "pct": 100.0
+        }
+      ]
+    },
+    "46": {
+      "total": 19351,
+      "candidates": [
+        {
+          "name": "Jonathan E. \"Jed\" Arnold",
+          "party": "Republican",
+          "votes": 19351,
+          "pct": 100.0
+        }
+      ]
+    },
+    "47": {
+      "total": 23034,
+      "candidates": [
+        {
+          "name": "Wren M. Williams",
+          "party": "Republican",
+          "votes": 17268,
+          "pct": 75.0
+        },
+        {
+          "name": "Patricia Lynn Quesenberry",
+          "party": "Democratic",
+          "votes": 5149,
+          "pct": 22.4
+        },
+        {
+          "name": "Jacob C. Frogel",
+          "party": "Independent",
+          "votes": 617,
+          "pct": 2.7
+        }
+      ]
+    },
+    "48": {
+      "total": 17891,
+      "candidates": [
+        {
+          "name": "Les R. Adams",
+          "party": "Republican",
+          "votes": 17891,
+          "pct": 100.0
+        }
+      ]
+    },
+    "49": {
+      "total": 12434,
+      "candidates": [
+        {
+          "name": "D.W. \"Danny\" Marshall III",
+          "party": "Republican",
+          "votes": 12434,
+          "pct": 100.0
+        }
+      ]
+    },
+    "50": {
+      "total": 23592,
+      "candidates": [
+        {
+          "name": "Thomas C. Wright Jr.",
+          "party": "Republican",
+          "votes": 15580,
+          "pct": 66.0
+        },
+        {
+          "name": "Joshua K. Blakely",
+          "party": "Democratic",
+          "votes": 8012,
+          "pct": 34.0
+        }
+      ]
+    },
+    "51": {
+      "total": 26053,
+      "candidates": [
+        {
+          "name": "Eric R. Zehr",
+          "party": "Republican",
+          "votes": 18934,
+          "pct": 72.7
+        },
+        {
+          "name": "Kimberly A. Moran",
+          "party": "Democratic",
+          "votes": 5545,
+          "pct": 21.3
+        },
+        {
+          "name": "C. Matt Fariss",
+          "party": "Independent",
+          "votes": 1574,
+          "pct": 6.0
+        }
+      ]
+    },
+    "52": {
+      "total": 19399,
+      "candidates": [
+        {
+          "name": "Wendell S. Walker",
+          "party": "Republican",
+          "votes": 10574,
+          "pct": 54.5
+        },
+        {
+          "name": "Jennifer K. Woofter",
+          "party": "Democratic",
+          "votes": 8825,
+          "pct": 45.5
+        }
+      ]
+    },
+    "53": {
+      "total": 29429,
+      "candidates": [
+        {
+          "name": "Timothy P. Griffin",
+          "party": "Republican",
+          "votes": 20843,
+          "pct": 70.8
+        },
+        {
+          "name": "Samuel R. Soghor",
+          "party": "Democratic",
+          "votes": 8586,
+          "pct": 29.2
+        }
+      ]
+    },
+    "54": {
+      "total": 19852,
+      "candidates": [
+        {
+          "name": "Katrina E. Callsen",
+          "party": "Democratic",
+          "votes": 19852,
+          "pct": 100.0
+        }
+      ]
+    },
+    "55": {
+      "total": 36098,
+      "candidates": [
+        {
+          "name": "Amy J. Laufer",
+          "party": "Democratic",
+          "votes": 22183,
+          "pct": 61.5
+        },
+        {
+          "name": "Steve D. Harvey",
+          "party": "Republican",
+          "votes": 13915,
+          "pct": 38.5
+        }
+      ]
+    },
+    "56": {
+      "total": 20968,
+      "candidates": [
+        {
+          "name": "Thomas A. \"Tom\" Garrett, Jr.",
+          "party": "Republican",
+          "votes": 20968,
+          "pct": 100.0
+        }
+      ]
+    },
+    "57": {
+      "total": 35681,
+      "candidates": [
+        {
+          "name": "David L. Owen",
+          "party": "Republican",
+          "votes": 18198,
+          "pct": 51.0
+        },
+        {
+          "name": "Susanna S. Gibson",
+          "party": "Democratic",
+          "votes": 17483,
+          "pct": 49.0
+        }
+      ]
+    },
+    "58": {
+      "total": 33684,
+      "candidates": [
+        {
+          "name": "Rodney T. Willett",
+          "party": "Democratic",
+          "votes": 18367,
+          "pct": 54.5
+        },
+        {
+          "name": "L. Riley Shaia",
+          "party": "Republican",
+          "votes": 15317,
+          "pct": 45.5
+        }
+      ]
+    },
+    "59": {
+      "total": 31804,
+      "candidates": [
+        {
+          "name": "H. F. \"Buddy\" Fowler, Jr.",
+          "party": "Republican",
+          "votes": 18529,
+          "pct": 58.3
+        },
+        {
+          "name": "Rachel A. Levy",
+          "party": "Democratic",
+          "votes": 13275,
+          "pct": 41.7
+        }
+      ]
+    },
+    "60": {
+      "total": 36130,
+      "candidates": [
+        {
+          "name": "Scott A. Wyatt",
+          "party": "Republican",
+          "votes": 24395,
+          "pct": 67.5
+        },
+        {
+          "name": "Keith Patrick Braxton",
+          "party": "Democratic",
+          "votes": 11735,
+          "pct": 32.5
+        }
+      ]
+    },
+    "61": {
+      "total": 31544,
+      "candidates": [
+        {
+          "name": "Michael J. Webert",
+          "party": "Republican",
+          "votes": 20607,
+          "pct": 65.3
+        },
+        {
+          "name": "Larry J. Jackson",
+          "party": "Democratic",
+          "votes": 10937,
+          "pct": 34.7
+        }
+      ]
+    },
+    "62": {
+      "total": 26530,
+      "candidates": [
+        {
+          "name": "Nick J. Freitas",
+          "party": "Republican",
+          "votes": 16389,
+          "pct": 61.8
+        },
+        {
+          "name": "Sara H. Ratcliffe",
+          "party": "Democratic",
+          "votes": 10141,
+          "pct": 38.2
+        }
+      ]
+    },
+    "63": {
+      "total": 21645,
+      "candidates": [
+        {
+          "name": "Phillip A. \"Phil\" Scott",
+          "party": "Republican",
+          "votes": 21645,
+          "pct": 100.0
+        }
+      ]
+    },
+    "64": {
+      "total": 28104,
+      "candidates": [
+        {
+          "name": "Paul V. Milde III",
+          "party": "Republican",
+          "votes": 15326,
+          "pct": 54.5
+        },
+        {
+          "name": "Leonard B. Lacey",
+          "party": "Democratic",
+          "votes": 12778,
+          "pct": 45.5
+        }
+      ]
+    },
+    "65": {
+      "total": 29062,
+      "candidates": [
+        {
+          "name": "Joshua G. Cole",
+          "party": "Democratic",
+          "votes": 15406,
+          "pct": 53.0
+        },
+        {
+          "name": "Lee Peters, III",
+          "party": "Republican",
+          "votes": 13656,
+          "pct": 47.0
+        }
+      ]
+    },
+    "66": {
+      "total": 24378,
+      "candidates": [
+        {
+          "name": "Robert D. \"Bobby\" Orrock Sr.",
+          "party": "Republican",
+          "votes": 13592,
+          "pct": 55.8
+        },
+        {
+          "name": "Mark J. Lux",
+          "party": "Democratic",
+          "votes": 10786,
+          "pct": 44.2
+        }
+      ]
+    },
+    "67": {
+      "total": 29786,
+      "candidates": [
+        {
+          "name": "Hillary Pugh Kent",
+          "party": "Republican",
+          "votes": 19303,
+          "pct": 64.8
+        },
+        {
+          "name": "John Q. Smith",
+          "party": "Democratic",
+          "votes": 9854,
+          "pct": 33.1
+        },
+        {
+          "name": "Richard W. Kenski",
+          "party": "Independent",
+          "votes": 629,
+          "pct": 2.1
+        }
+      ]
+    },
+    "68": {
+      "total": 27516,
+      "candidates": [
+        {
+          "name": "M. Keith Hodges",
+          "party": "Republican",
+          "votes": 27516,
+          "pct": 100.0
+        }
+      ]
+    },
+    "69": {
+      "total": 23189,
+      "candidates": [
+        {
+          "name": "W. Chad Green",
+          "party": "Republican",
+          "votes": 23189,
+          "pct": 100.0
+        }
+      ]
+    },
+    "70": {
+      "total": 24174,
+      "candidates": [
+        {
+          "name": "Shelly A. Simonds",
+          "party": "Democratic",
+          "votes": 13836,
+          "pct": 57.2
+        },
+        {
+          "name": "Matt J. Waters",
+          "party": "Republican",
+          "votes": 9664,
+          "pct": 40.0
+        },
+        {
+          "name": "Michael D. Bartley",
+          "party": "Libertarian",
+          "votes": 674,
+          "pct": 2.8
+        }
+      ]
+    },
+    "71": {
+      "total": 35637,
+      "candidates": [
+        {
+          "name": "Amanda E. Batten",
+          "party": "Republican",
+          "votes": 18152,
+          "pct": 50.9
+        },
+        {
+          "name": "Jessica L. Anderson",
+          "party": "Democratic",
+          "votes": 17485,
+          "pct": 49.1
+        }
+      ]
+    },
+    "72": {
+      "total": 33269,
+      "candidates": [
+        {
+          "name": "R. Lee Ware Jr.",
+          "party": "Republican",
+          "votes": 22684,
+          "pct": 68.2
+        },
+        {
+          "name": "Bilal Z. Raychouni",
+          "party": "Democratic",
+          "votes": 10585,
+          "pct": 31.8
+        }
+      ]
+    },
+    "73": {
+      "total": 35651,
+      "candidates": [
+        {
+          "name": "Mark L. Earley, Jr.",
+          "party": "Republican",
+          "votes": 19435,
+          "pct": 54.5
+        },
+        {
+          "name": "Herb L. Walke Jr.",
+          "party": "Democratic",
+          "votes": 16216,
+          "pct": 45.5
+        }
+      ]
+    },
+    "74": {
+      "total": 19418,
+      "candidates": [
+        {
+          "name": "Michael A. Cherry",
+          "party": "Republican",
+          "votes": 19418,
+          "pct": 100.0
+        }
+      ]
+    },
+    "75": {
+      "total": 20873,
+      "candidates": [
+        {
+          "name": "Carrie Emerson Coyner",
+          "party": "Republican",
+          "votes": 11042,
+          "pct": 52.9
+        },
+        {
+          "name": "Stephen C. Miller-Pitts, Jr.",
+          "party": "Democratic",
+          "votes": 9831,
+          "pct": 47.1
+        }
+      ]
+    },
+    "76": {
+      "total": 22726,
+      "candidates": [
+        {
+          "name": "Debra D. Gardner",
+          "party": "Democratic",
+          "votes": 14541,
+          "pct": 64.0
+        },
+        {
+          "name": "Duc M. Truong",
+          "party": "Republican",
+          "votes": 8185,
+          "pct": 36.0
+        }
+      ]
+    },
+    "77": {
+      "total": 18587,
+      "candidates": [
+        {
+          "name": "Michael J. Jones",
+          "party": "Democratic",
+          "votes": 18587,
+          "pct": 100.0
+        }
+      ]
+    },
+    "78": {
+      "total": 27269,
+      "candidates": [
+        {
+          "name": "Betsy B. Carr",
+          "party": "Democratic",
+          "votes": 27269,
+          "pct": 100.0
+        }
+      ]
+    },
+    "79": {
+      "total": 20225,
+      "candidates": [
+        {
+          "name": "Rae C. Cousins",
+          "party": "Democratic",
+          "votes": 20225,
+          "pct": 100.0
+        }
+      ]
+    },
+    "80": {
+      "total": 20570,
+      "candidates": [
+        {
+          "name": "Destiny L. Levere Bolling",
+          "party": "Democratic",
+          "votes": 20570,
+          "pct": 100.0
+        }
+      ]
+    },
+    "81": {
+      "total": 18355,
+      "candidates": [
+        {
+          "name": "Delores L. McQuinn",
+          "party": "Democratic",
+          "votes": 18355,
+          "pct": 100.0
+        }
+      ]
+    },
+    "82": {
+      "total": 28494,
+      "candidates": [
+        {
+          "name": "Kim A. Taylor",
+          "party": "Republican",
+          "votes": 14286,
+          "pct": 50.1
+        },
+        {
+          "name": "Kimberly Pope Adams",
+          "party": "Democratic",
+          "votes": 14208,
+          "pct": 49.9
+        }
+      ]
+    },
+    "83": {
+      "total": 32172,
+      "candidates": [
+        {
+          "name": "H. Otto Wachsmann, Jr.",
+          "party": "Republican",
+          "votes": 18811,
+          "pct": 58.5
+        },
+        {
+          "name": "Mary L. Person",
+          "party": "Democratic",
+          "votes": 13361,
+          "pct": 41.5
+        }
+      ]
+    },
+    "84": {
+      "total": 29945,
+      "candidates": [
+        {
+          "name": "Nadarius E. Clark",
+          "party": "Democratic",
+          "votes": 15899,
+          "pct": 53.1
+        },
+        {
+          "name": "Michael J. Dillender",
+          "party": "Republican",
+          "votes": 14046,
+          "pct": 46.9
+        }
+      ]
+    },
+    "85": {
+      "total": 12335,
+      "candidates": [
+        {
+          "name": "Marcia S. \"Cia\" Price",
+          "party": "Democratic",
+          "votes": 12335,
+          "pct": 100.0
+        }
+      ]
+    },
+    "86": {
+      "total": 25445,
+      "candidates": [
+        {
+          "name": "A. C. Cordoza",
+          "party": "Republican",
+          "votes": 14362,
+          "pct": 56.4
+        },
+        {
+          "name": "Jarris Louis Taylor, Jr.",
+          "party": "Democratic",
+          "votes": 11083,
+          "pct": 43.6
+        }
+      ]
+    },
+    "87": {
+      "total": 19081,
+      "candidates": [
+        {
+          "name": "Jeion A. Ward",
+          "party": "Democratic",
+          "votes": 14847,
+          "pct": 77.8
+        },
+        {
+          "name": "John M. Chapman",
+          "party": "Republican",
+          "votes": 4234,
+          "pct": 22.2
+        }
+      ]
+    },
+    "88": {
+      "total": 18385,
+      "candidates": [
+        {
+          "name": "Don L. Scott Jr.",
+          "party": "Democratic",
+          "votes": 12240,
+          "pct": 66.6
+        },
+        {
+          "name": "James M. \"Jim\" Wright",
+          "party": "Republican",
+          "votes": 6145,
+          "pct": 33.4
+        }
+      ]
+    },
+    "89": {
+      "total": 28957,
+      "candidates": [
+        {
+          "name": "N. Baxter Ennis",
+          "party": "Republican",
+          "votes": 14739,
+          "pct": 50.9
+        },
+        {
+          "name": "Karen L. Jenkins",
+          "party": "Democratic",
+          "votes": 14218,
+          "pct": 49.1
+        }
+      ]
+    },
+    "90": {
+      "total": 27131,
+      "candidates": [
+        {
+          "name": "James A. \"Jay\" Leftwich Jr.",
+          "party": "Republican",
+          "votes": 17131,
+          "pct": 63.1
+        },
+        {
+          "name": "Jeremy D. Rodden",
+          "party": "Democratic",
+          "votes": 10000,
+          "pct": 36.9
+        }
+      ]
+    },
+    "91": {
+      "total": 18857,
+      "candidates": [
+        {
+          "name": "C. E. \"Cliff\" Hayes, Jr.",
+          "party": "Democratic",
+          "votes": 13310,
+          "pct": 70.6
+        },
+        {
+          "name": "Elijah Colon",
+          "party": "Republican",
+          "votes": 5547,
+          "pct": 29.4
+        }
+      ]
+    },
+    "92": {
+      "total": 15120,
+      "candidates": [
+        {
+          "name": "Bonita Grace Anthony",
+          "party": "Democratic",
+          "votes": 11807,
+          "pct": 78.1
+        },
+        {
+          "name": "Michael L. Durig",
+          "party": "Republican",
+          "votes": 3313,
+          "pct": 21.9
+        }
+      ]
+    },
+    "93": {
+      "total": 16371,
+      "candidates": [
+        {
+          "name": "Jackie Hope Glass",
+          "party": "Democratic",
+          "votes": 12460,
+          "pct": 76.1
+        },
+        {
+          "name": "John Sitka III",
+          "party": "Republican",
+          "votes": 3911,
+          "pct": 23.9
+        }
+      ]
+    },
+    "94": {
+      "total": 14668,
+      "candidates": [
+        {
+          "name": "Phil M. Hernandez",
+          "party": "Democratic",
+          "votes": 8187,
+          "pct": 55.8
+        },
+        {
+          "name": "Andrew B. \"Andy\" Pittman",
+          "party": "Republican",
+          "votes": 6481,
+          "pct": 44.2
+        }
+      ]
+    },
+    "95": {
+      "total": 12637,
+      "candidates": [
+        {
+          "name": "Alex Q. Askew",
+          "party": "Democratic",
+          "votes": 12637,
+          "pct": 100.0
+        }
+      ]
+    },
+    "96": {
+      "total": 21206,
+      "candidates": [
+        {
+          "name": "Kelly K. Convirs-Fowler",
+          "party": "Democratic",
+          "votes": 11723,
+          "pct": 55.3
+        },
+        {
+          "name": "Michael C. Karslake",
+          "party": "Republican",
+          "votes": 8749,
+          "pct": 41.3
+        },
+        {
+          "name": "Nicholas S. Olenik",
+          "party": "Independent",
+          "votes": 734,
+          "pct": 3.5
+        }
+      ]
+    },
+    "97": {
+      "total": 24289,
+      "candidates": [
+        {
+          "name": "Michael B. Feggans",
+          "party": "Democratic",
+          "votes": 12734,
+          "pct": 52.4
+        },
+        {
+          "name": "Karen S. Greenhalgh",
+          "party": "Republican",
+          "votes": 11555,
+          "pct": 47.6
+        }
+      ]
+    },
+    "98": {
+      "total": 17426,
+      "candidates": [
+        {
+          "name": "Barry D. Knight",
+          "party": "Republican",
+          "votes": 17426,
+          "pct": 100.0
+        }
+      ]
+    },
+    "99": {
+      "total": 26379,
+      "candidates": [
+        {
+          "name": "Anne Ferrell Tata",
+          "party": "Republican",
+          "votes": 15126,
+          "pct": 57.3
+        },
+        {
+          "name": "Cat A. Porterfield",
+          "party": "Democratic",
+          "votes": 11253,
+          "pct": 42.7
+        }
+      ]
+    },
+    "100": {
+      "total": 26266,
+      "candidates": [
+        {
+          "name": "Robert S. Bloxom Jr.",
+          "party": "Republican",
+          "votes": 15685,
+          "pct": 59.7
+        },
+        {
+          "name": "Charlena Jones",
+          "party": "Democratic",
+          "votes": 10581,
+          "pct": 40.3
+        }
+      ]
+    }
+  }
+}

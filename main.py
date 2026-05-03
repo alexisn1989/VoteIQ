@@ -1585,6 +1585,81 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         ).add_to(m)
         title = "2024 Virginia — Congressional District Results"
 
+    elif layer in ("senate_2023_results", "hod_2023_results"):
+        from shapely.geometry import mapping as _mapping
+        chamber = "senate" if layer == "senate_2023_results" else "hod"
+        gdf = None
+        if chamber == "senate":
+            if _va_sd_gdf is None:
+                import address_lookup as _al2
+                if _al2.va_sd is not None:
+                    _va_sd_gdf = _al2.va_sd
+                else:
+                    _va_sd_gdf = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL SD.shp"))
+                    _va_sd_gdf = _va_sd_gdf.to_crs(epsg=4326)
+                    _al2.va_sd = _va_sd_gdf
+            gdf = _va_sd_gdf
+        else:
+            if _va_hod_gdf is None:
+                import address_lookup as _al2
+                if _al2.va_hod is not None:
+                    _va_hod_gdf = _al2.va_hod
+                else:
+                    _va_hod_gdf = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL HOD.shp"))
+                    _va_hod_gdf = _va_hod_gdf.to_crs(epsg=4326)
+                    _al2.va_hod = _va_hod_gdf
+            gdf = _va_hod_gdf
+
+        results_2023 = _load_2023_results().get(chamber, {})
+        for _, row in gdf.iterrows():
+            try:
+                d = int(row["DISTRICT"])
+                race = results_2023.get(d, {})
+                cands = race.get("candidates", [])
+                winner = cands[0] if cands else {}
+                runner = cands[1] if len(cands) > 1 else {}
+                w_name = winner.get("name", "No data")
+                w_party = winner.get("party", "")
+                w_pct = float(winner.get("pct", 0.0))
+                r_name = runner.get("name", "") if runner else ""
+                r_pct = float(runner.get("pct", 0.0)) if runner else 0.0
+                margin = max(0.0, w_pct - 50.0)
+                opacity = round(0.25 + min(margin / 40.0, 1.0) * 0.55, 3)
+                features.append({"type": "Feature",
+                    "geometry": _mapping(row.geometry.simplify(0.01, preserve_topology=True)),
+                    "properties": {
+                        "DISTRICT": d,
+                        "_district": f"{'Senate' if chamber == 'senate' else 'HOD'} District {d}",
+                        "_winner": w_name,
+                        "_party": w_party,
+                        "_pct": f"{w_pct:.1f}%",
+                        "_runner": f"{r_name} ({r_pct:.1f}%)" if r_name else "Uncontested",
+                        "_opacity": opacity if cands else 0.1,
+                    }})
+            except Exception:
+                continue
+
+        def state_leg_2023_style(feat):
+            party = feat["properties"].get("_party", "")
+            op = feat["properties"].get("_opacity", 0.4)
+            fill = "#1a52c8" if "democrat" in party.lower() else "#c8102e" if "republican" in party.lower() else "#888"
+            return {"fillColor": fill, "color": "#555", "weight": 0.5, "fillOpacity": op}
+
+        folium.GeoJson(
+            {"type": "FeatureCollection", "features": features},
+            style_function=state_leg_2023_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["_district", "_winner", "_party", "_pct", "_runner"],
+                aliases=["District:", "Winner:", "Party:", "Vote Share:", "Runner-Up:"],
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        title = (
+            "2023 Virginia State Senate — Election Results"
+            if chamber == "senate"
+            else "2023 Virginia House of Delegates — Election Results"
+        )
+
     elif layer == "hod_results":
         from shapely.geometry import mapping as _mapping
         if _va_hod_gdf is None:
@@ -1723,7 +1798,7 @@ _district_maps: dict[str, str] = {}
 
 @app.get("/district-map", response_class=HTMLResponse)
 def district_map(layer: str = "congressional", lat: float = None, lng: float = None, district: int = None):
-    if layer in ("congressional", "hod_results", "hod_flip", "gov_results", "ltgov_results", "ag_results", "pres_2024", "senate_2024", "congress_2024") and lat is None:
+    if layer in ("congressional", "hod_results", "hod_flip", "gov_results", "ltgov_results", "ag_results", "pres_2024", "senate_2024", "congress_2024", "senate_2023_results", "hod_2023_results") and lat is None:
         if layer not in _district_maps:
             try:
                 _district_maps[layer] = _build_district_map(layer)
@@ -1841,7 +1916,97 @@ def election_results_2025_api():
     return _load_2025_results()
 
 
+@app.get("/past-elections/2023", response_class=HTMLResponse)
+def election_results_2023_page():
+    data = _load_2023_results()
+    safe_json = json.dumps(data, default=str).replace("</script>", "<\\/script>")
+    with open(os.path.join(BASE_DIR, "templates", "election_results_2023.html"), "r", encoding="utf-8") as f:
+        html = f.read()
+    html = html.replace("</head>", f"<script>window._ELECTION_DATA={safe_json};</script></head>", 1)
+    return html
+
+
 _2024_data_cache = None
+_2023_data_cache = None
+
+
+def _build_2023_race(cands_dict):
+    total = sum(c["votes"] for c in cands_dict.values())
+    candidates = []
+    for cname, cdata in cands_dict.items():
+        votes = cdata["votes"]
+        pct = round(votes / total * 100, 1) if total else 0.0
+        candidates.append({"name": cname, "party": cdata["party"], "votes": votes, "pct": pct})
+    candidates.sort(key=lambda c: c["votes"], reverse=True)
+    return {"total": total, "candidates": candidates}
+
+
+def _load_2023_results():
+    global _2023_data_cache
+    if _2023_data_cache is not None:
+        return _2023_data_cache
+
+    json_path = os.path.join(BASE_DIR, "election_results_2023.json")
+    if os.path.exists(json_path):
+        with open(json_path, encoding="utf-8") as f:
+            raw = json.load(f)
+        _2023_data_cache = {
+            "senate": {int(k): v for k, v in raw.get("senate", {}).items()},
+            "hod": {int(k): v for k, v in raw.get("hod", {}).items()},
+        }
+        return _2023_data_cache
+
+    path = os.path.join(BASE_DIR, "Election Results_a6f500ae-6aed-4237-b29a-8a94a22dfbbb.csv")
+    senate_races: dict = {}
+    hod_races: dict = {}
+
+    try:
+        with open(path, newline="", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row.get("WriteInVote") == "1":
+                    continue
+                if row.get("CandidateName", "").strip().upper() == "WRITE IN VOTES":
+                    continue
+
+                district_type = row.get("DistrictType", "").strip()
+                if district_type not in ("state-senate", "state-house"):
+                    continue
+
+                try:
+                    district = int(row.get("DistrictName", "").strip())
+                except (TypeError, ValueError):
+                    continue
+
+                name = row.get("CandidateName", "").strip()
+                party = row.get("Party", "").strip()
+                try:
+                    votes = int(row.get("TOTAL_VOTES", "").strip())
+                except (TypeError, ValueError):
+                    votes = 0
+
+                races = senate_races if district_type == "state-senate" else hod_races
+                district_data = races.setdefault(district, {"candidates": {}})
+                candidate = district_data["candidates"].setdefault(
+                    name, {"name": name, "party": party, "votes": 0}
+                )
+                candidate["votes"] += votes
+    except Exception as exc:
+        print(f"_load_2023_results: {exc}")
+        _2023_data_cache = {"senate": {}, "hod": {}}
+        return _2023_data_cache
+
+    _2023_data_cache = {
+        "senate": {
+            district: _build_2023_race(data["candidates"])
+            for district, data in sorted(senate_races.items())
+        },
+        "hod": {
+            district: _build_2023_race(data["candidates"])
+            for district, data in sorted(hod_races.items())
+        },
+    }
+    return _2023_data_cache
 
 def _load_2024_results():
     global _2024_data_cache
