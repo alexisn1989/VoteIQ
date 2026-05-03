@@ -1,153 +1,1448 @@
 {
   "election_year": "2020",
-  "election_name": "2020 June 4 Local Elections",
-  "local_races": {
-    "Mayor - Lovettsville": {
-      "total": 461,
+  "statewide": [
+    {
+      "race": "President",
+      "total": 4440759,
       "candidates": [
         {
-          "name": "NATHANIEL ORION FONTAINE",
+          "name": "Joseph Biden",
+          "party": "Democratic",
+          "votes": 2413568,
+          "pct": 54.4
+        },
+        {
+          "name": "Donald Trump",
+          "party": "Republican",
+          "votes": 1962430,
+          "pct": 44.2
+        },
+        {
+          "name": "Jo Jorgensen",
+          "party": "Libertarian",
+          "votes": 64761,
+          "pct": 1.5
+        }
+      ]
+    },
+    {
+      "race": "U.S. Senate",
+      "total": 4400699,
+      "candidates": [
+        {
+          "name": "Mark Warner",
+          "party": "Democratic",
+          "votes": 2466500,
+          "pct": 56.0
+        },
+        {
+          "name": "Daniel Gade",
+          "party": "Republican",
+          "votes": 1934199,
+          "pct": 44.0
+        }
+      ]
+    }
+  ],
+  "locality_results": {
+    "President": {
+      "Accomack County": {
+        "Donald Trump": 54.2,
+        "Jo Jorgensen": 1.1,
+        "Joseph Biden": 44.7
+      },
+      "Albemarle County": {
+        "Donald Trump": 32.4,
+        "Jo Jorgensen": 1.6,
+        "Joseph Biden": 66.1
+      },
+      "Alleghany County": {
+        "Donald Trump": 71.5,
+        "Jo Jorgensen": 1.1,
+        "Joseph Biden": 27.4
+      },
+      "Amelia County": {
+        "Donald Trump": 68.4,
+        "Jo Jorgensen": 1.0,
+        "Joseph Biden": 30.6
+      },
+      "Amherst County": {
+        "Donald Trump": 65.1,
+        "Jo Jorgensen": 1.5,
+        "Joseph Biden": 33.4
+      },
+      "Appomattox County": {
+        "Donald Trump": 72.5,
+        "Jo Jorgensen": 1.3,
+        "Joseph Biden": 26.2
+      },
+      "Arlington County": {
+        "Donald Trump": 17.2,
+        "Jo Jorgensen": 1.4,
+        "Joseph Biden": 81.3
+      },
+      "Augusta County": {
+        "Donald Trump": 72.8,
+        "Jo Jorgensen": 1.4,
+        "Joseph Biden": 25.7
+      },
+      "Bath County": {
+        "Donald Trump": 73.5,
+        "Jo Jorgensen": 0.6,
+        "Joseph Biden": 25.9
+      },
+      "Bedford County": {
+        "Donald Trump": 73.4,
+        "Jo Jorgensen": 1.5,
+        "Joseph Biden": 25.1
+      },
+      "Bland County": {
+        "Donald Trump": 83.5,
+        "Jo Jorgensen": 1.2,
+        "Joseph Biden": 15.3
+      },
+      "Botetourt County": {
+        "Donald Trump": 71.7,
+        "Jo Jorgensen": 1.3,
+        "Joseph Biden": 27.1
+      },
+      "Brunswick County": {
+        "Donald Trump": 42.3,
+        "Jo Jorgensen": 0.4,
+        "Joseph Biden": 57.3
+      },
+      "Buchanan County": {
+        "Donald Trump": 83.6,
+        "Jo Jorgensen": 0.4,
+        "Joseph Biden": 16.0
+      },
+      "Buckingham County": {
+        "Donald Trump": 56.0,
+        "Jo Jorgensen": 1.1,
+        "Joseph Biden": 42.8
+      },
+      "Campbell County": {
+        "Donald Trump": 71.3,
+        "Jo Jorgensen": 1.6,
+        "Joseph Biden": 27.1
+      },
+      "Caroline County": {
+        "Donald Trump": 51.3,
+        "Jo Jorgensen": 1.6,
+        "Joseph Biden": 47.1
+      },
+      "Carroll County": {
+        "Donald Trump": 81.0,
+        "Jo Jorgensen": 0.8,
+        "Joseph Biden": 18.2
+      },
+      "Charles City County": {
+        "Donald Trump": 39.7,
+        "Jo Jorgensen": 1.2,
+        "Joseph Biden": 59.1
+      },
+      "Charlotte County": {
+        "Donald Trump": 61.7,
+        "Jo Jorgensen": 0.8,
+        "Joseph Biden": 37.5
+      },
+      "Chesterfield County": {
+        "Donald Trump": 45.9,
+        "Jo Jorgensen": 1.4,
+        "Joseph Biden": 52.6
+      },
+      "Clarke County": {
+        "Donald Trump": 55.9,
+        "Jo Jorgensen": 1.9,
+        "Joseph Biden": 42.2
+      },
+      "Craig County": {
+        "Donald Trump": 80.2,
+        "Jo Jorgensen": 1.3,
+        "Joseph Biden": 18.6
+      },
+      "Culpeper County": {
+        "Donald Trump": 59.2,
+        "Jo Jorgensen": 1.5,
+        "Joseph Biden": 39.3
+      },
+      "Cumberland County": {
+        "Donald Trump": 57.0,
+        "Jo Jorgensen": 1.0,
+        "Joseph Biden": 42.0
+      },
+      "Dickenson County": {
+        "Donald Trump": 78.8,
+        "Jo Jorgensen": 0.6,
+        "Joseph Biden": 20.6
+      },
+      "Dinwiddie County": {
+        "Donald Trump": 57.7,
+        "Jo Jorgensen": 1.0,
+        "Joseph Biden": 41.3
+      },
+      "Essex County": {
+        "Donald Trump": 49.8,
+        "Jo Jorgensen": 0.9,
+        "Joseph Biden": 49.2
+      },
+      "Fairfax County": {
+        "Donald Trump": 28.2,
+        "Jo Jorgensen": 1.3,
+        "Joseph Biden": 70.4
+      },
+      "Fauquier County": {
+        "Donald Trump": 57.8,
+        "Jo Jorgensen": 1.8,
+        "Joseph Biden": 40.4
+      },
+      "Floyd County": {
+        "Donald Trump": 66.4,
+        "Jo Jorgensen": 1.6,
+        "Joseph Biden": 32.0
+      },
+      "Fluvanna County": {
+        "Donald Trump": 51.6,
+        "Jo Jorgensen": 1.4,
+        "Joseph Biden": 46.9
+      },
+      "Franklin County": {
+        "Donald Trump": 70.5,
+        "Jo Jorgensen": 1.2,
+        "Joseph Biden": 28.3
+      },
+      "Frederick County": {
+        "Donald Trump": 62.9,
+        "Jo Jorgensen": 1.6,
+        "Joseph Biden": 35.4
+      },
+      "Giles County": {
+        "Donald Trump": 75.1,
+        "Jo Jorgensen": 1.4,
+        "Joseph Biden": 23.5
+      },
+      "Gloucester County": {
+        "Donald Trump": 66.9,
+        "Jo Jorgensen": 1.8,
+        "Joseph Biden": 31.3
+      },
+      "Goochland County": {
+        "Donald Trump": 59.0,
+        "Jo Jorgensen": 1.4,
+        "Joseph Biden": 39.6
+      },
+      "Grayson County": {
+        "Donald Trump": 80.4,
+        "Jo Jorgensen": 0.7,
+        "Joseph Biden": 18.9
+      },
+      "Greene County": {
+        "Donald Trump": 60.9,
+        "Jo Jorgensen": 2.1,
+        "Joseph Biden": 36.9
+      },
+      "Greensville County": {
+        "Donald Trump": 41.9,
+        "Jo Jorgensen": 0.5,
+        "Joseph Biden": 57.6
+      },
+      "Halifax County": {
+        "Donald Trump": 57.2,
+        "Jo Jorgensen": 0.8,
+        "Joseph Biden": 42.1
+      },
+      "Hanover County": {
+        "Donald Trump": 62.7,
+        "Jo Jorgensen": 1.6,
+        "Joseph Biden": 35.8
+      },
+      "Henrico County": {
+        "Donald Trump": 34.8,
+        "Jo Jorgensen": 1.3,
+        "Joseph Biden": 63.9
+      },
+      "Henry County": {
+        "Donald Trump": 64.1,
+        "Jo Jorgensen": 0.9,
+        "Joseph Biden": 35.0
+      },
+      "Highland County": {
+        "Donald Trump": 71.3,
+        "Jo Jorgensen": 1.4,
+        "Joseph Biden": 27.2
+      },
+      "Isle Of Wight County": {
+        "Donald Trump": 58.5,
+        "Jo Jorgensen": 1.4,
+        "Joseph Biden": 40.1
+      },
+      "James City County": {
+        "Donald Trump": 46.9,
+        "Jo Jorgensen": 1.4,
+        "Joseph Biden": 51.7
+      },
+      "King & Queen County": {
+        "Donald Trump": 59.7,
+        "Jo Jorgensen": 1.6,
+        "Joseph Biden": 38.7
+      },
+      "King George County": {
+        "Donald Trump": 59.6,
+        "Jo Jorgensen": 2.2,
+        "Joseph Biden": 38.2
+      },
+      "King William County": {
+        "Donald Trump": 68.3,
+        "Jo Jorgensen": 1.3,
+        "Joseph Biden": 30.4
+      },
+      "Lancaster County": {
+        "Donald Trump": 51.8,
+        "Jo Jorgensen": 1.0,
+        "Joseph Biden": 47.2
+      },
+      "Lee County": {
+        "Donald Trump": 84.2,
+        "Jo Jorgensen": 0.8,
+        "Joseph Biden": 15.0
+      },
+      "Loudoun County": {
+        "Donald Trump": 36.7,
+        "Jo Jorgensen": 1.4,
+        "Joseph Biden": 61.9
+      },
+      "Louisa County": {
+        "Donald Trump": 60.8,
+        "Jo Jorgensen": 1.3,
+        "Joseph Biden": 37.8
+      },
+      "Lunenburg County": {
+        "Donald Trump": 59.0,
+        "Jo Jorgensen": 0.7,
+        "Joseph Biden": 40.3
+      },
+      "Madison County": {
+        "Donald Trump": 65.4,
+        "Jo Jorgensen": 1.3,
+        "Joseph Biden": 33.3
+      },
+      "Mathews County": {
+        "Donald Trump": 67.1,
+        "Jo Jorgensen": 1.5,
+        "Joseph Biden": 31.4
+      },
+      "Mecklenburg County": {
+        "Donald Trump": 57.3,
+        "Jo Jorgensen": 0.7,
+        "Joseph Biden": 42.0
+      },
+      "Middlesex County": {
+        "Donald Trump": 62.0,
+        "Jo Jorgensen": 1.1,
+        "Joseph Biden": 36.8
+      },
+      "Montgomery County": {
+        "Donald Trump": 46.1,
+        "Jo Jorgensen": 2.1,
+        "Joseph Biden": 51.8
+      },
+      "Nelson County": {
+        "Donald Trump": 51.8,
+        "Jo Jorgensen": 1.6,
+        "Joseph Biden": 46.6
+      },
+      "New Kent County": {
+        "Donald Trump": 66.8,
+        "Jo Jorgensen": 1.2,
+        "Joseph Biden": 32.0
+      },
+      "Northampton County": {
+        "Donald Trump": 44.0,
+        "Jo Jorgensen": 1.5,
+        "Joseph Biden": 54.6
+      },
+      "Northumberland County": {
+        "Donald Trump": 57.6,
+        "Jo Jorgensen": 0.7,
+        "Joseph Biden": 41.7
+      },
+      "Nottoway County": {
+        "Donald Trump": 57.0,
+        "Jo Jorgensen": 1.0,
+        "Joseph Biden": 42.0
+      },
+      "Orange County": {
+        "Donald Trump": 60.1,
+        "Jo Jorgensen": 1.3,
+        "Joseph Biden": 38.6
+      },
+      "Page County": {
+        "Donald Trump": 74.8,
+        "Jo Jorgensen": 1.1,
+        "Joseph Biden": 24.1
+      },
+      "Patrick County": {
+        "Donald Trump": 78.6,
+        "Jo Jorgensen": 0.9,
+        "Joseph Biden": 20.5
+      },
+      "Pittsylvania County": {
+        "Donald Trump": 69.5,
+        "Jo Jorgensen": 0.8,
+        "Joseph Biden": 29.6
+      },
+      "Powhatan County": {
+        "Donald Trump": 71.4,
+        "Jo Jorgensen": 1.6,
+        "Joseph Biden": 27.0
+      },
+      "Prince Edward County": {
+        "Donald Trump": 46.5,
+        "Jo Jorgensen": 1.4,
+        "Joseph Biden": 52.1
+      },
+      "Prince George County": {
+        "Donald Trump": 58.1,
+        "Jo Jorgensen": 1.1,
+        "Joseph Biden": 40.8
+      },
+      "Prince William County": {
+        "Donald Trump": 35.7,
+        "Jo Jorgensen": 1.4,
+        "Joseph Biden": 62.8
+      },
+      "Pulaski County": {
+        "Donald Trump": 70.0,
+        "Jo Jorgensen": 1.6,
+        "Joseph Biden": 28.4
+      },
+      "Rappahannock County": {
+        "Donald Trump": 56.6,
+        "Jo Jorgensen": 1.1,
+        "Joseph Biden": 42.2
+      },
+      "Richmond County": {
+        "Donald Trump": 62.3,
+        "Jo Jorgensen": 0.8,
+        "Joseph Biden": 37.0
+      },
+      "Roanoke County": {
+        "Donald Trump": 60.1,
+        "Jo Jorgensen": 1.6,
+        "Joseph Biden": 38.3
+      },
+      "Rockbridge County": {
+        "Donald Trump": 65.5,
+        "Jo Jorgensen": 1.3,
+        "Joseph Biden": 33.1
+      },
+      "Rockingham County": {
+        "Donald Trump": 69.5,
+        "Jo Jorgensen": 1.5,
+        "Joseph Biden": 29.0
+      },
+      "Russell County": {
+        "Donald Trump": 81.4,
+        "Jo Jorgensen": 0.9,
+        "Joseph Biden": 17.8
+      },
+      "Scott County": {
+        "Donald Trump": 83.6,
+        "Jo Jorgensen": 0.8,
+        "Joseph Biden": 15.6
+      },
+      "Shenandoah County": {
+        "Donald Trump": 69.6,
+        "Jo Jorgensen": 1.5,
+        "Joseph Biden": 28.9
+      },
+      "Smyth County": {
+        "Donald Trump": 77.7,
+        "Jo Jorgensen": 0.9,
+        "Joseph Biden": 21.3
+      },
+      "Southampton County": {
+        "Donald Trump": 58.6,
+        "Jo Jorgensen": 0.9,
+        "Joseph Biden": 40.6
+      },
+      "Spotsylvania County": {
+        "Donald Trump": 52.5,
+        "Jo Jorgensen": 1.7,
+        "Joseph Biden": 45.7
+      },
+      "Stafford County": {
+        "Donald Trump": 47.5,
+        "Jo Jorgensen": 1.7,
+        "Joseph Biden": 50.8
+      },
+      "Surry County": {
+        "Donald Trump": 45.4,
+        "Jo Jorgensen": 0.9,
+        "Joseph Biden": 53.7
+      },
+      "Sussex County": {
+        "Donald Trump": 43.7,
+        "Jo Jorgensen": 0.7,
+        "Joseph Biden": 55.6
+      },
+      "Tazewell County": {
+        "Donald Trump": 83.3,
+        "Jo Jorgensen": 0.8,
+        "Joseph Biden": 15.9
+      },
+      "Warren County": {
+        "Donald Trump": 66.9,
+        "Jo Jorgensen": 1.7,
+        "Joseph Biden": 31.4
+      },
+      "Washington County": {
+        "Donald Trump": 75.8,
+        "Jo Jorgensen": 1.1,
+        "Joseph Biden": 23.1
+      },
+      "Westmoreland County": {
+        "Donald Trump": 53.7,
+        "Jo Jorgensen": 0.9,
+        "Joseph Biden": 45.4
+      },
+      "Wise County": {
+        "Donald Trump": 80.6,
+        "Jo Jorgensen": 0.7,
+        "Joseph Biden": 18.8
+      },
+      "Wythe County": {
+        "Donald Trump": 78.0,
+        "Jo Jorgensen": 1.1,
+        "Joseph Biden": 20.9
+      },
+      "York County": {
+        "Donald Trump": 52.4,
+        "Jo Jorgensen": 1.8,
+        "Joseph Biden": 45.8
+      },
+      "Alexandria City": {
+        "Donald Trump": 17.8,
+        "Jo Jorgensen": 1.2,
+        "Joseph Biden": 81.0
+      },
+      "Bristol City": {
+        "Donald Trump": 68.7,
+        "Jo Jorgensen": 1.6,
+        "Joseph Biden": 29.7
+      },
+      "Buena Vista City": {
+        "Donald Trump": 67.5,
+        "Jo Jorgensen": 2.6,
+        "Joseph Biden": 29.9
+      },
+      "Charlottesville City": {
+        "Donald Trump": 12.8,
+        "Jo Jorgensen": 1.3,
+        "Joseph Biden": 85.9
+      },
+      "Chesapeake City": {
+        "Donald Trump": 45.9,
+        "Jo Jorgensen": 1.7,
+        "Joseph Biden": 52.4
+      },
+      "Colonial Heights City": {
+        "Donald Trump": 65.9,
+        "Jo Jorgensen": 1.5,
+        "Joseph Biden": 32.6
+      },
+      "Covington City": {
+        "Donald Trump": 60.9,
+        "Jo Jorgensen": 1.9,
+        "Joseph Biden": 37.2
+      },
+      "Danville City": {
+        "Donald Trump": 38.4,
+        "Jo Jorgensen": 1.0,
+        "Joseph Biden": 60.6
+      },
+      "Emporia City": {
+        "Donald Trump": 31.7,
+        "Jo Jorgensen": 0.5,
+        "Joseph Biden": 67.8
+      },
+      "Fairfax City": {
+        "Donald Trump": 29.9,
+        "Jo Jorgensen": 1.5,
+        "Joseph Biden": 68.6
+      },
+      "Falls Church City": {
+        "Donald Trump": 17.0,
+        "Jo Jorgensen": 1.3,
+        "Joseph Biden": 81.7
+      },
+      "Franklin City": {
+        "Donald Trump": 36.7,
+        "Jo Jorgensen": 0.9,
+        "Joseph Biden": 62.4
+      },
+      "Fredericksburg City": {
+        "Donald Trump": 31.6,
+        "Jo Jorgensen": 1.9,
+        "Joseph Biden": 66.6
+      },
+      "Galax City": {
+        "Donald Trump": 69.8,
+        "Jo Jorgensen": 0.7,
+        "Joseph Biden": 29.5
+      },
+      "Hampton City": {
+        "Donald Trump": 28.1,
+        "Jo Jorgensen": 1.5,
+        "Joseph Biden": 70.4
+      },
+      "Harrisonburg City": {
+        "Donald Trump": 32.9,
+        "Jo Jorgensen": 2.1,
+        "Joseph Biden": 64.9
+      },
+      "Hopewell City": {
+        "Donald Trump": 42.0,
+        "Jo Jorgensen": 1.4,
+        "Joseph Biden": 56.7
+      },
+      "Lexington City": {
+        "Donald Trump": 33.0,
+        "Jo Jorgensen": 1.7,
+        "Joseph Biden": 65.2
+      },
+      "Lynchburg City": {
+        "Donald Trump": 47.5,
+        "Jo Jorgensen": 2.4,
+        "Joseph Biden": 50.1
+      },
+      "Manassas City": {
+        "Donald Trump": 37.0,
+        "Jo Jorgensen": 1.7,
+        "Joseph Biden": 61.3
+      },
+      "Manassas Park City": {
+        "Donald Trump": 32.6,
+        "Jo Jorgensen": 1.6,
+        "Joseph Biden": 65.8
+      },
+      "Martinsville City": {
+        "Donald Trump": 36.1,
+        "Jo Jorgensen": 1.2,
+        "Joseph Biden": 62.7
+      },
+      "Newport News City": {
+        "Donald Trump": 32.6,
+        "Jo Jorgensen": 1.8,
+        "Joseph Biden": 65.6
+      },
+      "Norfolk City": {
+        "Donald Trump": 26.2,
+        "Jo Jorgensen": 1.8,
+        "Joseph Biden": 72.0
+      },
+      "Norton City": {
+        "Donald Trump": 69.6,
+        "Jo Jorgensen": 1.3,
+        "Joseph Biden": 29.1
+      },
+      "Petersburg City": {
+        "Donald Trump": 11.2,
+        "Jo Jorgensen": 0.8,
+        "Joseph Biden": 88.0
+      },
+      "Poquoson City": {
+        "Donald Trump": 71.7,
+        "Jo Jorgensen": 2.0,
+        "Joseph Biden": 26.3
+      },
+      "Portsmouth City": {
+        "Donald Trump": 28.7,
+        "Jo Jorgensen": 1.6,
+        "Joseph Biden": 69.7
+      },
+      "Radford City": {
+        "Donald Trump": 44.3,
+        "Jo Jorgensen": 2.3,
+        "Joseph Biden": 53.4
+      },
+      "Richmond City": {
+        "Donald Trump": 15.0,
+        "Jo Jorgensen": 1.5,
+        "Joseph Biden": 83.4
+      },
+      "Roanoke City": {
+        "Donald Trump": 36.2,
+        "Jo Jorgensen": 1.8,
+        "Joseph Biden": 62.0
+      },
+      "Salem City": {
+        "Donald Trump": 58.9,
+        "Jo Jorgensen": 1.7,
+        "Joseph Biden": 39.4
+      },
+      "Staunton City": {
+        "Donald Trump": 44.1,
+        "Jo Jorgensen": 1.9,
+        "Joseph Biden": 54.0
+      },
+      "Suffolk City": {
+        "Donald Trump": 40.6,
+        "Jo Jorgensen": 1.5,
+        "Joseph Biden": 58.0
+      },
+      "Virginia Beach City": {
+        "Donald Trump": 46.4,
+        "Jo Jorgensen": 1.9,
+        "Joseph Biden": 51.8
+      },
+      "Waynesboro City": {
+        "Donald Trump": 51.6,
+        "Jo Jorgensen": 2.0,
+        "Joseph Biden": 46.5
+      },
+      "Williamsburg City": {
+        "Donald Trump": 28.7,
+        "Jo Jorgensen": 1.3,
+        "Joseph Biden": 70.0
+      },
+      "Winchester City": {
+        "Donald Trump": 43.3,
+        "Jo Jorgensen": 1.8,
+        "Joseph Biden": 54.9
+      }
+    },
+    "U.S. Senate": {
+      "Accomack County": {
+        "Daniel Gade": 52.7,
+        "Mark Warner": 47.3
+      },
+      "Albemarle County": {
+        "Daniel Gade": 32.6,
+        "Mark Warner": 67.4
+      },
+      "Alleghany County": {
+        "Daniel Gade": 64.6,
+        "Mark Warner": 35.4
+      },
+      "Amelia County": {
+        "Daniel Gade": 67.3,
+        "Mark Warner": 32.7
+      },
+      "Amherst County": {
+        "Daniel Gade": 62.9,
+        "Mark Warner": 37.1
+      },
+      "Appomattox County": {
+        "Daniel Gade": 69.7,
+        "Mark Warner": 30.3
+      },
+      "Arlington County": {
+        "Daniel Gade": 20.5,
+        "Mark Warner": 79.5
+      },
+      "Augusta County": {
+        "Daniel Gade": 70.9,
+        "Mark Warner": 29.1
+      },
+      "Bath County": {
+        "Daniel Gade": 69.4,
+        "Mark Warner": 30.6
+      },
+      "Bedford County": {
+        "Daniel Gade": 71.3,
+        "Mark Warner": 28.7
+      },
+      "Bland County": {
+        "Daniel Gade": 78.4,
+        "Mark Warner": 21.6
+      },
+      "Botetourt County": {
+        "Daniel Gade": 68.5,
+        "Mark Warner": 31.5
+      },
+      "Brunswick County": {
+        "Daniel Gade": 40.3,
+        "Mark Warner": 59.7
+      },
+      "Buchanan County": {
+        "Daniel Gade": 74.1,
+        "Mark Warner": 25.9
+      },
+      "Buckingham County": {
+        "Daniel Gade": 54.6,
+        "Mark Warner": 45.4
+      },
+      "Campbell County": {
+        "Daniel Gade": 68.7,
+        "Mark Warner": 31.3
+      },
+      "Caroline County": {
+        "Daniel Gade": 49.7,
+        "Mark Warner": 50.3
+      },
+      "Carroll County": {
+        "Daniel Gade": 76.4,
+        "Mark Warner": 23.6
+      },
+      "Charles City County": {
+        "Daniel Gade": 38.7,
+        "Mark Warner": 61.3
+      },
+      "Charlotte County": {
+        "Daniel Gade": 59.0,
+        "Mark Warner": 41.0
+      },
+      "Chesterfield County": {
+        "Daniel Gade": 46.3,
+        "Mark Warner": 53.7
+      },
+      "Clarke County": {
+        "Daniel Gade": 56.3,
+        "Mark Warner": 43.7
+      },
+      "Craig County": {
+        "Daniel Gade": 75.9,
+        "Mark Warner": 24.1
+      },
+      "Culpeper County": {
+        "Daniel Gade": 58.4,
+        "Mark Warner": 41.6
+      },
+      "Cumberland County": {
+        "Daniel Gade": 56.0,
+        "Mark Warner": 44.0
+      },
+      "Dickenson County": {
+        "Daniel Gade": 71.5,
+        "Mark Warner": 28.5
+      },
+      "Dinwiddie County": {
+        "Daniel Gade": 56.6,
+        "Mark Warner": 43.4
+      },
+      "Essex County": {
+        "Daniel Gade": 47.7,
+        "Mark Warner": 52.3
+      },
+      "Fairfax County": {
+        "Daniel Gade": 30.0,
+        "Mark Warner": 70.0
+      },
+      "Fauquier County": {
+        "Daniel Gade": 58.8,
+        "Mark Warner": 41.2
+      },
+      "Floyd County": {
+        "Daniel Gade": 63.4,
+        "Mark Warner": 36.6
+      },
+      "Fluvanna County": {
+        "Daniel Gade": 50.2,
+        "Mark Warner": 49.8
+      },
+      "Franklin County": {
+        "Daniel Gade": 66.3,
+        "Mark Warner": 33.7
+      },
+      "Frederick County": {
+        "Daniel Gade": 62.5,
+        "Mark Warner": 37.5
+      },
+      "Giles County": {
+        "Daniel Gade": 69.9,
+        "Mark Warner": 30.1
+      },
+      "Gloucester County": {
+        "Daniel Gade": 66.0,
+        "Mark Warner": 34.0
+      },
+      "Goochland County": {
+        "Daniel Gade": 59.7,
+        "Mark Warner": 40.3
+      },
+      "Grayson County": {
+        "Daniel Gade": 75.4,
+        "Mark Warner": 24.6
+      },
+      "Greene County": {
+        "Daniel Gade": 59.5,
+        "Mark Warner": 40.5
+      },
+      "Greensville County": {
+        "Daniel Gade": 40.1,
+        "Mark Warner": 59.9
+      },
+      "Halifax County": {
+        "Daniel Gade": 54.3,
+        "Mark Warner": 45.7
+      },
+      "Hanover County": {
+        "Daniel Gade": 62.9,
+        "Mark Warner": 37.1
+      },
+      "Henrico County": {
+        "Daniel Gade": 34.8,
+        "Mark Warner": 65.2
+      },
+      "Henry County": {
+        "Daniel Gade": 58.6,
+        "Mark Warner": 41.4
+      },
+      "Highland County": {
+        "Daniel Gade": 66.9,
+        "Mark Warner": 33.1
+      },
+      "Isle Of Wight County": {
+        "Daniel Gade": 58.0,
+        "Mark Warner": 42.0
+      },
+      "James City County": {
+        "Daniel Gade": 47.9,
+        "Mark Warner": 52.1
+      },
+      "King & Queen County": {
+        "Daniel Gade": 58.2,
+        "Mark Warner": 41.8
+      },
+      "King George County": {
+        "Daniel Gade": 59.3,
+        "Mark Warner": 40.7
+      },
+      "King William County": {
+        "Daniel Gade": 67.3,
+        "Mark Warner": 32.7
+      },
+      "Lancaster County": {
+        "Daniel Gade": 51.3,
+        "Mark Warner": 48.7
+      },
+      "Lee County": {
+        "Daniel Gade": 77.2,
+        "Mark Warner": 22.8
+      },
+      "Loudoun County": {
+        "Daniel Gade": 38.1,
+        "Mark Warner": 61.9
+      },
+      "Louisa County": {
+        "Daniel Gade": 60.0,
+        "Mark Warner": 40.0
+      },
+      "Lunenburg County": {
+        "Daniel Gade": 57.1,
+        "Mark Warner": 42.9
+      },
+      "Madison County": {
+        "Daniel Gade": 63.8,
+        "Mark Warner": 36.2
+      },
+      "Mathews County": {
+        "Daniel Gade": 66.5,
+        "Mark Warner": 33.5
+      },
+      "Mecklenburg County": {
+        "Daniel Gade": 55.9,
+        "Mark Warner": 44.1
+      },
+      "Middlesex County": {
+        "Daniel Gade": 60.6,
+        "Mark Warner": 39.4
+      },
+      "Montgomery County": {
+        "Daniel Gade": 44.8,
+        "Mark Warner": 55.2
+      },
+      "Nelson County": {
+        "Daniel Gade": 49.2,
+        "Mark Warner": 50.8
+      },
+      "New Kent County": {
+        "Daniel Gade": 66.5,
+        "Mark Warner": 33.5
+      },
+      "Northampton County": {
+        "Daniel Gade": 41.8,
+        "Mark Warner": 58.2
+      },
+      "Northumberland County": {
+        "Daniel Gade": 56.0,
+        "Mark Warner": 44.0
+      },
+      "Nottoway County": {
+        "Daniel Gade": 55.2,
+        "Mark Warner": 44.8
+      },
+      "Orange County": {
+        "Daniel Gade": 59.2,
+        "Mark Warner": 40.8
+      },
+      "Page County": {
+        "Daniel Gade": 72.4,
+        "Mark Warner": 27.6
+      },
+      "Patrick County": {
+        "Daniel Gade": 74.9,
+        "Mark Warner": 25.1
+      },
+      "Pittsylvania County": {
+        "Daniel Gade": 65.6,
+        "Mark Warner": 34.4
+      },
+      "Powhatan County": {
+        "Daniel Gade": 71.2,
+        "Mark Warner": 28.8
+      },
+      "Prince Edward County": {
+        "Daniel Gade": 45.2,
+        "Mark Warner": 54.8
+      },
+      "Prince George County": {
+        "Daniel Gade": 57.8,
+        "Mark Warner": 42.2
+      },
+      "Prince William County": {
+        "Daniel Gade": 35.7,
+        "Mark Warner": 64.3
+      },
+      "Pulaski County": {
+        "Daniel Gade": 65.3,
+        "Mark Warner": 34.7
+      },
+      "Rappahannock County": {
+        "Daniel Gade": 55.2,
+        "Mark Warner": 44.8
+      },
+      "Richmond County": {
+        "Daniel Gade": 58.2,
+        "Mark Warner": 41.8
+      },
+      "Roanoke County": {
+        "Daniel Gade": 57.6,
+        "Mark Warner": 42.4
+      },
+      "Rockbridge County": {
+        "Daniel Gade": 62.3,
+        "Mark Warner": 37.7
+      },
+      "Rockingham County": {
+        "Daniel Gade": 68.4,
+        "Mark Warner": 31.6
+      },
+      "Russell County": {
+        "Daniel Gade": 75.2,
+        "Mark Warner": 24.8
+      },
+      "Scott County": {
+        "Daniel Gade": 79.6,
+        "Mark Warner": 20.4
+      },
+      "Shenandoah County": {
+        "Daniel Gade": 68.9,
+        "Mark Warner": 31.1
+      },
+      "Smyth County": {
+        "Daniel Gade": 71.6,
+        "Mark Warner": 28.4
+      },
+      "Southampton County": {
+        "Daniel Gade": 57.1,
+        "Mark Warner": 42.9
+      },
+      "Spotsylvania County": {
+        "Daniel Gade": 52.4,
+        "Mark Warner": 47.6
+      },
+      "Stafford County": {
+        "Daniel Gade": 48.0,
+        "Mark Warner": 52.0
+      },
+      "Surry County": {
+        "Daniel Gade": 44.5,
+        "Mark Warner": 55.5
+      },
+      "Sussex County": {
+        "Daniel Gade": 42.3,
+        "Mark Warner": 57.7
+      },
+      "Tazewell County": {
+        "Daniel Gade": 76.9,
+        "Mark Warner": 23.1
+      },
+      "Warren County": {
+        "Daniel Gade": 66.2,
+        "Mark Warner": 33.8
+      },
+      "Washington County": {
+        "Daniel Gade": 72.7,
+        "Mark Warner": 27.3
+      },
+      "Westmoreland County": {
+        "Daniel Gade": 51.0,
+        "Mark Warner": 49.0
+      },
+      "Wise County": {
+        "Daniel Gade": 74.6,
+        "Mark Warner": 25.4
+      },
+      "Wythe County": {
+        "Daniel Gade": 72.7,
+        "Mark Warner": 27.3
+      },
+      "York County": {
+        "Daniel Gade": 53.2,
+        "Mark Warner": 46.8
+      },
+      "Alexandria City": {
+        "Daniel Gade": 20.5,
+        "Mark Warner": 79.5
+      },
+      "Bristol City": {
+        "Daniel Gade": 63.7,
+        "Mark Warner": 36.3
+      },
+      "Buena Vista City": {
+        "Daniel Gade": 62.8,
+        "Mark Warner": 37.2
+      },
+      "Charlottesville City": {
+        "Daniel Gade": 14.2,
+        "Mark Warner": 85.8
+      },
+      "Chesapeake City": {
+        "Daniel Gade": 46.1,
+        "Mark Warner": 53.9
+      },
+      "Colonial Heights City": {
+        "Daniel Gade": 64.8,
+        "Mark Warner": 35.2
+      },
+      "Covington City": {
+        "Daniel Gade": 54.5,
+        "Mark Warner": 45.5
+      },
+      "Danville City": {
+        "Daniel Gade": 34.8,
+        "Mark Warner": 65.2
+      },
+      "Emporia City": {
+        "Daniel Gade": 30.6,
+        "Mark Warner": 69.4
+      },
+      "Fairfax City": {
+        "Daniel Gade": 31.1,
+        "Mark Warner": 68.9
+      },
+      "Falls Church City": {
+        "Daniel Gade": 20.0,
+        "Mark Warner": 80.0
+      },
+      "Franklin City": {
+        "Daniel Gade": 35.6,
+        "Mark Warner": 64.4
+      },
+      "Fredericksburg City": {
+        "Daniel Gade": 32.4,
+        "Mark Warner": 67.6
+      },
+      "Galax City": {
+        "Daniel Gade": 64.6,
+        "Mark Warner": 35.4
+      },
+      "Hampton City": {
+        "Daniel Gade": 27.6,
+        "Mark Warner": 72.4
+      },
+      "Harrisonburg City": {
+        "Daniel Gade": 33.6,
+        "Mark Warner": 66.4
+      },
+      "Hopewell City": {
+        "Daniel Gade": 40.3,
+        "Mark Warner": 59.7
+      },
+      "Lexington City": {
+        "Daniel Gade": 32.6,
+        "Mark Warner": 67.4
+      },
+      "Lynchburg City": {
+        "Daniel Gade": 48.1,
+        "Mark Warner": 51.9
+      },
+      "Manassas City": {
+        "Daniel Gade": 37.1,
+        "Mark Warner": 62.9
+      },
+      "Manassas Park City": {
+        "Daniel Gade": 32.1,
+        "Mark Warner": 67.9
+      },
+      "Martinsville City": {
+        "Daniel Gade": 32.2,
+        "Mark Warner": 67.8
+      },
+      "Newport News City": {
+        "Daniel Gade": 32.3,
+        "Mark Warner": 67.7
+      },
+      "Norfolk City": {
+        "Daniel Gade": 25.9,
+        "Mark Warner": 74.1
+      },
+      "Norton City": {
+        "Daniel Gade": 62.6,
+        "Mark Warner": 37.4
+      },
+      "Petersburg City": {
+        "Daniel Gade": 10.8,
+        "Mark Warner": 89.2
+      },
+      "Poquoson City": {
+        "Daniel Gade": 71.7,
+        "Mark Warner": 28.3
+      },
+      "Portsmouth City": {
+        "Daniel Gade": 28.0,
+        "Mark Warner": 72.0
+      },
+      "Radford City": {
+        "Daniel Gade": 43.1,
+        "Mark Warner": 56.9
+      },
+      "Richmond City": {
+        "Daniel Gade": 16.6,
+        "Mark Warner": 83.4
+      },
+      "Roanoke City": {
+        "Daniel Gade": 33.8,
+        "Mark Warner": 66.2
+      },
+      "Salem City": {
+        "Daniel Gade": 55.9,
+        "Mark Warner": 44.1
+      },
+      "Staunton City": {
+        "Daniel Gade": 43.2,
+        "Mark Warner": 56.8
+      },
+      "Suffolk City": {
+        "Daniel Gade": 40.5,
+        "Mark Warner": 59.5
+      },
+      "Virginia Beach City": {
+        "Daniel Gade": 46.0,
+        "Mark Warner": 54.0
+      },
+      "Waynesboro City": {
+        "Daniel Gade": 50.2,
+        "Mark Warner": 49.8
+      },
+      "Williamsburg City": {
+        "Daniel Gade": 29.6,
+        "Mark Warner": 70.4
+      },
+      "Winchester City": {
+        "Daniel Gade": 42.4,
+        "Mark Warner": 57.6
+      }
+    }
+  },
+  "congress": {
+    "2nd": {
+      "district": "2nd",
+      "total": 359934,
+      "candidates": [
+        {
+          "name": "Elaine Luria",
+          "party": "Democratic",
+          "votes": 185733,
+          "pct": 51.6
+        },
+        {
+          "name": "Scott Taylor",
+          "party": "Republican",
+          "votes": 165031,
+          "pct": 45.9
+        },
+        {
+          "name": "David Foster",
           "party": "Independent",
-          "votes": 461,
+          "votes": 9170,
+          "pct": 2.5
+        }
+      ]
+    },
+    "5th": {
+      "district": "5th",
+      "total": 401303,
+      "candidates": [
+        {
+          "name": "Robert Good",
+          "party": "Republican",
+          "votes": 210988,
+          "pct": 52.6
+        },
+        {
+          "name": "Bryant Webb",
+          "party": "Democratic",
+          "votes": 190315,
+          "pct": 47.4
+        }
+      ]
+    },
+    "9th": {
+      "district": "9th",
+      "total": 271851,
+      "candidates": [
+        {
+          "name": "Howard Griffith",
+          "party": "Republican",
+          "votes": 271851,
           "pct": 100.0
         }
       ]
     },
-    "Mayor - Middleburg": {
-      "total": 115,
+    "7th": {
+      "district": "7th",
+      "total": 453516,
       "candidates": [
         {
-          "name": "TROWBRIDGE MONTAGUE LITTLETON",
-          "party": "Independent",
-          "votes": 115,
-          "pct": 100.0
+          "name": "Abigail Spanberger",
+          "party": "Democratic",
+          "votes": 230893,
+          "pct": 50.9
+        },
+        {
+          "name": "Nicholas Freitas",
+          "party": "Republican",
+          "votes": 222623,
+          "pct": 49.1
         }
       ]
     },
-    "Mayor - Purcellville": {
-      "total": 2101,
+    "6th": {
+      "district": "6th",
+      "total": 381335,
       "candidates": [
         {
-          "name": "KWASI AYODELE FRASER",
-          "party": "Independent",
-          "votes": 1160,
-          "pct": 55.2
+          "name": "Benjamin Cline",
+          "party": "Republican",
+          "votes": 246606,
+          "pct": 64.7
         },
         {
-          "name": "BEVERLY MACDONALD CHIASSON",
-          "party": "Independent",
-          "votes": 941,
-          "pct": 44.8
+          "name": "Nicholas Betts",
+          "party": "Democratic",
+          "votes": 134729,
+          "pct": 35.3
         }
       ]
     },
-    "Member Town Council - Lovettsville": {
-      "total": 1531,
+    "8th": {
+      "district": "8th",
+      "total": 396819,
       "candidates": [
         {
-          "name": "JOY MARIE PRITZ",
-          "party": "Independent",
-          "votes": 303,
-          "pct": 19.8
+          "name": "Donald Beyer",
+          "party": "Democratic",
+          "votes": 301454,
+          "pct": 76.0
         },
         {
-          "name": "BUCHANAN MORGAN SMITH",
-          "party": "Independent",
-          "votes": 289,
-          "pct": 18.9
-        },
-        {
-          "name": "DAVID CHARLES EARL",
-          "party": "Independent",
-          "votes": 277,
-          "pct": 18.1
-        },
-        {
-          "name": "MICHAEL DAVID DUNLAP",
-          "party": "Independent",
-          "votes": 237,
-          "pct": 15.5
-        },
-        {
-          "name": "SHERYL CHRISTINE FRYE",
-          "party": "Independent",
-          "votes": 229,
-          "pct": 15.0
-        },
-        {
-          "name": "KENNETH BRUCE TANNENBAUM",
-          "party": "Independent",
-          "votes": 196,
-          "pct": 12.8
+          "name": "Jeffrey Jordan",
+          "party": "Republican",
+          "votes": 95365,
+          "pct": 24.0
         }
       ]
     },
-    "Member Town Council - Middleburg": {
-      "total": 296,
+    "1st": {
+      "district": "1st",
+      "total": 447537,
       "candidates": [
         {
-          "name": "CHRISTOPHER WHEELER BERNARD",
-          "party": "Independent",
-          "votes": 102,
-          "pct": 34.5
+          "name": "Robert Wittman",
+          "party": "Republican",
+          "votes": 260614,
+          "pct": 58.2
         },
         {
-          "name": "JOHN KEVIN DALY",
-          "party": "Independent",
-          "votes": 99,
-          "pct": 33.4
-        },
-        {
-          "name": "PHILIP MCNEIL MILLER",
-          "party": "Independent",
-          "votes": 95,
-          "pct": 32.1
+          "name": "Qasim Rashid",
+          "party": "Democratic",
+          "votes": 186923,
+          "pct": 41.8
         }
       ]
     },
-    "Member Town Council - Purcellville": {
-      "total": 5616,
+    "4th": {
+      "district": "4th",
+      "total": 390767,
       "candidates": [
         {
-          "name": "MARY JANE WILLIAMS",
-          "party": "Independent",
-          "votes": 1295,
-          "pct": 23.1
+          "name": "Aston Mceachin",
+          "party": "Democratic",
+          "votes": 241142,
+          "pct": 61.7
         },
         {
-          "name": "STANLEY JOE MILAN Sr.",
-          "party": "Independent",
-          "votes": 1171,
-          "pct": 20.9
-        },
-        {
-          "name": "CHRISTOPHER MARTIN BERTAUT",
-          "party": "Independent",
-          "votes": 1167,
-          "pct": 20.8
-        },
-        {
-          "name": "ERIN KIMBERLEE RAYNER",
-          "party": "Independent",
-          "votes": 1020,
-          "pct": 18.2
-        },
-        {
-          "name": "MARY LYNN HICKEY",
-          "party": "Independent",
-          "votes": 963,
-          "pct": 17.1
+          "name": "Leon Benjamin",
+          "party": "Republican",
+          "votes": 149625,
+          "pct": 38.3
         }
       ]
     },
-    "Member Town Council - Special ? Middleburg": {
-      "total": 110,
+    "10th": {
+      "district": "10th",
+      "total": 474987,
       "candidates": [
         {
-          "name": "MORRIS EUGENE JACOBS",
-          "party": "Independent",
-          "votes": 110,
-          "pct": 100.0
+          "name": "Jennifer Wexton",
+          "party": "Democratic",
+          "votes": 268734,
+          "pct": 56.6
+        },
+        {
+          "name": "Aliscia Andrews",
+          "party": "Republican",
+          "votes": 206253,
+          "pct": 43.4
+        }
+      ]
+    },
+    "11th": {
+      "district": "11th",
+      "total": 392105,
+      "candidates": [
+        {
+          "name": "Gerald Connolly",
+          "party": "Democratic",
+          "votes": 280725,
+          "pct": 71.6
+        },
+        {
+          "name": "Manga Anantatmula",
+          "party": "Republican",
+          "votes": 111380,
+          "pct": 28.4
+        }
+      ]
+    },
+    "3rd": {
+      "district": "3rd",
+      "total": 340625,
+      "candidates": [
+        {
+          "name": "Robert Scott",
+          "party": "Democratic",
+          "votes": 233326,
+          "pct": 68.5
+        },
+        {
+          "name": "John Collick",
+          "party": "Republican",
+          "votes": 107299,
+          "pct": 31.5
         }
       ]
     }

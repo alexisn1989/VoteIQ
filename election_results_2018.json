@@ -1,0 +1,910 @@
+{
+  "election_year": "2018",
+  "statewide": [
+    {
+      "race": "U.S. Senate",
+      "total": 3346248,
+      "candidates": [
+        {
+          "name": "Timothy Kaine",
+          "party": "Democratic",
+          "votes": 1910370,
+          "pct": 57.1
+        },
+        {
+          "name": "Corey Stewart",
+          "party": "Republican",
+          "votes": 1374313,
+          "pct": 41.1
+        },
+        {
+          "name": "Matthew Waters",
+          "party": "Libertarian",
+          "votes": 61565,
+          "pct": 1.8
+        }
+      ]
+    }
+  ],
+  "locality_results": {
+    "U.S. Senate": {
+      "Accomack County": {
+        "Corey Stewart": 51.9,
+        "Matthew Waters": 1.1,
+        "Timothy Kaine": 47.1
+      },
+      "Albemarle County": {
+        "Corey Stewart": 30.8,
+        "Matthew Waters": 2.2,
+        "Timothy Kaine": 67.1
+      },
+      "Alleghany County": {
+        "Corey Stewart": 63.0,
+        "Matthew Waters": 1.2,
+        "Timothy Kaine": 35.8
+      },
+      "Amelia County": {
+        "Corey Stewart": 65.4,
+        "Matthew Waters": 1.4,
+        "Timothy Kaine": 33.2
+      },
+      "Amherst County": {
+        "Corey Stewart": 62.1,
+        "Matthew Waters": 1.7,
+        "Timothy Kaine": 36.2
+      },
+      "Appomattox County": {
+        "Corey Stewart": 71.1,
+        "Matthew Waters": 1.5,
+        "Timothy Kaine": 27.4
+      },
+      "Arlington County": {
+        "Corey Stewart": 15.5,
+        "Matthew Waters": 2.6,
+        "Timothy Kaine": 81.9
+      },
+      "Augusta County": {
+        "Corey Stewart": 69.8,
+        "Matthew Waters": 1.8,
+        "Timothy Kaine": 28.3
+      },
+      "Bath County": {
+        "Corey Stewart": 65.6,
+        "Matthew Waters": 1.4,
+        "Timothy Kaine": 33.1
+      },
+      "Bedford County": {
+        "Corey Stewart": 71.2,
+        "Matthew Waters": 1.7,
+        "Timothy Kaine": 27.1
+      },
+      "Bland County": {
+        "Corey Stewart": 78.2,
+        "Matthew Waters": 1.2,
+        "Timothy Kaine": 20.6
+      },
+      "Botetourt County": {
+        "Corey Stewart": 69.1,
+        "Matthew Waters": 1.6,
+        "Timothy Kaine": 29.3
+      },
+      "Brunswick County": {
+        "Corey Stewart": 38.9,
+        "Matthew Waters": 0.7,
+        "Timothy Kaine": 60.4
+      },
+      "Buchanan County": {
+        "Corey Stewart": 69.1,
+        "Matthew Waters": 0.8,
+        "Timothy Kaine": 30.1
+      },
+      "Buckingham County": {
+        "Corey Stewart": 53.0,
+        "Matthew Waters": 1.4,
+        "Timothy Kaine": 45.7
+      },
+      "Campbell County": {
+        "Corey Stewart": 69.4,
+        "Matthew Waters": 1.9,
+        "Timothy Kaine": 28.7
+      },
+      "Caroline County": {
+        "Corey Stewart": 46.9,
+        "Matthew Waters": 1.6,
+        "Timothy Kaine": 51.5
+      },
+      "Carroll County": {
+        "Corey Stewart": 75.8,
+        "Matthew Waters": 1.1,
+        "Timothy Kaine": 23.2
+      },
+      "Charles City County": {
+        "Corey Stewart": 35.0,
+        "Matthew Waters": 1.1,
+        "Timothy Kaine": 63.9
+      },
+      "Charlotte County": {
+        "Corey Stewart": 59.2,
+        "Matthew Waters": 1.1,
+        "Timothy Kaine": 39.7
+      },
+      "Chesterfield County": {
+        "Corey Stewart": 44.2,
+        "Matthew Waters": 1.8,
+        "Timothy Kaine": 54.1
+      },
+      "Clarke County": {
+        "Corey Stewart": 53.5,
+        "Matthew Waters": 1.8,
+        "Timothy Kaine": 44.7
+      },
+      "Craig County": {
+        "Corey Stewart": 73.8,
+        "Matthew Waters": 1.4,
+        "Timothy Kaine": 24.9
+      },
+      "Culpeper County": {
+        "Corey Stewart": 56.3,
+        "Matthew Waters": 1.9,
+        "Timothy Kaine": 41.8
+      },
+      "Cumberland County": {
+        "Corey Stewart": 54.1,
+        "Matthew Waters": 1.8,
+        "Timothy Kaine": 44.1
+      },
+      "Dickenson County": {
+        "Corey Stewart": 65.5,
+        "Matthew Waters": 0.4,
+        "Timothy Kaine": 34.1
+      },
+      "Dinwiddie County": {
+        "Corey Stewart": 53.2,
+        "Matthew Waters": 0.7,
+        "Timothy Kaine": 46.0
+      },
+      "Essex County": {
+        "Corey Stewart": 47.9,
+        "Matthew Waters": 0.8,
+        "Timothy Kaine": 51.3
+      },
+      "Fairfax County": {
+        "Corey Stewart": 26.9,
+        "Matthew Waters": 2.0,
+        "Timothy Kaine": 71.1
+      },
+      "Fauquier County": {
+        "Corey Stewart": 55.3,
+        "Matthew Waters": 2.0,
+        "Timothy Kaine": 42.7
+      },
+      "Floyd County": {
+        "Corey Stewart": 62.0,
+        "Matthew Waters": 1.2,
+        "Timothy Kaine": 36.8
+      },
+      "Fluvanna County": {
+        "Corey Stewart": 48.3,
+        "Matthew Waters": 1.8,
+        "Timothy Kaine": 49.9
+      },
+      "Franklin County": {
+        "Corey Stewart": 67.0,
+        "Matthew Waters": 1.4,
+        "Timothy Kaine": 31.6
+      },
+      "Frederick County": {
+        "Corey Stewart": 60.4,
+        "Matthew Waters": 1.9,
+        "Timothy Kaine": 37.7
+      },
+      "Giles County": {
+        "Corey Stewart": 67.8,
+        "Matthew Waters": 1.5,
+        "Timothy Kaine": 30.7
+      },
+      "Gloucester County": {
+        "Corey Stewart": 62.8,
+        "Matthew Waters": 1.8,
+        "Timothy Kaine": 35.4
+      },
+      "Goochland County": {
+        "Corey Stewart": 56.6,
+        "Matthew Waters": 2.1,
+        "Timothy Kaine": 41.3
+      },
+      "Grayson County": {
+        "Corey Stewart": 74.2,
+        "Matthew Waters": 1.2,
+        "Timothy Kaine": 24.7
+      },
+      "Greene County": {
+        "Corey Stewart": 58.5,
+        "Matthew Waters": 2.3,
+        "Timothy Kaine": 39.2
+      },
+      "Greensville County": {
+        "Corey Stewart": 39.0,
+        "Matthew Waters": 0.5,
+        "Timothy Kaine": 60.4
+      },
+      "Halifax County": {
+        "Corey Stewart": 56.2,
+        "Matthew Waters": 0.9,
+        "Timothy Kaine": 42.9
+      },
+      "Hanover County": {
+        "Corey Stewart": 60.3,
+        "Matthew Waters": 2.0,
+        "Timothy Kaine": 37.7
+      },
+      "Henrico County": {
+        "Corey Stewart": 32.9,
+        "Matthew Waters": 1.8,
+        "Timothy Kaine": 65.3
+      },
+      "Henry County": {
+        "Corey Stewart": 61.3,
+        "Matthew Waters": 1.0,
+        "Timothy Kaine": 37.7
+      },
+      "Highland County": {
+        "Corey Stewart": 65.2,
+        "Matthew Waters": 1.0,
+        "Timothy Kaine": 33.8
+      },
+      "Isle Of Wight County": {
+        "Corey Stewart": 54.6,
+        "Matthew Waters": 1.6,
+        "Timothy Kaine": 43.8
+      },
+      "James City County": {
+        "Corey Stewart": 46.3,
+        "Matthew Waters": 1.7,
+        "Timothy Kaine": 52.0
+      },
+      "King & Queen County": {
+        "Corey Stewart": 54.4,
+        "Matthew Waters": 1.3,
+        "Timothy Kaine": 44.4
+      },
+      "King George County": {
+        "Corey Stewart": 57.0,
+        "Matthew Waters": 2.2,
+        "Timothy Kaine": 40.8
+      },
+      "King William County": {
+        "Corey Stewart": 62.7,
+        "Matthew Waters": 1.6,
+        "Timothy Kaine": 35.6
+      },
+      "Lancaster County": {
+        "Corey Stewart": 51.7,
+        "Matthew Waters": 1.3,
+        "Timothy Kaine": 47.0
+      },
+      "Lee County": {
+        "Corey Stewart": 74.7,
+        "Matthew Waters": 0.8,
+        "Timothy Kaine": 24.5
+      },
+      "Loudoun County": {
+        "Corey Stewart": 34.8,
+        "Matthew Waters": 2.0,
+        "Timothy Kaine": 63.2
+      },
+      "Louisa County": {
+        "Corey Stewart": 57.0,
+        "Matthew Waters": 1.6,
+        "Timothy Kaine": 41.4
+      },
+      "Lunenburg County": {
+        "Corey Stewart": 55.4,
+        "Matthew Waters": 1.1,
+        "Timothy Kaine": 43.4
+      },
+      "Madison County": {
+        "Corey Stewart": 60.8,
+        "Matthew Waters": 1.5,
+        "Timothy Kaine": 37.8
+      },
+      "Mathews County": {
+        "Corey Stewart": 63.2,
+        "Matthew Waters": 1.3,
+        "Timothy Kaine": 35.5
+      },
+      "Mecklenburg County": {
+        "Corey Stewart": 55.4,
+        "Matthew Waters": 1.0,
+        "Timothy Kaine": 43.6
+      },
+      "Middlesex County": {
+        "Corey Stewart": 58.8,
+        "Matthew Waters": 1.6,
+        "Timothy Kaine": 39.6
+      },
+      "Montgomery County": {
+        "Corey Stewart": 40.6,
+        "Matthew Waters": 2.7,
+        "Timothy Kaine": 56.7
+      },
+      "Nelson County": {
+        "Corey Stewart": 46.4,
+        "Matthew Waters": 1.9,
+        "Timothy Kaine": 51.7
+      },
+      "New Kent County": {
+        "Corey Stewart": 63.5,
+        "Matthew Waters": 1.5,
+        "Timothy Kaine": 35.0
+      },
+      "Northampton County": {
+        "Corey Stewart": 41.6,
+        "Matthew Waters": 1.2,
+        "Timothy Kaine": 57.3
+      },
+      "Northumberland County": {
+        "Corey Stewart": 57.0,
+        "Matthew Waters": 1.0,
+        "Timothy Kaine": 42.0
+      },
+      "Nottoway County": {
+        "Corey Stewart": 52.3,
+        "Matthew Waters": 1.2,
+        "Timothy Kaine": 46.5
+      },
+      "Orange County": {
+        "Corey Stewart": 57.4,
+        "Matthew Waters": 1.4,
+        "Timothy Kaine": 41.2
+      },
+      "Page County": {
+        "Corey Stewart": 70.3,
+        "Matthew Waters": 1.3,
+        "Timothy Kaine": 28.4
+      },
+      "Patrick County": {
+        "Corey Stewart": 74.7,
+        "Matthew Waters": 0.8,
+        "Timothy Kaine": 24.4
+      },
+      "Pittsylvania County": {
+        "Corey Stewart": 66.9,
+        "Matthew Waters": 1.1,
+        "Timothy Kaine": 32.0
+      },
+      "Powhatan County": {
+        "Corey Stewart": 68.6,
+        "Matthew Waters": 2.1,
+        "Timothy Kaine": 29.3
+      },
+      "Prince Edward County": {
+        "Corey Stewart": 43.4,
+        "Matthew Waters": 1.6,
+        "Timothy Kaine": 55.1
+      },
+      "Prince George County": {
+        "Corey Stewart": 55.5,
+        "Matthew Waters": 1.1,
+        "Timothy Kaine": 43.4
+      },
+      "Prince William County": {
+        "Corey Stewart": 33.0,
+        "Matthew Waters": 1.9,
+        "Timothy Kaine": 65.1
+      },
+      "Pulaski County": {
+        "Corey Stewart": 64.9,
+        "Matthew Waters": 1.4,
+        "Timothy Kaine": 33.7
+      },
+      "Rappahannock County": {
+        "Corey Stewart": 51.3,
+        "Matthew Waters": 1.1,
+        "Timothy Kaine": 47.7
+      },
+      "Richmond County": {
+        "Corey Stewart": 58.2,
+        "Matthew Waters": 0.7,
+        "Timothy Kaine": 41.2
+      },
+      "Roanoke County": {
+        "Corey Stewart": 57.7,
+        "Matthew Waters": 1.7,
+        "Timothy Kaine": 40.6
+      },
+      "Rockbridge County": {
+        "Corey Stewart": 60.1,
+        "Matthew Waters": 1.5,
+        "Timothy Kaine": 38.3
+      },
+      "Rockingham County": {
+        "Corey Stewart": 66.9,
+        "Matthew Waters": 2.1,
+        "Timothy Kaine": 31.0
+      },
+      "Russell County": {
+        "Corey Stewart": 71.3,
+        "Matthew Waters": 1.1,
+        "Timothy Kaine": 27.6
+      },
+      "Scott County": {
+        "Corey Stewart": 77.5,
+        "Matthew Waters": 0.8,
+        "Timothy Kaine": 21.7
+      },
+      "Shenandoah County": {
+        "Corey Stewart": 65.8,
+        "Matthew Waters": 1.6,
+        "Timothy Kaine": 32.6
+      },
+      "Smyth County": {
+        "Corey Stewart": 71.1,
+        "Matthew Waters": 1.1,
+        "Timothy Kaine": 27.8
+      },
+      "Southampton County": {
+        "Corey Stewart": 55.4,
+        "Matthew Waters": 1.0,
+        "Timothy Kaine": 43.6
+      },
+      "Spotsylvania County": {
+        "Corey Stewart": 51.0,
+        "Matthew Waters": 1.7,
+        "Timothy Kaine": 47.3
+      },
+      "Stafford County": {
+        "Corey Stewart": 47.1,
+        "Matthew Waters": 1.9,
+        "Timothy Kaine": 51.0
+      },
+      "Surry County": {
+        "Corey Stewart": 41.4,
+        "Matthew Waters": 1.0,
+        "Timothy Kaine": 57.6
+      },
+      "Sussex County": {
+        "Corey Stewart": 41.1,
+        "Matthew Waters": 0.8,
+        "Timothy Kaine": 58.1
+      },
+      "Tazewell County": {
+        "Corey Stewart": 78.1,
+        "Matthew Waters": 0.9,
+        "Timothy Kaine": 21.0
+      },
+      "Warren County": {
+        "Corey Stewart": 62.3,
+        "Matthew Waters": 2.1,
+        "Timothy Kaine": 35.5
+      },
+      "Washington County": {
+        "Corey Stewart": 70.2,
+        "Matthew Waters": 1.3,
+        "Timothy Kaine": 28.5
+      },
+      "Westmoreland County": {
+        "Corey Stewart": 49.2,
+        "Matthew Waters": 1.1,
+        "Timothy Kaine": 49.6
+      },
+      "Wise County": {
+        "Corey Stewart": 73.0,
+        "Matthew Waters": 0.9,
+        "Timothy Kaine": 26.1
+      },
+      "Wythe County": {
+        "Corey Stewart": 71.7,
+        "Matthew Waters": 1.4,
+        "Timothy Kaine": 26.9
+      },
+      "York County": {
+        "Corey Stewart": 51.1,
+        "Matthew Waters": 1.8,
+        "Timothy Kaine": 47.0
+      },
+      "Alexandria City": {
+        "Corey Stewart": 16.4,
+        "Matthew Waters": 2.2,
+        "Timothy Kaine": 81.4
+      },
+      "Bristol City": {
+        "Corey Stewart": 65.1,
+        "Matthew Waters": 1.3,
+        "Timothy Kaine": 33.6
+      },
+      "Buena Vista City": {
+        "Corey Stewart": 59.8,
+        "Matthew Waters": 2.1,
+        "Timothy Kaine": 38.1
+      },
+      "Charlottesville City": {
+        "Corey Stewart": 11.5,
+        "Matthew Waters": 2.2,
+        "Timothy Kaine": 86.3
+      },
+      "Chesapeake City": {
+        "Corey Stewart": 43.7,
+        "Matthew Waters": 1.6,
+        "Timothy Kaine": 54.6
+      },
+      "Colonial Heights City": {
+        "Corey Stewart": 65.3,
+        "Matthew Waters": 1.9,
+        "Timothy Kaine": 32.8
+      },
+      "Covington City": {
+        "Corey Stewart": 53.9,
+        "Matthew Waters": 1.9,
+        "Timothy Kaine": 44.2
+      },
+      "Danville City": {
+        "Corey Stewart": 36.5,
+        "Matthew Waters": 1.1,
+        "Timothy Kaine": 62.4
+      },
+      "Emporia City": {
+        "Corey Stewart": 34.0,
+        "Matthew Waters": 1.0,
+        "Timothy Kaine": 65.0
+      },
+      "Fairfax City": {
+        "Corey Stewart": 28.3,
+        "Matthew Waters": 2.3,
+        "Timothy Kaine": 69.4
+      },
+      "Falls Church City": {
+        "Corey Stewart": 15.5,
+        "Matthew Waters": 2.0,
+        "Timothy Kaine": 82.5
+      },
+      "Franklin City": {
+        "Corey Stewart": 35.6,
+        "Matthew Waters": 1.0,
+        "Timothy Kaine": 63.4
+      },
+      "Fredericksburg City": {
+        "Corey Stewart": 29.2,
+        "Matthew Waters": 2.4,
+        "Timothy Kaine": 68.3
+      },
+      "Galax City": {
+        "Corey Stewart": 65.5,
+        "Matthew Waters": 0.7,
+        "Timothy Kaine": 33.9
+      },
+      "Hampton City": {
+        "Corey Stewart": 25.2,
+        "Matthew Waters": 1.3,
+        "Timothy Kaine": 73.5
+      },
+      "Harrisonburg City": {
+        "Corey Stewart": 29.6,
+        "Matthew Waters": 3.0,
+        "Timothy Kaine": 67.4
+      },
+      "Hopewell City": {
+        "Corey Stewart": 42.1,
+        "Matthew Waters": 1.6,
+        "Timothy Kaine": 56.4
+      },
+      "Lexington City": {
+        "Corey Stewart": 26.9,
+        "Matthew Waters": 1.7,
+        "Timothy Kaine": 71.4
+      },
+      "Lynchburg City": {
+        "Corey Stewart": 45.6,
+        "Matthew Waters": 3.7,
+        "Timothy Kaine": 50.7
+      },
+      "Manassas City": {
+        "Corey Stewart": 34.8,
+        "Matthew Waters": 2.2,
+        "Timothy Kaine": 63.0
+      },
+      "Manassas Park City": {
+        "Corey Stewart": 28.8,
+        "Matthew Waters": 2.0,
+        "Timothy Kaine": 69.2
+      },
+      "Martinsville City": {
+        "Corey Stewart": 34.5,
+        "Matthew Waters": 1.8,
+        "Timothy Kaine": 63.7
+      },
+      "Newport News City": {
+        "Corey Stewart": 30.7,
+        "Matthew Waters": 1.7,
+        "Timothy Kaine": 67.6
+      },
+      "Norfolk City": {
+        "Corey Stewart": 23.1,
+        "Matthew Waters": 1.8,
+        "Timothy Kaine": 75.0
+      },
+      "Norton City": {
+        "Corey Stewart": 61.3,
+        "Matthew Waters": 1.5,
+        "Timothy Kaine": 37.2
+      },
+      "Petersburg City": {
+        "Corey Stewart": 9.7,
+        "Matthew Waters": 0.7,
+        "Timothy Kaine": 89.6
+      },
+      "Poquoson City": {
+        "Corey Stewart": 68.6,
+        "Matthew Waters": 2.3,
+        "Timothy Kaine": 29.0
+      },
+      "Portsmouth City": {
+        "Corey Stewart": 26.0,
+        "Matthew Waters": 1.6,
+        "Timothy Kaine": 72.4
+      },
+      "Radford City": {
+        "Corey Stewart": 38.6,
+        "Matthew Waters": 2.6,
+        "Timothy Kaine": 58.8
+      },
+      "Richmond City": {
+        "Corey Stewart": 13.4,
+        "Matthew Waters": 1.9,
+        "Timothy Kaine": 84.7
+      },
+      "Roanoke City": {
+        "Corey Stewart": 33.6,
+        "Matthew Waters": 1.9,
+        "Timothy Kaine": 64.5
+      },
+      "Salem City": {
+        "Corey Stewart": 56.4,
+        "Matthew Waters": 1.9,
+        "Timothy Kaine": 41.7
+      },
+      "Staunton City": {
+        "Corey Stewart": 41.1,
+        "Matthew Waters": 2.4,
+        "Timothy Kaine": 56.5
+      },
+      "Suffolk City": {
+        "Corey Stewart": 38.0,
+        "Matthew Waters": 1.3,
+        "Timothy Kaine": 60.7
+      },
+      "Virginia Beach City": {
+        "Corey Stewart": 43.5,
+        "Matthew Waters": 2.3,
+        "Timothy Kaine": 54.3
+      },
+      "Waynesboro City": {
+        "Corey Stewart": 48.2,
+        "Matthew Waters": 1.9,
+        "Timothy Kaine": 49.9
+      },
+      "Williamsburg City": {
+        "Corey Stewart": 25.0,
+        "Matthew Waters": 1.8,
+        "Timothy Kaine": 73.2
+      },
+      "Winchester City": {
+        "Corey Stewart": 40.1,
+        "Matthew Waters": 2.3,
+        "Timothy Kaine": 57.5
+      }
+    }
+  },
+  "congress": {
+    "2nd": {
+      "district": "2nd",
+      "total": 273029,
+      "candidates": [
+        {
+          "name": "Elaine Luria",
+          "party": "Democratic",
+          "votes": 139571,
+          "pct": 51.1
+        },
+        {
+          "name": "Scott Taylor",
+          "party": "Republican",
+          "votes": 133458,
+          "pct": 48.9
+        }
+      ]
+    },
+    "5th": {
+      "district": "5th",
+      "total": 310379,
+      "candidates": [
+        {
+          "name": "Denver Riggleman",
+          "party": "Republican",
+          "votes": 165339,
+          "pct": 53.3
+        },
+        {
+          "name": "Leslie Cockburn",
+          "party": "Democratic",
+          "votes": 145040,
+          "pct": 46.7
+        }
+      ]
+    },
+    "9th": {
+      "district": "9th",
+      "total": 246766,
+      "candidates": [
+        {
+          "name": "Howard Griffith",
+          "party": "Republican",
+          "votes": 160933,
+          "pct": 65.2
+        },
+        {
+          "name": "Anthony Flaccavento",
+          "party": "Democratic",
+          "votes": 85833,
+          "pct": 34.8
+        }
+      ]
+    },
+    "7th": {
+      "district": "7th",
+      "total": 349590,
+      "candidates": [
+        {
+          "name": "Abigail Spanberger",
+          "party": "Democratic",
+          "votes": 176079,
+          "pct": 50.4
+        },
+        {
+          "name": "David Brat",
+          "party": "Republican",
+          "votes": 169295,
+          "pct": 48.4
+        },
+        {
+          "name": "Joseph Walton",
+          "party": "Libertarian",
+          "votes": 4216,
+          "pct": 1.2
+        }
+      ]
+    },
+    "6th": {
+      "district": "6th",
+      "total": 281090,
+      "candidates": [
+        {
+          "name": "Benjamin Cline",
+          "party": "Republican",
+          "votes": 167957,
+          "pct": 59.8
+        },
+        {
+          "name": "Jennifer Lewis",
+          "party": "Democratic",
+          "votes": 113133,
+          "pct": 40.2
+        }
+      ]
+    },
+    "8th": {
+      "district": "8th",
+      "total": 324036,
+      "candidates": [
+        {
+          "name": "Donald Beyer",
+          "party": "Democratic",
+          "votes": 247137,
+          "pct": 76.3
+        },
+        {
+          "name": "Thomas Oh",
+          "party": "Republican",
+          "votes": 76899,
+          "pct": 23.7
+        }
+      ]
+    },
+    "1st": {
+      "district": "1st",
+      "total": 331714,
+      "candidates": [
+        {
+          "name": "Robert Wittman",
+          "party": "Republican",
+          "votes": 183250,
+          "pct": 55.2
+        },
+        {
+          "name": "Lavangelene Williams",
+          "party": "Democratic",
+          "votes": 148464,
+          "pct": 44.8
+        }
+      ]
+    },
+    "4th": {
+      "district": "4th",
+      "total": 299581,
+      "candidates": [
+        {
+          "name": "Aston Mceachin",
+          "party": "Democratic",
+          "votes": 187642,
+          "pct": 62.6
+        },
+        {
+          "name": "Ryan Mcadams",
+          "party": "Republican",
+          "votes": 107706,
+          "pct": 36.0
+        },
+        {
+          "name": "Peter Wells",
+          "party": "Libertarian",
+          "votes": 4233,
+          "pct": 1.4
+        }
+      ]
+    },
+    "10th": {
+      "district": "10th",
+      "total": 367197,
+      "candidates": [
+        {
+          "name": "Jennifer Wexton",
+          "party": "Democratic",
+          "votes": 206356,
+          "pct": 56.2
+        },
+        {
+          "name": "Barbara Comstock",
+          "party": "Republican",
+          "votes": 160841,
+          "pct": 43.8
+        }
+      ]
+    },
+    "11th": {
+      "district": "11th",
+      "total": 307760,
+      "candidates": [
+        {
+          "name": "Gerald Connolly",
+          "party": "Democratic",
+          "votes": 219191,
+          "pct": 71.2
+        },
+        {
+          "name": "Jeffery Dove",
+          "party": "Republican",
+          "votes": 83023,
+          "pct": 27.0
+        },
+        {
+          "name": "Stevan Porter",
+          "party": "Libertarian",
+          "votes": 5546,
+          "pct": 1.8
+        }
+      ]
+    },
+    "3rd": {
+      "district": "3rd",
+      "total": 198615,
+      "candidates": [
+        {
+          "name": "Robert Scott",
+          "party": "Democratic",
+          "votes": 198615,
+          "pct": 100.0
+        }
+      ]
+    }
+  }
+}
