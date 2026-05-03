@@ -504,6 +504,14 @@ HOD_CONTEXT = {
     100: {"delegate": "Robert S. Bloxom Jr.",               "party": "Republican",  "locality": "Accomack/Northampton/Virginia Beach"},
 }
 
+# 2023-2025 session composition — 51 R, 49 D (used for flip map comparison)
+HOD_2023_PARTY = {d: "Republican" for d in [
+    21, 22, 30, 31, 32, 33, 34, 35, 36, 37, 39, 40, 41,
+    42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53,
+    56, 57, 59, 60, 61, 62, 63, 64, 66, 67, 68, 69,
+    71, 72, 73, 74, 75, 82, 83, 86, 89, 90, 97, 98, 99, 100,
+]}
+
 # Virginia State Senate — 40 districts (2021 redistricting, 2026 session members)
 SD_CONTEXT = {
     1:  {"senator": "Timmy French",             "party": "Republican", "region": "Clarke, Frederick, Shenandoah, Warren; Winchester"},
@@ -1257,6 +1265,124 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         m.location = [36.851, -76.286]
         m.zoom_start = 12
 
+    elif layer == "hod_flip":
+        from shapely.geometry import mapping as _mapping
+        if _va_hod_gdf is None:
+            import address_lookup as _al2
+            if _al2.va_hod is not None:
+                _va_hod_gdf = _al2.va_hod
+            else:
+                _va_hod_gdf = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL HOD.shp"))
+                _va_hod_gdf = _va_hod_gdf.to_crs(epsg=4326)
+                _al2.va_hod = _va_hod_gdf
+        results_2025 = _load_2025_results()
+        hod_data_2025 = results_2025.get("hod", {})
+        for _, row in _va_hod_gdf.iterrows():
+            try:
+                d = int(row["DISTRICT"])
+                party_2023 = HOD_2023_PARTY.get(d, "Democrat")
+                party_2025 = HOD_CONTEXT.get(d, {}).get("party", "")
+                race = hod_data_2025.get(d, {})
+                winner_name = race.get("candidates", [{}])[0].get("name", HOD_CONTEXT.get(d, {}).get("delegate", "Unknown"))
+                flipped = (party_2023 != party_2025)
+                if flipped and "democrat" in party_2025.lower():
+                    status = "Flipped Democratic"
+                elif flipped and "republican" in party_2025.lower():
+                    status = "Flipped Republican"
+                elif "democrat" in party_2025.lower():
+                    status = "Held Democratic"
+                else:
+                    status = "Held Republican"
+                features.append({"type": "Feature",
+                    "geometry": _mapping(row.geometry.simplify(0.01, preserve_topology=True)),
+                    "properties": {
+                        "_district": f"HOD District {d}",
+                        "_winner": winner_name,
+                        "_status": status,
+                        "_2023": party_2023,
+                        "_2025": party_2025,
+                    }})
+            except Exception:
+                continue
+
+        def hod_flip_style(feat):
+            status = feat["properties"].get("_status", "")
+            if status == "Flipped Democratic":
+                return {"fillColor": "#1a52c8", "color": "#111", "weight": 1.5, "fillOpacity": 0.85}
+            elif status == "Flipped Republican":
+                return {"fillColor": "#c8102e", "color": "#111", "weight": 1.5, "fillOpacity": 0.85}
+            elif status == "Held Democratic":
+                return {"fillColor": "#6b9fd4", "color": "#555", "weight": 0.4, "fillOpacity": 0.35}
+            else:
+                return {"fillColor": "#e8807a", "color": "#555", "weight": 0.4, "fillOpacity": 0.35}
+
+        folium.GeoJson(
+            {"type": "FeatureCollection", "features": features},
+            style_function=hod_flip_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["_district", "_winner", "_status", "_2023", "_2025"],
+                aliases=["District:", "2025 Winner:", "Result:", "2023 Party:", "2025 Party:"],
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        title = "2025 Virginia HOD — District Flips vs 2023"
+
+    elif layer == "gov_results":
+        gov_path = os.path.join(BASE_DIR, "governor_results_2025.json")
+        if not os.path.exists(gov_path):
+            raise RuntimeError("Governor results data not found")
+        with open(gov_path, encoding="utf-8") as _gf:
+            gov_data = json.load(_gf)
+
+        # Normalize locality names for matching
+        def _nloc(n):
+            return n.upper().replace("&", "AND").strip()
+
+        gov_lookup = {_nloc(k): v for k, v in gov_data.items()}
+
+        counties_path = os.path.join(BASE_DIR, "va_counties.json")
+        with open(counties_path, encoding="utf-8") as _cf:
+            counties_geojson = json.load(_cf)
+
+        for feat in counties_geojson.get("features", []):
+            props = feat.get("properties", {})
+            name = props.get("NAME", "")
+            lsad = props.get("LSAD", "")
+            geo_key = _nloc(f"{name} {lsad}")
+            result = gov_lookup.get(geo_key, {})
+            winner = result.get("winner", "")
+            dem = result.get("dem", 0)
+            rep = result.get("rep", 0)
+            total = result.get("total", 1) or 1
+            dem_pct = round(dem / total * 100, 1)
+            rep_pct = round(rep / total * 100, 1)
+            winner_pct = result.get("winner_pct", 0.0)
+            margin = max(0.0, winner_pct - 50.0)
+            opacity = round(0.2 + min(margin / 35.0, 1.0) * 0.6, 3)
+            props["_locality"] = f"{name} {lsad}".title()
+            props["_spanberger"] = f"{dem_pct}%"
+            props["_sears"] = f"{rep_pct}%"
+            props["_winner"] = "Spanberger (D)" if "democrat" in winner.lower() else "Earle-Sears (R)" if "republican" in winner.lower() else "N/A"
+            props["_party"] = winner
+            props["_opacity"] = opacity if result else 0.1
+
+        def gov_style(feat):
+            party = feat["properties"].get("_party", "")
+            op = feat["properties"].get("_opacity", 0.1)
+            fill = "#1a52c8" if "democrat" in party.lower() else "#c8102e" if "republican" in party.lower() else "#aaaaaa"
+            return {"fillColor": fill, "color": "#555", "weight": 0.5, "fillOpacity": op}
+
+        folium.GeoJson(
+            counties_geojson,
+            style_function=gov_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["_locality", "_winner", "_spanberger", "_sears"],
+                aliases=["Locality:", "Winner:", "Spanberger:", "Earle-Sears:"],
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        title = "2025 Virginia Governor's Race — by Locality"
+
     elif layer == "hod_results":
         from shapely.geometry import mapping as _mapping
         if _va_hod_gdf is None:
@@ -1395,7 +1521,7 @@ _district_maps: dict[str, str] = {}
 
 @app.get("/district-map", response_class=HTMLResponse)
 def district_map(layer: str = "congressional", lat: float = None, lng: float = None, district: int = None):
-    if layer in ("congressional", "hod_results") and lat is None:
+    if layer in ("congressional", "hod_results", "hod_flip", "gov_results") and lat is None:
         if layer not in _district_maps:
             try:
                 _district_maps[layer] = _build_district_map(layer)

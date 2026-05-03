@@ -169,8 +169,49 @@
     <iframe src="/district-map?layer=hod_results" style="width:100%;height:520px;border:none;display:block;" loading="lazy" title="2025 HOD Results Map"></iframe>
   </div>
 
-  <!-- Section 3: House of Delegates Table -->
-  <div class="section-label" style="margin-top:16px;"><span>03</span> House of Delegates — All 100 Districts</div>
+  <!-- Section 3: HOD Flip Map -->
+  <div class="section-label" style="margin-top:16px;"><span>03</span> House of Delegates — District Flips vs 2023</div>
+  <div style="display:flex;align-items:center;gap:20px;margin-bottom:12px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#1a52c8;"></span>
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--navy);">Flipped Democratic</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#c8102e;"></span>
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--navy);">Flipped Republican</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#6b9fd4;opacity:0.7;"></span>
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--navy);">Held Democratic</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#e8807a;opacity:0.7;"></span>
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--navy);">Held Republican</span>
+    </div>
+  </div>
+  <div style="border:1px solid var(--mid);overflow:hidden;margin-bottom:40px;box-shadow:3px 3px 0 var(--navy);">
+    <iframe src="/district-map?layer=hod_flip" style="width:100%;height:520px;border:none;display:block;" loading="lazy" title="2025 HOD Flip Map"></iframe>
+  </div>
+
+  <!-- Section 4: Governor's Race by Locality -->
+  <div class="section-label" style="margin-top:16px;"><span>04</span> Governor's Race — Results by Locality</div>
+  <div style="display:flex;align-items:center;gap:20px;margin-bottom:12px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#1a52c8;"></span>
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--navy);">Spanberger (D)</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#c8102e;"></span>
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--navy);">Earle-Sears (R)</span>
+    </div>
+    <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Darker shade = larger margin · Hover for vote share</span>
+  </div>
+  <div style="border:1px solid var(--mid);overflow:hidden;margin-bottom:40px;box-shadow:3px 3px 0 var(--navy);">
+    <iframe src="/district-map?layer=gov_results" style="width:100%;height:520px;border:none;display:block;" loading="lazy" title="2025 Governor Race Map"></iframe>
+  </div>
+
+  <!-- Section 5: House of Delegates Table -->
+  <div class="section-label" style="margin-top:16px;"><span>05</span> House of Delegates — All 100 Districts</div>
   <div id="hod-section">
     <div class="loading-state" id="hod-loading">
       <div class="spinner"></div>
