@@ -292,6 +292,7 @@
       const portsmouth = data.portsmouth;
       const hampton = data.hampton;
       const newportNews = data.newport_news;
+      const suffolk = data.suffolk;
       const schoolBoard = data.vb_school_board;
       const vaStatewide = data.va_statewide || [];
       const president = data.us_president;
@@ -388,8 +389,16 @@
         (newportNews ? officialCard('City Treasurer', newportNews.treasurer ? newportNews.treasurer.name : '', 'Newport News', newportNews.treasurer ? newportNews.treasurer.party : '') : '') +
         (newportNews ? officialCard('Clerk of the Circuit Court', newportNews.clerk ? newportNews.clerk.name : '', 'Newport News', newportNews.clerk ? newportNews.clerk.party : '') : '') +
         (newportNews && newportNews.council ? newportNews.council.map(m => officialCard('City Council · ' + (newportNews.council_district_name || 'District ' + newportNews.council_district), m.name, 'Newport News', m.party)).join('') : '') +
-        (newportNews && newportNews.school_board ? newportNews.school_board.map(m => officialCard('School Board · ' + (newportNews.council_district_name || 'District ' + newportNews.council_district), m.name, 'Newport News', m.party)).join('') : '');
-      const gridCols = (chesapeake || portsmouth || hampton || newportNews) ? '1fr 1fr 1fr' : '1fr 1fr';
+        (newportNews && newportNews.school_board ? newportNews.school_board.map(m => officialCard('School Board · ' + (newportNews.council_district_name || 'District ' + newportNews.council_district), m.name, 'Newport News', m.party)).join('') : '') +
+        (suffolk ? officialCard('Mayor', suffolk.mayor ? suffolk.mayor.name : '', 'Suffolk', suffolk.mayor ? suffolk.mayor.party : '') : '') +
+        (suffolk ? officialCard('Vice Mayor', suffolk.vice_mayor ? suffolk.vice_mayor.name : '', 'Suffolk', suffolk.vice_mayor ? suffolk.vice_mayor.party : '') : '') +
+        (suffolk ? officialCard('Sheriff', suffolk.sheriff ? suffolk.sheriff.name : '', 'Suffolk', suffolk.sheriff ? suffolk.sheriff.party : '') : '') +
+        (suffolk ? officialCard("Commonwealth's Attorney", suffolk.commonwealths_attorney ? suffolk.commonwealths_attorney.name : '', 'Suffolk', suffolk.commonwealths_attorney ? suffolk.commonwealths_attorney.party : '') : '') +
+        (suffolk ? officialCard('Commissioner of the Revenue', suffolk.commissioner ? suffolk.commissioner.name : '', 'Suffolk', suffolk.commissioner ? suffolk.commissioner.party : '') : '') +
+        (suffolk ? officialCard('City Treasurer', suffolk.treasurer ? suffolk.treasurer.name : '', 'Suffolk', suffolk.treasurer ? suffolk.treasurer.party : '') : '') +
+        (suffolk ? officialCard('Clerk of the Circuit Court', suffolk.clerk ? suffolk.clerk.name : '', 'Suffolk', suffolk.clerk ? suffolk.clerk.party : '') : '') +
+        (suffolk && suffolk.council ? suffolk.council.map(m => officialCard('City Council · At-Large', m.name, 'Suffolk', m.party)).join('') : '');
+      const gridCols = (chesapeake || portsmouth || hampton || newportNews || suffolk) ? '1fr 1fr 1fr' : '1fr 1fr';
       document.getElementById('result').innerHTML =
         '<div style="background:white;border:1px solid #ddd8cc;border-top:4px solid #c8102e;padding:20px 24px;margin-top:20px;">' +
         '<h3 style="font-family:Barlow Condensed,sans-serif;font-size:0.8rem;color:#c8102e;margin-bottom:12px;letter-spacing:0.12em;text-transform:uppercase;">Your Representatives</h3>' +
