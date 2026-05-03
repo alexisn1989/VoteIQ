@@ -253,11 +253,21 @@ import csv
 _results_2025_cache: dict = {}
 
 def _load_2025_results() -> dict:
-    """Parse Election Results_*.csv and aggregate vote totals by race and candidate."""
+    """Load 2025 election results from pre-built JSON (preferred) or raw CSV."""
     if _results_2025_cache:
         return _results_2025_cache
 
-    # Locate the CSV
+    # Fast path: pre-built JSON
+    json_path = os.path.join(BASE_DIR, "election_results_2025.json")
+    if os.path.exists(json_path):
+        with open(json_path, encoding="utf-8") as _jf:
+            raw = json.load(_jf)
+        # JSON keys are strings; convert hod keys back to int
+        _results_2025_cache["statewide"] = raw.get("statewide", [])
+        _results_2025_cache["hod"] = {int(k): v for k, v in raw.get("hod", {}).items()}
+        return _results_2025_cache
+
+    # Fallback: parse raw CSV
     pattern = os.path.join(BASE_DIR, "Election Results_*.csv")
     matches = glob.glob(pattern)
     if not matches:
