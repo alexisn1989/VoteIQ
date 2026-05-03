@@ -1,0 +1,3510 @@
+{
+  "election_year": "2021",
+  "statewide": [
+    {
+      "race": "Governor",
+      "total": 3285735,
+      "candidates": [
+        {
+          "name": "Glenn Youngkin",
+          "party": "Republican",
+          "votes": 1663158,
+          "pct": 50.6
+        },
+        {
+          "name": "Terence Mcauliffe",
+          "party": "Democratic",
+          "votes": 1599470,
+          "pct": 48.7
+        },
+        {
+          "name": "Princess Blanding",
+          "party": "Liberation",
+          "votes": 23107,
+          "pct": 0.7
+        }
+      ]
+    },
+    {
+      "race": "Lieutenant Governor",
+      "total": 3266362,
+      "candidates": [
+        {
+          "name": "Winsome Sears",
+          "party": "Republican",
+          "votes": 1658332,
+          "pct": 50.8
+        },
+        {
+          "name": "Hala Ayala",
+          "party": "Democratic",
+          "votes": 1608030,
+          "pct": 49.2
+        }
+      ]
+    },
+    {
+      "race": "Attorney General",
+      "total": 3267664,
+      "candidates": [
+        {
+          "name": "Jason Miyares",
+          "party": "Republican",
+          "votes": 1647100,
+          "pct": 50.4
+        },
+        {
+          "name": "Mark Herring",
+          "party": "Democratic",
+          "votes": 1620564,
+          "pct": 49.6
+        }
+      ]
+    }
+  ],
+  "locality_results": {
+    "Governor": {
+      "Accomack County": {
+        "Glenn Youngkin": 61.1,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 38.4
+      },
+      "Albemarle County": {
+        "Glenn Youngkin": 37.2,
+        "Princess Blanding": 0.7,
+        "Terence Mcauliffe": 62.1
+      },
+      "Alleghany County": {
+        "Glenn Youngkin": 74.6,
+        "Princess Blanding": 0.4,
+        "Terence Mcauliffe": 25.0
+      },
+      "Amelia County": {
+        "Glenn Youngkin": 74.2,
+        "Princess Blanding": 0.4,
+        "Terence Mcauliffe": 25.4
+      },
+      "Amherst County": {
+        "Glenn Youngkin": 71.0,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 28.4
+      },
+      "Appomattox County": {
+        "Glenn Youngkin": 80.3,
+        "Princess Blanding": 0.3,
+        "Terence Mcauliffe": 19.3
+      },
+      "Arlington County": {
+        "Glenn Youngkin": 22.7,
+        "Princess Blanding": 0.6,
+        "Terence Mcauliffe": 76.8
+      },
+      "Augusta County": {
+        "Glenn Youngkin": 78.0,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 21.5
+      },
+      "Bath County": {
+        "Glenn Youngkin": 79.1,
+        "Princess Blanding": 0.6,
+        "Terence Mcauliffe": 20.3
+      },
+      "Bedford County": {
+        "Glenn Youngkin": 79.1,
+        "Princess Blanding": 0.4,
+        "Terence Mcauliffe": 20.5
+      },
+      "Bland County": {
+        "Glenn Youngkin": 85.8,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 13.7
+      },
+      "Botetourt County": {
+        "Glenn Youngkin": 76.3,
+        "Princess Blanding": 0.4,
+        "Terence Mcauliffe": 23.3
+      },
+      "Brunswick County": {
+        "Glenn Youngkin": 47.4,
+        "Princess Blanding": 0.6,
+        "Terence Mcauliffe": 52.1
+      },
+      "Buchanan County": {
+        "Glenn Youngkin": 84.8,
+        "Princess Blanding": 0.1,
+        "Terence Mcauliffe": 15.1
+      },
+      "Buckingham County": {
+        "Glenn Youngkin": 63.3,
+        "Princess Blanding": 0.6,
+        "Terence Mcauliffe": 36.1
+      },
+      "Campbell County": {
+        "Glenn Youngkin": 78.4,
+        "Princess Blanding": 0.3,
+        "Terence Mcauliffe": 21.2
+      },
+      "Caroline County": {
+        "Glenn Youngkin": 57.4,
+        "Princess Blanding": 0.8,
+        "Terence Mcauliffe": 41.9
+      },
+      "Carroll County": {
+        "Glenn Youngkin": 83.5,
+        "Princess Blanding": 0.4,
+        "Terence Mcauliffe": 16.2
+      },
+      "Charles City County": {
+        "Glenn Youngkin": 45.8,
+        "Princess Blanding": 0.4,
+        "Terence Mcauliffe": 53.8
+      },
+      "Charlotte County": {
+        "Glenn Youngkin": 70.3,
+        "Princess Blanding": 0.4,
+        "Terence Mcauliffe": 29.3
+      },
+      "Chesterfield County": {
+        "Glenn Youngkin": 51.8,
+        "Princess Blanding": 0.8,
+        "Terence Mcauliffe": 47.4
+      },
+      "Clarke County": {
+        "Glenn Youngkin": 62.6,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 36.9
+      },
+      "Craig County": {
+        "Glenn Youngkin": 83.3,
+        "Princess Blanding": 0.7,
+        "Terence Mcauliffe": 16.0
+      },
+      "Culpeper County": {
+        "Glenn Youngkin": 66.5,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 33.0
+      },
+      "Cumberland County": {
+        "Glenn Youngkin": 63.5,
+        "Princess Blanding": 0.6,
+        "Terence Mcauliffe": 35.9
+      },
+      "Dickenson County": {
+        "Glenn Youngkin": 80.4,
+        "Princess Blanding": 0.2,
+        "Terence Mcauliffe": 19.4
+      },
+      "Dinwiddie County": {
+        "Glenn Youngkin": 63.4,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 36.1
+      },
+      "Essex County": {
+        "Glenn Youngkin": 57.1,
+        "Princess Blanding": 0.8,
+        "Terence Mcauliffe": 42.1
+      },
+      "Fairfax County": {
+        "Glenn Youngkin": 34.5,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 65.0
+      },
+      "Fauquier County": {
+        "Glenn Youngkin": 65.5,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 34.1
+      },
+      "Floyd County": {
+        "Glenn Youngkin": 69.8,
+        "Princess Blanding": 0.8,
+        "Terence Mcauliffe": 29.4
+      },
+      "Fluvanna County": {
+        "Glenn Youngkin": 56.8,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 42.7
+      },
+      "Franklin County": {
+        "Glenn Youngkin": 74.8,
+        "Princess Blanding": 0.4,
+        "Terence Mcauliffe": 24.7
+      },
+      "Frederick County": {
+        "Glenn Youngkin": 68.9,
+        "Princess Blanding": 0.4,
+        "Terence Mcauliffe": 30.7
+      },
+      "Giles County": {
+        "Glenn Youngkin": 78.4,
+        "Princess Blanding": 0.8,
+        "Terence Mcauliffe": 20.8
+      },
+      "Gloucester County": {
+        "Glenn Youngkin": 72.4,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 27.1
+      },
+      "Goochland County": {
+        "Glenn Youngkin": 65.9,
+        "Princess Blanding": 0.4,
+        "Terence Mcauliffe": 33.8
+      },
+      "Grayson County": {
+        "Glenn Youngkin": 82.5,
+        "Princess Blanding": 0.4,
+        "Terence Mcauliffe": 17.0
+      },
+      "Greene County": {
+        "Glenn Youngkin": 67.5,
+        "Princess Blanding": 0.8,
+        "Terence Mcauliffe": 31.8
+      },
+      "Greensville County": {
+        "Glenn Youngkin": 47.0,
+        "Princess Blanding": 0.3,
+        "Terence Mcauliffe": 52.7
+      },
+      "Halifax County": {
+        "Glenn Youngkin": 63.9,
+        "Princess Blanding": 0.6,
+        "Terence Mcauliffe": 35.5
+      },
+      "Hanover County": {
+        "Glenn Youngkin": 68.2,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 31.3
+      },
+      "Henrico County": {
+        "Glenn Youngkin": 40.3,
+        "Princess Blanding": 1.0,
+        "Terence Mcauliffe": 58.8
+      },
+      "Henry County": {
+        "Glenn Youngkin": 69.7,
+        "Princess Blanding": 0.4,
+        "Terence Mcauliffe": 29.9
+      },
+      "Highland County": {
+        "Glenn Youngkin": 74.4,
+        "Princess Blanding": 0.6,
+        "Terence Mcauliffe": 25.0
+      },
+      "Isle Of Wight County": {
+        "Glenn Youngkin": 64.3,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 35.2
+      },
+      "James City County": {
+        "Glenn Youngkin": 52.5,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 47.0
+      },
+      "King & Queen County": {
+        "Glenn Youngkin": 64.8,
+        "Princess Blanding": 0.6,
+        "Terence Mcauliffe": 34.7
+      },
+      "King George County": {
+        "Glenn Youngkin": 68.1,
+        "Princess Blanding": 0.9,
+        "Terence Mcauliffe": 31.0
+      },
+      "King William County": {
+        "Glenn Youngkin": 73.4,
+        "Princess Blanding": 0.4,
+        "Terence Mcauliffe": 26.2
+      },
+      "Lancaster County": {
+        "Glenn Youngkin": 58.7,
+        "Princess Blanding": 0.3,
+        "Terence Mcauliffe": 41.0
+      },
+      "Lee County": {
+        "Glenn Youngkin": 87.6,
+        "Princess Blanding": 0.2,
+        "Terence Mcauliffe": 12.1
+      },
+      "Loudoun County": {
+        "Glenn Youngkin": 44.2,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 55.3
+      },
+      "Louisa County": {
+        "Glenn Youngkin": 66.1,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 33.4
+      },
+      "Lunenburg County": {
+        "Glenn Youngkin": 65.7,
+        "Princess Blanding": 0.2,
+        "Terence Mcauliffe": 34.1
+      },
+      "Madison County": {
+        "Glenn Youngkin": 70.2,
+        "Princess Blanding": 0.4,
+        "Terence Mcauliffe": 29.3
+      },
+      "Mathews County": {
+        "Glenn Youngkin": 71.7,
+        "Princess Blanding": 0.4,
+        "Terence Mcauliffe": 28.0
+      },
+      "Mecklenburg County": {
+        "Glenn Youngkin": 65.8,
+        "Princess Blanding": 0.3,
+        "Terence Mcauliffe": 33.9
+      },
+      "Middlesex County": {
+        "Glenn Youngkin": 66.0,
+        "Princess Blanding": 0.8,
+        "Terence Mcauliffe": 33.2
+      },
+      "Montgomery County": {
+        "Glenn Youngkin": 52.0,
+        "Princess Blanding": 1.2,
+        "Terence Mcauliffe": 46.9
+      },
+      "Nelson County": {
+        "Glenn Youngkin": 55.5,
+        "Princess Blanding": 0.8,
+        "Terence Mcauliffe": 43.6
+      },
+      "New Kent County": {
+        "Glenn Youngkin": 71.1,
+        "Princess Blanding": 0.4,
+        "Terence Mcauliffe": 28.5
+      },
+      "Northampton County": {
+        "Glenn Youngkin": 50.4,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 49.1
+      },
+      "Northumberland County": {
+        "Glenn Youngkin": 64.0,
+        "Princess Blanding": 0.6,
+        "Terence Mcauliffe": 35.5
+      },
+      "Nottoway County": {
+        "Glenn Youngkin": 64.6,
+        "Princess Blanding": 0.4,
+        "Terence Mcauliffe": 35.0
+      },
+      "Orange County": {
+        "Glenn Youngkin": 66.3,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 33.2
+      },
+      "Page County": {
+        "Glenn Youngkin": 79.0,
+        "Princess Blanding": 0.3,
+        "Terence Mcauliffe": 20.7
+      },
+      "Patrick County": {
+        "Glenn Youngkin": 82.2,
+        "Princess Blanding": 0.4,
+        "Terence Mcauliffe": 17.4
+      },
+      "Pittsylvania County": {
+        "Glenn Youngkin": 75.3,
+        "Princess Blanding": 0.3,
+        "Terence Mcauliffe": 24.4
+      },
+      "Powhatan County": {
+        "Glenn Youngkin": 76.9,
+        "Princess Blanding": 0.4,
+        "Terence Mcauliffe": 22.7
+      },
+      "Prince Edward County": {
+        "Glenn Youngkin": 54.4,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 45.1
+      },
+      "Prince George County": {
+        "Glenn Youngkin": 64.7,
+        "Princess Blanding": 0.6,
+        "Terence Mcauliffe": 34.7
+      },
+      "Prince William County": {
+        "Glenn Youngkin": 42.2,
+        "Princess Blanding": 0.7,
+        "Terence Mcauliffe": 57.0
+      },
+      "Pulaski County": {
+        "Glenn Youngkin": 74.1,
+        "Princess Blanding": 0.7,
+        "Terence Mcauliffe": 25.2
+      },
+      "Rappahannock County": {
+        "Glenn Youngkin": 59.5,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 40.0
+      },
+      "Richmond County": {
+        "Glenn Youngkin": 69.9,
+        "Princess Blanding": 0.6,
+        "Terence Mcauliffe": 29.4
+      },
+      "Roanoke County": {
+        "Glenn Youngkin": 65.8,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 33.7
+      },
+      "Rockbridge County": {
+        "Glenn Youngkin": 68.9,
+        "Princess Blanding": 0.4,
+        "Terence Mcauliffe": 30.7
+      },
+      "Rockingham County": {
+        "Glenn Youngkin": 75.4,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 24.1
+      },
+      "Russell County": {
+        "Glenn Youngkin": 84.9,
+        "Princess Blanding": 0.2,
+        "Terence Mcauliffe": 15.0
+      },
+      "Scott County": {
+        "Glenn Youngkin": 86.9,
+        "Princess Blanding": 0.3,
+        "Terence Mcauliffe": 12.7
+      },
+      "Shenandoah County": {
+        "Glenn Youngkin": 74.7,
+        "Princess Blanding": 0.6,
+        "Terence Mcauliffe": 24.7
+      },
+      "Smyth County": {
+        "Glenn Youngkin": 82.6,
+        "Princess Blanding": 0.3,
+        "Terence Mcauliffe": 17.1
+      },
+      "Southampton County": {
+        "Glenn Youngkin": 64.9,
+        "Princess Blanding": 0.4,
+        "Terence Mcauliffe": 34.7
+      },
+      "Spotsylvania County": {
+        "Glenn Youngkin": 59.9,
+        "Princess Blanding": 0.6,
+        "Terence Mcauliffe": 39.5
+      },
+      "Stafford County": {
+        "Glenn Youngkin": 55.0,
+        "Princess Blanding": 0.7,
+        "Terence Mcauliffe": 44.2
+      },
+      "Surry County": {
+        "Glenn Youngkin": 50.0,
+        "Princess Blanding": 0.3,
+        "Terence Mcauliffe": 49.7
+      },
+      "Sussex County": {
+        "Glenn Youngkin": 49.0,
+        "Princess Blanding": 0.6,
+        "Terence Mcauliffe": 50.4
+      },
+      "Tazewell County": {
+        "Glenn Youngkin": 86.6,
+        "Princess Blanding": 0.3,
+        "Terence Mcauliffe": 13.1
+      },
+      "Warren County": {
+        "Glenn Youngkin": 71.9,
+        "Princess Blanding": 0.6,
+        "Terence Mcauliffe": 27.5
+      },
+      "Washington County": {
+        "Glenn Youngkin": 79.1,
+        "Princess Blanding": 0.4,
+        "Terence Mcauliffe": 20.5
+      },
+      "Westmoreland County": {
+        "Glenn Youngkin": 60.6,
+        "Princess Blanding": 0.4,
+        "Terence Mcauliffe": 39.0
+      },
+      "Wise County": {
+        "Glenn Youngkin": 84.0,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 15.6
+      },
+      "Wythe County": {
+        "Glenn Youngkin": 81.8,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 17.7
+      },
+      "York County": {
+        "Glenn Youngkin": 58.6,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 40.9
+      },
+      "Alexandria City": {
+        "Glenn Youngkin": 24.1,
+        "Princess Blanding": 0.7,
+        "Terence Mcauliffe": 75.3
+      },
+      "Bristol City": {
+        "Glenn Youngkin": 73.3,
+        "Princess Blanding": 0.6,
+        "Terence Mcauliffe": 26.1
+      },
+      "Buena Vista City": {
+        "Glenn Youngkin": 74.4,
+        "Princess Blanding": 1.1,
+        "Terence Mcauliffe": 24.5
+      },
+      "Charlottesville City": {
+        "Glenn Youngkin": 16.0,
+        "Princess Blanding": 1.0,
+        "Terence Mcauliffe": 83.0
+      },
+      "Chesapeake City": {
+        "Glenn Youngkin": 52.5,
+        "Princess Blanding": 0.7,
+        "Terence Mcauliffe": 46.8
+      },
+      "Colonial Heights City": {
+        "Glenn Youngkin": 73.4,
+        "Princess Blanding": 0.8,
+        "Terence Mcauliffe": 25.8
+      },
+      "Covington City": {
+        "Glenn Youngkin": 66.8,
+        "Princess Blanding": 0.9,
+        "Terence Mcauliffe": 32.3
+      },
+      "Danville City": {
+        "Glenn Youngkin": 45.9,
+        "Princess Blanding": 0.6,
+        "Terence Mcauliffe": 53.4
+      },
+      "Emporia City": {
+        "Glenn Youngkin": 39.5,
+        "Princess Blanding": 1.1,
+        "Terence Mcauliffe": 59.4
+      },
+      "Fairfax City": {
+        "Glenn Youngkin": 35.6,
+        "Princess Blanding": 0.6,
+        "Terence Mcauliffe": 63.8
+      },
+      "Falls Church City": {
+        "Glenn Youngkin": 22.6,
+        "Princess Blanding": 0.6,
+        "Terence Mcauliffe": 76.8
+      },
+      "Franklin City": {
+        "Glenn Youngkin": 42.8,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 56.7
+      },
+      "Fredericksburg City": {
+        "Glenn Youngkin": 38.8,
+        "Princess Blanding": 1.3,
+        "Terence Mcauliffe": 59.9
+      },
+      "Galax City": {
+        "Glenn Youngkin": 74.0,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 25.6
+      },
+      "Hampton City": {
+        "Glenn Youngkin": 32.5,
+        "Princess Blanding": 1.0,
+        "Terence Mcauliffe": 66.5
+      },
+      "Harrisonburg City": {
+        "Glenn Youngkin": 38.7,
+        "Princess Blanding": 1.2,
+        "Terence Mcauliffe": 60.2
+      },
+      "Hopewell City": {
+        "Glenn Youngkin": 49.4,
+        "Princess Blanding": 1.4,
+        "Terence Mcauliffe": 49.2
+      },
+      "Lexington City": {
+        "Glenn Youngkin": 37.4,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 62.2
+      },
+      "Lynchburg City": {
+        "Glenn Youngkin": 55.0,
+        "Princess Blanding": 0.8,
+        "Terence Mcauliffe": 44.2
+      },
+      "Manassas City": {
+        "Glenn Youngkin": 44.7,
+        "Princess Blanding": 0.8,
+        "Terence Mcauliffe": 54.5
+      },
+      "Manassas Park City": {
+        "Glenn Youngkin": 38.5,
+        "Princess Blanding": 1.3,
+        "Terence Mcauliffe": 60.2
+      },
+      "Martinsville City": {
+        "Glenn Youngkin": 42.5,
+        "Princess Blanding": 1.0,
+        "Terence Mcauliffe": 56.4
+      },
+      "Newport News City": {
+        "Glenn Youngkin": 39.2,
+        "Princess Blanding": 1.1,
+        "Terence Mcauliffe": 59.7
+      },
+      "Norfolk City": {
+        "Glenn Youngkin": 31.5,
+        "Princess Blanding": 1.3,
+        "Terence Mcauliffe": 67.2
+      },
+      "Norton City": {
+        "Glenn Youngkin": 72.2,
+        "Princess Blanding": 1.1,
+        "Terence Mcauliffe": 26.7
+      },
+      "Petersburg City": {
+        "Glenn Youngkin": 13.5,
+        "Princess Blanding": 1.6,
+        "Terence Mcauliffe": 84.9
+      },
+      "Poquoson City": {
+        "Glenn Youngkin": 77.8,
+        "Princess Blanding": 0.5,
+        "Terence Mcauliffe": 21.7
+      },
+      "Portsmouth City": {
+        "Glenn Youngkin": 33.4,
+        "Princess Blanding": 1.2,
+        "Terence Mcauliffe": 65.4
+      },
+      "Radford City": {
+        "Glenn Youngkin": 54.1,
+        "Princess Blanding": 1.1,
+        "Terence Mcauliffe": 44.9
+      },
+      "Richmond City": {
+        "Glenn Youngkin": 19.6,
+        "Princess Blanding": 3.0,
+        "Terence Mcauliffe": 77.4
+      },
+      "Roanoke City": {
+        "Glenn Youngkin": 41.3,
+        "Princess Blanding": 0.9,
+        "Terence Mcauliffe": 57.8
+      },
+      "Salem City": {
+        "Glenn Youngkin": 64.3,
+        "Princess Blanding": 0.6,
+        "Terence Mcauliffe": 35.0
+      },
+      "Staunton City": {
+        "Glenn Youngkin": 47.5,
+        "Princess Blanding": 1.2,
+        "Terence Mcauliffe": 51.3
+      },
+      "Suffolk City": {
+        "Glenn Youngkin": 47.3,
+        "Princess Blanding": 0.7,
+        "Terence Mcauliffe": 52.0
+      },
+      "Virginia Beach City": {
+        "Glenn Youngkin": 53.7,
+        "Princess Blanding": 0.7,
+        "Terence Mcauliffe": 45.6
+      },
+      "Waynesboro City": {
+        "Glenn Youngkin": 57.0,
+        "Princess Blanding": 1.3,
+        "Terence Mcauliffe": 41.7
+      },
+      "Williamsburg City": {
+        "Glenn Youngkin": 34.6,
+        "Princess Blanding": 0.8,
+        "Terence Mcauliffe": 64.6
+      },
+      "Winchester City": {
+        "Glenn Youngkin": 48.7,
+        "Princess Blanding": 0.7,
+        "Terence Mcauliffe": 50.6
+      }
+    },
+    "Lieutenant Governor": {
+      "Accomack County": {
+        "Hala Ayala": 38.7,
+        "Winsome Sears": 61.3
+      },
+      "Albemarle County": {
+        "Hala Ayala": 61.9,
+        "Winsome Sears": 38.1
+      },
+      "Alleghany County": {
+        "Hala Ayala": 26.6,
+        "Winsome Sears": 73.4
+      },
+      "Amelia County": {
+        "Hala Ayala": 25.8,
+        "Winsome Sears": 74.2
+      },
+      "Amherst County": {
+        "Hala Ayala": 29.4,
+        "Winsome Sears": 70.6
+      },
+      "Appomattox County": {
+        "Hala Ayala": 19.8,
+        "Winsome Sears": 80.2
+      },
+      "Arlington County": {
+        "Hala Ayala": 77.3,
+        "Winsome Sears": 22.7
+      },
+      "Augusta County": {
+        "Hala Ayala": 21.5,
+        "Winsome Sears": 78.5
+      },
+      "Bath County": {
+        "Hala Ayala": 22.0,
+        "Winsome Sears": 78.0
+      },
+      "Bedford County": {
+        "Hala Ayala": 21.2,
+        "Winsome Sears": 78.8
+      },
+      "Bland County": {
+        "Hala Ayala": 14.8,
+        "Winsome Sears": 85.2
+      },
+      "Botetourt County": {
+        "Hala Ayala": 24.0,
+        "Winsome Sears": 76.0
+      },
+      "Brunswick County": {
+        "Hala Ayala": 52.7,
+        "Winsome Sears": 47.3
+      },
+      "Buchanan County": {
+        "Hala Ayala": 15.3,
+        "Winsome Sears": 84.7
+      },
+      "Buckingham County": {
+        "Hala Ayala": 36.4,
+        "Winsome Sears": 63.6
+      },
+      "Campbell County": {
+        "Hala Ayala": 21.9,
+        "Winsome Sears": 78.1
+      },
+      "Caroline County": {
+        "Hala Ayala": 42.4,
+        "Winsome Sears": 57.6
+      },
+      "Carroll County": {
+        "Hala Ayala": 17.1,
+        "Winsome Sears": 82.9
+      },
+      "Charles City County": {
+        "Hala Ayala": 53.4,
+        "Winsome Sears": 46.6
+      },
+      "Charlotte County": {
+        "Hala Ayala": 30.1,
+        "Winsome Sears": 69.9
+      },
+      "Chesterfield County": {
+        "Hala Ayala": 48.0,
+        "Winsome Sears": 52.0
+      },
+      "Clarke County": {
+        "Hala Ayala": 37.5,
+        "Winsome Sears": 62.5
+      },
+      "Craig County": {
+        "Hala Ayala": 18.0,
+        "Winsome Sears": 82.0
+      },
+      "Culpeper County": {
+        "Hala Ayala": 33.7,
+        "Winsome Sears": 66.3
+      },
+      "Cumberland County": {
+        "Hala Ayala": 36.2,
+        "Winsome Sears": 63.8
+      },
+      "Dickenson County": {
+        "Hala Ayala": 20.4,
+        "Winsome Sears": 79.6
+      },
+      "Dinwiddie County": {
+        "Hala Ayala": 36.7,
+        "Winsome Sears": 63.3
+      },
+      "Essex County": {
+        "Hala Ayala": 42.2,
+        "Winsome Sears": 57.8
+      },
+      "Fairfax County": {
+        "Hala Ayala": 65.5,
+        "Winsome Sears": 34.5
+      },
+      "Fauquier County": {
+        "Hala Ayala": 34.6,
+        "Winsome Sears": 65.4
+      },
+      "Floyd County": {
+        "Hala Ayala": 30.6,
+        "Winsome Sears": 69.4
+      },
+      "Fluvanna County": {
+        "Hala Ayala": 42.4,
+        "Winsome Sears": 57.6
+      },
+      "Franklin County": {
+        "Hala Ayala": 26.0,
+        "Winsome Sears": 74.0
+      },
+      "Frederick County": {
+        "Hala Ayala": 31.2,
+        "Winsome Sears": 68.8
+      },
+      "Giles County": {
+        "Hala Ayala": 22.4,
+        "Winsome Sears": 77.6
+      },
+      "Gloucester County": {
+        "Hala Ayala": 27.3,
+        "Winsome Sears": 72.7
+      },
+      "Goochland County": {
+        "Hala Ayala": 33.9,
+        "Winsome Sears": 66.1
+      },
+      "Grayson County": {
+        "Hala Ayala": 18.1,
+        "Winsome Sears": 81.9
+      },
+      "Greene County": {
+        "Hala Ayala": 31.9,
+        "Winsome Sears": 68.1
+      },
+      "Greensville County": {
+        "Hala Ayala": 53.0,
+        "Winsome Sears": 47.0
+      },
+      "Halifax County": {
+        "Hala Ayala": 35.8,
+        "Winsome Sears": 64.2
+      },
+      "Hanover County": {
+        "Hala Ayala": 31.6,
+        "Winsome Sears": 68.4
+      },
+      "Henrico County": {
+        "Hala Ayala": 59.5,
+        "Winsome Sears": 40.5
+      },
+      "Henry County": {
+        "Hala Ayala": 30.8,
+        "Winsome Sears": 69.2
+      },
+      "Highland County": {
+        "Hala Ayala": 26.2,
+        "Winsome Sears": 73.8
+      },
+      "Isle Of Wight County": {
+        "Hala Ayala": 35.2,
+        "Winsome Sears": 64.8
+      },
+      "James City County": {
+        "Hala Ayala": 46.8,
+        "Winsome Sears": 53.2
+      },
+      "King & Queen County": {
+        "Hala Ayala": 35.4,
+        "Winsome Sears": 64.6
+      },
+      "King George County": {
+        "Hala Ayala": 31.6,
+        "Winsome Sears": 68.4
+      },
+      "King William County": {
+        "Hala Ayala": 26.9,
+        "Winsome Sears": 73.1
+      },
+      "Lancaster County": {
+        "Hala Ayala": 41.1,
+        "Winsome Sears": 58.9
+      },
+      "Lee County": {
+        "Hala Ayala": 12.4,
+        "Winsome Sears": 87.6
+      },
+      "Loudoun County": {
+        "Hala Ayala": 55.7,
+        "Winsome Sears": 44.3
+      },
+      "Louisa County": {
+        "Hala Ayala": 33.8,
+        "Winsome Sears": 66.2
+      },
+      "Lunenburg County": {
+        "Hala Ayala": 34.7,
+        "Winsome Sears": 65.3
+      },
+      "Madison County": {
+        "Hala Ayala": 29.8,
+        "Winsome Sears": 70.2
+      },
+      "Mathews County": {
+        "Hala Ayala": 27.8,
+        "Winsome Sears": 72.2
+      },
+      "Mecklenburg County": {
+        "Hala Ayala": 34.0,
+        "Winsome Sears": 66.0
+      },
+      "Middlesex County": {
+        "Hala Ayala": 33.7,
+        "Winsome Sears": 66.3
+      },
+      "Montgomery County": {
+        "Hala Ayala": 48.1,
+        "Winsome Sears": 51.9
+      },
+      "Nelson County": {
+        "Hala Ayala": 44.8,
+        "Winsome Sears": 55.2
+      },
+      "New Kent County": {
+        "Hala Ayala": 29.0,
+        "Winsome Sears": 71.0
+      },
+      "Northampton County": {
+        "Hala Ayala": 48.9,
+        "Winsome Sears": 51.1
+      },
+      "Northumberland County": {
+        "Hala Ayala": 36.1,
+        "Winsome Sears": 63.9
+      },
+      "Nottoway County": {
+        "Hala Ayala": 35.2,
+        "Winsome Sears": 64.8
+      },
+      "Orange County": {
+        "Hala Ayala": 33.7,
+        "Winsome Sears": 66.3
+      },
+      "Page County": {
+        "Hala Ayala": 21.5,
+        "Winsome Sears": 78.5
+      },
+      "Patrick County": {
+        "Hala Ayala": 18.0,
+        "Winsome Sears": 82.0
+      },
+      "Pittsylvania County": {
+        "Hala Ayala": 24.9,
+        "Winsome Sears": 75.1
+      },
+      "Powhatan County": {
+        "Hala Ayala": 23.2,
+        "Winsome Sears": 76.8
+      },
+      "Prince Edward County": {
+        "Hala Ayala": 45.4,
+        "Winsome Sears": 54.6
+      },
+      "Prince George County": {
+        "Hala Ayala": 35.1,
+        "Winsome Sears": 64.9
+      },
+      "Prince William County": {
+        "Hala Ayala": 57.9,
+        "Winsome Sears": 42.1
+      },
+      "Pulaski County": {
+        "Hala Ayala": 26.4,
+        "Winsome Sears": 73.6
+      },
+      "Rappahannock County": {
+        "Hala Ayala": 41.1,
+        "Winsome Sears": 58.9
+      },
+      "Richmond County": {
+        "Hala Ayala": 30.3,
+        "Winsome Sears": 69.7
+      },
+      "Roanoke County": {
+        "Hala Ayala": 34.5,
+        "Winsome Sears": 65.5
+      },
+      "Rockbridge County": {
+        "Hala Ayala": 31.6,
+        "Winsome Sears": 68.4
+      },
+      "Rockingham County": {
+        "Hala Ayala": 24.1,
+        "Winsome Sears": 75.9
+      },
+      "Russell County": {
+        "Hala Ayala": 15.3,
+        "Winsome Sears": 84.7
+      },
+      "Scott County": {
+        "Hala Ayala": 13.2,
+        "Winsome Sears": 86.8
+      },
+      "Shenandoah County": {
+        "Hala Ayala": 25.4,
+        "Winsome Sears": 74.6
+      },
+      "Smyth County": {
+        "Hala Ayala": 17.1,
+        "Winsome Sears": 82.9
+      },
+      "Southampton County": {
+        "Hala Ayala": 34.8,
+        "Winsome Sears": 65.2
+      },
+      "Spotsylvania County": {
+        "Hala Ayala": 40.0,
+        "Winsome Sears": 60.0
+      },
+      "Stafford County": {
+        "Hala Ayala": 45.1,
+        "Winsome Sears": 54.9
+      },
+      "Surry County": {
+        "Hala Ayala": 49.6,
+        "Winsome Sears": 50.4
+      },
+      "Sussex County": {
+        "Hala Ayala": 50.5,
+        "Winsome Sears": 49.5
+      },
+      "Tazewell County": {
+        "Hala Ayala": 13.4,
+        "Winsome Sears": 86.6
+      },
+      "Warren County": {
+        "Hala Ayala": 28.3,
+        "Winsome Sears": 71.7
+      },
+      "Washington County": {
+        "Hala Ayala": 20.4,
+        "Winsome Sears": 79.6
+      },
+      "Westmoreland County": {
+        "Hala Ayala": 39.7,
+        "Winsome Sears": 60.3
+      },
+      "Wise County": {
+        "Hala Ayala": 16.3,
+        "Winsome Sears": 83.7
+      },
+      "Wythe County": {
+        "Hala Ayala": 18.9,
+        "Winsome Sears": 81.1
+      },
+      "York County": {
+        "Hala Ayala": 40.8,
+        "Winsome Sears": 59.2
+      },
+      "Alexandria City": {
+        "Hala Ayala": 76.2,
+        "Winsome Sears": 23.8
+      },
+      "Bristol City": {
+        "Hala Ayala": 26.0,
+        "Winsome Sears": 74.0
+      },
+      "Buena Vista City": {
+        "Hala Ayala": 27.2,
+        "Winsome Sears": 72.8
+      },
+      "Charlottesville City": {
+        "Hala Ayala": 83.5,
+        "Winsome Sears": 16.5
+      },
+      "Chesapeake City": {
+        "Hala Ayala": 46.9,
+        "Winsome Sears": 53.1
+      },
+      "Colonial Heights City": {
+        "Hala Ayala": 26.9,
+        "Winsome Sears": 73.1
+      },
+      "Covington City": {
+        "Hala Ayala": 35.3,
+        "Winsome Sears": 64.7
+      },
+      "Danville City": {
+        "Hala Ayala": 53.9,
+        "Winsome Sears": 46.1
+      },
+      "Emporia City": {
+        "Hala Ayala": 60.2,
+        "Winsome Sears": 39.8
+      },
+      "Fairfax City": {
+        "Hala Ayala": 64.7,
+        "Winsome Sears": 35.3
+      },
+      "Falls Church City": {
+        "Hala Ayala": 77.9,
+        "Winsome Sears": 22.1
+      },
+      "Franklin City": {
+        "Hala Ayala": 56.5,
+        "Winsome Sears": 43.5
+      },
+      "Fredericksburg City": {
+        "Hala Ayala": 61.0,
+        "Winsome Sears": 39.0
+      },
+      "Galax City": {
+        "Hala Ayala": 27.0,
+        "Winsome Sears": 73.0
+      },
+      "Hampton City": {
+        "Hala Ayala": 66.7,
+        "Winsome Sears": 33.3
+      },
+      "Harrisonburg City": {
+        "Hala Ayala": 60.5,
+        "Winsome Sears": 39.5
+      },
+      "Hopewell City": {
+        "Hala Ayala": 50.3,
+        "Winsome Sears": 49.7
+      },
+      "Lexington City": {
+        "Hala Ayala": 63.3,
+        "Winsome Sears": 36.7
+      },
+      "Lynchburg City": {
+        "Hala Ayala": 44.7,
+        "Winsome Sears": 55.3
+      },
+      "Manassas City": {
+        "Hala Ayala": 55.6,
+        "Winsome Sears": 44.4
+      },
+      "Manassas Park City": {
+        "Hala Ayala": 61.8,
+        "Winsome Sears": 38.2
+      },
+      "Martinsville City": {
+        "Hala Ayala": 57.5,
+        "Winsome Sears": 42.5
+      },
+      "Newport News City": {
+        "Hala Ayala": 60.1,
+        "Winsome Sears": 39.9
+      },
+      "Norfolk City": {
+        "Hala Ayala": 67.7,
+        "Winsome Sears": 32.3
+      },
+      "Norton City": {
+        "Hala Ayala": 27.4,
+        "Winsome Sears": 72.6
+      },
+      "Petersburg City": {
+        "Hala Ayala": 85.6,
+        "Winsome Sears": 14.4
+      },
+      "Poquoson City": {
+        "Hala Ayala": 21.7,
+        "Winsome Sears": 78.3
+      },
+      "Portsmouth City": {
+        "Hala Ayala": 65.6,
+        "Winsome Sears": 34.4
+      },
+      "Radford City": {
+        "Hala Ayala": 46.3,
+        "Winsome Sears": 53.7
+      },
+      "Richmond City": {
+        "Hala Ayala": 79.6,
+        "Winsome Sears": 20.4
+      },
+      "Roanoke City": {
+        "Hala Ayala": 58.7,
+        "Winsome Sears": 41.3
+      },
+      "Salem City": {
+        "Hala Ayala": 35.6,
+        "Winsome Sears": 64.4
+      },
+      "Staunton City": {
+        "Hala Ayala": 51.6,
+        "Winsome Sears": 48.4
+      },
+      "Suffolk City": {
+        "Hala Ayala": 52.1,
+        "Winsome Sears": 47.9
+      },
+      "Virginia Beach City": {
+        "Hala Ayala": 45.9,
+        "Winsome Sears": 54.1
+      },
+      "Waynesboro City": {
+        "Hala Ayala": 42.1,
+        "Winsome Sears": 57.9
+      },
+      "Williamsburg City": {
+        "Hala Ayala": 65.1,
+        "Winsome Sears": 34.9
+      },
+      "Winchester City": {
+        "Hala Ayala": 51.2,
+        "Winsome Sears": 48.8
+      }
+    },
+    "Attorney General": {
+      "Accomack County": {
+        "Jason Miyares": 60.7,
+        "Mark Herring": 39.3
+      },
+      "Albemarle County": {
+        "Jason Miyares": 36.8,
+        "Mark Herring": 63.2
+      },
+      "Alleghany County": {
+        "Jason Miyares": 73.5,
+        "Mark Herring": 26.5
+      },
+      "Amelia County": {
+        "Jason Miyares": 73.9,
+        "Mark Herring": 26.1
+      },
+      "Amherst County": {
+        "Jason Miyares": 70.5,
+        "Mark Herring": 29.5
+      },
+      "Appomattox County": {
+        "Jason Miyares": 79.6,
+        "Mark Herring": 20.4
+      },
+      "Arlington County": {
+        "Jason Miyares": 22.5,
+        "Mark Herring": 77.5
+      },
+      "Augusta County": {
+        "Jason Miyares": 77.2,
+        "Mark Herring": 22.8
+      },
+      "Bath County": {
+        "Jason Miyares": 77.7,
+        "Mark Herring": 22.3
+      },
+      "Bedford County": {
+        "Jason Miyares": 78.9,
+        "Mark Herring": 21.1
+      },
+      "Bland County": {
+        "Jason Miyares": 85.6,
+        "Mark Herring": 14.4
+      },
+      "Botetourt County": {
+        "Jason Miyares": 76.0,
+        "Mark Herring": 24.0
+      },
+      "Brunswick County": {
+        "Jason Miyares": 47.0,
+        "Mark Herring": 53.0
+      },
+      "Buchanan County": {
+        "Jason Miyares": 83.8,
+        "Mark Herring": 16.2
+      },
+      "Buckingham County": {
+        "Jason Miyares": 63.1,
+        "Mark Herring": 36.9
+      },
+      "Campbell County": {
+        "Jason Miyares": 78.0,
+        "Mark Herring": 22.0
+      },
+      "Caroline County": {
+        "Jason Miyares": 57.3,
+        "Mark Herring": 42.7
+      },
+      "Carroll County": {
+        "Jason Miyares": 83.2,
+        "Mark Herring": 16.8
+      },
+      "Charles City County": {
+        "Jason Miyares": 45.9,
+        "Mark Herring": 54.1
+      },
+      "Charlotte County": {
+        "Jason Miyares": 69.3,
+        "Mark Herring": 30.7
+      },
+      "Chesterfield County": {
+        "Jason Miyares": 52.0,
+        "Mark Herring": 48.0
+      },
+      "Clarke County": {
+        "Jason Miyares": 61.5,
+        "Mark Herring": 38.5
+      },
+      "Craig County": {
+        "Jason Miyares": 82.7,
+        "Mark Herring": 17.3
+      },
+      "Culpeper County": {
+        "Jason Miyares": 65.7,
+        "Mark Herring": 34.3
+      },
+      "Cumberland County": {
+        "Jason Miyares": 63.3,
+        "Mark Herring": 36.7
+      },
+      "Dickenson County": {
+        "Jason Miyares": 79.9,
+        "Mark Herring": 20.1
+      },
+      "Dinwiddie County": {
+        "Jason Miyares": 63.4,
+        "Mark Herring": 36.6
+      },
+      "Essex County": {
+        "Jason Miyares": 56.6,
+        "Mark Herring": 43.4
+      },
+      "Fairfax County": {
+        "Jason Miyares": 34.2,
+        "Mark Herring": 65.8
+      },
+      "Fauquier County": {
+        "Jason Miyares": 65.0,
+        "Mark Herring": 35.0
+      },
+      "Floyd County": {
+        "Jason Miyares": 69.7,
+        "Mark Herring": 30.3
+      },
+      "Fluvanna County": {
+        "Jason Miyares": 56.1,
+        "Mark Herring": 43.9
+      },
+      "Franklin County": {
+        "Jason Miyares": 74.2,
+        "Mark Herring": 25.8
+      },
+      "Frederick County": {
+        "Jason Miyares": 68.2,
+        "Mark Herring": 31.8
+      },
+      "Giles County": {
+        "Jason Miyares": 77.7,
+        "Mark Herring": 22.3
+      },
+      "Gloucester County": {
+        "Jason Miyares": 72.0,
+        "Mark Herring": 28.0
+      },
+      "Goochland County": {
+        "Jason Miyares": 66.2,
+        "Mark Herring": 33.8
+      },
+      "Grayson County": {
+        "Jason Miyares": 82.0,
+        "Mark Herring": 18.0
+      },
+      "Greene County": {
+        "Jason Miyares": 66.6,
+        "Mark Herring": 33.4
+      },
+      "Greensville County": {
+        "Jason Miyares": 46.5,
+        "Mark Herring": 53.5
+      },
+      "Halifax County": {
+        "Jason Miyares": 64.0,
+        "Mark Herring": 36.0
+      },
+      "Hanover County": {
+        "Jason Miyares": 68.4,
+        "Mark Herring": 31.6
+      },
+      "Henrico County": {
+        "Jason Miyares": 40.4,
+        "Mark Herring": 59.6
+      },
+      "Henry County": {
+        "Jason Miyares": 68.9,
+        "Mark Herring": 31.1
+      },
+      "Highland County": {
+        "Jason Miyares": 73.1,
+        "Mark Herring": 26.9
+      },
+      "Isle Of Wight County": {
+        "Jason Miyares": 64.1,
+        "Mark Herring": 35.9
+      },
+      "James City County": {
+        "Jason Miyares": 52.8,
+        "Mark Herring": 47.2
+      },
+      "King & Queen County": {
+        "Jason Miyares": 64.6,
+        "Mark Herring": 35.4
+      },
+      "King George County": {
+        "Jason Miyares": 67.5,
+        "Mark Herring": 32.5
+      },
+      "King William County": {
+        "Jason Miyares": 73.1,
+        "Mark Herring": 26.9
+      },
+      "Lancaster County": {
+        "Jason Miyares": 58.9,
+        "Mark Herring": 41.1
+      },
+      "Lee County": {
+        "Jason Miyares": 87.3,
+        "Mark Herring": 12.7
+      },
+      "Loudoun County": {
+        "Jason Miyares": 43.7,
+        "Mark Herring": 56.3
+      },
+      "Louisa County": {
+        "Jason Miyares": 66.1,
+        "Mark Herring": 33.9
+      },
+      "Lunenburg County": {
+        "Jason Miyares": 65.2,
+        "Mark Herring": 34.8
+      },
+      "Madison County": {
+        "Jason Miyares": 69.1,
+        "Mark Herring": 30.9
+      },
+      "Mathews County": {
+        "Jason Miyares": 71.1,
+        "Mark Herring": 28.9
+      },
+      "Mecklenburg County": {
+        "Jason Miyares": 65.4,
+        "Mark Herring": 34.6
+      },
+      "Middlesex County": {
+        "Jason Miyares": 66.6,
+        "Mark Herring": 33.4
+      },
+      "Montgomery County": {
+        "Jason Miyares": 51.7,
+        "Mark Herring": 48.3
+      },
+      "Nelson County": {
+        "Jason Miyares": 54.6,
+        "Mark Herring": 45.4
+      },
+      "New Kent County": {
+        "Jason Miyares": 71.1,
+        "Mark Herring": 28.9
+      },
+      "Northampton County": {
+        "Jason Miyares": 50.4,
+        "Mark Herring": 49.6
+      },
+      "Northumberland County": {
+        "Jason Miyares": 64.0,
+        "Mark Herring": 36.0
+      },
+      "Nottoway County": {
+        "Jason Miyares": 63.9,
+        "Mark Herring": 36.1
+      },
+      "Orange County": {
+        "Jason Miyares": 65.5,
+        "Mark Herring": 34.5
+      },
+      "Page County": {
+        "Jason Miyares": 77.9,
+        "Mark Herring": 22.1
+      },
+      "Patrick County": {
+        "Jason Miyares": 81.5,
+        "Mark Herring": 18.5
+      },
+      "Pittsylvania County": {
+        "Jason Miyares": 75.0,
+        "Mark Herring": 25.0
+      },
+      "Powhatan County": {
+        "Jason Miyares": 76.9,
+        "Mark Herring": 23.1
+      },
+      "Prince Edward County": {
+        "Jason Miyares": 54.5,
+        "Mark Herring": 45.5
+      },
+      "Prince George County": {
+        "Jason Miyares": 64.7,
+        "Mark Herring": 35.3
+      },
+      "Prince William County": {
+        "Jason Miyares": 42.1,
+        "Mark Herring": 57.9
+      },
+      "Pulaski County": {
+        "Jason Miyares": 73.8,
+        "Mark Herring": 26.2
+      },
+      "Rappahannock County": {
+        "Jason Miyares": 58.7,
+        "Mark Herring": 41.3
+      },
+      "Richmond County": {
+        "Jason Miyares": 69.3,
+        "Mark Herring": 30.7
+      },
+      "Roanoke County": {
+        "Jason Miyares": 65.6,
+        "Mark Herring": 34.4
+      },
+      "Rockbridge County": {
+        "Jason Miyares": 68.2,
+        "Mark Herring": 31.8
+      },
+      "Rockingham County": {
+        "Jason Miyares": 74.6,
+        "Mark Herring": 25.4
+      },
+      "Russell County": {
+        "Jason Miyares": 84.5,
+        "Mark Herring": 15.5
+      },
+      "Scott County": {
+        "Jason Miyares": 86.7,
+        "Mark Herring": 13.3
+      },
+      "Shenandoah County": {
+        "Jason Miyares": 73.9,
+        "Mark Herring": 26.1
+      },
+      "Smyth County": {
+        "Jason Miyares": 82.4,
+        "Mark Herring": 17.6
+      },
+      "Southampton County": {
+        "Jason Miyares": 64.3,
+        "Mark Herring": 35.7
+      },
+      "Spotsylvania County": {
+        "Jason Miyares": 59.6,
+        "Mark Herring": 40.4
+      },
+      "Stafford County": {
+        "Jason Miyares": 54.8,
+        "Mark Herring": 45.2
+      },
+      "Surry County": {
+        "Jason Miyares": 49.5,
+        "Mark Herring": 50.5
+      },
+      "Sussex County": {
+        "Jason Miyares": 49.0,
+        "Mark Herring": 51.0
+      },
+      "Tazewell County": {
+        "Jason Miyares": 85.9,
+        "Mark Herring": 14.1
+      },
+      "Warren County": {
+        "Jason Miyares": 71.3,
+        "Mark Herring": 28.7
+      },
+      "Washington County": {
+        "Jason Miyares": 79.1,
+        "Mark Herring": 20.9
+      },
+      "Westmoreland County": {
+        "Jason Miyares": 59.8,
+        "Mark Herring": 40.2
+      },
+      "Wise County": {
+        "Jason Miyares": 83.6,
+        "Mark Herring": 16.4
+      },
+      "Wythe County": {
+        "Jason Miyares": 81.4,
+        "Mark Herring": 18.6
+      },
+      "York County": {
+        "Jason Miyares": 58.7,
+        "Mark Herring": 41.3
+      },
+      "Alexandria City": {
+        "Jason Miyares": 23.6,
+        "Mark Herring": 76.4
+      },
+      "Bristol City": {
+        "Jason Miyares": 73.6,
+        "Mark Herring": 26.4
+      },
+      "Buena Vista City": {
+        "Jason Miyares": 73.1,
+        "Mark Herring": 26.9
+      },
+      "Charlottesville City": {
+        "Jason Miyares": 15.6,
+        "Mark Herring": 84.4
+      },
+      "Chesapeake City": {
+        "Jason Miyares": 52.3,
+        "Mark Herring": 47.7
+      },
+      "Colonial Heights City": {
+        "Jason Miyares": 73.5,
+        "Mark Herring": 26.5
+      },
+      "Covington City": {
+        "Jason Miyares": 65.2,
+        "Mark Herring": 34.8
+      },
+      "Danville City": {
+        "Jason Miyares": 45.6,
+        "Mark Herring": 54.4
+      },
+      "Emporia City": {
+        "Jason Miyares": 44.1,
+        "Mark Herring": 55.9
+      },
+      "Fairfax City": {
+        "Jason Miyares": 35.4,
+        "Mark Herring": 64.6
+      },
+      "Falls Church City": {
+        "Jason Miyares": 22.2,
+        "Mark Herring": 77.8
+      },
+      "Franklin City": {
+        "Jason Miyares": 42.2,
+        "Mark Herring": 57.8
+      },
+      "Fredericksburg City": {
+        "Jason Miyares": 38.3,
+        "Mark Herring": 61.7
+      },
+      "Galax City": {
+        "Jason Miyares": 72.9,
+        "Mark Herring": 27.1
+      },
+      "Hampton City": {
+        "Jason Miyares": 32.6,
+        "Mark Herring": 67.4
+      },
+      "Harrisonburg City": {
+        "Jason Miyares": 38.2,
+        "Mark Herring": 61.8
+      },
+      "Hopewell City": {
+        "Jason Miyares": 49.4,
+        "Mark Herring": 50.6
+      },
+      "Lexington City": {
+        "Jason Miyares": 36.3,
+        "Mark Herring": 63.7
+      },
+      "Lynchburg City": {
+        "Jason Miyares": 54.9,
+        "Mark Herring": 45.1
+      },
+      "Manassas City": {
+        "Jason Miyares": 44.4,
+        "Mark Herring": 55.6
+      },
+      "Manassas Park City": {
+        "Jason Miyares": 38.5,
+        "Mark Herring": 61.5
+      },
+      "Martinsville City": {
+        "Jason Miyares": 42.1,
+        "Mark Herring": 57.9
+      },
+      "Newport News City": {
+        "Jason Miyares": 39.2,
+        "Mark Herring": 60.8
+      },
+      "Norfolk City": {
+        "Jason Miyares": 31.4,
+        "Mark Herring": 68.6
+      },
+      "Norton City": {
+        "Jason Miyares": 71.0,
+        "Mark Herring": 29.0
+      },
+      "Petersburg City": {
+        "Jason Miyares": 13.7,
+        "Mark Herring": 86.3
+      },
+      "Poquoson City": {
+        "Jason Miyares": 77.7,
+        "Mark Herring": 22.3
+      },
+      "Portsmouth City": {
+        "Jason Miyares": 33.1,
+        "Mark Herring": 66.9
+      },
+      "Radford City": {
+        "Jason Miyares": 53.5,
+        "Mark Herring": 46.5
+      },
+      "Richmond City": {
+        "Jason Miyares": 19.8,
+        "Mark Herring": 80.2
+      },
+      "Roanoke City": {
+        "Jason Miyares": 40.9,
+        "Mark Herring": 59.1
+      },
+      "Salem City": {
+        "Jason Miyares": 64.2,
+        "Mark Herring": 35.8
+      },
+      "Staunton City": {
+        "Jason Miyares": 46.7,
+        "Mark Herring": 53.3
+      },
+      "Suffolk City": {
+        "Jason Miyares": 47.1,
+        "Mark Herring": 52.9
+      },
+      "Virginia Beach City": {
+        "Jason Miyares": 53.9,
+        "Mark Herring": 46.1
+      },
+      "Waynesboro City": {
+        "Jason Miyares": 56.1,
+        "Mark Herring": 43.9
+      },
+      "Williamsburg City": {
+        "Jason Miyares": 34.6,
+        "Mark Herring": 65.4
+      },
+      "Winchester City": {
+        "Jason Miyares": 47.7,
+        "Mark Herring": 52.3
+      }
+    }
+  },
+  "hod": {
+    "100": {
+      "total": 27237,
+      "candidates": [
+        {
+          "name": "Robert Bloxom",
+          "party": "Republican",
+          "votes": 15408,
+          "pct": 56.6
+        },
+        {
+          "name": "Finale Norton",
+          "party": "Democratic",
+          "votes": 11829,
+          "pct": 43.4
+        }
+      ]
+    },
+    "59": {
+      "total": 35417,
+      "candidates": [
+        {
+          "name": "Charles Fariss",
+          "party": "Republican",
+          "votes": 22891,
+          "pct": 64.6
+        },
+        {
+          "name": "Benjamin Moses",
+          "party": "Democratic",
+          "votes": 11421,
+          "pct": 32.2
+        },
+        {
+          "name": "Louis Scicli",
+          "party": "Independent",
+          "votes": 1105,
+          "pct": 3.1
+        }
+      ]
+    },
+    "25": {
+      "total": 41227,
+      "candidates": [
+        {
+          "name": "Christopher Runion",
+          "party": "Republican",
+          "votes": 25674,
+          "pct": 62.3
+        },
+        {
+          "name": "Jennifer Kitchen",
+          "party": "Democratic",
+          "votes": 15553,
+          "pct": 37.7
+        }
+      ]
+    },
+    "57": {
+      "total": 32074,
+      "candidates": [
+        {
+          "name": "Sally Hudson",
+          "party": "Democratic",
+          "votes": 25227,
+          "pct": 78.7
+        },
+        {
+          "name": "Philip Hamilton",
+          "party": "Republican",
+          "votes": 6847,
+          "pct": 21.3
+        }
+      ]
+    },
+    "58": {
+      "total": 40834,
+      "candidates": [
+        {
+          "name": "Robert Bell",
+          "party": "Republican",
+          "votes": 25835,
+          "pct": 63.3
+        },
+        {
+          "name": "Sara Ratcliffe",
+          "party": "Democratic",
+          "votes": 14999,
+          "pct": 36.7
+        }
+      ]
+    },
+    "19": {
+      "total": 35073,
+      "candidates": [
+        {
+          "name": "Terry Austin",
+          "party": "Republican",
+          "votes": 27515,
+          "pct": 78.5
+        },
+        {
+          "name": "Wendy Rowden",
+          "party": "Democratic",
+          "votes": 6918,
+          "pct": 19.7
+        },
+        {
+          "name": "Dean Davison",
+          "party": "Libertarian",
+          "votes": 640,
+          "pct": 1.8
+        }
+      ]
+    },
+    "61": {
+      "total": 31069,
+      "candidates": [
+        {
+          "name": "Thomas Wright",
+          "party": "Republican",
+          "votes": 20976,
+          "pct": 67.5
+        },
+        {
+          "name": "Trudy Berry",
+          "party": "Democratic",
+          "votes": 9418,
+          "pct": 30.3
+        },
+        {
+          "name": "Joseph Paschal",
+          "party": "Libertarian",
+          "votes": 675,
+          "pct": 2.2
+        }
+      ]
+    },
+    "23": {
+      "total": 33052,
+      "candidates": [
+        {
+          "name": "Wendell Walker",
+          "party": "Republican",
+          "votes": 22045,
+          "pct": 66.7
+        },
+        {
+          "name": "Natalie Short",
+          "party": "Democratic",
+          "votes": 11007,
+          "pct": 33.3
+        }
+      ]
+    },
+    "24": {
+      "total": 33379,
+      "candidates": [
+        {
+          "name": "Ronnie Campbell",
+          "party": "Republican",
+          "votes": 24445,
+          "pct": 73.2
+        },
+        {
+          "name": "Samuel Soghor",
+          "party": "Democratic",
+          "votes": 8934,
+          "pct": 26.8
+        }
+      ]
+    },
+    "49": {
+      "total": 25816,
+      "candidates": [
+        {
+          "name": "Alfonso Lopez",
+          "party": "Democratic",
+          "votes": 19799,
+          "pct": 76.7
+        },
+        {
+          "name": "Timothy Kilcullen",
+          "party": "Republican",
+          "votes": 5013,
+          "pct": 19.4
+        },
+        {
+          "name": "Terrence Modglin",
+          "party": "Independent",
+          "votes": 1004,
+          "pct": 3.9
+        }
+      ]
+    },
+    "48": {
+      "total": 39482,
+      "candidates": [
+        {
+          "name": "Richard Sullivan",
+          "party": "Democratic",
+          "votes": 28545,
+          "pct": 72.3
+        },
+        {
+          "name": "Edward Monroe",
+          "party": "Republican",
+          "votes": 10937,
+          "pct": 27.7
+        }
+      ]
+    },
+    "45": {
+      "total": 42379,
+      "candidates": [
+        {
+          "name": "Elizabeth Bennett-parker",
+          "party": "Democratic",
+          "votes": 31310,
+          "pct": 73.9
+        },
+        {
+          "name": "Justin Maddox",
+          "party": "Republican",
+          "votes": 11069,
+          "pct": 26.1
+        }
+      ]
+    },
+    "47": {
+      "total": 39627,
+      "candidates": [
+        {
+          "name": "Patrick Hope",
+          "party": "Democratic",
+          "votes": 31078,
+          "pct": 78.4
+        },
+        {
+          "name": "Laura Hall",
+          "party": "Republican",
+          "votes": 8549,
+          "pct": 21.6
+        }
+      ]
+    },
+    "20": {
+      "total": 34469,
+      "candidates": [
+        {
+          "name": "Gianfranco Avoli",
+          "party": "Republican",
+          "votes": 21978,
+          "pct": 63.8
+        },
+        {
+          "name": "Randall Wolf",
+          "party": "Democratic",
+          "votes": 12491,
+          "pct": 36.2
+        }
+      ]
+    },
+    "22": {
+      "total": 32874,
+      "candidates": [
+        {
+          "name": "Kathy Byron",
+          "party": "Republican",
+          "votes": 23922,
+          "pct": 72.8
+        },
+        {
+          "name": "Gregory Eaton",
+          "party": "Democratic",
+          "votes": 8415,
+          "pct": 25.6
+        },
+        {
+          "name": "Sarah Jerose",
+          "party": "Libertarian",
+          "votes": 537,
+          "pct": 1.6
+        }
+      ]
+    },
+    "3": {
+      "total": 21193,
+      "candidates": [
+        {
+          "name": "James Morefield",
+          "party": "Republican",
+          "votes": 21193,
+          "pct": 100.0
+        }
+      ]
+    },
+    "17": {
+      "total": 26102,
+      "candidates": [
+        {
+          "name": "Christopher Head",
+          "party": "Republican",
+          "votes": 26102,
+          "pct": 100.0
+        }
+      ]
+    },
+    "75": {
+      "total": 27548,
+      "candidates": [
+        {
+          "name": "Howard Wachsmann",
+          "party": "Republican",
+          "votes": 14487,
+          "pct": 52.6
+        },
+        {
+          "name": "Roslyn Tyler",
+          "party": "Democratic",
+          "votes": 13061,
+          "pct": 47.4
+        }
+      ]
+    },
+    "60": {
+      "total": 21128,
+      "candidates": [
+        {
+          "name": "James Edmunds",
+          "party": "Republican",
+          "votes": 21128,
+          "pct": 100.0
+        }
+      ]
+    },
+    "54": {
+      "total": 34847,
+      "candidates": [
+        {
+          "name": "Robert Orrock",
+          "party": "Republican",
+          "votes": 21231,
+          "pct": 60.9
+        },
+        {
+          "name": "Eric Butterworth",
+          "party": "Democratic",
+          "votes": 13616,
+          "pct": 39.1
+        }
+      ]
+    },
+    "55": {
+      "total": 42032,
+      "candidates": [
+        {
+          "name": "Hyland Fowler",
+          "party": "Republican",
+          "votes": 27009,
+          "pct": 64.3
+        },
+        {
+          "name": "Rachel Levy",
+          "party": "Democratic",
+          "votes": 15023,
+          "pct": 35.7
+        }
+      ]
+    },
+    "99": {
+      "total": 36338,
+      "candidates": [
+        {
+          "name": "Margaret Ransone",
+          "party": "Republican",
+          "votes": 23780,
+          "pct": 65.4
+        },
+        {
+          "name": "Linwood Blizzard",
+          "party": "Democratic",
+          "votes": 12558,
+          "pct": 34.6
+        }
+      ]
+    },
+    "6": {
+      "total": 25454,
+      "candidates": [
+        {
+          "name": "Jeffrey Campbell",
+          "party": "Republican",
+          "votes": 25454,
+          "pct": 100.0
+        }
+      ]
+    },
+    "70": {
+      "total": 30199,
+      "candidates": [
+        {
+          "name": "Delores Mcquinn",
+          "party": "Democratic",
+          "votes": 21764,
+          "pct": 72.1
+        },
+        {
+          "name": "David Vaught",
+          "party": "Independent",
+          "votes": 8435,
+          "pct": 27.9
+        }
+      ]
+    },
+    "65": {
+      "total": 50856,
+      "candidates": [
+        {
+          "name": "Robert Ware",
+          "party": "Republican",
+          "votes": 33621,
+          "pct": 66.1
+        },
+        {
+          "name": "Caitlin Coakley",
+          "party": "Democratic",
+          "votes": 17235,
+          "pct": 33.9
+        }
+      ]
+    },
+    "62": {
+      "total": 29509,
+      "candidates": [
+        {
+          "name": "Carrie Coyner",
+          "party": "Republican",
+          "votes": 16679,
+          "pct": 56.5
+        },
+        {
+          "name": "Jasmine Gore",
+          "party": "Democratic",
+          "votes": 12830,
+          "pct": 43.5
+        }
+      ]
+    },
+    "68": {
+      "total": 46317,
+      "candidates": [
+        {
+          "name": "Dawn Adams",
+          "party": "Democratic",
+          "votes": 24624,
+          "pct": 53.2
+        },
+        {
+          "name": "Mark Earley",
+          "party": "Republican",
+          "votes": 21693,
+          "pct": 46.8
+        }
+      ]
+    },
+    "27": {
+      "total": 36761,
+      "candidates": [
+        {
+          "name": "Roxann Robinson",
+          "party": "Republican",
+          "votes": 19047,
+          "pct": 51.8
+        },
+        {
+          "name": "Debra Gardner",
+          "party": "Democratic",
+          "votes": 17714,
+          "pct": 48.2
+        }
+      ]
+    },
+    "66": {
+      "total": 32087,
+      "candidates": [
+        {
+          "name": "Michael Cherry",
+          "party": "Republican",
+          "votes": 16833,
+          "pct": 52.5
+        },
+        {
+          "name": "Katie Sponsler",
+          "party": "Democratic",
+          "votes": 15254,
+          "pct": 47.5
+        }
+      ]
+    },
+    "63": {
+      "total": 33114,
+      "candidates": [
+        {
+          "name": "Kimberly Taylor",
+          "party": "Republican",
+          "votes": 16813,
+          "pct": 50.8
+        },
+        {
+          "name": "Lashrecse Aird",
+          "party": "Democratic",
+          "votes": 16301,
+          "pct": 49.2
+        }
+      ]
+    },
+    "33": {
+      "total": 43237,
+      "candidates": [
+        {
+          "name": "David Larock",
+          "party": "Republican",
+          "votes": 25188,
+          "pct": 58.3
+        },
+        {
+          "name": "Paul Siker",
+          "party": "Democratic",
+          "votes": 18049,
+          "pct": 41.7
+        }
+      ]
+    },
+    "10": {
+      "total": 41635,
+      "candidates": [
+        {
+          "name": "Wendy Gooditis",
+          "party": "Democratic",
+          "votes": 21229,
+          "pct": 51.0
+        },
+        {
+          "name": "Nicholas Clemente",
+          "party": "Republican",
+          "votes": 20406,
+          "pct": 49.0
+        }
+      ]
+    },
+    "8": {
+      "total": 35120,
+      "candidates": [
+        {
+          "name": "Joseph Mcnamara",
+          "party": "Republican",
+          "votes": 25030,
+          "pct": 71.3
+        },
+        {
+          "name": "Dustin Wimbish",
+          "party": "Democratic",
+          "votes": 10090,
+          "pct": 28.7
+        }
+      ]
+    },
+    "30": {
+      "total": 35929,
+      "candidates": [
+        {
+          "name": "Nicholas Freitas",
+          "party": "Republican",
+          "votes": 23537,
+          "pct": 65.5
+        },
+        {
+          "name": "Annette Hyde",
+          "party": "Democratic",
+          "votes": 12392,
+          "pct": 34.5
+        }
+      ]
+    },
+    "18": {
+      "total": 38986,
+      "candidates": [
+        {
+          "name": "Michael Webert",
+          "party": "Republican",
+          "votes": 25737,
+          "pct": 66.0
+        },
+        {
+          "name": "Douglas Ward",
+          "party": "Democratic",
+          "votes": 13249,
+          "pct": 34.0
+        }
+      ]
+    },
+    "4": {
+      "total": 22965,
+      "candidates": [
+        {
+          "name": "William Wampler",
+          "party": "Republican",
+          "votes": 22965,
+          "pct": 100.0
+        }
+      ]
+    },
+    "98": {
+      "total": 37576,
+      "candidates": [
+        {
+          "name": "Myron Hodges",
+          "party": "Republican",
+          "votes": 27056,
+          "pct": 72.0
+        },
+        {
+          "name": "Elizabeth Webster",
+          "party": "Democratic",
+          "votes": 10520,
+          "pct": 28.0
+        }
+      ]
+    },
+    "43": {
+      "total": 31949,
+      "candidates": [
+        {
+          "name": "Mark Sickles",
+          "party": "Democratic",
+          "votes": 22447,
+          "pct": 70.3
+        },
+        {
+          "name": "Brenton Hammond",
+          "party": "Republican",
+          "votes": 9502,
+          "pct": 29.7
+        }
+      ]
+    },
+    "40": {
+      "total": 38334,
+      "candidates": [
+        {
+          "name": "Daniel Helmer",
+          "party": "Democratic",
+          "votes": 20201,
+          "pct": 52.7
+        },
+        {
+          "name": "Harold Pyon",
+          "party": "Republican",
+          "votes": 18133,
+          "pct": 47.3
+        }
+      ]
+    },
+    "37": {
+      "total": 28041,
+      "candidates": [
+        {
+          "name": "David Bulova",
+          "party": "Democratic",
+          "votes": 18750,
+          "pct": 66.9
+        },
+        {
+          "name": "Kenneth Meteiver",
+          "party": "Republican",
+          "votes": 9291,
+          "pct": 33.1
+        }
+      ]
+    },
+    "42": {
+      "total": 35560,
+      "candidates": [
+        {
+          "name": "Kathy Tran",
+          "party": "Democratic",
+          "votes": 21374,
+          "pct": 60.1
+        },
+        {
+          "name": "Edward Mcgovern",
+          "party": "Republican",
+          "votes": 14186,
+          "pct": 39.9
+        }
+      ]
+    },
+    "41": {
+      "total": 35547,
+      "candidates": [
+        {
+          "name": "Eileen Filler-corn",
+          "party": "Democratic",
+          "votes": 23201,
+          "pct": 65.3
+        },
+        {
+          "name": "John Wolfe",
+          "party": "Republican",
+          "votes": 12346,
+          "pct": 34.7
+        }
+      ]
+    },
+    "34": {
+      "total": 40420,
+      "candidates": [
+        {
+          "name": "Kathleen Murphy",
+          "party": "Democratic",
+          "votes": 23093,
+          "pct": 57.1
+        },
+        {
+          "name": "Gary Pan",
+          "party": "Republican",
+          "votes": 17327,
+          "pct": 42.9
+        }
+      ]
+    },
+    "86": {
+      "total": 29412,
+      "candidates": [
+        {
+          "name": "Irene Shin",
+          "party": "Democratic",
+          "votes": 19296,
+          "pct": 65.6
+        },
+        {
+          "name": "Julie Perry",
+          "party": "Republican",
+          "votes": 10116,
+          "pct": 34.4
+        }
+      ]
+    },
+    "67": {
+      "total": 34760,
+      "candidates": [
+        {
+          "name": "Karrie Delaney",
+          "party": "Democratic",
+          "votes": 21111,
+          "pct": 60.7
+        },
+        {
+          "name": "Robert Frizzelle",
+          "party": "Republican",
+          "votes": 13649,
+          "pct": 39.3
+        }
+      ]
+    },
+    "36": {
+      "total": 36476,
+      "candidates": [
+        {
+          "name": "Kenneth Plum",
+          "party": "Democratic",
+          "votes": 26189,
+          "pct": 71.8
+        },
+        {
+          "name": "Matthew Lang",
+          "party": "Republican",
+          "votes": 10287,
+          "pct": 28.2
+        }
+      ]
+    },
+    "35": {
+      "total": 35201,
+      "candidates": [
+        {
+          "name": "Sydney Keam",
+          "party": "Democratic",
+          "votes": 24226,
+          "pct": 68.8
+        },
+        {
+          "name": "Kevin Mcgrath",
+          "party": "Republican",
+          "votes": 10975,
+          "pct": 31.2
+        }
+      ]
+    },
+    "38": {
+      "total": 24397,
+      "candidates": [
+        {
+          "name": "Laura Kory",
+          "party": "Democratic",
+          "votes": 16853,
+          "pct": 69.1
+        },
+        {
+          "name": "Thomas Pafford",
+          "party": "Republican",
+          "votes": 7544,
+          "pct": 30.9
+        }
+      ]
+    },
+    "53": {
+      "total": 31547,
+      "candidates": [
+        {
+          "name": "Marcus Simon",
+          "party": "Democratic",
+          "votes": 22741,
+          "pct": 72.1
+        },
+        {
+          "name": "Sarah White",
+          "party": "Republican",
+          "votes": 8806,
+          "pct": 27.9
+        }
+      ]
+    },
+    "39": {
+      "total": 31094,
+      "candidates": [
+        {
+          "name": "Vivian Watts",
+          "party": "Democratic",
+          "votes": 20712,
+          "pct": 66.6
+        },
+        {
+          "name": "Maureen Brody",
+          "party": "Republican",
+          "votes": 10382,
+          "pct": 33.4
+        }
+      ]
+    },
+    "44": {
+      "total": 26923,
+      "candidates": [
+        {
+          "name": "Paul Krizek",
+          "party": "Democratic",
+          "votes": 18262,
+          "pct": 67.8
+        },
+        {
+          "name": "Richard Hayden",
+          "party": "Republican",
+          "votes": 8661,
+          "pct": 32.2
+        }
+      ]
+    },
+    "31": {
+      "total": 35272,
+      "candidates": [
+        {
+          "name": "Elizabeth Guzman",
+          "party": "Democratic",
+          "votes": 18384,
+          "pct": 52.1
+        },
+        {
+          "name": "Benjamin Baldwin",
+          "party": "Republican",
+          "votes": 16888,
+          "pct": 47.9
+        }
+      ]
+    },
+    "88": {
+      "total": 39628,
+      "candidates": [
+        {
+          "name": "Phillip Scott",
+          "party": "Republican",
+          "votes": 22747,
+          "pct": 57.4
+        },
+        {
+          "name": "Lakecia Evans",
+          "party": "Democratic",
+          "votes": 16158,
+          "pct": 40.8
+        },
+        {
+          "name": "Timothy Lewis",
+          "party": "Libertarian",
+          "votes": 723,
+          "pct": 1.8
+        }
+      ]
+    },
+    "7": {
+      "total": 32012,
+      "candidates": [
+        {
+          "name": "Marie March",
+          "party": "Republican",
+          "votes": 21098,
+          "pct": 65.9
+        },
+        {
+          "name": "Derek Kitts",
+          "party": "Democratic",
+          "votes": 10914,
+          "pct": 34.1
+        }
+      ]
+    },
+    "9": {
+      "total": 31136,
+      "candidates": [
+        {
+          "name": "Wren Williams",
+          "party": "Republican",
+          "votes": 23926,
+          "pct": 76.8
+        },
+        {
+          "name": "Bridgette Craighead",
+          "party": "Democratic",
+          "votes": 7210,
+          "pct": 23.2
+        }
+      ]
+    },
+    "29": {
+      "total": 34301,
+      "candidates": [
+        {
+          "name": "William Wiley",
+          "party": "Republican",
+          "votes": 22843,
+          "pct": 66.6
+        },
+        {
+          "name": "Delmara Bayliss",
+          "party": "Democratic",
+          "votes": 11458,
+          "pct": 33.4
+        }
+      ]
+    },
+    "12": {
+      "total": 25095,
+      "candidates": [
+        {
+          "name": "Jason Ballard",
+          "party": "Republican",
+          "votes": 13871,
+          "pct": 55.3
+        },
+        {
+          "name": "Christopher Hurst",
+          "party": "Democratic",
+          "votes": 11224,
+          "pct": 44.7
+        }
+      ]
+    },
+    "56": {
+      "total": 44893,
+      "candidates": [
+        {
+          "name": "John Mcguire",
+          "party": "Republican",
+          "votes": 27706,
+          "pct": 61.7
+        },
+        {
+          "name": "Blakely Lockhart",
+          "party": "Democratic",
+          "votes": 17187,
+          "pct": 38.3
+        }
+      ]
+    },
+    "5": {
+      "total": 24601,
+      "candidates": [
+        {
+          "name": "Israel O'quinn",
+          "party": "Republican",
+          "votes": 24601,
+          "pct": 100.0
+        }
+      ]
+    },
+    "97": {
+      "total": 46335,
+      "candidates": [
+        {
+          "name": "Scott Wyatt",
+          "party": "Republican",
+          "votes": 33782,
+          "pct": 72.9
+        },
+        {
+          "name": "Raymond Scott",
+          "party": "Democratic",
+          "votes": 12553,
+          "pct": 27.1
+        }
+      ]
+    },
+    "72": {
+      "total": 37137,
+      "candidates": [
+        {
+          "name": "Schuyler Vanvalkenburg",
+          "party": "Democratic",
+          "votes": 19710,
+          "pct": 53.1
+        },
+        {
+          "name": "Christopher Holmes",
+          "party": "Republican",
+          "votes": 17427,
+          "pct": 46.9
+        }
+      ]
+    },
+    "74": {
+      "total": 31452,
+      "candidates": [
+        {
+          "name": "Lamont Bagby",
+          "party": "Democratic",
+          "votes": 22913,
+          "pct": 72.9
+        },
+        {
+          "name": "James Brooks",
+          "party": "Republican",
+          "votes": 8539,
+          "pct": 27.1
+        }
+      ]
+    },
+    "73": {
+      "total": 34220,
+      "candidates": [
+        {
+          "name": "Rodney Willett",
+          "party": "Democratic",
+          "votes": 17972,
+          "pct": 52.5
+        },
+        {
+          "name": "Mary Kastelberg",
+          "party": "Republican",
+          "votes": 16248,
+          "pct": 47.5
+        }
+      ]
+    },
+    "16": {
+      "total": 27720,
+      "candidates": [
+        {
+          "name": "Leslie Adams",
+          "party": "Republican",
+          "votes": 19412,
+          "pct": 70.0
+        },
+        {
+          "name": "Chance Trevillian",
+          "party": "Democratic",
+          "votes": 8308,
+          "pct": 30.0
+        }
+      ]
+    },
+    "14": {
+      "total": 27036,
+      "candidates": [
+        {
+          "name": "Daniel Marshall",
+          "party": "Republican",
+          "votes": 17750,
+          "pct": 65.7
+        },
+        {
+          "name": "Sarah Deitz",
+          "party": "Democratic",
+          "votes": 9286,
+          "pct": 34.3
+        }
+      ]
+    },
+    "64": {
+      "total": 38301,
+      "candidates": [
+        {
+          "name": "Emily Brewer",
+          "party": "Republican",
+          "votes": 24903,
+          "pct": 65.0
+        },
+        {
+          "name": "Michael Drewry",
+          "party": "Democratic",
+          "votes": 13398,
+          "pct": 35.0
+        }
+      ]
+    },
+    "96": {
+      "total": 45577,
+      "candidates": [
+        {
+          "name": "Amanda Batten",
+          "party": "Republican",
+          "votes": 25431,
+          "pct": 55.8
+        },
+        {
+          "name": "Mark Downey",
+          "party": "Democratic",
+          "votes": 20146,
+          "pct": 44.2
+        }
+      ]
+    },
+    "93": {
+      "total": 33016,
+      "candidates": [
+        {
+          "name": "Michael Mullin",
+          "party": "Democratic",
+          "votes": 17048,
+          "pct": 51.6
+        },
+        {
+          "name": "Jordan Gray",
+          "party": "Republican",
+          "votes": 15968,
+          "pct": 48.4
+        }
+      ]
+    },
+    "1": {
+      "total": 21910,
+      "candidates": [
+        {
+          "name": "Terry Kilgore",
+          "party": "Republican",
+          "votes": 21910,
+          "pct": 100.0
+        }
+      ]
+    },
+    "32": {
+      "total": 41110,
+      "candidates": [
+        {
+          "name": "David Reid",
+          "party": "Democratic",
+          "votes": 23839,
+          "pct": 58.0
+        },
+        {
+          "name": "Harold Pio",
+          "party": "Republican",
+          "votes": 16385,
+          "pct": 39.9
+        },
+        {
+          "name": "Nicholas Allegro",
+          "party": "Independent",
+          "votes": 886,
+          "pct": 2.2
+        }
+      ]
+    },
+    "87": {
+      "total": 41621,
+      "candidates": [
+        {
+          "name": "Suhas Subramanyam",
+          "party": "Democratic",
+          "votes": 24348,
+          "pct": 58.5
+        },
+        {
+          "name": "Gregory Moulthrop",
+          "party": "Republican",
+          "votes": 17273,
+          "pct": 41.5
+        }
+      ]
+    },
+    "15": {
+      "total": 34214,
+      "candidates": [
+        {
+          "name": "Christopher Gilbert",
+          "party": "Republican",
+          "votes": 26613,
+          "pct": 77.8
+        },
+        {
+          "name": "Emily Scott",
+          "party": "Democratic",
+          "votes": 7601,
+          "pct": 22.2
+        }
+      ]
+    },
+    "51": {
+      "total": 35604,
+      "candidates": [
+        {
+          "name": "Briana Sewell",
+          "party": "Democratic",
+          "votes": 19038,
+          "pct": 53.5
+        },
+        {
+          "name": "Timothy Cox",
+          "party": "Republican",
+          "votes": 16566,
+          "pct": 46.5
+        }
+      ]
+    },
+    "2": {
+      "total": 26703,
+      "candidates": [
+        {
+          "name": "Candi King",
+          "party": "Democratic",
+          "votes": 15310,
+          "pct": 57.3
+        },
+        {
+          "name": "Gina Ciarcia",
+          "party": "Republican",
+          "votes": 11393,
+          "pct": 42.7
+        }
+      ]
+    },
+    "13": {
+      "total": 28729,
+      "candidates": [
+        {
+          "name": "Danica Roem",
+          "party": "Democratic",
+          "votes": 15604,
+          "pct": 54.3
+        },
+        {
+          "name": "Christopher Stone",
+          "party": "Republican",
+          "votes": 13125,
+          "pct": 45.7
+        }
+      ]
+    },
+    "52": {
+      "total": 21653,
+      "candidates": [
+        {
+          "name": "Luke Torian",
+          "party": "Democratic",
+          "votes": 15196,
+          "pct": 70.2
+        },
+        {
+          "name": "Maria Martin",
+          "party": "Republican",
+          "votes": 6457,
+          "pct": 29.8
+        }
+      ]
+    },
+    "50": {
+      "total": 26319,
+      "candidates": [
+        {
+          "name": "Michelle-ann Lopes-maldonado",
+          "party": "Democratic",
+          "votes": 14426,
+          "pct": 54.8
+        },
+        {
+          "name": "Steve Pleickhardt",
+          "party": "Republican",
+          "votes": 11893,
+          "pct": 45.2
+        }
+      ]
+    },
+    "26": {
+      "total": 25383,
+      "candidates": [
+        {
+          "name": "Tony Wilt",
+          "party": "Republican",
+          "votes": 15062,
+          "pct": 59.3
+        },
+        {
+          "name": "William Helsley",
+          "party": "Democratic",
+          "votes": 10321,
+          "pct": 40.7
+        }
+      ]
+    },
+    "28": {
+      "total": 32109,
+      "candidates": [
+        {
+          "name": "Tara Durant",
+          "party": "Republican",
+          "votes": 16378,
+          "pct": 51.0
+        },
+        {
+          "name": "Joshua Cole",
+          "party": "Democratic",
+          "votes": 15731,
+          "pct": 49.0
+        }
+      ]
+    },
+    "91": {
+      "total": 27805,
+      "candidates": [
+        {
+          "name": "Aijalon Cordoza",
+          "party": "Republican",
+          "votes": 13741,
+          "pct": 49.4
+        },
+        {
+          "name": "Martha Mugler",
+          "party": "Democratic",
+          "votes": 13647,
+          "pct": 49.1
+        },
+        {
+          "name": "Charles West",
+          "party": "Libertarian",
+          "votes": 417,
+          "pct": 1.5
+        }
+      ]
+    },
+    "46": {
+      "total": 20445,
+      "candidates": [
+        {
+          "name": "Charniele Herring",
+          "party": "Democratic",
+          "votes": 20445,
+          "pct": 100.0
+        }
+      ]
+    },
+    "81": {
+      "total": 29774,
+      "candidates": [
+        {
+          "name": "Barry Knight",
+          "party": "Republican",
+          "votes": 17271,
+          "pct": 58.0
+        },
+        {
+          "name": "Jeffrey Feld",
+          "party": "Democratic",
+          "votes": 12503,
+          "pct": 42.0
+        }
+      ]
+    },
+    "77": {
+      "total": 26336,
+      "candidates": [
+        {
+          "name": "Clifton Hayes",
+          "party": "Democratic",
+          "votes": 16135,
+          "pct": 61.3
+        },
+        {
+          "name": "Geoffrey Burke",
+          "party": "Republican",
+          "votes": 10201,
+          "pct": 38.7
+        }
+      ]
+    },
+    "76": {
+      "total": 34361,
+      "candidates": [
+        {
+          "name": "Clinton Jenkins",
+          "party": "Democratic",
+          "votes": 18353,
+          "pct": 53.4
+        },
+        {
+          "name": "Michael Dillender",
+          "party": "Republican",
+          "votes": 15123,
+          "pct": 44.0
+        },
+        {
+          "name": "Craig Warren",
+          "party": "Independent",
+          "votes": 885,
+          "pct": 2.6
+        }
+      ]
+    },
+    "78": {
+      "total": 37695,
+      "candidates": [
+        {
+          "name": "James Leftwich",
+          "party": "Republican",
+          "votes": 24907,
+          "pct": 66.1
+        },
+        {
+          "name": "Melanie Cornelisse",
+          "party": "Democratic",
+          "votes": 12788,
+          "pct": 33.9
+        }
+      ]
+    },
+    "21": {
+      "total": 29980,
+      "candidates": [
+        {
+          "name": "Kelly Convirs-fowler",
+          "party": "Democratic",
+          "votes": 15162,
+          "pct": 50.6
+        },
+        {
+          "name": "Tanya Gould",
+          "party": "Republican",
+          "votes": 14818,
+          "pct": 49.4
+        }
+      ]
+    },
+    "79": {
+      "total": 18930,
+      "candidates": [
+        {
+          "name": "Nadarius Clark",
+          "party": "Democratic",
+          "votes": 10647,
+          "pct": 56.2
+        },
+        {
+          "name": "Lawrence Mason",
+          "party": "Republican",
+          "votes": 8283,
+          "pct": 43.8
+        }
+      ]
+    },
+    "92": {
+      "total": 26022,
+      "candidates": [
+        {
+          "name": "Jeion Ward",
+          "party": "Democratic",
+          "votes": 19235,
+          "pct": 73.9
+        },
+        {
+          "name": "Benjamin Siff",
+          "party": "Republican",
+          "votes": 6787,
+          "pct": 26.1
+        }
+      ]
+    },
+    "95": {
+      "total": 21422,
+      "candidates": [
+        {
+          "name": "Marcia Price",
+          "party": "Democratic",
+          "votes": 13633,
+          "pct": 63.6
+        },
+        {
+          "name": "David Wilson",
+          "party": "Republican",
+          "votes": 7789,
+          "pct": 36.4
+        }
+      ]
+    },
+    "94": {
+      "total": 24459,
+      "candidates": [
+        {
+          "name": "Shelly Simonds",
+          "party": "Democratic",
+          "votes": 13725,
+          "pct": 56.1
+        },
+        {
+          "name": "Charles Harper",
+          "party": "Republican",
+          "votes": 10734,
+          "pct": 43.9
+        }
+      ]
+    },
+    "90": {
+      "total": 22126,
+      "candidates": [
+        {
+          "name": "Angelia Graves",
+          "party": "Democratic",
+          "votes": 14295,
+          "pct": 64.6
+        },
+        {
+          "name": "Sylvia Bryant",
+          "party": "Republican",
+          "votes": 7831,
+          "pct": 35.4
+        }
+      ]
+    },
+    "89": {
+      "total": 21790,
+      "candidates": [
+        {
+          "name": "Jerrauld Jones",
+          "party": "Democratic",
+          "votes": 17450,
+          "pct": 80.1
+        },
+        {
+          "name": "Hahns Copeland",
+          "party": "Republican",
+          "votes": 4340,
+          "pct": 19.9
+        }
+      ]
+    },
+    "83": {
+      "total": 28249,
+      "candidates": [
+        {
+          "name": "Timothy Anderson",
+          "party": "Republican",
+          "votes": 14456,
+          "pct": 51.2
+        },
+        {
+          "name": "Nancy Guy",
+          "party": "Democratic",
+          "votes": 13793,
+          "pct": 48.8
+        }
+      ]
+    },
+    "80": {
+      "total": 23715,
+      "candidates": [
+        {
+          "name": "Don Scott",
+          "party": "Democratic",
+          "votes": 15703,
+          "pct": 66.2
+        },
+        {
+          "name": "Deanna Stanton",
+          "party": "Republican",
+          "votes": 8012,
+          "pct": 33.8
+        }
+      ]
+    },
+    "69": {
+      "total": 25160,
+      "candidates": [
+        {
+          "name": "Betsy Carr",
+          "party": "Democratic",
+          "votes": 21470,
+          "pct": 85.3
+        },
+        {
+          "name": "Sheila Furey",
+          "party": "Republican",
+          "votes": 3690,
+          "pct": 14.7
+        }
+      ]
+    },
+    "71": {
+      "total": 29828,
+      "candidates": [
+        {
+          "name": "Jeffrey Bourne",
+          "party": "Democratic",
+          "votes": 25587,
+          "pct": 85.8
+        },
+        {
+          "name": "Nancye Hunter",
+          "party": "Republican",
+          "votes": 4241,
+          "pct": 14.2
+        }
+      ]
+    },
+    "11": {
+      "total": 22495,
+      "candidates": [
+        {
+          "name": "Salam Rasoul",
+          "party": "Democratic",
+          "votes": 14532,
+          "pct": 64.6
+        },
+        {
+          "name": "Charles Nave",
+          "party": "Republican",
+          "votes": 7963,
+          "pct": 35.4
+        }
+      ]
+    },
+    "85": {
+      "total": 28413,
+      "candidates": [
+        {
+          "name": "Karen Greenhalgh",
+          "party": "Republican",
+          "votes": 14270,
+          "pct": 50.2
+        },
+        {
+          "name": "Alex Askew",
+          "party": "Democratic",
+          "votes": 14143,
+          "pct": 49.8
+        }
+      ]
+    },
+    "82": {
+      "total": 34964,
+      "candidates": [
+        {
+          "name": "Anne Tata",
+          "party": "Republican",
+          "votes": 20768,
+          "pct": 59.4
+        },
+        {
+          "name": "Scott Flax",
+          "party": "Democratic",
+          "votes": 14196,
+          "pct": 40.6
+        }
+      ]
+    },
+    "84": {
+      "total": 27632,
+      "candidates": [
+        {
+          "name": "Glenn Davis",
+          "party": "Republican",
+          "votes": 15400,
+          "pct": 55.7
+        },
+        {
+          "name": "Kimberly Melnyk",
+          "party": "Democratic",
+          "votes": 12232,
+          "pct": 44.3
+        }
+      ]
+    }
+  }
+}

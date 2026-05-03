@@ -1,0 +1,215 @@
+{
+  "election_year": "2022",
+  "congress": {
+    "2nd": {
+      "district": "2nd",
+      "total": 296547,
+      "candidates": [
+        {
+          "name": "JENNIFER KIGGANS",
+          "party": "Republican",
+          "votes": 153328,
+          "pct": 51.7
+        },
+        {
+          "name": "Elaine Luria",
+          "party": "Democratic",
+          "votes": 143219,
+          "pct": 48.3
+        }
+      ]
+    },
+    "7th": {
+      "district": "7th",
+      "total": 273943,
+      "candidates": [
+        {
+          "name": "ABIGAIL SPANBERGER",
+          "party": "Democratic",
+          "votes": 143357,
+          "pct": 52.3
+        },
+        {
+          "name": "Yesli Vega",
+          "party": "Republican",
+          "votes": 130586,
+          "pct": 47.7
+        }
+      ]
+    },
+    "5th": {
+      "district": "5th",
+      "total": 307187,
+      "candidates": [
+        {
+          "name": "ROBERT GOOD",
+          "party": "Republican",
+          "votes": 177191,
+          "pct": 57.7
+        },
+        {
+          "name": "joshua throneburg",
+          "party": "Democratic",
+          "votes": 129996,
+          "pct": 42.3
+        }
+      ]
+    },
+    "6th": {
+      "district": "6th",
+      "total": 268762,
+      "candidates": [
+        {
+          "name": "BENJAMIN CLINE",
+          "party": "Republican",
+          "votes": 173352,
+          "pct": 64.5
+        },
+        {
+          "name": "JENNIFER LEWIS",
+          "party": "Democratic",
+          "votes": 95410,
+          "pct": 35.5
+        }
+      ]
+    },
+    "8th": {
+      "district": "8th",
+      "total": 268427,
+      "candidates": [
+        {
+          "name": "DONALD BEYER",
+          "party": "Democratic",
+          "votes": 197760,
+          "pct": 73.7
+        },
+        {
+          "name": "KARINA LIPSMAN",
+          "party": "Republican",
+          "votes": 66589,
+          "pct": 24.8
+        },
+        {
+          "name": "THEODORE FIKRE",
+          "party": "Independent",
+          "votes": 4078,
+          "pct": 1.5
+        }
+      ]
+    },
+    "9th": {
+      "district": "9th",
+      "total": 248234,
+      "candidates": [
+        {
+          "name": "HOWARD GRIFFITH",
+          "party": "Republican",
+          "votes": 182207,
+          "pct": 73.4
+        },
+        {
+          "name": "TAYSHA DEVAUGHAN",
+          "party": "Democratic",
+          "votes": 66027,
+          "pct": 26.6
+        }
+      ]
+    },
+    "4th": {
+      "district": "4th",
+      "total": 244547,
+      "candidates": [
+        {
+          "name": "ASTON MCEACHIN",
+          "party": "Democratic",
+          "votes": 159044,
+          "pct": 65.0
+        },
+        {
+          "name": "LEON BENJAMIN",
+          "party": "Republican",
+          "votes": 85503,
+          "pct": 35.0
+        }
+      ]
+    },
+    "1st": {
+      "district": "1st",
+      "total": 342445,
+      "candidates": [
+        {
+          "name": "ROBERT WITTMAN",
+          "party": "Republican",
+          "votes": 191828,
+          "pct": 56.0
+        },
+        {
+          "name": "HERBERT JONES",
+          "party": "Democratic",
+          "votes": 147229,
+          "pct": 43.0
+        },
+        {
+          "name": "DAVID FOSTER",
+          "party": "Independent",
+          "votes": 3388,
+          "pct": 1.0
+        }
+      ]
+    },
+    "11th": {
+      "district": "11th",
+      "total": 288824,
+      "candidates": [
+        {
+          "name": "GERALD CONNOLLY",
+          "party": "Democratic",
+          "votes": 193190,
+          "pct": 66.9
+        },
+        {
+          "name": "JAMES MYLES",
+          "party": "Republican",
+          "votes": 95634,
+          "pct": 33.1
+        }
+      ]
+    },
+    "10th": {
+      "district": "10th",
+      "total": 295568,
+      "candidates": [
+        {
+          "name": "JENNIFER WEXTON",
+          "party": "Democratic",
+          "votes": 157405,
+          "pct": 53.3
+        },
+        {
+          "name": "hung cao",
+          "party": "Republican",
+          "votes": 138163,
+          "pct": 46.7
+        }
+      ]
+    },
+    "3rd": {
+      "district": "3rd",
+      "total": 207262,
+      "candidates": [
+        {
+          "name": "ROBERT SCOTT",
+          "party": "Democratic",
+          "votes": 139659,
+          "pct": 67.4
+        },
+        {
+          "name": "Terry Namkung",
+          "party": "Republican",
+          "votes": 67603,
+          "pct": 32.6
+        }
+      ]
+    }
+  }
+}

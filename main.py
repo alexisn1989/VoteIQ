@@ -1690,6 +1690,117 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         ).add_to(m)
         title = "2024 Virginia — Congressional District Results"
 
+    elif layer in ("gov_2021", "ltgov_2021", "ag_2021"):
+        race_map = {"gov_2021": "Governor", "ltgov_2021": "Lieutenant Governor", "ag_2021": "Attorney General"}
+        title_map = {
+            "gov_2021": "2021 Virginia — Governor by Locality",
+            "ltgov_2021": "2021 Virginia — Lt. Governor by Locality",
+            "ag_2021": "2021 Virginia — Attorney General by Locality",
+        }
+        race_name = race_map[layer]
+        raw21 = _load_2021_results()
+        cand_party = {}
+        for _race in raw21.get("statewide", []):
+            if _race["race"] == race_name:
+                for _c in _race["candidates"]:
+                    cand_party[_c["name"]] = _c["party"]
+        race_data = raw21.get("locality_results", {}).get(race_name, {})
+
+        def _nloc21(n): return n.upper().replace("&", "AND").strip()
+        race_lookup21 = {_nloc21(k): v for k, v in race_data.items()}
+
+        with open(os.path.join(BASE_DIR, "va_counties.json"), encoding="utf-8") as _f:
+            counties_geojson21 = json.load(_f)
+
+        for feat in counties_geojson21["features"]:
+            props = feat.get("properties", {})
+            name = props.get("NAME", "")
+            lsad = props.get("LSAD", "")
+            geo_key = _nloc21(f"{name} {lsad}")
+            result = race_lookup21.get(geo_key, {})
+            if result:
+                sorted_cands = sorted(result.items(), key=lambda x: -x[1])
+                w_name, w_pct = sorted_cands[0]
+                r_name, r_pct = sorted_cands[1] if len(sorted_cands) > 1 else ("—", 0)
+                w_party = cand_party.get(w_name, "")
+                margin = max(0.0, w_pct - 50.0)
+                opacity = round(0.2 + min(margin / 35.0, 1.0) * 0.6, 3)
+            else:
+                w_name, w_pct, w_party, r_name, r_pct, opacity = "—", 0, "", "—", 0, 0.1
+            props["_locality"] = f"{name} {lsad}".title()
+            props["_winner"] = f"{w_name} ({w_pct:.1f}%)"
+            props["_runner"] = f"{r_name} ({r_pct:.1f}%)"
+            props["_party"] = w_party
+            props["_opacity"] = opacity
+
+        def _2021_locality_style(feat):
+            party = feat["properties"].get("_party", "")
+            op = feat["properties"].get("_opacity", 0.1)
+            fill = "#c8102e" if "republican" in party.lower() else "#1a52c8" if "democrat" in party.lower() else "#aaaaaa"
+            return {"fillColor": fill, "color": "#555", "weight": 0.5, "fillOpacity": op}
+
+        folium.GeoJson(
+            counties_geojson21,
+            style_function=_2021_locality_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["_locality", "_winner", "_runner"],
+                aliases=["Locality:", "Winner:", "Runner-Up:"],
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        title = title_map[layer]
+
+    elif layer == "congress_2022":
+        from shapely.geometry import mapping as _mapping
+        raw22 = _load_2022_results()
+        congress_data22 = raw22.get("congress", {})
+        _ORDINALS22 = {1:"1st",2:"2nd",3:"3rd",4:"4th",5:"5th",6:"6th",7:"7th",8:"8th",9:"9th",10:"10th",11:"11th"}
+        va_cd = _get_va_cd()
+        features22 = []
+        for _, row in va_cd.iterrows():
+            try:
+                dist_num = int(row["CD118FP"])
+                dist_key = _ORDINALS22.get(dist_num, f"{dist_num}th")
+                race = congress_data22.get(dist_key, {})
+                cands = race.get("candidates", [])
+                winner = cands[0] if cands else {}
+                runner = cands[1] if len(cands) > 1 else {}
+                w_name = winner.get("name", "Unknown")
+                w_party = winner.get("party", "")
+                w_pct = float(winner.get("pct") or 0.0)
+                r_label = f"{runner.get('name','—')} ({float(runner.get('pct') or 0.0):.1f}%)" if runner else "Uncontested"
+                margin = max(0.0, w_pct - 50.0)
+                opacity = round(0.25 + min(margin / 40.0, 1.0) * 0.55, 3)
+                features22.append({"type": "Feature",
+                    "geometry": _mapping(row.geometry.simplify(0.005, preserve_topology=True)),
+                    "properties": {
+                        "_district": f"VA-{dist_num}",
+                        "_winner": w_name,
+                        "_party": w_party,
+                        "_winner_pct": f"{w_pct:.1f}%",
+                        "_runner": r_label,
+                        "_opacity": opacity if race else 0.1,
+                    }})
+            except Exception:
+                continue
+
+        def _congress_2022_style(feat):
+            party = feat["properties"].get("_party", "")
+            op = feat["properties"].get("_opacity", 0.1)
+            fill = "#1a52c8" if "democrat" in party.lower() else "#c8102e" if "republican" in party.lower() else "#aaaaaa"
+            return {"fillColor": fill, "color": "#555", "weight": 1.0, "fillOpacity": op}
+
+        folium.GeoJson(
+            {"type": "FeatureCollection", "features": features22},
+            style_function=_congress_2022_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["_district", "_winner", "_party", "_winner_pct", "_runner"],
+                aliases=["District:", "Winner:", "Party:", "Winner %:", "Runner-Up:"],
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        title = "2022 Virginia — Congressional District Results"
+
     elif layer in ("senate_2023_flip_2019", "hod_2023_flip_2021"):
         from shapely.geometry import mapping as _mapping
         chamber = "senate" if layer == "senate_2023_flip_2019" else "hod"
@@ -1985,7 +2096,7 @@ _district_maps: dict[str, str] = {}
 
 @app.get("/district-map", response_class=HTMLResponse)
 def district_map(layer: str = "congressional", lat: float = None, lng: float = None, district: int = None):
-    if layer in ("congressional", "hod_results", "hod_flip", "gov_results", "ltgov_results", "ag_results", "pres_2024", "senate_2024", "congress_2024", "senate_2023_results", "hod_2023_results", "senate_2023_flip_2019", "hod_2023_flip_2021") and lat is None:
+    if layer in ("congressional", "hod_results", "hod_flip", "gov_results", "ltgov_results", "ag_results", "pres_2024", "senate_2024", "congress_2024", "senate_2023_results", "hod_2023_results", "senate_2023_flip_2019", "hod_2023_flip_2021", "gov_2021", "ltgov_2021", "ag_2021", "congress_2022") and lat is None:
         if layer not in _district_maps:
             try:
                 _district_maps[layer] = _build_district_map(layer)
@@ -2124,6 +2235,8 @@ def election_results_2023_page():
 
 _2024_data_cache = None
 _2023_data_cache = None
+_2022_data_cache = None
+_2021_data_cache = None
 
 
 def _build_2023_race(cands_dict):
@@ -2223,6 +2336,54 @@ def election_results_2024_page():
     data = _load_2024_results()
     safe_json = json.dumps(data, default=str).replace("</script>", "<\\/script>")
     with open(os.path.join(BASE_DIR, "templates", "election_results_2024.html"), "r", encoding="utf-8") as f:
+        html = f.read()
+    html = html.replace("</head>", f"<script>window._ELECTION_DATA={safe_json};</script></head>", 1)
+    return html
+
+
+def _load_2022_results():
+    global _2022_data_cache
+    if _2022_data_cache is not None:
+        return _2022_data_cache
+    path = os.path.join(BASE_DIR, "election_results_2022.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            _2022_data_cache = json.load(f)
+    except Exception as e:
+        print(f"_load_2022_results: {e}")
+        _2022_data_cache = {"congress": {}}
+    return _2022_data_cache
+
+
+def _load_2021_results():
+    global _2021_data_cache
+    if _2021_data_cache is not None:
+        return _2021_data_cache
+    path = os.path.join(BASE_DIR, "election_results_2021.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            _2021_data_cache = json.load(f)
+    except Exception as e:
+        print(f"_load_2021_results: {e}")
+        _2021_data_cache = {"statewide": [], "locality_results": {}, "hod": {}}
+    return _2021_data_cache
+
+
+@app.get("/past-elections/2022", response_class=HTMLResponse)
+def election_results_2022_page():
+    data = _load_2022_results()
+    safe_json = json.dumps(data, default=str).replace("</script>", "<\\/script>")
+    with open(os.path.join(BASE_DIR, "templates", "election_results_2022.html"), "r", encoding="utf-8") as f:
+        html = f.read()
+    html = html.replace("</head>", f"<script>window._ELECTION_DATA={safe_json};</script></head>", 1)
+    return html
+
+
+@app.get("/past-elections/2021", response_class=HTMLResponse)
+def election_results_2021_page():
+    data = _load_2021_results()
+    safe_json = json.dumps(data, default=str).replace("</script>", "<\\/script>")
+    with open(os.path.join(BASE_DIR, "templates", "election_results_2021.html"), "r", encoding="utf-8") as f:
         html = f.read()
     html = html.replace("</head>", f"<script>window._ELECTION_DATA={safe_json};</script></head>", 1)
     return html
