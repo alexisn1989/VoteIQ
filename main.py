@@ -1694,8 +1694,8 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         ).add_to(m)
         title = "2024 Virginia — Congressional District Results"
 
-    elif layer in ("gov_2021", "ltgov_2021", "ag_2021", "gov_2017", "ltgov_2017", "ag_2017"):
-        year = "2017" if layer.endswith("_2017") else "2021"
+    elif layer in ("gov_2021", "ltgov_2021", "ag_2021", "gov_2017", "ltgov_2017", "ag_2017", "pres_2016"):
+        year = layer.rsplit("_", 1)[-1]
         race_map = {
             "gov_2021": "Governor",
             "ltgov_2021": "Lieutenant Governor",
@@ -1703,6 +1703,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             "gov_2017": "Governor",
             "ltgov_2017": "Lieutenant Governor",
             "ag_2017": "Attorney General",
+            "pres_2016": "President",
         }
         title_map = {
             "gov_2021": "2021 Virginia — Governor by Locality",
@@ -1713,6 +1714,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             "gov_2017": "2017 Virginia Governor by Locality",
             "ltgov_2017": "2017 Virginia Lt. Governor by Locality",
             "ag_2017": "2017 Virginia Attorney General by Locality",
+            "pres_2016": "2016 Virginia President by Locality",
         })
         race_name = race_map[layer]
         raw21 = _load_2021_results() if year == "2021" else _load_historical_results(year)
@@ -1840,9 +1842,10 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         ).add_to(m)
         title = f"2019 Virginia {chamber_label} - Numbered District Results"
 
-    elif layer == "congress_2022":
+    elif layer in ("congress_2022", "congress_2016"):
         from shapely.geometry import mapping as _mapping
-        raw22 = _load_2022_results()
+        year = "2016" if layer == "congress_2016" else "2022"
+        raw22 = _load_historical_results("2016") if year == "2016" else _load_2022_results()
         congress_data22 = raw22.get("congress", {})
         _ORDINALS22 = {1:"1st",2:"2nd",3:"3rd",4:"4th",5:"5th",6:"6th",7:"7th",8:"8th",9:"9th",10:"10th",11:"11th"}
         va_cd = _get_va_cd()
@@ -1889,7 +1892,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                 localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
             ),
         ).add_to(m)
-        title = "2022 Virginia — Congressional District Results"
+        title = f"{year} Virginia - Congressional District Results"
 
     elif layer in ("senate_2023_flip_2019", "hod_2023_flip_2021"):
         from shapely.geometry import mapping as _mapping
@@ -2186,7 +2189,7 @@ _district_maps: dict[str, str] = {}
 
 @app.get("/district-map", response_class=HTMLResponse)
 def district_map(layer: str = "congressional", lat: float = None, lng: float = None, district: int = None):
-    if layer in ("congressional", "hod_results", "hod_flip", "gov_results", "ltgov_results", "ag_results", "pres_2024", "senate_2024", "congress_2024", "senate_2023_results", "hod_2023_results", "senate_2023_flip_2019", "hod_2023_flip_2021", "gov_2021", "ltgov_2021", "ag_2021", "congress_2022", "gov_2017", "ltgov_2017", "ag_2017", "senate_2019_results", "hod_2019_results") and lat is None:
+    if layer in ("congressional", "hod_results", "hod_flip", "gov_results", "ltgov_results", "ag_results", "pres_2024", "senate_2024", "congress_2024", "senate_2023_results", "hod_2023_results", "senate_2023_flip_2019", "hod_2023_flip_2021", "gov_2021", "ltgov_2021", "ag_2021", "congress_2022", "gov_2017", "ltgov_2017", "ag_2017", "senate_2019_results", "hod_2019_results", "pres_2016", "congress_2016") and lat is None:
         if layer not in _district_maps:
             try:
                 _district_maps[layer] = _build_district_map(layer)
@@ -2461,6 +2464,17 @@ def _load_2021_results():
 
 
 HISTORICAL_ELECTION_META = {
+    "2016": {
+        "title": "2016 Virginia Federal Election",
+        "subtitle": "President and U.S. House results from the November 8, 2016 general election.",
+        "date": "November 8, 2016",
+        "kind": "federal",
+        "maps": [
+            {"tab": "president-map", "label": "President Map", "title": "President - Locality Map", "layer": "pres_2016"},
+            {"tab": "congress-map", "label": "Congress Map", "title": "U.S. House - Numbered District Map", "layer": "congress_2016"},
+        ],
+        "notes": ["The U.S. House map uses the available congressional district layer as a numbered-district display; historical district boundaries may differ from current boundaries."],
+    },
     "2020": {
         "title": "2020 Virginia Local Elections",
         "subtitle": "June 4 town election results from the uploaded CSV.",
