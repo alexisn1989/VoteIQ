@@ -1712,8 +1712,14 @@ Keep answers 2-4 sentences. Be factual and nonpartisan. For official contact inf
 @app.get("/past-elections", response_class=HTMLResponse)
 def election_results_page():
     results = _load_2025_results()
-    # Embed data inline so the page never needs a separate API round-trip
-    safe_json = json.dumps(results, default=str).replace("</script>", "<\\/script>")
+    locality_results = {}
+    for _office in ["Governor", "Lieutenant Governor", "Attorney General"]:
+        try:
+            locality_results[_office] = _load_2025_statewide_locality_results(_office)
+        except Exception:
+            locality_results[_office] = {}
+    all_data = {**results, "locality_results": locality_results}
+    safe_json = json.dumps(all_data, default=str).replace("</script>", "<\\/script>")
     with open(os.path.join(BASE_DIR, "templates", "election_results.html"), "r", encoding="utf-8") as f:
         html = f.read()
     html = html.replace("</head>", f"<script>window._ELECTION_DATA={safe_json};</script></head>", 1)

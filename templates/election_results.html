@@ -210,8 +210,42 @@
     <iframe src="/district-map?layer=gov_results" style="width:100%;height:520px;border:none;display:block;" loading="lazy" title="2025 Governor Race Map"></iframe>
   </div>
 
-  <!-- Section 5: House of Delegates Table -->
-  <div class="section-label" style="margin-top:16px;"><span>05</span> House of Delegates — All 100 Districts</div>
+  <!-- Section 5: Lieutenant Governor's Race by Locality -->
+  <div class="section-label" style="margin-top:16px;"><span>05</span> Lieutenant Governor's Race - Results by Locality</div>
+  <div style="display:flex;align-items:center;gap:20px;margin-bottom:12px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#1a52c8;"></span>
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--navy);">Hashmi (D)</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#c8102e;"></span>
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--navy);">Reid (R)</span>
+    </div>
+    <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Darker shade = larger margin · Hover for vote share</span>
+  </div>
+  <div style="border:1px solid var(--mid);overflow:hidden;margin-bottom:40px;box-shadow:3px 3px 0 var(--navy);">
+    <iframe src="/district-map?layer=ltgov_results" style="width:100%;height:520px;border:none;display:block;" loading="lazy" title="2025 Lieutenant Governor Race Map"></iframe>
+  </div>
+
+  <!-- Section 6: Attorney General's Race by Locality -->
+  <div class="section-label" style="margin-top:16px;"><span>06</span> Attorney General's Race - Results by Locality</div>
+  <div style="display:flex;align-items:center;gap:20px;margin-bottom:12px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#1a52c8;"></span>
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--navy);">Jones (D)</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#c8102e;"></span>
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--navy);">Miyares (R)</span>
+    </div>
+    <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Darker shade = larger margin · Hover for vote share</span>
+  </div>
+  <div style="border:1px solid var(--mid);overflow:hidden;margin-bottom:40px;box-shadow:3px 3px 0 var(--navy);">
+    <iframe src="/district-map?layer=ag_results" style="width:100%;height:520px;border:none;display:block;" loading="lazy" title="2025 Attorney General Race Map"></iframe>
+  </div>
+
+  <!-- Section 7: House of Delegates Table -->
+  <div class="section-label" style="margin-top:16px;"><span>07</span> House of Delegates — All 100 Districts</div>
   <div id="hod-section">
     <div class="loading-state" id="hod-loading">
       <div class="spinner"></div>
@@ -235,6 +269,34 @@
             </tr>
           </thead>
           <tbody id="hod-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 8: Statewide Races by County/Locality -->
+  <div class="section-label" style="margin-top:32px;"><span>08</span> Statewide Races — Results by County &amp; City</div>
+  <div id="locality-section">
+    <div class="loading-state" id="locality-loading">
+      <div class="spinner"></div>
+      <p>Loading locality results&hellip;</p>
+    </div>
+    <div id="locality-controls" style="display:none;">
+      <div class="filter-row">
+        <input type="text" class="filter-input" id="locality-filter" placeholder="Filter by locality name&hellip;" oninput="filterLocality()" />
+        <span class="filter-count" id="locality-count"></span>
+      </div>
+      <div class="hod-table-wrap">
+        <table id="locality-table">
+          <thead>
+            <tr>
+              <th>Locality</th>
+              <th>Governor</th>
+              <th>Lt. Governor</th>
+              <th>Atty. General</th>
+            </tr>
+          </thead>
+          <tbody id="locality-tbody"></tbody>
         </table>
       </div>
     </div>
@@ -424,6 +486,77 @@
     document.getElementById('hod-loading').innerHTML =
       '<p style="color:var(--muted);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:0.1em;text-transform:uppercase;font-size:0.8rem;">No district data available.</p>';
   }
+  if (data.locality_results && Object.keys(data.locality_results).length) {
+    renderLocalityTable(data.locality_results);
+  } else {
+    document.getElementById('locality-loading').innerHTML =
+      '<p style="color:var(--muted);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:0.1em;text-transform:uppercase;font-size:0.8rem;">No locality data available.</p>';
+  }
+
+  // ── Locality table ────────────────────────────────────────────────────────────
+  var localityAllRows = [];
+
+  function lastName(fullName) {
+    if (!fullName) return '—';
+    var parts = fullName.split(' ');
+    return parts[parts.length - 1].replace(/,$/,'');
+  }
+
+  function raceCell(locData) {
+    if (!locData || !locData.winner) return '<td style="color:#bbb">—</td>';
+    var w = locData.winner;
+    var pc = partyClass(w.party);
+    var pct = w.pct != null ? w.pct.toFixed(1) : '0.0';
+    var losing = pc === 'dem' ? locData.rep : locData.dem;
+    var losePct = losing && losing.pct != null ? losing.pct.toFixed(1) : '0.0';
+    return '<td>' +
+      '<span class="inline-badge ' + pc + '">' + (pc === 'dem' ? 'D' : pc === 'rep' ? 'R' : 'I') + '</span> ' +
+      '<span style="font-weight:600">' + esc(lastName(w.name)) + '</span> ' +
+      '<span style="color:var(--muted);font-size:0.8em;">' + pct + '%</span>' +
+      '<br><span style="color:#bbb;font-size:0.75em;">' + esc(lastName(losing && losing.name || '')) + ' ' + losePct + '%</span>' +
+      '</td>';
+  }
+
+  function renderLocalityTable(localityData) {
+    var gov  = localityData['Governor'] || {};
+    var lg   = localityData['Lieutenant Governor'] || {};
+    var ag   = localityData['Attorney General'] || {};
+    var localities = Object.keys(gov).sort();
+    var tbody = document.getElementById('locality-tbody');
+    tbody.innerHTML = '';
+    localityAllRows = [];
+
+    localities.forEach(function(loc) {
+      var displayName = loc.replace(/ COUNTY$/, ' County').replace(/ CITY$/, ' City')
+        .replace(/\b\w/g, function(c){return c.toUpperCase();}).replace(/\bOf\b/g,'of');
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td style="font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:0.88rem;">' + esc(displayName) + '</td>' +
+        raceCell(gov[loc]) +
+        raceCell(lg[loc]) +
+        raceCell(ag[loc]);
+      tr.dataset.search = displayName.toLowerCase();
+      tbody.appendChild(tr);
+      localityAllRows.push(tr);
+    });
+
+    document.getElementById('locality-loading').style.display = 'none';
+    document.getElementById('locality-controls').style.display = 'block';
+    document.getElementById('locality-count').textContent = localities.length + ' localities';
+  }
+
+  window.filterLocality = function() {
+    var q = document.getElementById('locality-filter').value.trim().toLowerCase();
+    var visible = 0;
+    localityAllRows.forEach(function(tr) {
+      var show = !q || tr.dataset.search.includes(q);
+      tr.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    document.getElementById('locality-count').textContent =
+      visible === localityAllRows.length ? localityAllRows.length + ' localities' : visible + ' of ' + localityAllRows.length + ' localities';
+  };
+
 })();
 </script>
 </body>
