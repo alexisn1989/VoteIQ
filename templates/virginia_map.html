@@ -146,6 +146,21 @@
   <button class="layer-tab" id="tab-hod-state-flip" data-layer="hod_state_flip">
     <span class="tab-dot"></span>2017 to 2021 HOD<span class="layer-count">State</span>
   </button>
+  <button class="layer-tab" id="tab-density-2017" data-layer="density_2017">
+    <span class="tab-dot"></span>2017 Density<span class="layer-count">HOD</span>
+  </button>
+  <button class="layer-tab" id="tab-density-2019" data-layer="density_2019">
+    <span class="tab-dot"></span>2019 Density<span class="layer-count">HOD</span>
+  </button>
+  <button class="layer-tab" id="tab-density-2021" data-layer="density_2021">
+    <span class="tab-dot"></span>2021 Density<span class="layer-count">HOD</span>
+  </button>
+  <button class="layer-tab" id="tab-density-2023" data-layer="density_2023">
+    <span class="tab-dot"></span>2023 Density<span class="layer-count">HOD</span>
+  </button>
+  <button class="layer-tab" id="tab-density-2025" data-layer="density_2025">
+    <span class="tab-dot"></span>2025 Density<span class="layer-count">HOD</span>
+  </button>
   <button class="layer-tab" id="tab-sd-flip" data-layer="sd_flip">
     <span class="tab-dot"></span>Senate Flips<span class="layer-count">2023</span>
   </button>
@@ -223,6 +238,39 @@ const GOV_FLIP_GJ = window._GOV_FLIP_GEOJSON || { type:'FeatureCollection', feat
 const GOV_2025_FLIP_GJ = window._GOV_2025_FLIP_GEOJSON || { type:'FeatureCollection', features:[] };
 const CONGRESS_MIDTERM_FLIP_GJ = window._CONGRESS_MIDTERM_FLIP_GEOJSON || { type:'FeatureCollection', features:[] };
 const HOD_STATE_FLIP_GJ = window._HOD_STATE_FLIP_GEOJSON || { type:'FeatureCollection', features:[] };
+const HOD_DENSITY_GJ = window._HOD_DENSITY_GEOJSON || {};
+
+const DENSITY_FILL = [
+  'interpolate', ['linear'], ['coalesce', ['get', '_density_ratio'], 0],
+  0, '#f3f1df',
+  0.25, '#cce2d1',
+  0.5, '#80b1a6',
+  0.75, '#367f91',
+  1, '#123d66'
+];
+
+const DENSITY_LEGEND = [
+  { color:'#123d66', border:'#0d1b2a', label:'Very high votes' },
+  { color:'#367f91', border:'#0d1b2a', label:'High votes' },
+  { color:'#80b1a6', border:'#0d1b2a', label:'Medium votes' },
+  { color:'#cce2d1', border:'#0d1b2a', label:'Lower votes' },
+];
+
+const makeHodDensityLayer = (year, geojson) => ({
+  geojson: geojson || { type:'FeatureCollection', features:[] },
+  label: `${year} HOD Vote Density`,
+  fillColor: DENSITY_FILL,
+  hoverColor: '#d4cfc4',
+  getLabel: p => `HOD District ${p.DISTRICTN}`,
+  getTitle: p => `District ${p.DISTRICTN}`,
+  getSub: p => `${(p._density_total || 0).toLocaleString()} votes | Winner: ${p._density_winner || 'No data'} (${p._density_party || '-'})`,
+  getSidebarName: p => `District ${p.DISTRICTN}`,
+  getSidebarTag: p => `${(p._density_total || 0).toLocaleString()} votes`,
+  sortKey: p => parseInt(p.DISTRICTN, 10),
+  legend: DENSITY_LEGEND,
+  statLabel: `${year} Density`,
+  statTotal: 100,
+});
 
 // ── Config per layer ─────────────────────────────────────────────────────────
 const LAYERS = {
@@ -380,6 +428,11 @@ const LAYERS = {
     statLabel: 'HOD State Flips',
     statTotal: 100,
   },
+  density_2017: makeHodDensityLayer('2017', HOD_DENSITY_GJ['2017']),
+  density_2019: makeHodDensityLayer('2019', HOD_DENSITY_GJ['2019']),
+  density_2021: makeHodDensityLayer('2021', HOD_DENSITY_GJ['2021']),
+  density_2023: makeHodDensityLayer('2023', HOD_DENSITY_GJ['2023']),
+  density_2025: makeHodDensityLayer('2025', HOD_DENSITY_GJ['2025']),
   sd_flip: {
     geojson: SD_FLIP_GJ,
     label: '2023 State Senate Flips vs 2019',

@@ -2757,6 +2757,7 @@ _state_leg_2023_flip_geojson_cache = {}
 _locality_flip_geojson_cache = {}
 _congress_flip_geojson_cache = {}
 _hod_2017_2021_flip_geojson_cache = None
+_hod_density_geojson_cache = {}
 
 
 def _load_va_counties_geojson():
@@ -3025,6 +3026,65 @@ def _build_hod_2017_2021_flip_geojson() -> dict:
     return _hod_2017_2021_flip_geojson_cache
 
 
+def _load_results_for_year(year: str) -> dict:
+    if year == "2025":
+        return _load_2025_results()
+    if year == "2024":
+        return _load_2024_results()
+    if year == "2023":
+        return _load_2023_results()
+    if year == "2022":
+        return _load_2022_results()
+    if year == "2021":
+        return _load_2021_results()
+    if year == "2020":
+        return _load_2020_results()
+    if year == "2018":
+        return _load_2018_results()
+    return _load_historical_results(year)
+
+
+def _build_hod_density_geojson(year: str) -> dict:
+    if year in _hod_density_geojson_cache:
+        return _hod_density_geojson_cache[year]
+
+    decorated = json.loads(json.dumps(_load_hod_geojson()))
+    hod_results = _load_results_for_year(year).get("hod", {})
+    max_total = 0
+
+    for feat in decorated.get("features", []):
+        props = feat.setdefault("properties", {})
+        district = int(props.get("DISTRICTN") or props.get("DISTRICT") or 0)
+        race = hod_results.get(str(district), hod_results.get(district, {}))
+        candidates = race.get("candidates", []) if isinstance(race, dict) else []
+        winner = candidates[0] if candidates else {}
+        total = int(race.get("total") or sum(int(c.get("votes") or 0) for c in candidates)) if isinstance(race, dict) else 0
+        max_total = max(max_total, total)
+        props["_density_year"] = year
+        props["_density_total"] = total
+        props["_density_winner"] = winner.get("name", "No data")
+        props["_density_party"] = _normalize_major_party(winner.get("party", ""))
+        props["_density_winner_pct"] = float(winner.get("pct") or 0.0)
+
+    for feat in decorated.get("features", []):
+        props = feat.setdefault("properties", {})
+        total = props.get("_density_total", 0)
+        props["_density_ratio"] = round(total / max_total, 4) if max_total else 0
+        if total == 0:
+            props["_density_bucket"] = "No data"
+        elif props["_density_ratio"] >= 0.75:
+            props["_density_bucket"] = "Very high"
+        elif props["_density_ratio"] >= 0.5:
+            props["_density_bucket"] = "High"
+        elif props["_density_ratio"] >= 0.25:
+            props["_density_bucket"] = "Medium"
+        else:
+            props["_density_bucket"] = "Low"
+
+    _hod_density_geojson_cache[year] = decorated
+    return _hod_density_geojson_cache[year]
+
+
 def _build_state_leg_2023_flip_geojson(chamber: str) -> dict:
     if chamber in _state_leg_2023_flip_geojson_cache:
         return _state_leg_2023_flip_geojson_cache[chamber]
@@ -3105,6 +3165,7 @@ def virginia_map_page():
     gov_2025_flip = _build_locality_office_flip_geojson("2021", "2025", "Governor")
     congress_midterm_flip = _build_congress_flip_geojson("2018", "2022")
     hod_state_flip = _build_hod_2017_2021_flip_geojson()
+    hod_density_layers = {year: _build_hod_density_geojson(year) for year in ("2017", "2019", "2021", "2023", "2025")}
     def _s(obj): return json.dumps(obj, default=str).replace("</script>", "<\\/script>")
     with open(os.path.join(BASE_DIR, "templates", "virginia_map.html"), "r", encoding="utf-8") as f:
         html = f.read()
@@ -3121,6 +3182,7 @@ def virginia_map_page():
         f"window._GOV_2025_FLIP_GEOJSON={_s(gov_2025_flip)};"
         f"window._CONGRESS_MIDTERM_FLIP_GEOJSON={_s(congress_midterm_flip)};"
         f"window._HOD_STATE_FLIP_GEOJSON={_s(hod_state_flip)};"
+        f"window._HOD_DENSITY_GEOJSON={_s(hod_density_layers)};"
         f"</script>"
     )
     html = html.replace("</head>", inject + "</head>", 1)
