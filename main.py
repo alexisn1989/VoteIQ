@@ -2801,6 +2801,18 @@ def _locality_winner_lookup(results: dict, office: str) -> dict:
     return lookup
 
 
+def _locality_winner_lookup_2025(office: str) -> dict:
+    lookup = {}
+    for locality, race in _load_2025_statewide_locality_results(office).items():
+        winner = race.get("winner", {})
+        lookup[_normalize_locality_key(locality)] = {
+            "name": winner.get("name", "No data"),
+            "party": _normalize_major_party(winner.get("party", "")),
+            "pct": float(winner.get("pct") or race.get("winner_pct") or 0.0),
+        }
+    return lookup
+
+
 def _build_pres_2016_2020_flip_geojson() -> dict:
     global _pres_2016_2020_flip_geojson_cache
     if _pres_2016_2020_flip_geojson_cache is not None:
@@ -2848,20 +2860,30 @@ def _build_locality_office_flip_geojson(start_year: str, end_year: str, office: 
         return _locality_flip_geojson_cache[cache_key]
 
     counties = json.loads(json.dumps(_load_va_counties_geojson()))
-    start_loader = _load_historical_results if start_year not in ("2020", "2021", "2024") else {
+    start_loader = _load_historical_results if start_year not in ("2020", "2021", "2024", "2025") else {
         "2020": _load_2020_results,
         "2021": _load_2021_results,
         "2024": _load_2024_results,
+        "2025": _load_2025_results,
     }[start_year]
-    end_loader = _load_historical_results if end_year not in ("2020", "2021", "2024") else {
+    end_loader = _load_historical_results if end_year not in ("2020", "2021", "2024", "2025") else {
         "2020": _load_2020_results,
         "2021": _load_2021_results,
         "2024": _load_2024_results,
+        "2025": _load_2025_results,
     }[end_year]
     start_results = start_loader(start_year) if start_loader == _load_historical_results else start_loader()
     end_results = end_loader(end_year) if end_loader == _load_historical_results else end_loader()
-    start_winners = _locality_winner_lookup(start_results, office)
-    end_winners = _locality_winner_lookup(end_results, office)
+    start_winners = (
+        _locality_winner_lookup_2025(office)
+        if start_year == "2025"
+        else _locality_winner_lookup(start_results, office)
+    )
+    end_winners = (
+        _locality_winner_lookup_2025(office)
+        if end_year == "2025"
+        else _locality_winner_lookup(end_results, office)
+    )
 
     for feat in counties.get("features", []):
         props = feat.setdefault("properties", {})
@@ -3080,6 +3102,7 @@ def virginia_map_page():
     hod_flip = _build_state_leg_2023_flip_geojson("hod")
     sd_flip = _build_state_leg_2023_flip_geojson("senate")
     gov_flip = _build_locality_office_flip_geojson("2017", "2021", "Governor")
+    gov_2025_flip = _build_locality_office_flip_geojson("2021", "2025", "Governor")
     congress_midterm_flip = _build_congress_flip_geojson("2018", "2022")
     hod_state_flip = _build_hod_2017_2021_flip_geojson()
     def _s(obj): return json.dumps(obj, default=str).replace("</script>", "<\\/script>")
@@ -3095,6 +3118,7 @@ def virginia_map_page():
         f"window._HOD_FLIP_GEOJSON={_s(hod_flip)};"
         f"window._SD_FLIP_GEOJSON={_s(sd_flip)};"
         f"window._GOV_FLIP_GEOJSON={_s(gov_flip)};"
+        f"window._GOV_2025_FLIP_GEOJSON={_s(gov_2025_flip)};"
         f"window._CONGRESS_MIDTERM_FLIP_GEOJSON={_s(congress_midterm_flip)};"
         f"window._HOD_STATE_FLIP_GEOJSON={_s(hod_state_flip)};"
         f"</script>"
