@@ -2749,6 +2749,9 @@ Answer questions about these results clearly and concisely (2-4 sentences). Be f
 
 
 _va_counties_geojson_cache = None
+_va_hod_geojson_cache = None
+_va_sd_geojson_cache = None
+
 
 def _load_va_counties_geojson():
     global _va_counties_geojson_cache
@@ -2759,17 +2762,45 @@ def _load_va_counties_geojson():
     return _va_counties_geojson_cache
 
 
+def _shp_to_geojson(shp_path: str) -> dict:
+    gdf = gpd.read_file(shp_path).to_crs(epsg=4326)
+    gdf["geometry"] = gdf["geometry"].simplify(0.005, preserve_topology=True)
+    return json.loads(gdf.to_json())
+
+
+def _load_hod_geojson():
+    global _va_hod_geojson_cache
+    if _va_hod_geojson_cache is not None:
+        return _va_hod_geojson_cache
+    path = os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL HOD.shp")
+    _va_hod_geojson_cache = _shp_to_geojson(path)
+    return _va_hod_geojson_cache
+
+
+def _load_sd_geojson():
+    global _va_sd_geojson_cache
+    if _va_sd_geojson_cache is not None:
+        return _va_sd_geojson_cache
+    path = os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL SD.shp")
+    _va_sd_geojson_cache = _shp_to_geojson(path)
+    return _va_sd_geojson_cache
+
+
 @app.get("/virginia-map", response_class=HTMLResponse)
 def virginia_map_page():
     mapbox_token = os.getenv("MAPBOX_TOKEN", "")
-    geojson = _load_va_counties_geojson()
-    safe_geojson = json.dumps(geojson, default=str).replace("</script>", "<\\/script>")
+    counties = _load_va_counties_geojson()
+    hod = _load_hod_geojson()
+    sd = _load_sd_geojson()
+    def _s(obj): return json.dumps(obj, default=str).replace("</script>", "<\\/script>")
     with open(os.path.join(BASE_DIR, "templates", "virginia_map.html"), "r", encoding="utf-8") as f:
         html = f.read()
     inject = (
         f"<script>"
         f"window._MAPBOX_TOKEN={json.dumps(mapbox_token)};"
-        f"window._VA_GEOJSON={safe_geojson};"
+        f"window._VA_GEOJSON={_s(counties)};"
+        f"window._HOD_GEOJSON={_s(hod)};"
+        f"window._SD_GEOJSON={_s(sd)};"
         f"</script>"
     )
     html = html.replace("</head>", inject + "</head>", 1)
