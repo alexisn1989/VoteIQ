@@ -29,8 +29,8 @@
   .back-link:hover { background:var(--navy); color:white; }
 
   /* layer tabs */
-  .layer-tabs { position:relative; z-index:20; display:flex; align-items:stretch; border-bottom:2px solid var(--navy); background:var(--light); flex-shrink:0; }
-  .layer-tab { font-family:'Barlow Condensed',sans-serif; font-size:0.72rem; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; padding:10px 28px; border:none; border-right:1px solid var(--mid); background:white; color:var(--muted); cursor:pointer; transition:all .15s; display:flex; align-items:center; gap:8px; }
+  .layer-tabs { position:relative; z-index:20; display:flex; flex-wrap:wrap; align-items:stretch; border-bottom:2px solid var(--navy); background:var(--light); flex-shrink:0; }
+  .layer-tab { font-family:'Barlow Condensed',sans-serif; font-size:0.72rem; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; padding:10px 18px; border:none; border-right:1px solid var(--mid); border-bottom:1px solid var(--mid); background:white; color:var(--muted); cursor:pointer; transition:all .15s; display:flex; align-items:center; justify-content:center; gap:8px; flex:1 1 190px; min-width:0; }
   .layer-tab:hover { background:var(--light); color:var(--navy); }
   .layer-tab.active { background:var(--navy); color:white; }
   .layer-tab .tab-dot { width:8px; height:8px; border-radius:50%; background:currentColor; flex-shrink:0; }
@@ -106,7 +106,8 @@
     .sidebar { border-right:none; border-bottom:2px solid var(--navy); }
     header { padding:12px 20px; }
     .stats-bar { padding:7px 20px; gap:14px; }
-    .layer-tab { padding:9px 14px; font-size:0.65rem; }
+    .layer-tabs { flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    .layer-tab { flex:0 0 auto; min-width:160px; padding:9px 14px; font-size:0.65rem; }
   }
 </style>
 </head>
