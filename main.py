@@ -2752,6 +2752,7 @@ _va_counties_geojson_cache = None
 _va_hod_geojson_cache = None
 _va_sd_geojson_cache = None
 _pres_2016_2020_flip_geojson_cache = None
+_state_leg_2023_flip_geojson_cache = {}
 
 
 def _load_va_counties_geojson():
@@ -2837,6 +2838,48 @@ def _build_pres_2016_2020_flip_geojson() -> dict:
     return _pres_2016_2020_flip_geojson_cache
 
 
+def _build_state_leg_2023_flip_geojson(chamber: str) -> dict:
+    if chamber in _state_leg_2023_flip_geojson_cache:
+        return _state_leg_2023_flip_geojson_cache[chamber]
+
+    is_senate = chamber == "senate"
+    base_geojson = _load_sd_geojson() if is_senate else _load_hod_geojson()
+    decorated = json.loads(json.dumps(base_geojson))
+    baseline = SD_2019_PARTY if is_senate else HOD_2021_PARTY
+    baseline_year = "2019" if is_senate else "2021"
+    results_2023 = _load_2023_results().get(chamber, {})
+
+    for feat in decorated.get("features", []):
+        props = feat.setdefault("properties", {})
+        district = int(props.get("DISTRICTN") or props.get("DISTRICT") or 0)
+        race = results_2023.get(district, {})
+        candidates = race.get("candidates", [])
+        winner = candidates[0] if candidates else {}
+        party_prior = baseline.get(district, "Unknown")
+        party_2023 = _normalize_major_party(winner.get("party", ""))
+        flipped = party_prior != party_2023 and "Unknown" not in (party_prior, party_2023)
+        if flipped and party_2023 == "Democrat":
+            status = "Flipped Democratic"
+        elif flipped and party_2023 == "Republican":
+            status = "Flipped Republican"
+        elif party_2023 == "Democrat":
+            status = "Held Democratic"
+        elif party_2023 == "Republican":
+            status = "Held Republican"
+        else:
+            status = "No data"
+        props["_flip_status"] = status
+        props["_prior_party"] = party_prior
+        props["_current_party"] = party_2023
+        props["_baseline_year"] = baseline_year
+        props["_winner_2023"] = winner.get("name", "No data")
+        props["_winner_pct_2023"] = float(winner.get("pct") or 0.0)
+        props["_flip_label"] = f"{party_prior} to {party_2023}" if flipped else status
+
+    _state_leg_2023_flip_geojson_cache[chamber] = decorated
+    return _state_leg_2023_flip_geojson_cache[chamber]
+
+
 def _shp_to_geojson(shp_path: str) -> dict:
     gdf = gpd.read_file(shp_path).to_crs(epsg=4326)
     gdf["geometry"] = gdf["geometry"].simplify(0.005, preserve_topology=True)
@@ -2869,6 +2912,8 @@ def virginia_map_page():
     hod = _load_hod_geojson()
     sd = _load_sd_geojson()
     pres_flip = _build_pres_2016_2020_flip_geojson()
+    hod_flip = _build_state_leg_2023_flip_geojson("hod")
+    sd_flip = _build_state_leg_2023_flip_geojson("senate")
     def _s(obj): return json.dumps(obj, default=str).replace("</script>", "<\\/script>")
     with open(os.path.join(BASE_DIR, "templates", "virginia_map.html"), "r", encoding="utf-8") as f:
         html = f.read()
@@ -2879,6 +2924,8 @@ def virginia_map_page():
         f"window._HOD_GEOJSON={_s(hod)};"
         f"window._SD_GEOJSON={_s(sd)};"
         f"window._PRES_FLIP_GEOJSON={_s(pres_flip)};"
+        f"window._HOD_FLIP_GEOJSON={_s(hod_flip)};"
+        f"window._SD_FLIP_GEOJSON={_s(sd_flip)};"
         f"</script>"
     )
     html = html.replace("</head>", inject + "</head>", 1)

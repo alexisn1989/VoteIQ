@@ -133,6 +133,12 @@
   <button class="layer-tab" id="tab-pres-flip" data-layer="pres_flip">
     <span class="tab-dot"></span>2016 to 2020 President<span class="layer-count">Flip</span>
   </button>
+  <button class="layer-tab" id="tab-sd-flip" data-layer="sd_flip">
+    <span class="tab-dot"></span>Senate Flips<span class="layer-count">2023</span>
+  </button>
+  <button class="layer-tab" id="tab-hod-flip" data-layer="hod_flip">
+    <span class="tab-dot"></span>HOD Flips<span class="layer-count">2023</span>
+  </button>
   <button class="layer-tab" id="tab-hod" data-layer="hod">
     <span class="tab-dot"></span>House of Delegates<span class="layer-count">100</span>
   </button>
@@ -198,6 +204,8 @@ const COUNTIES_GJ = window._VA_GEOJSON   || { type:'FeatureCollection', features
 const HOD_GJ      = window._HOD_GEOJSON  || { type:'FeatureCollection', features:[] };
 const SD_GJ       = window._SD_GEOJSON   || { type:'FeatureCollection', features:[] };
 const PRES_FLIP_GJ = window._PRES_FLIP_GEOJSON || { type:'FeatureCollection', features:[] };
+const HOD_FLIP_GJ = window._HOD_FLIP_GEOJSON || { type:'FeatureCollection', features:[] };
+const SD_FLIP_GJ = window._SD_FLIP_GEOJSON || { type:'FeatureCollection', features:[] };
 
 // ── Config per layer ─────────────────────────────────────────────────────────
 const LAYERS = {
@@ -246,6 +254,60 @@ const LAYERS = {
     ],
     statLabel: 'Pres. Flips',
     statTotal: 134,
+  },
+  sd_flip: {
+    geojson: SD_FLIP_GJ,
+    label: '2023 State Senate Flips vs 2019',
+    fillColor: [
+      'match', ['get', '_flip_status'],
+      'Flipped Democratic', '#1a52c8',
+      'Flipped Republican', '#c8102e',
+      'Held Democratic', '#6b9fd4',
+      'Held Republican', '#e8807a',
+      '#aaaaaa'
+    ],
+    hoverColor: '#e8b8c0',
+    getLabel: p => `Senate District ${p.DISTRICTN}`,
+    getTitle: p => `District ${p.DISTRICTN}`,
+    getSub:   p => `${p._flip_status || 'No data'} | ${p._baseline_year || 'Prior'}: ${p._prior_party || '-'} | 2023: ${p._current_party || '-'}`,
+    getSidebarName: p => `District ${p.DISTRICTN}`,
+    getSidebarTag:  p => p._flip_status || 'No data',
+    sortKey: p => parseInt(p.DISTRICTN, 10),
+    legend: [
+      { color:'#1a52c8', border:'#0d1b2a', label:'Flipped Democratic' },
+      { color:'#c8102e', border:'#0d1b2a', label:'Flipped Republican' },
+      { color:'#6b9fd4', border:'#0d1b2a', label:'Held Democratic' },
+      { color:'#e8807a', border:'#0d1b2a', label:'Held Republican' },
+    ],
+    statLabel: 'Senate Flips',
+    statTotal: 40,
+  },
+  hod_flip: {
+    geojson: HOD_FLIP_GJ,
+    label: '2023 HOD Flips vs 2021',
+    fillColor: [
+      'match', ['get', '_flip_status'],
+      'Flipped Democratic', '#1a52c8',
+      'Flipped Republican', '#c8102e',
+      'Held Democratic', '#6b9fd4',
+      'Held Republican', '#e8807a',
+      '#aaaaaa'
+    ],
+    hoverColor: '#b8ccec',
+    getLabel: p => `HOD District ${p.DISTRICTN}`,
+    getTitle: p => `District ${p.DISTRICTN}`,
+    getSub:   p => `${p._flip_status || 'No data'} | ${p._baseline_year || 'Prior'}: ${p._prior_party || '-'} | 2023: ${p._current_party || '-'}`,
+    getSidebarName: p => `District ${p.DISTRICTN}`,
+    getSidebarTag:  p => p._flip_status || 'No data',
+    sortKey: p => parseInt(p.DISTRICTN, 10),
+    legend: [
+      { color:'#1a52c8', border:'#0d1b2a', label:'Flipped Democratic' },
+      { color:'#c8102e', border:'#0d1b2a', label:'Flipped Republican' },
+      { color:'#6b9fd4', border:'#0d1b2a', label:'Held Democratic' },
+      { color:'#e8807a', border:'#0d1b2a', label:'Held Republican' },
+    ],
+    statLabel: 'HOD Flips',
+    statTotal: 100,
   },
   hod: {
     geojson: HOD_GJ,
