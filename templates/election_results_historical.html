@@ -62,6 +62,10 @@
   footer { position:relative; z-index:10; margin-top:56px; border-top:3px double var(--navy); padding:20px 48px; background:var(--light); }
   footer p { font-family:'Barlow Condensed',sans-serif; font-size:.72rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
   footer span { color:var(--red); }
+  .year-nav { background: var(--navy); padding: 10px 32px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; position: relative; z-index: 10; }
+  .year-nav a { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.55); text-decoration: none; padding: 4px 10px; border: 1px solid rgba(255,255,255,0.2); transition: all .15s; white-space: nowrap; }
+  .year-nav a:hover { background: rgba(255,255,255,0.12); color: white; }
+  .year-nav a.active { background: white; color: var(--navy); border-color: white; }
   @media (max-width:700px) { header { padding:20px; flex-wrap:wrap; gap:12px; } .race-cards { grid-template-columns:1fr; } .section-wrap, .page-hero { padding-left:20px; padding-right:20px; } .tab-btn { font-size:.65rem; padding:7px 10px; } }
 </style>
 </head>
@@ -74,21 +78,23 @@
     <div class="header-date" id="header-date">Virginia Election</div>
   </div>
 </header>
+<nav class="year-nav" id="year-nav" aria-label="Election years">
+  <a href="/past-elections/2016">2016</a>
+  <a href="/past-elections/2017">2017</a>
+  <a href="/past-elections/2018">2018</a>
+  <a href="/past-elections/2019">2019</a>
+  <a href="/past-elections/2020">2020</a>
+  <a href="/past-elections/2021">2021</a>
+  <a href="/past-elections/2022">2022</a>
+  <a href="/past-elections/2023">2023</a>
+  <a href="/past-elections/2024">2024</a>
+  <a href="/past-elections">2025</a>
+</nav>
 <div class="page-hero">
   <div class="page-hero-eyebrow">Past Elections</div>
   <h1 id="page-title">Virginia <em>Election Results</em></h1>
   <p id="page-subtitle"></p>
-  <div style="margin-top:28px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-    <a href="/past-elections/2016" class="back-link">2016 Results</a>
-    <a href="/past-elections/2017" class="back-link">2017 Results</a>
-    <a href="/past-elections/2019" class="back-link">2019 Results</a>
-    <a href="/past-elections/2020" class="back-link">2020 Results</a>
-    <a href="/past-elections/2021" class="back-link">2021 Results</a>
-    <a href="/past-elections/2022" class="back-link">2022 Results</a>
-    <a href="/past-elections/2023" class="back-link">2023 Results</a>
-    <a href="/past-elections/2024" class="back-link">2024 Results</a>
-    <a href="/past-elections" class="back-link">2025 Results</a>
-  </div>
+  <div style="margin-top:24px;"><a href="/" class="back-link">&#8592; Back to VoteIQ</a></div>
 </div>
 <div class="section-wrap">
   <div id="notes"></div>
@@ -96,7 +102,31 @@
   <div id="tabs-block"></div>
   <div id="tables-block"></div>
 </div>
-<footer><p>© 2026 <span>VoteIQ</span> · voteiq.io · Nonpartisan civic data for Virginia voters</p></footer>
+<footer>
+  <p>© 2026 <span>VoteIQ</span> · voteiq.io · Nonpartisan civic data for Virginia voters</p>
+  <div class="footer-links" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;">
+    <a href="/past-elections/2016" style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);text-decoration:none;">2016</a>
+    <a href="/past-elections/2017" style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);text-decoration:none;">2017</a>
+    <a href="/past-elections/2018" style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);text-decoration:none;">2018</a>
+    <a href="/past-elections/2019" style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);text-decoration:none;">2019</a>
+    <a href="/past-elections/2020" style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);text-decoration:none;">2020</a>
+    <a href="/past-elections/2021" style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);text-decoration:none;">2021</a>
+    <a href="/past-elections/2022" style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);text-decoration:none;">2022</a>
+    <a href="/past-elections/2023" style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);text-decoration:none;">2023</a>
+    <a href="/past-elections/2024" style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);text-decoration:none;">2024</a>
+    <a href="/past-elections" style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);text-decoration:none;">2025</a>
+    <a href="/" style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);text-decoration:none;">Home</a>
+  </div>
+</footer>
+<script>
+(function () {
+  const yr = (window._ELECTION_DATA || {}).election_year || '';
+  if (yr) {
+    const link = document.querySelector('#year-nav a[href="/past-elections/' + yr + '"]');
+    if (link) link.classList.add('active');
+  }
+})();
+</script>
 <script>
 (function () {
   const data = window._ELECTION_DATA || {};
