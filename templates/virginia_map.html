@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Virginia Interactive Map — VoteIQ</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet"/>
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.css" rel="stylesheet"/>
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.js"></script>
+<style>
+  :root {
+    --navy: #0d1b2a;
+    --red: #c8102e;
+    --light: #f4f1eb;
+    --mid: #ddd8cc;
+    --muted: #7a7468;
+    --dem: #1a52c8;
+    --rep: #c8102e;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--light);
+    color: var(--navy);
+    font-family: 'Barlow', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f4f1eb'/%3E%3Crect width='1' height='1' fill='%23e8e4dc' opacity='0.4'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Top bar ── */
+  .topbar {
+    background: var(--navy);
+    color: var(--mid);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    text-align: center;
+    padding: 7px 16px;
+    position: relative;
+    z-index: 20;
+    flex-shrink: 0;
+  }
+  .topbar span { color: var(--red); margin: 0 6px; }
+
+  /* ── Header ── */
+  header {
+    position: relative;
+    z-index: 20;
+    border-bottom: 3px double var(--navy);
+    padding: 18px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--light);
+    flex-shrink: 0;
+  }
+  .header-brand { display: flex; align-items: center; gap: 14px; }
+  .header-brand img { width: 52px; height: 52px; object-fit: contain; }
+  .header-title h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.35rem;
+    font-weight: 900;
+    line-height: 1.15;
+    color: var(--navy);
+  }
+  .header-title h1 em { font-style: italic; color: var(--red); }
+  .header-title p {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+  .back-link {
+    display: inline-block;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--navy);
+    text-decoration: none;
+    border: 1.5px solid var(--navy);
+    padding: 8px 18px;
+    transition: all .2s;
+  }
+  .back-link:hover { background: var(--navy); color: white; }
+
+  /* ── Map layout ── */
+  .map-shell {
+    position: relative;
+    z-index: 10;
+    flex: 1;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    min-height: 0;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    background: var(--light);
+    border-right: 2px solid var(--navy);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .sidebar-header {
+    background: var(--navy);
+    color: white;
+    padding: 14px 18px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .search-wrap {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--mid);
+    flex-shrink: 0;
+  }
+  .search-input {
+    width: 100%;
+    border: 2px solid var(--navy);
+    padding: 9px 12px;
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.84rem;
+    color: var(--navy);
+    background: white;
+    outline: none;
+    box-shadow: 2px 2px 0 var(--navy);
+  }
+  .search-input:focus { border-color: var(--red); box-shadow: 2px 2px 0 var(--red); }
+  .search-input::placeholder { color: #aaa8a2; }
+  .county-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 0;
+  }
+  .county-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: background 0.12s;
+    border-left: 3px solid transparent;
+  }
+  .county-item:hover { background: #edeae3; border-left-color: var(--red); }
+  .county-item.active { background: var(--navy); color: white; border-left-color: var(--red); }
+  .county-item-name {
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+  .county-item-type {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-left: auto;
+  }
+  .county-item.active .county-item-type { color: #b0b8c8; }
+  .county-count {
+    padding: 6px 16px 4px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--mid);
+    flex-shrink: 0;
+  }
+
+  /* ── Map container ── */
+  .map-wrap {
+    position: relative;
+  }
+  #map {
+    position: absolute;
+    inset: 0;
+  }
+
+  /* ── Mapbox overrides ── */
+  .mapboxgl-popup-content {
+    background: var(--navy);
+    color: white;
+    border-radius: 0;
+    padding: 10px 14px;
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.84rem;
+    line-height: 1.5;
+    box-shadow: 3px 3px 0 rgba(0,0,0,0.4);
+    min-width: 160px;
+  }
+  .mapboxgl-popup-tip { border-top-color: var(--navy) !important; }
+  .popup-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    margin-bottom: 2px;
+  }
+  .popup-type {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #9fb0c8;
+  }
+  .mapboxgl-ctrl-logo { display: none !important; }
+  .mapboxgl-ctrl-attrib { font-size: 0.58rem !important; opacity: 0.5 !important; }
+
+  /* ── Map legend ── */
+  .map-legend {
+    position: absolute;
+    bottom: 20px;
+    left: 16px;
+    background: white;
+    border: 1.5px solid var(--navy);
+    box-shadow: 3px 3px 0 var(--navy);
+    padding: 10px 14px;
+    z-index: 5;
+    min-width: 160px;
+  }
+  .legend-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--navy);
+    padding: 2px 0;
+  }
+  .legend-swatch {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    border: 1px solid rgba(0,0,0,0.15);
+  }
+
+  /* ── Map controls bar ── */
+  .map-controls {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    z-index: 5;
+  }
+  .ctrl-btn {
+    background: white;
+    border: 1.5px solid var(--navy);
+    color: var(--navy);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 7px 12px;
+    cursor: pointer;
+    transition: all .15s;
+    box-shadow: 2px 2px 0 var(--navy);
+    white-space: nowrap;
+  }
+  .ctrl-btn:hover, .ctrl-btn.active { background: var(--navy); color: white; }
+
+  /* ── Highlighted county badge ── */
+  #selected-badge {
+    position: absolute;
+    top: 14px;
+    left: 16px;
+    background: var(--navy);
+    color: white;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 8px 14px;
+    z-index: 5;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 3px 3px 0 rgba(0,0,0,0.3);
+  }
+  #selected-badge.visible { display: flex; }
+  #selected-badge button {
+    background: none;
+    border: none;
+    color: #9fb0c8;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0;
+  }
+  #selected-badge button:hover { color: white; }
+
+  /* ── Token warning ── */
+  #token-warning {
+    position: absolute;
+    inset: 0;
+    background: rgba(13,27,42,0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    display: none;
+  }
+  #token-warning.show { display: flex; }
+  .token-card {
+    background: var(--light);
+    border: 2px solid var(--navy);
+    box-shadow: 6px 6px 0 var(--navy);
+    padding: 32px 36px;
+    max-width: 420px;
+    text-align: center;
+  }
+  .token-card h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    font-weight: 900;
+    color: var(--navy);
+    margin-bottom: 10px;
+  }
+  .token-card p {
+    font-size: 0.88rem;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+  .token-card code {
+    display: block;
+    background: var(--navy);
+    color: #7dffb3;
+    font-size: 0.78rem;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    text-align: left;
+    word-break: break-all;
+  }
+  .token-card a {
+    display: inline-block;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: white;
+    background: var(--red);
+    text-decoration: none;
+    padding: 10px 22px;
+  }
+
+  /* ── Stats bar ── */
+  .stats-bar {
+    background: var(--navy);
+    color: var(--mid);
+    padding: 8px 40px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 20;
+  }
+  .stat-item {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+  }
+  .stat-val {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: white;
+    letter-spacing: 0.04em;
+  }
+  .stat-lbl {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .stats-bar-sep { color: var(--red); font-size: 0.8rem; }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .map-shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+    .sidebar { border-right: none; border-bottom: 2px solid var(--navy); max-height: 200px; }
+    header { padding: 14px 20px; }
+    .stats-bar { padding: 8px 20px; gap: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">Virginia Interactive Map &nbsp;<span>◆</span>&nbsp; All Counties &amp; Independent Cities &nbsp;<span>◆</span>&nbsp; VoteIQ</div>
+
+<header>
+  <div class="header-brand">
+    <a href="/"><img src="/static/logo.png" alt="VoteIQ" /></a>
+    <div class="header-title">
+      <h1>Virginia <em>Interactive Map</em></h1>
+      <p>134 Counties &amp; Independent Cities</p>
+    </div>
+  </div>
+  <a href="/" class="back-link">&#8592; Back to VoteIQ</a>
+</header>
+
+<div class="stats-bar">
+  <div class="stat-item"><span class="stat-val">134</span><span class="stat-lbl">Localities</span></div>
+  <span class="stats-bar-sep">◆</span>
+  <div class="stat-item"><span class="stat-val" id="stat-counties">—</span><span class="stat-lbl">Counties</span></div>
+  <span class="stats-bar-sep">◆</span>
+  <div class="stat-item"><span class="stat-val" id="stat-cities">—</span><span class="stat-lbl">Ind. Cities</span></div>
+  <span class="stats-bar-sep">◆</span>
+  <div class="stat-item"><span class="stat-val" id="stat-selected">None</span><span class="stat-lbl">Selected</span></div>
+</div>
+
+<div class="map-shell">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">Virginia Localities</div>
+    <div class="search-wrap">
+      <input class="search-input" id="county-search" type="text" placeholder="Search counties &amp; cities…" autocomplete="off" />
+    </div>
+    <div class="county-count" id="county-count">Loading…</div>
+    <div class="county-list" id="county-list"></div>
+  </div>
+
+  <!-- Map -->
+  <div class="map-wrap">
+    <div id="map"></div>
+
+    <div id="selected-badge">
+      <span id="badge-text">—</span>
+      <button id="badge-clear" title="Clear selection">✕</button>
+    </div>
+
+    <div class="map-controls">
+      <button class="ctrl-btn active" id="btn-fit" title="Fit Virginia to view">Fit Virginia</button>
+      <button class="ctrl-btn" id="btn-satellite" title="Toggle satellite imagery">Satellite</button>
+    </div>
+
+    <div class="map-legend">
+      <div class="legend-title">Legend</div>
+      <div class="legend-row"><span class="legend-swatch" style="background:#e8e4dc;border-color:#0d1b2a;"></span>County</div>
+      <div class="legend-row"><span class="legend-swatch" style="background:#d4cfc4;border-color:#0d1b2a;"></span>Independent City</div>
+      <div class="legend-row"><span class="legend-swatch" style="background:#c8102e;border-color:#8a0020;"></span>Selected</div>
+    </div>
+
+    <div id="token-warning">
+      <div class="token-card">
+        <h2>Mapbox Token Required</h2>
+        <p>Add your Mapbox public token to <strong>.env</strong> to enable the interactive map:</p>
+        <code>MAPBOX_TOKEN=pk.eyJ1IjoieW91…</code>
+        <p>Then restart the server. Get a free token at:</p>
+        <a href="https://account.mapbox.com/access-tokens/" target="_blank">account.mapbox.com &#8599;</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TOKEN = window._MAPBOX_TOKEN || '';
+const GEOJSON = window._VA_GEOJSON || { type: 'FeatureCollection', features: [] };
+
+// Virginia bounds: SW [-83.68, 36.54]  NE [-75.17, 39.47]
+const VA_BOUNDS = [[-83.68, 36.54], [-75.17, 39.47]];
+const VA_CENTER = [-78.65, 37.43];
+
+// ── Show warning if no token ──────────────────────────────────────────────────
+if (!TOKEN || TOKEN === 'YOUR_MAPBOX_TOKEN') {
+  document.getElementById('token-warning').classList.add('show');
+}
+
+mapboxgl.accessToken = TOKEN;
+
+const map = new mapboxgl.Map({
+  container: 'map',
+  style: 'mapbox://styles/mapbox/light-v11',
+  center: VA_CENTER,
+  zoom: 6.2,
+  minZoom: 5,
+  maxZoom: 13,
+  maxBounds: [[-90, 33], [-70, 42]],
+});
+
+map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'bottom-right');
+map.addControl(new mapboxgl.ScaleControl({ maxWidth: 100, unit: 'imperial' }), 'bottom-right');
+
+let selectedFIPS = null;
+const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: 12 });
+
+map.on('load', () => {
+  // ── Add Virginia counties source ─────────────────────────────────────────
+  map.addSource('va-counties', {
+    type: 'geojson',
+    data: GEOJSON,
+    generateId: true,
+  });
+
+  // Fill — county vs city differentiated by LSAD
+  map.addLayer({
+    id: 'va-fill',
+    type: 'fill',
+    source: 'va-counties',
+    paint: {
+      'fill-color': [
+        'case',
+        ['==', ['get', 'FIPS'], selectedFIPS], '#c8102e',
+        ['==', ['get', 'LSAD'], 'city'], '#d4cfc4',
+        '#e8e4dc',
+      ],
+      'fill-opacity': [
+        'case',
+        ['boolean', ['feature-state', 'hover'], false], 0.85,
+        ['boolean', ['feature-state', 'selected'], false], 1.0,
+        0.7,
+      ],
+    },
+  });
+
+  // Outline
+  map.addLayer({
+    id: 'va-outline',
+    type: 'line',
+    source: 'va-counties',
+    paint: {
+      'line-color': '#0d1b2a',
+      'line-width': [
+        'interpolate', ['linear'], ['zoom'],
+        5, 0.4,
+        8, 1.0,
+        11, 2.0,
+      ],
+      'line-opacity': 0.6,
+    },
+  });
+
+  // Selected fill (overlay)
+  map.addLayer({
+    id: 'va-selected',
+    type: 'fill',
+    source: 'va-counties',
+    paint: {
+      'fill-color': '#c8102e',
+      'fill-opacity': [
+        'case',
+        ['boolean', ['feature-state', 'selected'], false], 0.55,
+        0,
+      ],
+    },
+  });
+
+  // Selected outline
+  map.addLayer({
+    id: 'va-selected-outline',
+    type: 'line',
+    source: 'va-counties',
+    paint: {
+      'line-color': '#c8102e',
+      'line-width': 2.5,
+      'line-opacity': [
+        'case',
+        ['boolean', ['feature-state', 'selected'], false], 1,
+        0,
+      ],
+    },
+  });
+
+  buildSidebar();
+  updateStats();
+
+  // ── Hover ─────────────────────────────────────────────────────────────────
+  let hoveredId = null;
+  map.on('mousemove', 'va-fill', (e) => {
+    map.getCanvas().style.cursor = 'pointer';
+    if (e.features.length === 0) return;
+    if (hoveredId !== null) map.setFeatureState({ source: 'va-counties', id: hoveredId }, { hover: false });
+    hoveredId = e.features[0].id;
+    map.setFeatureState({ source: 'va-counties', id: hoveredId }, { hover: true });
+    const p = e.features[0].properties;
+    popup
+      .setLngLat(e.lngLat)
+      .setHTML(`<div class="popup-name">${p.NAME}</div><div class="popup-type">${p.LSAD}</div>`)
+      .addTo(map);
+  });
+
+  map.on('mouseleave', 'va-fill', () => {
+    map.getCanvas().style.cursor = '';
+    if (hoveredId !== null) map.setFeatureState({ source: 'va-counties', id: hoveredId }, { hover: false });
+    hoveredId = null;
+    popup.remove();
+  });
+
+  // ── Click ─────────────────────────────────────────────────────────────────
+  map.on('click', 'va-fill', (e) => {
+    if (e.features.length === 0) return;
+    const feat = e.features[0];
+    selectFeature(feat.id, feat.properties.NAME, feat.properties.LSAD);
+  });
+});
+
+// ── Select a feature ─────────────────────────────────────────────────────────
+let currentSelectedId = null;
+function selectFeature(id, name, lsad) {
+  if (currentSelectedId !== null) {
+    map.setFeatureState({ source: 'va-counties', id: currentSelectedId }, { selected: false });
+  }
+  currentSelectedId = id;
+  map.setFeatureState({ source: 'va-counties', id: id }, { selected: true });
+  document.getElementById('badge-text').textContent = `${name} ${lsad}`;
+  document.getElementById('selected-badge').classList.add('visible');
+  document.getElementById('stat-selected').textContent = name;
+  // Sync sidebar highlight
+  document.querySelectorAll('.county-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.name === name && el.dataset.lsad === lsad);
+  });
+}
+
+function clearSelection() {
+  if (currentSelectedId !== null) {
+    map.setFeatureState({ source: 'va-counties', id: currentSelectedId }, { selected: false });
+    currentSelectedId = null;
+  }
+  document.getElementById('selected-badge').classList.remove('visible');
+  document.getElementById('stat-selected').textContent = 'None';
+  document.querySelectorAll('.county-item').forEach(el => el.classList.remove('active'));
+}
+
+document.getElementById('badge-clear').addEventListener('click', clearSelection);
+
+// ── Sidebar ──────────────────────────────────────────────────────────────────
+function buildSidebar(filter) {
+  const list = document.getElementById('county-list');
+  const f = (filter || '').toLowerCase();
+  const feats = GEOJSON.features
+    .map(ft => ({ name: ft.properties.NAME, lsad: ft.properties.LSAD, id: ft.id }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const visible = feats.filter(ft => !f || `${ft.name} ${ft.lsad}`.toLowerCase().includes(f));
+  list.innerHTML = '';
+  visible.forEach(ft => {
+    const el = document.createElement('div');
+    el.className = 'county-item';
+    el.dataset.name = ft.name;
+    el.dataset.lsad = ft.lsad;
+    el.innerHTML = `<span class="county-item-name">${ft.name}</span><span class="county-item-type">${ft.lsad}</span>`;
+    el.addEventListener('click', () => {
+      // Fly to locality and select it
+      const featOnMap = map.querySourceFeatures('va-counties', {
+        filter: ['==', ['get', 'NAME'], ft.name],
+      });
+      if (featOnMap.length > 0) {
+        selectFeature(featOnMap[0].id, ft.name, ft.lsad);
+        const coords = featOnMap[0].geometry;
+        if (coords) {
+          // Compute center of the feature's bounding box via Mapbox
+          map.fitBounds(getBbox(featOnMap[0].geometry), { padding: 80, maxZoom: 10, duration: 900 });
+        }
+      }
+    });
+    list.appendChild(el);
+  });
+  document.getElementById('county-count').textContent =
+    `${visible.length} localit${visible.length !== 1 ? 'ies' : 'y'}`;
+}
+
+document.getElementById('county-search').addEventListener('input', e => buildSidebar(e.target.value));
+
+// ── Stats ────────────────────────────────────────────────────────────────────
+function updateStats() {
+  const feats = GEOJSON.features;
+  const counties = feats.filter(f => f.properties.LSAD === 'County').length;
+  const cities = feats.filter(f => f.properties.LSAD !== 'County').length;
+  document.getElementById('stat-counties').textContent = counties;
+  document.getElementById('stat-cities').textContent = cities;
+}
+
+// ── Fit Virginia button ───────────────────────────────────────────────────────
+document.getElementById('btn-fit').addEventListener('click', () => {
+  map.fitBounds(VA_BOUNDS, { padding: 40, duration: 800 });
+  clearSelection();
+});
+
+// ── Satellite toggle ─────────────────────────────────────────────────────────
+let isSatellite = false;
+document.getElementById('btn-satellite').addEventListener('click', function () {
+  isSatellite = !isSatellite;
+  this.classList.toggle('active', isSatellite);
+  map.setStyle(isSatellite
+    ? 'mapbox://styles/mapbox/satellite-streets-v12'
+    : 'mapbox://styles/mapbox/light-v11'
+  );
+  map.once('styledata', () => {
+    map.addSource('va-counties', { type: 'geojson', data: GEOJSON, generateId: true });
+    map.addLayer({ id: 'va-fill', type: 'fill', source: 'va-counties', paint: { 'fill-color': '#e8e4dc', 'fill-opacity': 0.5 } });
+    map.addLayer({ id: 'va-outline', type: 'line', source: 'va-counties', paint: { 'line-color': isSatellite ? '#ffffff' : '#0d1b2a', 'line-width': 1, 'line-opacity': 0.8 } });
+    map.addLayer({ id: 'va-selected', type: 'fill', source: 'va-counties', paint: { 'fill-color': '#c8102e', 'fill-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 0.55, 0] } });
+    map.addLayer({ id: 'va-selected-outline', type: 'line', source: 'va-counties', paint: { 'line-color': '#c8102e', 'line-width': 2.5, 'line-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 1, 0] } });
+  });
+});
+
+// ── Bounding box helper ───────────────────────────────────────────────────────
+function getBbox(geometry) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  function processCoords(coords) {
+    if (typeof coords[0] === 'number') { minX = Math.min(minX, coords[0]); minY = Math.min(minY, coords[1]); maxX = Math.max(maxX, coords[0]); maxY = Math.max(maxY, coords[1]); }
+    else coords.forEach(processCoords);
+  }
+  processCoords(geometry.coordinates || []);
+  return [[minX, minY], [maxX, maxY]];
+}
+</script>
+</body>
+</html>

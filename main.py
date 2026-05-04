@@ -2748,5 +2748,33 @@ Answer questions about these results clearly and concisely (2-4 sentences). Be f
     return ChatResponse(reply=response.content[0].text)
 
 
+_va_counties_geojson_cache = None
+
+def _load_va_counties_geojson():
+    global _va_counties_geojson_cache
+    if _va_counties_geojson_cache is not None:
+        return _va_counties_geojson_cache
+    with open(os.path.join(BASE_DIR, "va_counties.json"), encoding="utf-8") as f:
+        _va_counties_geojson_cache = json.load(f)
+    return _va_counties_geojson_cache
+
+
+@app.get("/virginia-map", response_class=HTMLResponse)
+def virginia_map_page():
+    mapbox_token = os.getenv("MAPBOX_TOKEN", "")
+    geojson = _load_va_counties_geojson()
+    safe_geojson = json.dumps(geojson, default=str).replace("</script>", "<\\/script>")
+    with open(os.path.join(BASE_DIR, "templates", "virginia_map.html"), "r", encoding="utf-8") as f:
+        html = f.read()
+    inject = (
+        f"<script>"
+        f"window._MAPBOX_TOKEN={json.dumps(mapbox_token)};"
+        f"window._VA_GEOJSON={safe_geojson};"
+        f"</script>"
+    )
+    html = html.replace("</head>", inject + "</head>", 1)
+    return html
+
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
