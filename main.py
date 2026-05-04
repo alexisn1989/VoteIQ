@@ -2751,6 +2751,7 @@ Answer questions about these results clearly and concisely (2-4 sentences). Be f
 _va_counties_geojson_cache = None
 _va_hod_geojson_cache = None
 _va_sd_geojson_cache = None
+_pres_2016_2020_flip_geojson_cache = None
 
 
 def _load_va_counties_geojson():
@@ -2760,6 +2761,80 @@ def _load_va_counties_geojson():
     with open(os.path.join(BASE_DIR, "va_counties.json"), encoding="utf-8") as f:
         _va_counties_geojson_cache = json.load(f)
     return _va_counties_geojson_cache
+
+
+def _normalize_locality_key(name: str) -> str:
+    return str(name or "").upper().replace("&", "AND").strip()
+
+
+def _locality_winner_lookup(results: dict, office: str) -> dict:
+    lookup = {}
+    party_by_candidate = {}
+    for race in results.get("statewide", []):
+        if race.get("race") == office:
+            for candidate in race.get("candidates", []):
+                party_by_candidate[candidate.get("name", "")] = candidate.get("party", "")
+    for locality, race in results.get("locality_results", {}).get(office, {}).items():
+        if isinstance(race, dict) and "candidates" in race:
+            candidates = race.get("candidates", [])
+            winner = candidates[0] if candidates else {}
+        elif isinstance(race, dict):
+            sorted_cands = sorted(race.items(), key=lambda item: -float(item[1] or 0))
+            winner = {
+                "name": sorted_cands[0][0],
+                "party": party_by_candidate.get(sorted_cands[0][0], ""),
+                "pct": sorted_cands[0][1],
+            } if sorted_cands else {}
+        else:
+            winner = {}
+        party = _normalize_major_party(winner.get("party", ""))
+        lookup[_normalize_locality_key(locality)] = {
+            "name": winner.get("name", "No data"),
+            "party": party,
+            "pct": float(winner.get("pct") or 0.0),
+        }
+    return lookup
+
+
+def _build_pres_2016_2020_flip_geojson() -> dict:
+    global _pres_2016_2020_flip_geojson_cache
+    if _pres_2016_2020_flip_geojson_cache is not None:
+        return _pres_2016_2020_flip_geojson_cache
+
+    counties = json.loads(json.dumps(_load_va_counties_geojson()))
+    winners_2016 = _locality_winner_lookup(_load_historical_results("2016"), "President")
+    winners_2020 = _locality_winner_lookup(_load_2020_results(), "President")
+
+    for feat in counties.get("features", []):
+        props = feat.setdefault("properties", {})
+        locality = f"{props.get('NAME', '')} {props.get('LSAD', '')}".strip()
+        key = _normalize_locality_key(locality)
+        winner_2016 = winners_2016.get(key, {})
+        winner_2020 = winners_2020.get(key, {})
+        party_2016 = winner_2016.get("party", "Unknown")
+        party_2020 = winner_2020.get("party", "Unknown")
+        flipped = party_2016 != party_2020 and "Unknown" not in (party_2016, party_2020)
+        if flipped and party_2020 == "Democrat":
+            status = "Flipped Democratic"
+        elif flipped and party_2020 == "Republican":
+            status = "Flipped Republican"
+        elif party_2020 == "Democrat":
+            status = "Held Democratic"
+        elif party_2020 == "Republican":
+            status = "Held Republican"
+        else:
+            status = "No data"
+        props["_flip_status"] = status
+        props["_party_2016"] = party_2016
+        props["_party_2020"] = party_2020
+        props["_winner_2016"] = winner_2016.get("name", "No data")
+        props["_winner_2020"] = winner_2020.get("name", "No data")
+        props["_pct_2016"] = winner_2016.get("pct", 0.0)
+        props["_pct_2020"] = winner_2020.get("pct", 0.0)
+        props["_flip_label"] = f"{party_2016} to {party_2020}" if flipped else status
+
+    _pres_2016_2020_flip_geojson_cache = counties
+    return _pres_2016_2020_flip_geojson_cache
 
 
 def _shp_to_geojson(shp_path: str) -> dict:
@@ -2786,12 +2861,14 @@ def _load_sd_geojson():
     return _va_sd_geojson_cache
 
 
+@app.get("/virignia-map", response_class=HTMLResponse)
 @app.get("/virginia-map", response_class=HTMLResponse)
 def virginia_map_page():
     mapbox_token = os.getenv("MAPBOX_TOKEN", "")
     counties = _load_va_counties_geojson()
     hod = _load_hod_geojson()
     sd = _load_sd_geojson()
+    pres_flip = _build_pres_2016_2020_flip_geojson()
     def _s(obj): return json.dumps(obj, default=str).replace("</script>", "<\\/script>")
     with open(os.path.join(BASE_DIR, "templates", "virginia_map.html"), "r", encoding="utf-8") as f:
         html = f.read()
@@ -2801,6 +2878,7 @@ def virginia_map_page():
         f"window._VA_GEOJSON={_s(counties)};"
         f"window._HOD_GEOJSON={_s(hod)};"
         f"window._SD_GEOJSON={_s(sd)};"
+        f"window._PRES_FLIP_GEOJSON={_s(pres_flip)};"
         f"</script>"
     )
     html = html.replace("</head>", inject + "</head>", 1)

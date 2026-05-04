@@ -130,6 +130,9 @@
   <button class="layer-tab active" id="tab-counties" data-layer="counties">
     <span class="tab-dot"></span>Counties &amp; Cities<span class="layer-count">134</span>
   </button>
+  <button class="layer-tab" id="tab-pres-flip" data-layer="pres_flip">
+    <span class="tab-dot"></span>2016 to 2020 President<span class="layer-count">Flip</span>
+  </button>
   <button class="layer-tab" id="tab-hod" data-layer="hod">
     <span class="tab-dot"></span>House of Delegates<span class="layer-count">100</span>
   </button>
@@ -194,6 +197,7 @@ const TOKEN       = window._MAPBOX_TOKEN  || '';
 const COUNTIES_GJ = window._VA_GEOJSON   || { type:'FeatureCollection', features:[] };
 const HOD_GJ      = window._HOD_GEOJSON  || { type:'FeatureCollection', features:[] };
 const SD_GJ       = window._SD_GEOJSON   || { type:'FeatureCollection', features:[] };
+const PRES_FLIP_GJ = window._PRES_FLIP_GEOJSON || { type:'FeatureCollection', features:[] };
 
 // ── Config per layer ─────────────────────────────────────────────────────────
 const LAYERS = {
@@ -214,6 +218,33 @@ const LAYERS = {
       { color:'#c8102e', border:'#8a0020', label:'Selected' },
     ],
     statLabel: 'Counties',
+    statTotal: 134,
+  },
+  pres_flip: {
+    geojson: PRES_FLIP_GJ,
+    label: '2016 to 2020 Presidential Locality Flips',
+    fillColor: [
+      'match', ['get', '_flip_status'],
+      'Flipped Democratic', '#1a52c8',
+      'Flipped Republican', '#c8102e',
+      'Held Democratic', '#6b9fd4',
+      'Held Republican', '#e8807a',
+      '#aaaaaa'
+    ],
+    hoverColor: '#d4cfc4',
+    getLabel: p => `${p.NAME} ${p.LSAD}`,
+    getTitle: p => p.NAME,
+    getSub:   p => `${p._flip_status || 'No data'} | 2016: ${p._party_2016 || '-'} | 2020: ${p._party_2020 || '-'}`,
+    getSidebarName: p => p.NAME,
+    getSidebarTag:  p => p._flip_status || 'No data',
+    sortKey: p => p.NAME,
+    legend: [
+      { color:'#1a52c8', border:'#0d1b2a', label:'Flipped Democratic' },
+      { color:'#c8102e', border:'#0d1b2a', label:'Flipped Republican' },
+      { color:'#6b9fd4', border:'#0d1b2a', label:'Held Democratic' },
+      { color:'#e8807a', border:'#0d1b2a', label:'Held Republican' },
+    ],
+    statLabel: 'Pres. Flips',
     statTotal: 134,
   },
   hod: {
@@ -434,7 +465,7 @@ function buildSidebar(filter) {
     el.innerHTML = `<span class="item-name">${cfg.getSidebarName(ft.props)}</span><span class="item-tag">${cfg.getSidebarTag(ft.props)}</span>`;
     el.addEventListener('click', () => {
       const feats = map.querySourceFeatures(`src-${currentLayer}`, {
-        filter: currentLayer === 'counties'
+        filter: currentLayer === 'counties' || currentLayer === 'pres_flip'
           ? ['==', ['get', 'NAME'], ft.props.NAME]
           : ['==', ['get', 'DISTRICTN'], ft.props.DISTRICTN],
       });
