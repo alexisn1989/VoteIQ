@@ -1694,7 +1694,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         ).add_to(m)
         title = "2024 Virginia — Congressional District Results"
 
-    elif layer in ("gov_2021", "ltgov_2021", "ag_2021", "gov_2017", "ltgov_2017", "ag_2017", "pres_2016"):
+    elif layer in ("gov_2021", "ltgov_2021", "ag_2021", "gov_2017", "ltgov_2017", "ag_2017", "pres_2016", "pres_2020", "senate_2020", "senate_2018"):
         year = layer.rsplit("_", 1)[-1]
         race_map = {
             "gov_2021": "Governor",
@@ -1704,6 +1704,9 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             "ltgov_2017": "Lieutenant Governor",
             "ag_2017": "Attorney General",
             "pres_2016": "President",
+            "pres_2020": "President",
+            "senate_2020": "U.S. Senate",
+            "senate_2018": "U.S. Senate",
         }
         title_map = {
             "gov_2021": "2021 Virginia — Governor by Locality",
@@ -1715,9 +1718,17 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             "ltgov_2017": "2017 Virginia Lt. Governor by Locality",
             "ag_2017": "2017 Virginia Attorney General by Locality",
             "pres_2016": "2016 Virginia President by Locality",
+            "pres_2020": "2020 Virginia — President by Locality",
+            "senate_2020": "2020 Virginia — U.S. Senate by Locality",
+            "senate_2018": "2018 Virginia — U.S. Senate by Locality",
         })
         race_name = race_map[layer]
-        raw21 = _load_2021_results() if year == "2021" else _load_historical_results(year)
+        raw21 = (
+            _load_2021_results() if year == "2021" else
+            _load_2020_results() if year == "2020" else
+            _load_2018_results() if year == "2018" else
+            _load_historical_results(year)
+        )
         cand_party = {}
         for _race in raw21.get("statewide", []):
             if _race["race"] == race_name:
@@ -1842,10 +1853,15 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         ).add_to(m)
         title = f"2019 Virginia {chamber_label} - Numbered District Results"
 
-    elif layer in ("congress_2022", "congress_2016"):
+    elif layer in ("congress_2022", "congress_2016", "congress_2020", "congress_2018"):
         from shapely.geometry import mapping as _mapping
-        year = "2016" if layer == "congress_2016" else "2022"
-        raw22 = _load_historical_results("2016") if year == "2016" else _load_2022_results()
+        year = layer.split("_")[1]
+        raw22 = (
+            _load_historical_results("2016") if year == "2016" else
+            _load_2022_results() if year == "2022" else
+            _load_2020_results() if year == "2020" else
+            _load_2018_results()
+        )
         congress_data22 = raw22.get("congress", {})
         _ORDINALS22 = {1:"1st",2:"2nd",3:"3rd",4:"4th",5:"5th",6:"6th",7:"7th",8:"8th",9:"9th",10:"10th",11:"11th"}
         va_cd = _get_va_cd()
@@ -2189,7 +2205,7 @@ _district_maps: dict[str, str] = {}
 
 @app.get("/district-map", response_class=HTMLResponse)
 def district_map(layer: str = "congressional", lat: float = None, lng: float = None, district: int = None):
-    if layer in ("congressional", "hod_results", "hod_flip", "gov_results", "ltgov_results", "ag_results", "pres_2024", "senate_2024", "congress_2024", "senate_2023_results", "hod_2023_results", "senate_2023_flip_2019", "hod_2023_flip_2021", "gov_2021", "ltgov_2021", "ag_2021", "congress_2022", "gov_2017", "ltgov_2017", "ag_2017", "senate_2019_results", "hod_2019_results", "pres_2016", "congress_2016") and lat is None:
+    if layer in ("congressional", "hod_results", "hod_flip", "gov_results", "ltgov_results", "ag_results", "pres_2024", "senate_2024", "congress_2024", "senate_2023_results", "hod_2023_results", "senate_2023_flip_2019", "hod_2023_flip_2021", "gov_2021", "ltgov_2021", "ag_2021", "congress_2022", "gov_2017", "ltgov_2017", "ag_2017", "senate_2019_results", "hod_2019_results", "pres_2016", "congress_2016", "pres_2020", "senate_2020", "congress_2020", "senate_2018", "congress_2018") and lat is None:
         if layer not in _district_maps:
             try:
                 _district_maps[layer] = _build_district_map(layer)
@@ -2330,6 +2346,8 @@ _2024_data_cache = None
 _2023_data_cache = None
 _2022_data_cache = None
 _2021_data_cache = None
+_2020_data_cache = None
+_2018_data_cache = None
 _historical_data_cache = {}
 
 
@@ -2463,6 +2481,34 @@ def _load_2021_results():
     return _2021_data_cache
 
 
+def _load_2020_results():
+    global _2020_data_cache
+    if _2020_data_cache is not None:
+        return _2020_data_cache
+    path = os.path.join(BASE_DIR, "election_results_2020.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            _2020_data_cache = json.load(f)
+    except Exception as e:
+        print(f"_load_2020_results: {e}")
+        _2020_data_cache = {"statewide": [], "locality_results": {}, "congress": {}}
+    return _2020_data_cache
+
+
+def _load_2018_results():
+    global _2018_data_cache
+    if _2018_data_cache is not None:
+        return _2018_data_cache
+    path = os.path.join(BASE_DIR, "election_results_2018.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            _2018_data_cache = json.load(f)
+    except Exception as e:
+        print(f"_load_2018_results: {e}")
+        _2018_data_cache = {"statewide": [], "locality_results": {}, "congress": {}}
+    return _2018_data_cache
+
+
 HISTORICAL_ELECTION_META = {
     "2016": {
         "title": "2016 Virginia Federal Election",
@@ -2538,6 +2584,26 @@ def election_results_2021_page():
     data = _load_2021_results()
     safe_json = json.dumps(data, default=str).replace("</script>", "<\\/script>")
     with open(os.path.join(BASE_DIR, "templates", "election_results_2021.html"), "r", encoding="utf-8") as f:
+        html = f.read()
+    html = html.replace("</head>", f"<script>window._ELECTION_DATA={safe_json};</script></head>", 1)
+    return html
+
+
+@app.get("/past-elections/2020", response_class=HTMLResponse)
+def election_results_2020_page():
+    data = _load_2020_results()
+    safe_json = json.dumps(data, default=str).replace("</script>", "<\\/script>")
+    with open(os.path.join(BASE_DIR, "templates", "election_results_2020.html"), "r", encoding="utf-8") as f:
+        html = f.read()
+    html = html.replace("</head>", f"<script>window._ELECTION_DATA={safe_json};</script></head>", 1)
+    return html
+
+
+@app.get("/past-elections/2018", response_class=HTMLResponse)
+def election_results_2018_page():
+    data = _load_2018_results()
+    safe_json = json.dumps(data, default=str).replace("</script>", "<\\/script>")
+    with open(os.path.join(BASE_DIR, "templates", "election_results_2018.html"), "r", encoding="utf-8") as f:
         html = f.read()
     html = html.replace("</head>", f"<script>window._ELECTION_DATA={safe_json};</script></head>", 1)
     return html
@@ -2624,6 +2690,34 @@ def _build_election_summary(year: str) -> str:
             hod = data.get("hod", {})
             dem_w = sum(1 for d in hod.values() if (d.get("candidates") or [{}])[0].get("party","").lower().startswith("d"))
             lines.append(f"  House of Delegates: Democrats {dem_w} seats, Republicans {len(hod)-dem_w} seats")
+            return "\n".join(lines)
+        elif year == "2020":
+            data = _load_2020_results()
+            lines = ["2020 Virginia Federal Election results:"]
+            for race in data.get("statewide", []):
+                cands = race.get("candidates", [])
+                if cands:
+                    w, r = cands[0], cands[1] if len(cands) > 1 else {}
+                    lines.append(f"  {race['race']}: {w['name']} ({w['party']}) {w['pct']}% vs {r.get('name','—')} {r.get('pct',0)}%")
+            for dist, race in sorted(data.get("congress", {}).items()):
+                cands = race.get("candidates", [])
+                if cands:
+                    w, r = cands[0], cands[1] if len(cands) > 1 else {}
+                    lines.append(f"  VA-{dist}: {w['name']} ({w['party']}) {w['pct']}% vs {r.get('name','—')} {r.get('pct',0)}%")
+            return "\n".join(lines)
+        elif year == "2018":
+            data = _load_2018_results()
+            lines = ["2018 Virginia Federal Election (Midterm) results:"]
+            for race in data.get("statewide", []):
+                cands = race.get("candidates", [])
+                if cands:
+                    w, r = cands[0], cands[1] if len(cands) > 1 else {}
+                    lines.append(f"  {race['race']}: {w['name']} ({w['party']}) {w['pct']}% vs {r.get('name','—')} {r.get('pct',0)}%")
+            for dist, race in sorted(data.get("congress", {}).items()):
+                cands = race.get("candidates", [])
+                if cands:
+                    w, r = cands[0], cands[1] if len(cands) > 1 else {}
+                    lines.append(f"  VA-{dist}: {w['name']} ({w['party']}) {w['pct']}% vs {r.get('name','—')} {r.get('pct',0)}%")
             return "\n".join(lines)
     except Exception as e:
         print(f"_build_election_summary: {e}")
