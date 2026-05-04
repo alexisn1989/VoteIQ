@@ -100,7 +100,6 @@
   <div id="notes"></div>
   <div id="statewide-block"></div>
   <div id="tabs-block"></div>
-  <div id="tables-block"></div>
 </div>
 <footer>
   <p>© 2026 <span>VoteIQ</span> · voteiq.io · Nonpartisan civic data for Virginia voters</p>
@@ -146,25 +145,24 @@
     return party || 'Other';
   }
   function raceWinner(race) { return (race.candidates || [])[0] || {}; }
-  document.title = (meta.title || 'Historical Virginia Election Results') + ' - VoteIQ';
+
+  document.title = (meta.title || 'Historical Virginia Election Results') + ' — VoteIQ';
   document.getElementById('top-year').textContent = data.election_year || '';
   document.getElementById('header-date').textContent = 'Virginia Election · ' + (meta.date || data.election_year || '');
   document.getElementById('page-title').innerHTML = esc(meta.title || 'Virginia Election Results').replace('Virginia ', 'Virginia <em>') + (String(meta.title || '').includes('Virginia ') ? '</em>' : '');
   document.getElementById('page-subtitle').textContent = meta.subtitle || '';
 
-  const notes = document.getElementById('notes');
   (meta.notes || []).forEach(note => {
     const div = document.createElement('div');
     div.className = 'notice';
     div.textContent = note;
-    notes.appendChild(div);
+    document.getElementById('notes').appendChild(div);
   });
 
   const statewide = data.statewide || [];
   if (statewide.length) {
     const wrap = document.getElementById('statewide-block');
     wrap.innerHTML = '<div class="section-label"><span>01</span> Statewide Winners</div><div class="race-cards" id="race-cards"></div>';
-    const cards = document.getElementById('race-cards');
     statewide.forEach(race => {
       const w = raceWinner(race);
       const cls = pc(w.party);
@@ -175,39 +173,20 @@
         '<div class="race-winner-name">' + esc(w.name || 'No data') + '</div>' +
         '<span class="party-badge ' + cls + '">' + esc(pl(w.party)) + '</span>' +
         '<div class="vote-stats"><strong>' + esc(w.pct != null ? Number(w.pct).toFixed(1) + '%' : '-') + '</strong> · ' + fmt(w.votes) + ' votes</div>';
-      cards.appendChild(div);
+      document.getElementById('race-cards').appendChild(div);
     });
   }
 
-  if ((meta.maps || []).length) {
-    const tabs = document.getElementById('tabs-block');
-    tabs.innerHTML = '<div class="section-label"><span>02</span> Maps</div><div class="results-tabs"><div class="tab-nav" id="tab-nav"></div><div id="tab-panels"></div></div>';
-    const nav = document.getElementById('tab-nav');
-    const panels = document.getElementById('tab-panels');
-    meta.maps.forEach((map, idx) => {
-      const btn = document.createElement('button');
-      btn.className = 'tab-btn' + (idx === 0 ? ' active' : '');
-      btn.dataset.tab = map.tab;
-      btn.textContent = map.label;
-      nav.appendChild(btn);
-      const panel = document.createElement('div');
-      panel.className = 'tab-panel' + (idx === 0 ? ' active' : '');
-      panel.id = 'tab-' + map.tab;
-      panel.innerHTML =
-        '<div class="section-label"><span>' + String(idx + 1).padStart(2, '0') + '</span> ' + esc(map.title) + '</div>' +
-        '<div class="legend-row"><div class="legend-item"><span class="swatch" style="background:var(--dem);"></span><span class="legend-text">Democrat</span></div><div class="legend-item"><span class="swatch" style="background:var(--rep);"></span><span class="legend-text">Republican</span></div><span class="legend-text" style="color:var(--muted);">Darker shade = larger margin</span></div>' +
-        '<div class="map-shell"><iframe data-src="/district-map?layer=' + encodeURIComponent(map.layer) + '" style="width:100%;height:520px;border:none;display:block;" title="' + esc(map.title) + '"></iframe></div>';
-      panels.appendChild(panel);
-    });
-  }
-
-  function renderRaceTable(title, races, prefix) {
+  function buildTablePanel(title, races, prefix) {
     const wrap = document.createElement('div');
-    wrap.innerHTML = '<div class="section-label"><span>•</span> ' + esc(title) + '</div><div class="table-wrap"><table><thead><tr><th>Race</th><th>Winner</th><th>Party</th><th>Votes</th><th>Runner-Up</th><th>Pct.</th></tr></thead><tbody></tbody></table></div>';
+    wrap.innerHTML =
+      '<div class="table-wrap"><table><thead><tr>' +
+      '<th>District / Race</th><th>Winner</th><th>Party</th><th>Votes</th><th>Runner-Up</th><th>Pct.</th>' +
+      '</tr></thead><tbody></tbody></table></div>';
     const tbody = wrap.querySelector('tbody');
     Object.keys(races || {}).sort((a, b) => {
       const na = Number(a), nb = Number(b);
-      if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+      if (!isNaN(na) && !isNaN(nb)) return na - nb;
       return String(a).localeCompare(String(b));
     }).forEach(key => {
       const race = races[key] || {};
@@ -218,27 +197,57 @@
       const tr = document.createElement('tr');
       tr.className = cls + '-row';
       tr.innerHTML =
-        '<td class="td-dist">' + esc(prefix ? prefix + ' ' + key : key) + '</td>' +
+        '<td class="td-dist">' + esc(prefix ? prefix + '-' + key : key) + '</td>' +
         '<td class="td-winner">' + esc(w.name || 'No data') + '<span class="inline-badge ' + cls + '">' + esc(pl(w.party)) + '</span></td>' +
-        '<td>' + esc(w.party || '-') + '</td>' +
+        '<td>' + esc(w.party || '—') + '</td>' +
         '<td>' + fmt(w.votes) + '</td>' +
         '<td>' + (r ? esc(r.name) + ' (' + fmt(r.votes) + ')' : '<span style="color:#bbb">Uncontested</span>') + '</td>' +
-        '<td class="td-pct">' + (w.pct != null ? Number(w.pct).toFixed(1) : '-') + '%</td>';
+        '<td class="td-pct">' + (w.pct != null ? Number(w.pct).toFixed(1) : '—') + '%</td>';
       tbody.appendChild(tr);
     });
-    document.getElementById('tables-block').appendChild(wrap);
+    return wrap;
   }
-  if (data.senate) renderRaceTable('State Senate Results', data.senate, 'SD');
-  if (data.hod) renderRaceTable('House of Delegates Results', data.hod, 'HD');
-  if (data.congress) renderRaceTable('Congressional Results', data.congress, 'VA');
-  if (data.local_races) renderRaceTable('Local Race Results', data.local_races, '');
+
+  const allTabs = [];
+  (meta.maps || []).forEach(map => allTabs.push({ kind: 'map', id: map.tab, label: map.label, title: map.title, layer: map.layer }));
+  if (data.congress && Object.keys(data.congress).length) allTabs.push({ kind: 'table', id: 'congress-table', label: 'Congress Table', title: 'U.S. House — All Districts', races: data.congress, prefix: 'VA' });
+  if (data.senate  && Object.keys(data.senate).length)  allTabs.push({ kind: 'table', id: 'senate-table',   label: 'Senate Table',   title: 'State Senate — All Districts',       races: data.senate,  prefix: 'SD' });
+  if (data.hod     && Object.keys(data.hod).length)     allTabs.push({ kind: 'table', id: 'hod-table',      label: 'HOD Table',      title: 'House of Delegates — All Districts',  races: data.hod,     prefix: 'HD' });
+  if (data.local_races && Object.keys(data.local_races).length) allTabs.push({ kind: 'table', id: 'local-table', label: 'Local Races', title: 'Local Race Results', races: data.local_races, prefix: '' });
   Object.keys(data.locality_results || {}).forEach(office => {
-    const races = {};
-    Object.keys(data.locality_results[office] || {}).forEach(locality => {
-      races[locality] = data.locality_results[office][locality];
-    });
-    renderRaceTable(office + ' Locality Results', races, '');
+    const id = office.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-locality';
+    allTabs.push({ kind: 'table', id, label: office + ' by Locality', title: office + ' — Results by Locality', races: data.locality_results[office], prefix: '' });
   });
+
+  if (allTabs.length) {
+    const block = document.getElementById('tabs-block');
+    block.innerHTML = '<div class="section-label"><span>02</span> Results</div><div class="results-tabs"><div class="tab-nav" id="tab-nav"></div><div id="tab-panels"></div></div>';
+    const nav = document.getElementById('tab-nav');
+    const panels = document.getElementById('tab-panels');
+    allTabs.forEach((tab, idx) => {
+      const btn = document.createElement('button');
+      btn.className = 'tab-btn' + (idx === 0 ? ' active' : '');
+      btn.dataset.tab = tab.id;
+      btn.textContent = tab.label;
+      nav.appendChild(btn);
+
+      const panel = document.createElement('div');
+      panel.className = 'tab-panel' + (idx === 0 ? ' active' : '');
+      panel.id = 'tab-' + tab.id;
+
+      if (tab.kind === 'map') {
+        panel.innerHTML =
+          '<div class="legend-row">' +
+          '<div class="legend-item"><span class="swatch" style="background:var(--dem);"></span><span class="legend-text">Democrat</span></div>' +
+          '<div class="legend-item"><span class="swatch" style="background:var(--rep);"></span><span class="legend-text">Republican</span></div>' +
+          '<span class="legend-text" style="color:var(--muted);">Darker shade = larger margin</span></div>' +
+          '<div class="map-shell"><iframe data-src="/district-map?layer=' + encodeURIComponent(tab.layer) + '" style="width:100%;height:520px;border:none;display:block;" title="' + esc(tab.title) + '"></iframe></div>';
+      } else {
+        panel.appendChild(buildTablePanel(tab.title, tab.races, tab.prefix));
+      }
+      panels.appendChild(panel);
+    });
+  }
 
   function lazyLoad(panel) {
     const iframe = panel && panel.querySelector('iframe[data-src]');
@@ -250,8 +259,7 @@
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
       const panel = document.getElementById('tab-' + btn.dataset.tab);
-      panel.classList.add('active');
-      lazyLoad(panel);
+      if (panel) { panel.classList.add('active'); lazyLoad(panel); }
     });
   });
   lazyLoad(document.querySelector('.tab-panel.active'));
