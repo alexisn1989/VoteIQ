@@ -8,6 +8,7 @@ import folium
 import geopandas as gpd
 import os
 import json
+import re
 from html import escape
 import requests
 import anthropic
@@ -2753,6 +2754,9 @@ _va_hod_geojson_cache = None
 _va_sd_geojson_cache = None
 _pres_2016_2020_flip_geojson_cache = None
 _state_leg_2023_flip_geojson_cache = {}
+_locality_flip_geojson_cache = {}
+_congress_flip_geojson_cache = {}
+_hod_2017_2021_flip_geojson_cache = None
 
 
 def _load_va_counties_geojson():
@@ -2838,6 +2842,167 @@ def _build_pres_2016_2020_flip_geojson() -> dict:
     return _pres_2016_2020_flip_geojson_cache
 
 
+def _build_locality_office_flip_geojson(start_year: str, end_year: str, office: str) -> dict:
+    cache_key = f"{start_year}_{end_year}_{office}"
+    if cache_key in _locality_flip_geojson_cache:
+        return _locality_flip_geojson_cache[cache_key]
+
+    counties = json.loads(json.dumps(_load_va_counties_geojson()))
+    start_loader = _load_historical_results if start_year not in ("2020", "2021", "2024") else {
+        "2020": _load_2020_results,
+        "2021": _load_2021_results,
+        "2024": _load_2024_results,
+    }[start_year]
+    end_loader = _load_historical_results if end_year not in ("2020", "2021", "2024") else {
+        "2020": _load_2020_results,
+        "2021": _load_2021_results,
+        "2024": _load_2024_results,
+    }[end_year]
+    start_results = start_loader(start_year) if start_loader == _load_historical_results else start_loader()
+    end_results = end_loader(end_year) if end_loader == _load_historical_results else end_loader()
+    start_winners = _locality_winner_lookup(start_results, office)
+    end_winners = _locality_winner_lookup(end_results, office)
+
+    for feat in counties.get("features", []):
+        props = feat.setdefault("properties", {})
+        locality = f"{props.get('NAME', '')} {props.get('LSAD', '')}".strip()
+        key = _normalize_locality_key(locality)
+        start_winner = start_winners.get(key, {})
+        end_winner = end_winners.get(key, {})
+        start_party = start_winner.get("party", "Unknown")
+        end_party = end_winner.get("party", "Unknown")
+        flipped = start_party != end_party and "Unknown" not in (start_party, end_party)
+        if flipped and end_party == "Democrat":
+            status = "Flipped Democratic"
+        elif flipped and end_party == "Republican":
+            status = "Flipped Republican"
+        elif end_party == "Democrat":
+            status = "Held Democratic"
+        elif end_party == "Republican":
+            status = "Held Republican"
+        else:
+            status = "No data"
+        props["_flip_status"] = status
+        props["_start_party"] = start_party
+        props["_end_party"] = end_party
+        props["_start_year"] = start_year
+        props["_end_year"] = end_year
+        props["_start_winner"] = start_winner.get("name", "No data")
+        props["_end_winner"] = end_winner.get("name", "No data")
+        props["_start_pct"] = start_winner.get("pct", 0.0)
+        props["_end_pct"] = end_winner.get("pct", 0.0)
+        props["_flip_label"] = f"{start_party} to {end_party}" if flipped else status
+
+    _locality_flip_geojson_cache[cache_key] = counties
+    return _locality_flip_geojson_cache[cache_key]
+
+
+def _congress_winner_lookup(results: dict) -> dict:
+    lookup = {}
+    for district, race in results.get("congress", {}).items():
+        candidates = race.get("candidates", [])
+        winner = candidates[0] if candidates else {}
+        try:
+            district_num = int(re.search(r"\d+", str(district)).group())
+        except Exception:
+            continue
+        lookup[district_num] = {
+            "name": winner.get("name", "No data"),
+            "party": _normalize_major_party(winner.get("party", "")),
+            "pct": float(winner.get("pct") or 0.0),
+        }
+    return lookup
+
+
+def _build_congress_flip_geojson(start_year: str, end_year: str) -> dict:
+    cache_key = f"{start_year}_{end_year}"
+    if cache_key in _congress_flip_geojson_cache:
+        return _congress_flip_geojson_cache[cache_key]
+
+    start_results = _load_2018_results() if start_year == "2018" else _load_historical_results(start_year)
+    end_results = _load_2022_results() if end_year == "2022" else _load_historical_results(end_year)
+    start_winners = _congress_winner_lookup(start_results)
+    end_winners = _congress_winner_lookup(end_results)
+    decorated = json.loads(json.dumps(_get_va_cd().to_json()))
+    decorated = json.loads(decorated)
+
+    for feat in decorated.get("features", []):
+        props = feat.setdefault("properties", {})
+        district = int(props.get("CD118FP") or 0)
+        start_winner = start_winners.get(district, {})
+        end_winner = end_winners.get(district, {})
+        start_party = start_winner.get("party", "Unknown")
+        end_party = end_winner.get("party", "Unknown")
+        flipped = start_party != end_party and "Unknown" not in (start_party, end_party)
+        if flipped and end_party == "Democrat":
+            status = "Flipped Democratic"
+        elif flipped and end_party == "Republican":
+            status = "Flipped Republican"
+        elif end_party == "Democrat":
+            status = "Held Democratic"
+        elif end_party == "Republican":
+            status = "Held Republican"
+        else:
+            status = "No data"
+        props["DISTRICTN"] = district
+        props["_flip_status"] = status
+        props["_start_party"] = start_party
+        props["_end_party"] = end_party
+        props["_start_year"] = start_year
+        props["_end_year"] = end_year
+        props["_start_winner"] = start_winner.get("name", "No data")
+        props["_end_winner"] = end_winner.get("name", "No data")
+        props["_start_pct"] = start_winner.get("pct", 0.0)
+        props["_end_pct"] = end_winner.get("pct", 0.0)
+        props["_flip_label"] = f"{start_party} to {end_party}" if flipped else status
+
+    _congress_flip_geojson_cache[cache_key] = decorated
+    return _congress_flip_geojson_cache[cache_key]
+
+
+def _build_hod_2017_2021_flip_geojson() -> dict:
+    global _hod_2017_2021_flip_geojson_cache
+    if _hod_2017_2021_flip_geojson_cache is not None:
+        return _hod_2017_2021_flip_geojson_cache
+
+    decorated = json.loads(json.dumps(_load_hod_geojson()))
+    results_2017 = _load_historical_results("2017").get("hod", {})
+    results_2021 = _load_2021_results().get("hod", {})
+    for feat in decorated.get("features", []):
+        props = feat.setdefault("properties", {})
+        district = int(props.get("DISTRICTN") or props.get("DISTRICT") or 0)
+        race_2017 = results_2017.get(str(district), results_2017.get(district, {}))
+        race_2021 = results_2021.get(str(district), results_2021.get(district, {}))
+        winner_2017 = (race_2017.get("candidates") or [{}])[0]
+        winner_2021 = (race_2021.get("candidates") or [{}])[0]
+        party_2017 = _normalize_major_party(winner_2017.get("party", ""))
+        party_2021 = _normalize_major_party(winner_2021.get("party", ""))
+        flipped = party_2017 != party_2021 and "Unknown" not in (party_2017, party_2021)
+        if flipped and party_2021 == "Democrat":
+            status = "Flipped Democratic"
+        elif flipped and party_2021 == "Republican":
+            status = "Flipped Republican"
+        elif party_2021 == "Democrat":
+            status = "Held Democratic"
+        elif party_2021 == "Republican":
+            status = "Held Republican"
+        else:
+            status = "No data"
+        props["_flip_status"] = status
+        props["_start_party"] = party_2017
+        props["_end_party"] = party_2021
+        props["_start_year"] = "2017"
+        props["_end_year"] = "2021"
+        props["_start_winner"] = winner_2017.get("name", "No data")
+        props["_end_winner"] = winner_2021.get("name", "No data")
+        props["_start_pct"] = float(winner_2017.get("pct") or 0.0)
+        props["_end_pct"] = float(winner_2021.get("pct") or 0.0)
+        props["_flip_label"] = f"{party_2017} to {party_2021}" if flipped else status
+
+    _hod_2017_2021_flip_geojson_cache = decorated
+    return _hod_2017_2021_flip_geojson_cache
+
+
 def _build_state_leg_2023_flip_geojson(chamber: str) -> dict:
     if chamber in _state_leg_2023_flip_geojson_cache:
         return _state_leg_2023_flip_geojson_cache[chamber]
@@ -2914,6 +3079,9 @@ def virginia_map_page():
     pres_flip = _build_pres_2016_2020_flip_geojson()
     hod_flip = _build_state_leg_2023_flip_geojson("hod")
     sd_flip = _build_state_leg_2023_flip_geojson("senate")
+    gov_flip = _build_locality_office_flip_geojson("2017", "2021", "Governor")
+    congress_midterm_flip = _build_congress_flip_geojson("2018", "2022")
+    hod_state_flip = _build_hod_2017_2021_flip_geojson()
     def _s(obj): return json.dumps(obj, default=str).replace("</script>", "<\\/script>")
     with open(os.path.join(BASE_DIR, "templates", "virginia_map.html"), "r", encoding="utf-8") as f:
         html = f.read()
@@ -2926,6 +3094,9 @@ def virginia_map_page():
         f"window._PRES_FLIP_GEOJSON={_s(pres_flip)};"
         f"window._HOD_FLIP_GEOJSON={_s(hod_flip)};"
         f"window._SD_FLIP_GEOJSON={_s(sd_flip)};"
+        f"window._GOV_FLIP_GEOJSON={_s(gov_flip)};"
+        f"window._CONGRESS_MIDTERM_FLIP_GEOJSON={_s(congress_midterm_flip)};"
+        f"window._HOD_STATE_FLIP_GEOJSON={_s(hod_state_flip)};"
         f"</script>"
     )
     html = html.replace("</head>", inject + "</head>", 1)

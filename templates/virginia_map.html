@@ -133,6 +133,15 @@
   <button class="layer-tab" id="tab-pres-flip" data-layer="pres_flip">
     <span class="tab-dot"></span>2016 to 2020 President<span class="layer-count">Flip</span>
   </button>
+  <button class="layer-tab" id="tab-gov-flip" data-layer="gov_flip">
+    <span class="tab-dot"></span>2017 to 2021 Governor<span class="layer-count">Flip</span>
+  </button>
+  <button class="layer-tab" id="tab-congress-midterm-flip" data-layer="congress_midterm_flip">
+    <span class="tab-dot"></span>2018 to 2022 Congress<span class="layer-count">Midterm</span>
+  </button>
+  <button class="layer-tab" id="tab-hod-state-flip" data-layer="hod_state_flip">
+    <span class="tab-dot"></span>2017 to 2021 HOD<span class="layer-count">State</span>
+  </button>
   <button class="layer-tab" id="tab-sd-flip" data-layer="sd_flip">
     <span class="tab-dot"></span>Senate Flips<span class="layer-count">2023</span>
   </button>
@@ -206,6 +215,9 @@ const SD_GJ       = window._SD_GEOJSON   || { type:'FeatureCollection', features
 const PRES_FLIP_GJ = window._PRES_FLIP_GEOJSON || { type:'FeatureCollection', features:[] };
 const HOD_FLIP_GJ = window._HOD_FLIP_GEOJSON || { type:'FeatureCollection', features:[] };
 const SD_FLIP_GJ = window._SD_FLIP_GEOJSON || { type:'FeatureCollection', features:[] };
+const GOV_FLIP_GJ = window._GOV_FLIP_GEOJSON || { type:'FeatureCollection', features:[] };
+const CONGRESS_MIDTERM_FLIP_GJ = window._CONGRESS_MIDTERM_FLIP_GEOJSON || { type:'FeatureCollection', features:[] };
+const HOD_STATE_FLIP_GJ = window._HOD_STATE_FLIP_GEOJSON || { type:'FeatureCollection', features:[] };
 
 // ── Config per layer ─────────────────────────────────────────────────────────
 const LAYERS = {
@@ -254,6 +266,87 @@ const LAYERS = {
     ],
     statLabel: 'Pres. Flips',
     statTotal: 134,
+  },
+  gov_flip: {
+    geojson: GOV_FLIP_GJ,
+    label: '2017 to 2021 Governor Locality Flips',
+    fillColor: [
+      'match', ['get', '_flip_status'],
+      'Flipped Democratic', '#1a52c8',
+      'Flipped Republican', '#c8102e',
+      'Held Democratic', '#6b9fd4',
+      'Held Republican', '#e8807a',
+      '#aaaaaa'
+    ],
+    hoverColor: '#d4cfc4',
+    getLabel: p => `${p.NAME} ${p.LSAD}`,
+    getTitle: p => p.NAME,
+    getSub:   p => `${p._flip_status || 'No data'} | ${p._start_year || 'Start'}: ${p._start_party || '-'} | ${p._end_year || 'End'}: ${p._end_party || '-'}`,
+    getSidebarName: p => p.NAME,
+    getSidebarTag:  p => p._flip_status || 'No data',
+    sortKey: p => p.NAME,
+    legend: [
+      { color:'#1a52c8', border:'#0d1b2a', label:'Flipped Democratic' },
+      { color:'#c8102e', border:'#0d1b2a', label:'Flipped Republican' },
+      { color:'#6b9fd4', border:'#0d1b2a', label:'Held Democratic' },
+      { color:'#e8807a', border:'#0d1b2a', label:'Held Republican' },
+    ],
+    statLabel: 'Gov. Flips',
+    statTotal: 134,
+  },
+  congress_midterm_flip: {
+    geojson: CONGRESS_MIDTERM_FLIP_GJ,
+    label: '2018 to 2022 Congressional Midterm Flips',
+    fillColor: [
+      'match', ['get', '_flip_status'],
+      'Flipped Democratic', '#1a52c8',
+      'Flipped Republican', '#c8102e',
+      'Held Democratic', '#6b9fd4',
+      'Held Republican', '#e8807a',
+      '#aaaaaa'
+    ],
+    hoverColor: '#d4cfc4',
+    getLabel: p => `VA-${p.DISTRICTN}`,
+    getTitle: p => `VA-${p.DISTRICTN}`,
+    getSub:   p => `${p._flip_status || 'No data'} | ${p._start_year || 'Start'}: ${p._start_party || '-'} | ${p._end_year || 'End'}: ${p._end_party || '-'}`,
+    getSidebarName: p => `VA-${p.DISTRICTN}`,
+    getSidebarTag:  p => p._flip_status || 'No data',
+    sortKey: p => parseInt(p.DISTRICTN, 10),
+    legend: [
+      { color:'#1a52c8', border:'#0d1b2a', label:'Flipped Democratic' },
+      { color:'#c8102e', border:'#0d1b2a', label:'Flipped Republican' },
+      { color:'#6b9fd4', border:'#0d1b2a', label:'Held Democratic' },
+      { color:'#e8807a', border:'#0d1b2a', label:'Held Republican' },
+    ],
+    statLabel: 'Congress Flips',
+    statTotal: 11,
+  },
+  hod_state_flip: {
+    geojson: HOD_STATE_FLIP_GJ,
+    label: '2017 to 2021 HOD State Election Flips',
+    fillColor: [
+      'match', ['get', '_flip_status'],
+      'Flipped Democratic', '#1a52c8',
+      'Flipped Republican', '#c8102e',
+      'Held Democratic', '#6b9fd4',
+      'Held Republican', '#e8807a',
+      '#aaaaaa'
+    ],
+    hoverColor: '#b8ccec',
+    getLabel: p => `HOD District ${p.DISTRICTN}`,
+    getTitle: p => `District ${p.DISTRICTN}`,
+    getSub:   p => `${p._flip_status || 'No data'} | ${p._start_year || 'Start'}: ${p._start_party || '-'} | ${p._end_year || 'End'}: ${p._end_party || '-'}`,
+    getSidebarName: p => `District ${p.DISTRICTN}`,
+    getSidebarTag:  p => p._flip_status || 'No data',
+    sortKey: p => parseInt(p.DISTRICTN, 10),
+    legend: [
+      { color:'#1a52c8', border:'#0d1b2a', label:'Flipped Democratic' },
+      { color:'#c8102e', border:'#0d1b2a', label:'Flipped Republican' },
+      { color:'#6b9fd4', border:'#0d1b2a', label:'Held Democratic' },
+      { color:'#e8807a', border:'#0d1b2a', label:'Held Republican' },
+    ],
+    statLabel: 'HOD State Flips',
+    statTotal: 100,
   },
   sd_flip: {
     geojson: SD_FLIP_GJ,
@@ -527,7 +620,7 @@ function buildSidebar(filter) {
     el.innerHTML = `<span class="item-name">${cfg.getSidebarName(ft.props)}</span><span class="item-tag">${cfg.getSidebarTag(ft.props)}</span>`;
     el.addEventListener('click', () => {
       const feats = map.querySourceFeatures(`src-${currentLayer}`, {
-        filter: currentLayer === 'counties' || currentLayer === 'pres_flip'
+        filter: currentLayer === 'counties' || currentLayer === 'pres_flip' || currentLayer === 'gov_flip'
           ? ['==', ['get', 'NAME'], ft.props.NAME]
           : ['==', ['get', 'DISTRICTN'], ft.props.DISTRICTN],
       });
