@@ -101,7 +101,6 @@
   .token-card { background:var(--light); border:2px solid var(--navy); box-shadow:6px 6px 0 var(--navy); padding:32px 36px; max-width:400px; text-align:center; }
   .token-card h2 { font-family:'Playfair Display',serif; font-size:1.3rem; font-weight:900; color:var(--navy); margin-bottom:10px; }
   .token-card p { font-size:0.87rem; color:var(--muted); line-height:1.6; margin-bottom:14px; }
-  .token-card code { display:block; background:var(--navy); color:#7dffb3; font-size:0.75rem; padding:10px 14px; margin-bottom:14px; text-align:left; word-break:break-all; }
   .token-card a { display:inline-block; font-family:'Barlow Condensed',sans-serif; font-size:0.78rem; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:white; background:var(--red); text-decoration:none; padding:10px 22px; }
   body.embed-mode .topbar,
   body.embed-mode header,
@@ -245,11 +244,9 @@
 
     <div id="token-warning">
       <div class="token-card">
-        <h2>Mapbox Token Required</h2>
-        <p>Add your public Mapbox token to <strong>.env</strong>:</p>
-        <code>MAPBOX_TOKEN=pk.eyJ1IjoieW91…</code>
-        <p>Restart the server, then refresh.</p>
-        <a href="https://account.mapbox.com/access-tokens/" target="_blank">Get a free token &#8599;</a>
+        <h2>Map Temporarily Unavailable</h2>
+        <p>The interactive map could not load because map credentials are not configured for this deployment.</p>
+        <p>Please refresh in a moment or contact VoteIQ support.</p>
       </div>
     </div>
   </div>
