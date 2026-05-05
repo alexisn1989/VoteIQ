@@ -210,6 +210,7 @@
 
   const allTabs = [];
   (meta.maps || []).forEach(map => allTabs.push({ kind: 'map', id: map.tab, label: map.label, title: map.title, layer: map.layer }));
+  (meta.bubble_maps || []).forEach(map => allTabs.push({ kind: 'bubble', id: map.tab, label: map.label, title: map.title, year: map.year, office: map.office }));
   if (data.congress && Object.keys(data.congress).length) allTabs.push({ kind: 'table', id: 'congress-table', label: 'Congress Table', title: 'U.S. House — All Districts', races: data.congress, prefix: 'VA' });
   if (data.senate  && Object.keys(data.senate).length)  allTabs.push({ kind: 'table', id: 'senate-table',   label: 'Senate Table',   title: 'State Senate — All Districts',       races: data.senate,  prefix: 'SD' });
   if (data.hod     && Object.keys(data.hod).length)     allTabs.push({ kind: 'table', id: 'hod-table',      label: 'HOD Table',      title: 'House of Delegates — All Districts',  races: data.hod,     prefix: 'HD' });
@@ -242,6 +243,13 @@
           '<div class="legend-item"><span class="swatch" style="background:var(--rep);"></span><span class="legend-text">Republican</span></div>' +
           '<span class="legend-text" style="color:var(--muted);">Darker shade = larger margin</span></div>' +
           '<div class="map-shell"><iframe data-src="/district-map?layer=' + encodeURIComponent(tab.layer) + '" style="width:100%;height:520px;border:none;display:block;" title="' + esc(tab.title) + '"></iframe></div>';
+      } else if (tab.kind === 'bubble') {
+        panel.innerHTML =
+          '<div class="legend-row">' +
+          '<div class="legend-item"><span class="swatch" style="background:var(--dem);border-radius:50%;"></span><span class="legend-text">Democratic winner</span></div>' +
+          '<div class="legend-item"><span class="swatch" style="background:var(--rep);border-radius:50%;"></span><span class="legend-text">Republican winner</span></div>' +
+          '<span class="legend-text" style="color:var(--muted);">Larger bubble = more locality votes</span></div>' +
+          '<div class="map-shell"><iframe data-src="/statewide-bubble-map?year=' + encodeURIComponent(tab.year) + '&office=' + encodeURIComponent(tab.office) + '" style="width:100%;height:560px;border:none;display:block;" title="' + esc(tab.title) + '"></iframe></div>';
       } else {
         panel.appendChild(buildTablePanel(tab.title, tab.races, tab.prefix));
       }

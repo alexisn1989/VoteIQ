@@ -2202,6 +2202,135 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
 
 # District maps are built lazily on first request to keep startup memory low
 _district_maps: dict[str, str] = {}
+_statewide_bubble_maps: dict[str, str] = {}
+
+
+def _statewide_results_for_bubbles(year: str, office: str) -> dict:
+    year = str(year)
+    if year == "2025":
+        return _load_2025_statewide_locality_results(office)
+    data = _load_results_for_year(year)
+    return data.get("locality_results", {}).get(office, {})
+
+
+def _build_statewide_bubble_map(year: str, office: str) -> str:
+    year = str(year)
+    race_data = _statewide_results_for_bubbles(year, office)
+    data = _load_results_for_year(year)
+    party_by_candidate = {}
+    for race in data.get("statewide", []):
+        if (race.get("race") or race.get("office")) == office:
+            for candidate in race.get("candidates", []):
+                party_by_candidate[candidate.get("name", "")] = candidate.get("party", "")
+
+    def _race_entry(result):
+        if isinstance(result, dict) and "winner" in result:
+            winner = result.get("winner", {})
+            candidates = result.get("candidates", [])
+            if not candidates:
+                candidates = [c for c in (result.get("dem", {}), result.get("rep", {})) if c]
+            return {
+                "total": int(result.get("total") or sum(int(c.get("votes") or 0) for c in candidates)),
+                "winner": winner.get("name", "No data"),
+                "party": _normalize_major_party(winner.get("party", "")),
+                "pct": float(winner.get("pct") or result.get("winner_pct") or 0.0),
+            }
+        if isinstance(result, dict) and "candidates" in result:
+            candidates = result.get("candidates", [])
+            winner = candidates[0] if candidates else {}
+            return {
+                "total": int(result.get("total") or sum(int(c.get("votes") or 0) for c in candidates)),
+                "winner": winner.get("name", "No data"),
+                "party": _normalize_major_party(winner.get("party", "")),
+                "pct": float(winner.get("pct") or 0.0),
+            }
+        if isinstance(result, dict):
+            sorted_cands = sorted(result.items(), key=lambda item: -float(item[1] or 0))
+            winner_name, winner_pct = sorted_cands[0] if sorted_cands else ("No data", 0.0)
+            return {
+                "total": 0,
+                "winner": winner_name,
+                "party": _normalize_major_party(party_by_candidate.get(winner_name, "")),
+                "pct": float(winner_pct or 0.0),
+            }
+        return {"total": 0, "winner": "No data", "party": "Unknown", "pct": 0.0}
+
+    lookup = {_normalize_locality_key(k): _race_entry(v) for k, v in race_data.items()}
+    counties = json.loads(json.dumps(_load_va_counties_geojson()))
+    features = counties.get("features", [])
+    max_total = 0
+    for feat in features:
+        props = feat.setdefault("properties", {})
+        locality = f"{props.get('NAME', '')} {props.get('LSAD', '')}".strip()
+        result = lookup.get(_normalize_locality_key(locality), {})
+        total = int(result.get("total") or 0)
+        max_total = max(max_total, total)
+        props["_locality"] = locality.title()
+        props["_bubble_total"] = total
+        props["_bubble_winner"] = result.get("winner", "No data")
+        props["_bubble_party"] = result.get("party", "Unknown")
+        props["_bubble_pct"] = float(result.get("pct") or 0.0)
+
+    m = folium.Map(location=[37.5, -79.0], zoom_start=7, tiles="CartoDB positron", min_zoom=6)
+    map_var = m.get_name()
+    folium.GeoJson(
+        counties,
+        style_function=lambda _f: {"fillColor": "#f4f1eb", "color": "#9a9488", "weight": 0.6, "fillOpacity": 0.22},
+    ).add_to(m)
+
+    for feat in features:
+        props = feat.get("properties", {})
+        total = int(props.get("_bubble_total") or 0)
+        if not props.get("_bubble_winner") or props.get("_bubble_winner") == "No data":
+            continue
+        try:
+            centroid = shape(feat.get("geometry", {})).centroid
+        except Exception:
+            continue
+        party = props.get("_bubble_party", "")
+        color = "#1a52c8" if party == "Democrat" else "#c8102e" if party == "Republican" else "#7a7468"
+        radius = 11 if not max_total else 4 + math.sqrt(total / max_total) * 34
+        total_label = f"{total:,}" if total else "Total unavailable"
+        folium.CircleMarker(
+            location=[centroid.y, centroid.x],
+            radius=radius,
+            color="white",
+            weight=1.5,
+            fill=True,
+            fill_color=color,
+            fill_opacity=0.76,
+            tooltip=(
+                f"<b>{escape(props.get('_locality', ''))}</b><br>"
+                f"Winner: <b>{escape(props.get('_bubble_winner', 'No data'))}</b> ({escape(party)})<br>"
+                f"Winner share: {props.get('_bubble_pct', 0):.1f}%<br>"
+                f"Votes: <b>{total_label}</b>"
+            ),
+        ).add_to(m)
+
+    title = f"{year} Virginia {office} - Statewide Vote Bubbles"
+    m.get_root().html.add_child(folium.Element(f"""
+    <div style="position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:1000;
+         background:#0d1b2a;color:white;padding:8px 20px;border-radius:6px;
+         box-shadow:2px 2px 8px rgba(0,0,0,.4);font-family:Arial;font-size:14px;
+         font-weight:700;letter-spacing:0.05em;white-space:nowrap;pointer-events:none;">{escape(title)}</div>
+    <div style="position:fixed;bottom:36px;left:36px;z-index:1000;background:white;padding:12px 16px;border-radius:8px;
+         box-shadow:2px 2px 8px rgba(0,0,0,.3);font-family:Arial;font-size:13px;line-height:1.8">
+      <span style="background:#1a52c8;color:white;padding:2px 10px;border-radius:3px">Democratic winner</span>
+      &nbsp;<span style="background:#c8102e;color:white;padding:2px 10px;border-radius:3px">Republican winner</span>
+      <br><small style="color:#666">Bubble size = locality vote total when available</small>
+    </div>
+    """))
+    rendered = m.get_root().render()
+    bounds_js = f"<script>{map_var}.setMaxBounds([[35.9,-84.8],[39.7,-74.9]]);{map_var}.options.maxBoundsViscosity=1.0;</script>"
+    return rendered.replace("</html>", bounds_js + "</html>")
+
+
+@app.get("/statewide-bubble-map", response_class=HTMLResponse)
+def statewide_bubble_map(year: str, office: str):
+    key = f"{year}:{office}"
+    if key not in _statewide_bubble_maps:
+        _statewide_bubble_maps[key] = _build_statewide_bubble_map(year, office)
+    return _statewide_bubble_maps[key]
 
 
 @app.get("/district-map", response_class=HTMLResponse)
@@ -2520,6 +2649,9 @@ HISTORICAL_ELECTION_META = {
             {"tab": "president-map", "label": "President Map", "title": "President - Locality Map", "layer": "pres_2016"},
             {"tab": "congress-map", "label": "Congress Map", "title": "U.S. House - Numbered District Map", "layer": "congress_2016"},
         ],
+        "bubble_maps": [
+            {"tab": "president-bubbles", "label": "President Bubbles", "title": "President - Statewide Vote Bubbles", "year": "2016", "office": "President"},
+        ],
         "notes": ["The U.S. House map uses the available congressional district layer as a numbered-district display; historical district boundaries may differ from current boundaries."],
     },
     "2020": {
@@ -2550,6 +2682,11 @@ HISTORICAL_ELECTION_META = {
             {"tab": "governor-map", "label": "Governor Map", "title": "Governor - Locality Map", "layer": "gov_2017"},
             {"tab": "ltgov-map", "label": "Lt. Gov Map", "title": "Lieutenant Governor - Locality Map", "layer": "ltgov_2017"},
             {"tab": "ag-map", "label": "AG Map", "title": "Attorney General - Locality Map", "layer": "ag_2017"},
+        ],
+        "bubble_maps": [
+            {"tab": "governor-bubbles", "label": "Gov Bubbles", "title": "Governor - Statewide Vote Bubbles", "year": "2017", "office": "Governor"},
+            {"tab": "ltgov-bubbles", "label": "Lt. Gov Bubbles", "title": "Lieutenant Governor - Statewide Vote Bubbles", "year": "2017", "office": "Lieutenant Governor"},
+            {"tab": "ag-bubbles", "label": "AG Bubbles", "title": "Attorney General - Statewide Vote Bubbles", "year": "2017", "office": "Attorney General"},
         ],
         "notes": [],
     },

@@ -160,12 +160,17 @@
   <div class="results-tabs">
     <div class="tab-nav">
       <button class="tab-btn active" data-tab="gov-map">Governor Map</button>
+      <button class="tab-btn" data-tab="gov-bubbles">Gov Bubbles</button>
       <button class="tab-btn" data-tab="ltgov-map">Lt. Governor Map</button>
+      <button class="tab-btn" data-tab="ltgov-bubbles">Lt. Gov Bubbles</button>
       <button class="tab-btn" data-tab="ag-map">Atty. General Map</button>
+      <button class="tab-btn" data-tab="ag-bubbles">AG Bubbles</button>
       <button class="tab-btn" data-tab="hod-table">HOD Table</button>
       <button class="tab-btn" data-tab="gov-locality">Gov by Locality</button>
       <button class="tab-btn" data-tab="ltgov-locality">Lt. Gov by Locality</button>
       <button class="tab-btn" data-tab="ag-locality">AG by Locality</button>
+      <button class="tab-btn" data-tab="gov-flip-map">2017→21 Gov. Flip</button>
+      <button class="tab-btn" data-tab="hod-flip-map">2017→21 HOD Flip</button>
     </div>
 
     <!-- Governor Map -->
@@ -178,6 +183,13 @@
       </div>
       <div style="border:1px solid var(--mid);overflow:hidden;margin-bottom:20px;box-shadow:3px 3px 0 var(--navy);">
         <iframe data-src="/district-map?layer=gov_2021" style="width:100%;height:520px;border:none;display:block;" title="2021 Governor Map"></iframe>
+      </div>
+    </div>
+    <div class="tab-panel" id="tab-gov-bubbles">
+      <div class="section-label"><span>03</span> Governor - Statewide Vote Bubbles</div>
+      <p class="data-note">Bubble color shows the locality winner. Bubble size uses locality vote total when available.</p>
+      <div style="border:1px solid var(--mid);overflow:hidden;margin-bottom:20px;box-shadow:3px 3px 0 var(--navy);">
+        <iframe data-src="/statewide-bubble-map?year=2021&amp;office=Governor" style="width:100%;height:560px;border:none;display:block;" title="2021 Governor Statewide Bubble Map"></iframe>
       </div>
     </div>
 
@@ -193,6 +205,13 @@
         <iframe data-src="/district-map?layer=ltgov_2021" style="width:100%;height:520px;border:none;display:block;" title="2021 Lt. Governor Map"></iframe>
       </div>
     </div>
+    <div class="tab-panel" id="tab-ltgov-bubbles">
+      <div class="section-label"><span>04</span> Lieutenant Governor - Statewide Vote Bubbles</div>
+      <p class="data-note">Bubble color shows the locality winner. Bubble size uses locality vote total when available.</p>
+      <div style="border:1px solid var(--mid);overflow:hidden;margin-bottom:20px;box-shadow:3px 3px 0 var(--navy);">
+        <iframe data-src="/statewide-bubble-map?year=2021&amp;office=Lieutenant%20Governor" style="width:100%;height:560px;border:none;display:block;" title="2021 Lieutenant Governor Statewide Bubble Map"></iframe>
+      </div>
+    </div>
 
     <!-- AG Map -->
     <div class="tab-panel" id="tab-ag-map">
@@ -204,6 +223,13 @@
       </div>
       <div style="border:1px solid var(--mid);overflow:hidden;margin-bottom:20px;box-shadow:3px 3px 0 var(--navy);">
         <iframe data-src="/district-map?layer=ag_2021" style="width:100%;height:520px;border:none;display:block;" title="2021 AG Map"></iframe>
+      </div>
+    </div>
+    <div class="tab-panel" id="tab-ag-bubbles">
+      <div class="section-label"><span>05</span> Attorney General - Statewide Vote Bubbles</div>
+      <p class="data-note">Bubble color shows the locality winner. Bubble size uses locality vote total when available.</p>
+      <div style="border:1px solid var(--mid);overflow:hidden;margin-bottom:20px;box-shadow:3px 3px 0 var(--navy);">
+        <iframe data-src="/statewide-bubble-map?year=2021&amp;office=Attorney%20General" style="width:100%;height:560px;border:none;display:block;" title="2021 Attorney General Statewide Bubble Map"></iframe>
       </div>
     </div>
 

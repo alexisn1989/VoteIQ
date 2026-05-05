@@ -176,7 +176,9 @@
   <div class="results-tabs">
     <div class="tab-nav">
       <button class="tab-btn active" data-tab="pres-map">President Map</button>
+      <button class="tab-btn" data-tab="pres-bubbles">President Bubbles</button>
       <button class="tab-btn" data-tab="senate-map">Senate Map</button>
+      <button class="tab-btn" data-tab="senate-bubbles">Senate Bubbles</button>
       <button class="tab-btn" data-tab="congress-map">Congress Map</button>
       <button class="tab-btn" data-tab="congress">Congress Table</button>
       <button class="tab-btn" data-tab="pres-locality">President by Locality</button>
@@ -201,6 +203,13 @@
         <iframe data-src="/district-map?layer=pres_2024" style="width:100%;height:520px;border:none;display:block;" title="2024 President Map"></iframe>
       </div>
     </div>
+    <div class="tab-panel" id="tab-pres-bubbles">
+      <div class="section-label"><span>03</span> President - Statewide Vote Bubbles</div>
+      <p class="data-note">Bubble color shows the locality winner. Bubble size is based on total votes cast in each locality.</p>
+      <div style="border:1px solid var(--mid);overflow:hidden;margin-bottom:20px;box-shadow:3px 3px 0 var(--navy);">
+        <iframe data-src="/statewide-bubble-map?year=2024&amp;office=President" style="width:100%;height:560px;border:none;display:block;" title="2024 President Statewide Bubble Map"></iframe>
+      </div>
+    </div>
 
     <!-- Tab 2: Senate Map -->
     <div class="tab-panel" id="tab-senate-map">
@@ -218,6 +227,13 @@
       </div>
       <div style="border:1px solid var(--mid);overflow:hidden;margin-bottom:20px;box-shadow:3px 3px 0 var(--navy);">
         <iframe data-src="/district-map?layer=senate_2024" style="width:100%;height:520px;border:none;display:block;" title="2024 Senate Map"></iframe>
+      </div>
+    </div>
+    <div class="tab-panel" id="tab-senate-bubbles">
+      <div class="section-label"><span>04</span> U.S. Senate - Statewide Vote Bubbles</div>
+      <p class="data-note">Bubble color shows the locality winner. Bubble size is based on total votes cast in each locality.</p>
+      <div style="border:1px solid var(--mid);overflow:hidden;margin-bottom:20px;box-shadow:3px 3px 0 var(--navy);">
+        <iframe data-src="/statewide-bubble-map?year=2024&amp;office=U.S.%20Senate" style="width:100%;height:560px;border:none;display:block;" title="2024 U.S. Senate Statewide Bubble Map"></iframe>
       </div>
     </div>
 
