@@ -2784,6 +2784,7 @@ HISTORICAL_ELECTION_META = {
         "kind": "district",
         "maps": [
             {"tab": "senate-map", "label": "Senate Map", "title": "State Senate - District Results Map",        "url": "/maps/senate/2019"},
+            {"tab": "senate-flip-map", "label": "Senate Flip Map", "title": "State Senate - 2019 to 2023 Flip Map", "url": "/virginia-map?layer=sd_flip&embed=1"},
             {"tab": "hod-map",    "label": "HOD Map",    "title": "House of Delegates - District Results Map", "url": "/maps/hod/2019"},
         ],
         "notes": ["Maps show 2010-cycle district boundaries with 2019 election results."],
