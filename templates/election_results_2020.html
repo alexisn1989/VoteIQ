@@ -167,17 +167,17 @@
     <div class="tab-panel" id="tab-congress-table">
       <div class="section-label"><span>05</span> U.S. House — All 11 Districts</div>
       <div class="filter-row"><input class="filter-input" type="text" id="cd-filter" placeholder="Filter by district or candidate…" /><span class="filter-count" id="cd-count"></span></div>
-      <div class="table-wrap"><table><thead><tr><th>District</th><th>Winner</th><th>Party</th><th>Votes</th><th>Pct</th><th>Runner-Up</th><th>Runner-Up Pct</th></tr></thead><tbody id="cd-tbody"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>District</th><th>Winner</th><th>Party</th><th>Votes</th><th>Pct</th><th>Runner-Up</th><th>Runner-Up Party</th><th>Runner-Up Pct</th></tr></thead><tbody id="cd-tbody"></tbody></table></div>
     </div>
     <div class="tab-panel" id="tab-pres-locality">
       <div class="section-label"><span>06</span> President — Results by Locality</div>
       <div class="filter-row"><input class="filter-input" type="text" id="pres-loc-filter" placeholder="Filter by locality…" /><span class="filter-count" id="pres-loc-count"></span></div>
-      <div class="table-wrap"><table><thead><tr><th>Locality</th><th>Winner</th><th>Winner %</th><th>Runner-Up</th><th>Runner-Up %</th></tr></thead><tbody id="pres-loc-tbody"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>Locality</th><th>Winner</th><th>Party</th><th>Votes</th><th>Winner %</th><th>Runner-Up</th><th>Runner-Up Party</th><th>Runner-Up %</th></tr></thead><tbody id="pres-loc-tbody"></tbody></table></div>
     </div>
     <div class="tab-panel" id="tab-senate-locality">
       <div class="section-label"><span>07</span> U.S. Senate — Results by Locality</div>
       <div class="filter-row"><input class="filter-input" type="text" id="senate-loc-filter" placeholder="Filter by locality…" /><span class="filter-count" id="senate-loc-count"></span></div>
-      <div class="table-wrap"><table><thead><tr><th>Locality</th><th>Winner</th><th>Winner %</th><th>Runner-Up</th><th>Runner-Up %</th></tr></thead><tbody id="senate-loc-tbody"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>Locality</th><th>Winner</th><th>Party</th><th>Votes</th><th>Winner %</th><th>Runner-Up</th><th>Runner-Up Party</th><th>Runner-Up %</th></tr></thead><tbody id="senate-loc-tbody"></tbody></table></div>
     </div>
   </div>
 </div>
@@ -259,9 +259,9 @@ function buildCd(filter) {
     const d=congress[key], w=d.candidates[0]||{}, r=d.candidates[1]||{};
     if(f&&!(`va-${key}`.includes(f)||( w.name||'').toLowerCase().includes(f)||(r.name||'').toLowerCase().includes(f)))return;
     shown++;
-    tbody.innerHTML+=`<tr class="${pc(w.party)}-row"><td class="td-dist">VA-${key}</td><td class="td-winner">${w.name||'—'}<span class="inline-badge ${pc(w.party)}">${w.party||''}</span></td><td class="td-pct">${w.pct||0}%</td><td>${(w.votes||0).toLocaleString()}</td><td>${r.name||'—'}</td><td class="td-pct">${r.pct||0}%</td></tr>`;
+    tbody.innerHTML+=`<tr class="${pc(w.party)}-row"><td class="td-dist">VA-${key}</td><td class="td-winner">${w.name||'—'}</td><td><span class="inline-badge ${pc(w.party)}">${w.party||'—'}</span></td><td>${(w.votes||0).toLocaleString()}</td><td class="td-pct">${w.pct||0}%</td><td>${r.name||'—'}</td><td><span class="inline-badge ${pc(r.party)}">${r.party||'—'}</span></td><td class="td-pct">${r.pct||0}%</td></tr>`;
   });
-  if(!shown)tbody.innerHTML='<tr class="no-results-row"><td colspan="7">No matching districts.</td></tr>';
+  if(!shown)tbody.innerHTML='<tr class="no-results-row"><td colspan="8">No matching districts.</td></tr>';
   document.getElementById('cd-count').textContent=`${shown} district${shown!==1?'s':''}`;
 }
 buildCd('');
@@ -272,14 +272,16 @@ function buildLoc(race, tbodyId, countId, filter) {
   const tbody=document.getElementById(tbodyId), f=(filter||'').toLowerCase();
   const locs=locResults[race]||{};
   let shown=0; tbody.innerHTML='';
-  Object.entries(locs).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([loc,cands])=>{
+  Object.entries(locs).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([loc,result])=>{
     if(f&&!loc.toLowerCase().includes(f))return;
     shown++;
-    const entries=Object.entries(cands).sort((a,b)=>b[1]-a[1]);
-    const [wn,wp]=entries[0]||['—',0], [rn,rp]=entries[1]||['—',0];
-    tbody.innerHTML+=`<tr><td>${loc}</td><td class="td-winner">${wn}</td><td class="td-pct">${wp}%</td><td>${rn}</td><td class="td-pct">${rp}%</td></tr>`;
+    const entries = Array.isArray(result.candidates)
+      ? result.candidates
+      : Object.entries(result).map(([name,pct]) => ({name, pct, party: '', votes: 0})).sort((a,b)=>(b.pct||0)-(a.pct||0));
+    const w=entries[0]||{}, r=entries[1]||{};
+    tbody.innerHTML+=`<tr class="${pc(w.party)}-row"><td>${loc}</td><td class="td-winner">${w.name||'—'}</td><td><span class="inline-badge ${pc(w.party)}">${w.party||'—'}</span></td><td>${(w.votes||0).toLocaleString()}</td><td class="td-pct">${w.pct||0}%</td><td>${r.name||'—'}</td><td><span class="inline-badge ${pc(r.party)}">${r.party||'—'}</span></td><td class="td-pct">${r.pct||0}%</td></tr>`;
   });
-  if(!shown)tbody.innerHTML='<tr class="no-results-row"><td colspan="5">No matching localities.</td></tr>';
+  if(!shown)tbody.innerHTML='<tr class="no-results-row"><td colspan="8">No matching localities.</td></tr>';
   document.getElementById(countId).textContent=`${shown} localit${shown!==1?'ies':'y'}`;
 }
 buildLoc('President','pres-loc-tbody','pres-loc-count','');

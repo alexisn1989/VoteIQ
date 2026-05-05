@@ -47,1203 +47,5858 @@
   "locality_results": {
     "President": {
       "Accomack County": {
-        "Donald Trump": 54.2,
-        "Jo Jorgensen": 1.1,
-        "Joseph Biden": 44.7
+        "total": 16938,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 9172,
+            "pct": 54.2
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 7578,
+            "pct": 44.7
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 188,
+            "pct": 1.1
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 54.2
       },
       "Albemarle County": {
-        "Donald Trump": 32.4,
-        "Jo Jorgensen": 1.6,
-        "Joseph Biden": 66.1
-      },
-      "Alleghany County": {
-        "Donald Trump": 71.5,
-        "Jo Jorgensen": 1.1,
-        "Joseph Biden": 27.4
-      },
-      "Amelia County": {
-        "Donald Trump": 68.4,
-        "Jo Jorgensen": 1.0,
-        "Joseph Biden": 30.6
-      },
-      "Amherst County": {
-        "Donald Trump": 65.1,
-        "Jo Jorgensen": 1.5,
-        "Joseph Biden": 33.4
-      },
-      "Appomattox County": {
-        "Donald Trump": 72.5,
-        "Jo Jorgensen": 1.3,
-        "Joseph Biden": 26.2
-      },
-      "Arlington County": {
-        "Donald Trump": 17.2,
-        "Jo Jorgensen": 1.4,
-        "Joseph Biden": 81.3
-      },
-      "Augusta County": {
-        "Donald Trump": 72.8,
-        "Jo Jorgensen": 1.4,
-        "Joseph Biden": 25.7
-      },
-      "Bath County": {
-        "Donald Trump": 73.5,
-        "Jo Jorgensen": 0.6,
-        "Joseph Biden": 25.9
-      },
-      "Bedford County": {
-        "Donald Trump": 73.4,
-        "Jo Jorgensen": 1.5,
-        "Joseph Biden": 25.1
-      },
-      "Bland County": {
-        "Donald Trump": 83.5,
-        "Jo Jorgensen": 1.2,
-        "Joseph Biden": 15.3
-      },
-      "Botetourt County": {
-        "Donald Trump": 71.7,
-        "Jo Jorgensen": 1.3,
-        "Joseph Biden": 27.1
-      },
-      "Brunswick County": {
-        "Donald Trump": 42.3,
-        "Jo Jorgensen": 0.4,
-        "Joseph Biden": 57.3
-      },
-      "Buchanan County": {
-        "Donald Trump": 83.6,
-        "Jo Jorgensen": 0.4,
-        "Joseph Biden": 16.0
-      },
-      "Buckingham County": {
-        "Donald Trump": 56.0,
-        "Jo Jorgensen": 1.1,
-        "Joseph Biden": 42.8
-      },
-      "Campbell County": {
-        "Donald Trump": 71.3,
-        "Jo Jorgensen": 1.6,
-        "Joseph Biden": 27.1
-      },
-      "Caroline County": {
-        "Donald Trump": 51.3,
-        "Jo Jorgensen": 1.6,
-        "Joseph Biden": 47.1
-      },
-      "Carroll County": {
-        "Donald Trump": 81.0,
-        "Jo Jorgensen": 0.8,
-        "Joseph Biden": 18.2
-      },
-      "Charles City County": {
-        "Donald Trump": 39.7,
-        "Jo Jorgensen": 1.2,
-        "Joseph Biden": 59.1
-      },
-      "Charlotte County": {
-        "Donald Trump": 61.7,
-        "Jo Jorgensen": 0.8,
-        "Joseph Biden": 37.5
-      },
-      "Chesterfield County": {
-        "Donald Trump": 45.9,
-        "Jo Jorgensen": 1.4,
-        "Joseph Biden": 52.6
-      },
-      "Clarke County": {
-        "Donald Trump": 55.9,
-        "Jo Jorgensen": 1.9,
-        "Joseph Biden": 42.2
-      },
-      "Craig County": {
-        "Donald Trump": 80.2,
-        "Jo Jorgensen": 1.3,
-        "Joseph Biden": 18.6
-      },
-      "Culpeper County": {
-        "Donald Trump": 59.2,
-        "Jo Jorgensen": 1.5,
-        "Joseph Biden": 39.3
-      },
-      "Cumberland County": {
-        "Donald Trump": 57.0,
-        "Jo Jorgensen": 1.0,
-        "Joseph Biden": 42.0
-      },
-      "Dickenson County": {
-        "Donald Trump": 78.8,
-        "Jo Jorgensen": 0.6,
-        "Joseph Biden": 20.6
-      },
-      "Dinwiddie County": {
-        "Donald Trump": 57.7,
-        "Jo Jorgensen": 1.0,
-        "Joseph Biden": 41.3
-      },
-      "Essex County": {
-        "Donald Trump": 49.8,
-        "Jo Jorgensen": 0.9,
-        "Joseph Biden": 49.2
-      },
-      "Fairfax County": {
-        "Donald Trump": 28.2,
-        "Jo Jorgensen": 1.3,
-        "Joseph Biden": 70.4
-      },
-      "Fauquier County": {
-        "Donald Trump": 57.8,
-        "Jo Jorgensen": 1.8,
-        "Joseph Biden": 40.4
-      },
-      "Floyd County": {
-        "Donald Trump": 66.4,
-        "Jo Jorgensen": 1.6,
-        "Joseph Biden": 32.0
-      },
-      "Fluvanna County": {
-        "Donald Trump": 51.6,
-        "Jo Jorgensen": 1.4,
-        "Joseph Biden": 46.9
-      },
-      "Franklin County": {
-        "Donald Trump": 70.5,
-        "Jo Jorgensen": 1.2,
-        "Joseph Biden": 28.3
-      },
-      "Frederick County": {
-        "Donald Trump": 62.9,
-        "Jo Jorgensen": 1.6,
-        "Joseph Biden": 35.4
-      },
-      "Giles County": {
-        "Donald Trump": 75.1,
-        "Jo Jorgensen": 1.4,
-        "Joseph Biden": 23.5
-      },
-      "Gloucester County": {
-        "Donald Trump": 66.9,
-        "Jo Jorgensen": 1.8,
-        "Joseph Biden": 31.3
-      },
-      "Goochland County": {
-        "Donald Trump": 59.0,
-        "Jo Jorgensen": 1.4,
-        "Joseph Biden": 39.6
-      },
-      "Grayson County": {
-        "Donald Trump": 80.4,
-        "Jo Jorgensen": 0.7,
-        "Joseph Biden": 18.9
-      },
-      "Greene County": {
-        "Donald Trump": 60.9,
-        "Jo Jorgensen": 2.1,
-        "Joseph Biden": 36.9
-      },
-      "Greensville County": {
-        "Donald Trump": 41.9,
-        "Jo Jorgensen": 0.5,
-        "Joseph Biden": 57.6
-      },
-      "Halifax County": {
-        "Donald Trump": 57.2,
-        "Jo Jorgensen": 0.8,
-        "Joseph Biden": 42.1
-      },
-      "Hanover County": {
-        "Donald Trump": 62.7,
-        "Jo Jorgensen": 1.6,
-        "Joseph Biden": 35.8
-      },
-      "Henrico County": {
-        "Donald Trump": 34.8,
-        "Jo Jorgensen": 1.3,
-        "Joseph Biden": 63.9
-      },
-      "Henry County": {
-        "Donald Trump": 64.1,
-        "Jo Jorgensen": 0.9,
-        "Joseph Biden": 35.0
-      },
-      "Highland County": {
-        "Donald Trump": 71.3,
-        "Jo Jorgensen": 1.4,
-        "Joseph Biden": 27.2
-      },
-      "Isle Of Wight County": {
-        "Donald Trump": 58.5,
-        "Jo Jorgensen": 1.4,
-        "Joseph Biden": 40.1
-      },
-      "James City County": {
-        "Donald Trump": 46.9,
-        "Jo Jorgensen": 1.4,
-        "Joseph Biden": 51.7
-      },
-      "King & Queen County": {
-        "Donald Trump": 59.7,
-        "Jo Jorgensen": 1.6,
-        "Joseph Biden": 38.7
-      },
-      "King George County": {
-        "Donald Trump": 59.6,
-        "Jo Jorgensen": 2.2,
-        "Joseph Biden": 38.2
-      },
-      "King William County": {
-        "Donald Trump": 68.3,
-        "Jo Jorgensen": 1.3,
-        "Joseph Biden": 30.4
-      },
-      "Lancaster County": {
-        "Donald Trump": 51.8,
-        "Jo Jorgensen": 1.0,
-        "Joseph Biden": 47.2
-      },
-      "Lee County": {
-        "Donald Trump": 84.2,
-        "Jo Jorgensen": 0.8,
-        "Joseph Biden": 15.0
-      },
-      "Loudoun County": {
-        "Donald Trump": 36.7,
-        "Jo Jorgensen": 1.4,
-        "Joseph Biden": 61.9
-      },
-      "Louisa County": {
-        "Donald Trump": 60.8,
-        "Jo Jorgensen": 1.3,
-        "Joseph Biden": 37.8
-      },
-      "Lunenburg County": {
-        "Donald Trump": 59.0,
-        "Jo Jorgensen": 0.7,
-        "Joseph Biden": 40.3
-      },
-      "Madison County": {
-        "Donald Trump": 65.4,
-        "Jo Jorgensen": 1.3,
-        "Joseph Biden": 33.3
-      },
-      "Mathews County": {
-        "Donald Trump": 67.1,
-        "Jo Jorgensen": 1.5,
-        "Joseph Biden": 31.4
-      },
-      "Mecklenburg County": {
-        "Donald Trump": 57.3,
-        "Jo Jorgensen": 0.7,
-        "Joseph Biden": 42.0
-      },
-      "Middlesex County": {
-        "Donald Trump": 62.0,
-        "Jo Jorgensen": 1.1,
-        "Joseph Biden": 36.8
-      },
-      "Montgomery County": {
-        "Donald Trump": 46.1,
-        "Jo Jorgensen": 2.1,
-        "Joseph Biden": 51.8
-      },
-      "Nelson County": {
-        "Donald Trump": 51.8,
-        "Jo Jorgensen": 1.6,
-        "Joseph Biden": 46.6
-      },
-      "New Kent County": {
-        "Donald Trump": 66.8,
-        "Jo Jorgensen": 1.2,
-        "Joseph Biden": 32.0
-      },
-      "Northampton County": {
-        "Donald Trump": 44.0,
-        "Jo Jorgensen": 1.5,
-        "Joseph Biden": 54.6
-      },
-      "Northumberland County": {
-        "Donald Trump": 57.6,
-        "Jo Jorgensen": 0.7,
-        "Joseph Biden": 41.7
-      },
-      "Nottoway County": {
-        "Donald Trump": 57.0,
-        "Jo Jorgensen": 1.0,
-        "Joseph Biden": 42.0
-      },
-      "Orange County": {
-        "Donald Trump": 60.1,
-        "Jo Jorgensen": 1.3,
-        "Joseph Biden": 38.6
-      },
-      "Page County": {
-        "Donald Trump": 74.8,
-        "Jo Jorgensen": 1.1,
-        "Joseph Biden": 24.1
-      },
-      "Patrick County": {
-        "Donald Trump": 78.6,
-        "Jo Jorgensen": 0.9,
-        "Joseph Biden": 20.5
-      },
-      "Pittsylvania County": {
-        "Donald Trump": 69.5,
-        "Jo Jorgensen": 0.8,
-        "Joseph Biden": 29.6
-      },
-      "Powhatan County": {
-        "Donald Trump": 71.4,
-        "Jo Jorgensen": 1.6,
-        "Joseph Biden": 27.0
-      },
-      "Prince Edward County": {
-        "Donald Trump": 46.5,
-        "Jo Jorgensen": 1.4,
-        "Joseph Biden": 52.1
-      },
-      "Prince George County": {
-        "Donald Trump": 58.1,
-        "Jo Jorgensen": 1.1,
-        "Joseph Biden": 40.8
-      },
-      "Prince William County": {
-        "Donald Trump": 35.7,
-        "Jo Jorgensen": 1.4,
-        "Joseph Biden": 62.8
-      },
-      "Pulaski County": {
-        "Donald Trump": 70.0,
-        "Jo Jorgensen": 1.6,
-        "Joseph Biden": 28.4
-      },
-      "Rappahannock County": {
-        "Donald Trump": 56.6,
-        "Jo Jorgensen": 1.1,
-        "Joseph Biden": 42.2
-      },
-      "Richmond County": {
-        "Donald Trump": 62.3,
-        "Jo Jorgensen": 0.8,
-        "Joseph Biden": 37.0
-      },
-      "Roanoke County": {
-        "Donald Trump": 60.1,
-        "Jo Jorgensen": 1.6,
-        "Joseph Biden": 38.3
-      },
-      "Rockbridge County": {
-        "Donald Trump": 65.5,
-        "Jo Jorgensen": 1.3,
-        "Joseph Biden": 33.1
-      },
-      "Rockingham County": {
-        "Donald Trump": 69.5,
-        "Jo Jorgensen": 1.5,
-        "Joseph Biden": 29.0
-      },
-      "Russell County": {
-        "Donald Trump": 81.4,
-        "Jo Jorgensen": 0.9,
-        "Joseph Biden": 17.8
-      },
-      "Scott County": {
-        "Donald Trump": 83.6,
-        "Jo Jorgensen": 0.8,
-        "Joseph Biden": 15.6
-      },
-      "Shenandoah County": {
-        "Donald Trump": 69.6,
-        "Jo Jorgensen": 1.5,
-        "Joseph Biden": 28.9
-      },
-      "Smyth County": {
-        "Donald Trump": 77.7,
-        "Jo Jorgensen": 0.9,
-        "Joseph Biden": 21.3
-      },
-      "Southampton County": {
-        "Donald Trump": 58.6,
-        "Jo Jorgensen": 0.9,
-        "Joseph Biden": 40.6
-      },
-      "Spotsylvania County": {
-        "Donald Trump": 52.5,
-        "Jo Jorgensen": 1.7,
-        "Joseph Biden": 45.7
-      },
-      "Stafford County": {
-        "Donald Trump": 47.5,
-        "Jo Jorgensen": 1.7,
-        "Joseph Biden": 50.8
-      },
-      "Surry County": {
-        "Donald Trump": 45.4,
-        "Jo Jorgensen": 0.9,
-        "Joseph Biden": 53.7
-      },
-      "Sussex County": {
-        "Donald Trump": 43.7,
-        "Jo Jorgensen": 0.7,
-        "Joseph Biden": 55.6
-      },
-      "Tazewell County": {
-        "Donald Trump": 83.3,
-        "Jo Jorgensen": 0.8,
-        "Joseph Biden": 15.9
-      },
-      "Warren County": {
-        "Donald Trump": 66.9,
-        "Jo Jorgensen": 1.7,
-        "Joseph Biden": 31.4
-      },
-      "Washington County": {
-        "Donald Trump": 75.8,
-        "Jo Jorgensen": 1.1,
-        "Joseph Biden": 23.1
-      },
-      "Westmoreland County": {
-        "Donald Trump": 53.7,
-        "Jo Jorgensen": 0.9,
-        "Joseph Biden": 45.4
-      },
-      "Wise County": {
-        "Donald Trump": 80.6,
-        "Jo Jorgensen": 0.7,
-        "Joseph Biden": 18.8
-      },
-      "Wythe County": {
-        "Donald Trump": 78.0,
-        "Jo Jorgensen": 1.1,
-        "Joseph Biden": 20.9
-      },
-      "York County": {
-        "Donald Trump": 52.4,
-        "Jo Jorgensen": 1.8,
-        "Joseph Biden": 45.8
+        "total": 64284,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 42466,
+            "pct": 66.1
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 20804,
+            "pct": 32.4
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 1014,
+            "pct": 1.6
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 66.1
       },
       "Alexandria City": {
-        "Donald Trump": 17.8,
-        "Jo Jorgensen": 1.2,
-        "Joseph Biden": 81.0
+        "total": 81806,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 66240,
+            "pct": 81
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 14544,
+            "pct": 17.8
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 1022,
+            "pct": 1.2
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 81
+      },
+      "Alleghany County": {
+        "total": 8191,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 5859,
+            "pct": 71.5
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 2243,
+            "pct": 27.4
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 89,
+            "pct": 1.1
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 71.5
+      },
+      "Amelia County": {
+        "total": 7881,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 5390,
+            "pct": 68.4
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 2411,
+            "pct": 30.6
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 80,
+            "pct": 1
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 68.4
+      },
+      "Amherst County": {
+        "total": 16964,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 11041,
+            "pct": 65.1
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 5672,
+            "pct": 33.4
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 251,
+            "pct": 1.5
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 65.1
+      },
+      "Appomattox County": {
+        "total": 9239,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 6702,
+            "pct": 72.5
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 2418,
+            "pct": 26.2
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 119,
+            "pct": 1.3
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 72.5
+      },
+      "Arlington County": {
+        "total": 129498,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 105344,
+            "pct": 81.3
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 22318,
+            "pct": 17.2
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 1836,
+            "pct": 1.4
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 81.3
+      },
+      "Augusta County": {
+        "total": 42162,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 30714,
+            "pct": 72.8
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 10840,
+            "pct": 25.7
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 608,
+            "pct": 1.4
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 72.8
+      },
+      "Bath County": {
+        "total": 2496,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 1834,
+            "pct": 73.5
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 646,
+            "pct": 25.9
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 16,
+            "pct": 0.6
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 73.5
+      },
+      "Bedford County": {
+        "total": 48484,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 35600,
+            "pct": 73.4
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 12176,
+            "pct": 25.1
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 708,
+            "pct": 1.5
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 73.4
+      },
+      "Bland County": {
+        "total": 3475,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 2903,
+            "pct": 83.5
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 532,
+            "pct": 15.3
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 40,
+            "pct": 1.2
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 83.5
+      },
+      "Botetourt County": {
+        "total": 21063,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 15099,
+            "pct": 71.7
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 5700,
+            "pct": 27.1
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 264,
+            "pct": 1.3
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 71.7
       },
       "Bristol City": {
-        "Donald Trump": 68.7,
-        "Jo Jorgensen": 1.6,
-        "Joseph Biden": 29.7
+        "total": 7785,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 5347,
+            "pct": 68.7
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 2313,
+            "pct": 29.7
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 125,
+            "pct": 1.6
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 68.7
+      },
+      "Brunswick County": {
+        "total": 7943,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 4552,
+            "pct": 57.3
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 3357,
+            "pct": 42.3
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 34,
+            "pct": 0.4
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 57.3
+      },
+      "Buchanan County": {
+        "total": 9942,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 8311,
+            "pct": 83.6
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 1587,
+            "pct": 16
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 44,
+            "pct": 0.4
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 83.6
+      },
+      "Buckingham County": {
+        "total": 8108,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 4544,
+            "pct": 56
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 3471,
+            "pct": 42.8
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 93,
+            "pct": 1.1
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 56
       },
       "Buena Vista City": {
-        "Donald Trump": 67.5,
-        "Jo Jorgensen": 2.6,
-        "Joseph Biden": 29.9
+        "total": 2760,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 1863,
+            "pct": 67.5
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 825,
+            "pct": 29.9
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 72,
+            "pct": 2.6
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 67.5
+      },
+      "Campbell County": {
+        "total": 29805,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 21245,
+            "pct": 71.3
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 8070,
+            "pct": 27.1
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 490,
+            "pct": 1.6
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 71.3
+      },
+      "Caroline County": {
+        "total": 16252,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 8336,
+            "pct": 51.3
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 7657,
+            "pct": 47.1
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 259,
+            "pct": 1.6
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 51.3
+      },
+      "Carroll County": {
+        "total": 15619,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 12659,
+            "pct": 81
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 2842,
+            "pct": 18.2
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 118,
+            "pct": 0.8
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 81
+      },
+      "Charles City County": {
+        "total": 4439,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 2624,
+            "pct": 59.1
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 1761,
+            "pct": 39.7
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 54,
+            "pct": 1.2
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 59.1
+      },
+      "Charlotte County": {
+        "total": 6180,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 3815,
+            "pct": 61.7
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 2317,
+            "pct": 37.5
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 48,
+            "pct": 0.8
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 61.7
       },
       "Charlottesville City": {
-        "Donald Trump": 12.8,
-        "Jo Jorgensen": 1.3,
-        "Joseph Biden": 85.9
+        "total": 24101,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 20696,
+            "pct": 85.9
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 3094,
+            "pct": 12.8
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 311,
+            "pct": 1.3
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 85.9
       },
       "Chesapeake City": {
-        "Donald Trump": 45.9,
-        "Jo Jorgensen": 1.7,
-        "Joseph Biden": 52.4
+        "total": 126655,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 66377,
+            "pct": 52.4
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 58180,
+            "pct": 45.9
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 2098,
+            "pct": 1.7
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 52.4
+      },
+      "Chesterfield County": {
+        "total": 203188,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 106935,
+            "pct": 52.6
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 93326,
+            "pct": 45.9
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 2927,
+            "pct": 1.4
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 52.6
+      },
+      "Clarke County": {
+        "total": 9290,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 5192,
+            "pct": 55.9
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 3920,
+            "pct": 42.2
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 178,
+            "pct": 1.9
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 55.9
       },
       "Colonial Heights City": {
-        "Donald Trump": 65.9,
-        "Jo Jorgensen": 1.5,
-        "Joseph Biden": 32.6
+        "total": 9114,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 6007,
+            "pct": 65.9
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 2972,
+            "pct": 32.6
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 135,
+            "pct": 1.5
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 65.9
       },
       "Covington City": {
-        "Donald Trump": 60.9,
-        "Jo Jorgensen": 1.9,
-        "Joseph Biden": 37.2
+        "total": 2594,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 1580,
+            "pct": 60.9
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 964,
+            "pct": 37.2
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 50,
+            "pct": 1.9
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 60.9
+      },
+      "Craig County": {
+        "total": 3163,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 2536,
+            "pct": 80.2
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 587,
+            "pct": 18.6
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 40,
+            "pct": 1.3
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 80.2
+      },
+      "Culpeper County": {
+        "total": 27035,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 16012,
+            "pct": 59.2
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 10617,
+            "pct": 39.3
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 406,
+            "pct": 1.5
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 59.2
+      },
+      "Cumberland County": {
+        "total": 5299,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 3019,
+            "pct": 57
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 2227,
+            "pct": 42
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 53,
+            "pct": 1
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 57
       },
       "Danville City": {
-        "Donald Trump": 38.4,
-        "Jo Jorgensen": 1.0,
-        "Joseph Biden": 60.6
+        "total": 19333,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 11710,
+            "pct": 60.6
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 7428,
+            "pct": 38.4
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 195,
+            "pct": 1
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 60.6
+      },
+      "Dickenson County": {
+        "total": 7295,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 5748,
+            "pct": 78.8
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 1503,
+            "pct": 20.6
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 44,
+            "pct": 0.6
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 78.8
+      },
+      "Dinwiddie County": {
+        "total": 15063,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 8695,
+            "pct": 57.7
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 6224,
+            "pct": 41.3
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 144,
+            "pct": 1
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 57.7
       },
       "Emporia City": {
-        "Donald Trump": 31.7,
-        "Jo Jorgensen": 0.5,
-        "Joseph Biden": 67.8
+        "total": 2379,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 1612,
+            "pct": 67.8
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 754,
+            "pct": 31.7
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 13,
+            "pct": 0.5
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 67.8
+      },
+      "Essex County": {
+        "total": 6171,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 3075,
+            "pct": 49.8
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 3038,
+            "pct": 49.2
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 58,
+            "pct": 0.9
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 49.8
       },
       "Fairfax City": {
-        "Donald Trump": 29.9,
-        "Jo Jorgensen": 1.5,
-        "Joseph Biden": 68.6
+        "total": 13382,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 9174,
+            "pct": 68.6
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 4007,
+            "pct": 29.9
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 201,
+            "pct": 1.5
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 68.6
+      },
+      "Fairfax County": {
+        "total": 596358,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 419943,
+            "pct": 70.4
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 168401,
+            "pct": 28.2
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 8014,
+            "pct": 1.3
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 70.4
       },
       "Falls Church City": {
-        "Donald Trump": 17.0,
-        "Jo Jorgensen": 1.3,
-        "Joseph Biden": 81.7
+        "total": 8750,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 7146,
+            "pct": 81.7
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 1490,
+            "pct": 17
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 114,
+            "pct": 1.3
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 81.7
+      },
+      "Fauquier County": {
+        "total": 43448,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 25106,
+            "pct": 57.8
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 17565,
+            "pct": 40.4
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 777,
+            "pct": 1.8
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 57.8
+      },
+      "Floyd County": {
+        "total": 9376,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 6225,
+            "pct": 66.4
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 3004,
+            "pct": 32
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 147,
+            "pct": 1.6
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 66.4
+      },
+      "Fluvanna County": {
+        "total": 15795,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 8155,
+            "pct": 51.6
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 7414,
+            "pct": 46.9
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 226,
+            "pct": 1.4
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 51.6
       },
       "Franklin City": {
-        "Donald Trump": 36.7,
-        "Jo Jorgensen": 0.9,
-        "Joseph Biden": 62.4
+        "total": 4047,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 2525,
+            "pct": 62.4
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 1487,
+            "pct": 36.7
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 35,
+            "pct": 0.9
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 62.4
+      },
+      "Franklin County": {
+        "total": 29630,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 20895,
+            "pct": 70.5
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 8381,
+            "pct": 28.3
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 354,
+            "pct": 1.2
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 70.5
+      },
+      "Frederick County": {
+        "total": 48546,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 30558,
+            "pct": 62.9
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 17207,
+            "pct": 35.4
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 781,
+            "pct": 1.6
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 62.9
       },
       "Fredericksburg City": {
-        "Donald Trump": 31.6,
-        "Jo Jorgensen": 1.9,
-        "Joseph Biden": 66.6
+        "total": 12794,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 8517,
+            "pct": 66.6
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 4037,
+            "pct": 31.6
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 240,
+            "pct": 1.9
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 66.6
       },
       "Galax City": {
-        "Donald Trump": 69.8,
-        "Jo Jorgensen": 0.7,
-        "Joseph Biden": 29.5
+        "total": 2633,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 1838,
+            "pct": 69.8
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 777,
+            "pct": 29.5
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 18,
+            "pct": 0.7
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 69.8
+      },
+      "Giles County": {
+        "total": 9157,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 6876,
+            "pct": 75.1
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 2156,
+            "pct": 23.5
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 125,
+            "pct": 1.4
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 75.1
+      },
+      "Gloucester County": {
+        "total": 22228,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 14875,
+            "pct": 66.9
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 6964,
+            "pct": 31.3
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 389,
+            "pct": 1.8
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 66.9
+      },
+      "Goochland County": {
+        "total": 16893,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 9966,
+            "pct": 59
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 6685,
+            "pct": 39.6
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 242,
+            "pct": 1.4
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 59
+      },
+      "Grayson County": {
+        "total": 8120,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 6529,
+            "pct": 80.4
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 1535,
+            "pct": 18.9
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 56,
+            "pct": 0.7
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 80.4
+      },
+      "Greene County": {
+        "total": 11270,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 6866,
+            "pct": 60.9
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 4163,
+            "pct": 36.9
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 241,
+            "pct": 2.1
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 60.9
+      },
+      "Greensville County": {
+        "total": 4564,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 2627,
+            "pct": 57.6
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 1914,
+            "pct": 41.9
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 23,
+            "pct": 0.5
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 57.6
+      },
+      "Halifax County": {
+        "total": 18224,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 10418,
+            "pct": 57.2
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 7666,
+            "pct": 42.1
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 140,
+            "pct": 0.8
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 57.2
       },
       "Hampton City": {
-        "Donald Trump": 28.1,
-        "Jo Jorgensen": 1.5,
-        "Joseph Biden": 70.4
+        "total": 65656,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 46220,
+            "pct": 70.4
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 18430,
+            "pct": 28.1
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 1006,
+            "pct": 1.5
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 70.4
+      },
+      "Hanover County": {
+        "total": 70728,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 44318,
+            "pct": 62.7
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 25307,
+            "pct": 35.8
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 1103,
+            "pct": 1.6
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 62.7
       },
       "Harrisonburg City": {
-        "Donald Trump": 32.9,
-        "Jo Jorgensen": 2.1,
-        "Joseph Biden": 64.9
+        "total": 16977,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 11022,
+            "pct": 64.9
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 5591,
+            "pct": 32.9
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 364,
+            "pct": 2.1
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 64.9
+      },
+      "Henrico County": {
+        "total": 182426,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 116572,
+            "pct": 63.9
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 63440,
+            "pct": 34.8
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 2414,
+            "pct": 1.3
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 63.9
+      },
+      "Henry County": {
+        "total": 26075,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 16725,
+            "pct": 64.1
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 9127,
+            "pct": 35
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 223,
+            "pct": 0.9
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 64.1
+      },
+      "Highland County": {
+        "total": 1531,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 1092,
+            "pct": 71.3
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 417,
+            "pct": 27.2
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 22,
+            "pct": 1.4
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 71.3
       },
       "Hopewell City": {
-        "Donald Trump": 42.0,
-        "Jo Jorgensen": 1.4,
-        "Joseph Biden": 56.7
+        "total": 9581,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 5430,
+            "pct": 56.7
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 4020,
+            "pct": 42
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 131,
+            "pct": 1.4
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 56.7
+      },
+      "Isle Of Wight County": {
+        "total": 23434,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 13707,
+            "pct": 58.5
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 9399,
+            "pct": 40.1
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 328,
+            "pct": 1.4
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 58.5
+      },
+      "James City County": {
+        "total": 49416,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 25553,
+            "pct": 51.7
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 23153,
+            "pct": 46.9
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 710,
+            "pct": 1.4
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 51.7
+      },
+      "King & Queen County": {
+        "total": 4104,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 2450,
+            "pct": 59.7
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 1590,
+            "pct": 38.7
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 64,
+            "pct": 1.6
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 59.7
+      },
+      "King George County": {
+        "total": 14164,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 8446,
+            "pct": 59.6
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 5404,
+            "pct": 38.2
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 314,
+            "pct": 2.2
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 59.6
+      },
+      "King William County": {
+        "total": 10722,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 7320,
+            "pct": 68.3
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 3260,
+            "pct": 30.4
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 142,
+            "pct": 1.3
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 68.3
+      },
+      "Lancaster County": {
+        "total": 7136,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 3697,
+            "pct": 51.8
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 3368,
+            "pct": 47.2
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 71,
+            "pct": 1
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 51.8
+      },
+      "Lee County": {
+        "total": 9932,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 8365,
+            "pct": 84.2
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 1489,
+            "pct": 15
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 78,
+            "pct": 0.8
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 84.2
       },
       "Lexington City": {
-        "Donald Trump": 33.0,
-        "Jo Jorgensen": 1.7,
-        "Joseph Biden": 65.2
+        "total": 2745,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 1791,
+            "pct": 65.2
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 906,
+            "pct": 33
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 48,
+            "pct": 1.7
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 65.2
+      },
+      "Loudoun County": {
+        "total": 223599,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 138372,
+            "pct": 61.9
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 82088,
+            "pct": 36.7
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 3139,
+            "pct": 1.4
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 61.9
+      },
+      "Louisa County": {
+        "total": 21858,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 13294,
+            "pct": 60.8
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 8269,
+            "pct": 37.8
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 295,
+            "pct": 1.3
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 60.8
+      },
+      "Lunenburg County": {
+        "total": 5995,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 3537,
+            "pct": 59
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 2418,
+            "pct": 40.3
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 40,
+            "pct": 0.7
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 59
       },
       "Lynchburg City": {
-        "Donald Trump": 47.5,
-        "Jo Jorgensen": 2.4,
-        "Joseph Biden": 50.1
+        "total": 36002,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 18048,
+            "pct": 50.1
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 17097,
+            "pct": 47.5
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 857,
+            "pct": 2.4
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 50.1
+      },
+      "Madison County": {
+        "total": 8104,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 5300,
+            "pct": 65.4
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 2698,
+            "pct": 33.3
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 106,
+            "pct": 1.3
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 65.4
       },
       "Manassas City": {
-        "Donald Trump": 37.0,
-        "Jo Jorgensen": 1.7,
-        "Joseph Biden": 61.3
+        "total": 16892,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 10356,
+            "pct": 61.3
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 6256,
+            "pct": 37
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 280,
+            "pct": 1.7
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 61.3
       },
       "Manassas Park City": {
-        "Donald Trump": 32.6,
-        "Jo Jorgensen": 1.6,
-        "Joseph Biden": 65.8
+        "total": 6071,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 3992,
+            "pct": 65.8
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 1979,
+            "pct": 32.6
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 100,
+            "pct": 1.6
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 65.8
       },
       "Martinsville City": {
-        "Donald Trump": 36.1,
-        "Jo Jorgensen": 1.2,
-        "Joseph Biden": 62.7
+        "total": 6004,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 3766,
+            "pct": 62.7
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 2165,
+            "pct": 36.1
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 73,
+            "pct": 1.2
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 62.7
+      },
+      "Mathews County": {
+        "total": 5813,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 3901,
+            "pct": 67.1
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 1825,
+            "pct": 31.4
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 87,
+            "pct": 1.5
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 67.1
+      },
+      "Mecklenburg County": {
+        "total": 16182,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 9266,
+            "pct": 57.3
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 6803,
+            "pct": 42
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 113,
+            "pct": 0.7
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 57.3
+      },
+      "Middlesex County": {
+        "total": 6764,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 4196,
+            "pct": 62
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 2491,
+            "pct": 36.8
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 77,
+            "pct": 1.1
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 62
+      },
+      "Montgomery County": {
+        "total": 44789,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 23218,
+            "pct": 51.8
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 20629,
+            "pct": 46.1
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 942,
+            "pct": 2.1
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 51.8
+      },
+      "Nelson County": {
+        "total": 9289,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 4812,
+            "pct": 51.8
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 4327,
+            "pct": 46.6
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 150,
+            "pct": 1.6
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 51.8
+      },
+      "New Kent County": {
+        "total": 14424,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 9631,
+            "pct": 66.8
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 4621,
+            "pct": 32
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 172,
+            "pct": 1.2
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 66.8
       },
       "Newport News City": {
-        "Donald Trump": 32.6,
-        "Jo Jorgensen": 1.8,
-        "Joseph Biden": 65.6
+        "total": 80914,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 53099,
+            "pct": 65.6
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 26377,
+            "pct": 32.6
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 1438,
+            "pct": 1.8
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 65.6
       },
       "Norfolk City": {
-        "Donald Trump": 26.2,
-        "Jo Jorgensen": 1.8,
-        "Joseph Biden": 72.0
+        "total": 89491,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 64440,
+            "pct": 72
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 23443,
+            "pct": 26.2
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 1608,
+            "pct": 1.8
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 72
+      },
+      "Northampton County": {
+        "total": 6722,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 3667,
+            "pct": 54.6
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 2955,
+            "pct": 44
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 100,
+            "pct": 1.5
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 54.6
+      },
+      "Northumberland County": {
+        "total": 7793,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 4485,
+            "pct": 57.6
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 3252,
+            "pct": 41.7
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 56,
+            "pct": 0.7
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 57.6
       },
       "Norton City": {
-        "Donald Trump": 69.6,
-        "Jo Jorgensen": 1.3,
-        "Joseph Biden": 29.1
+        "total": 1594,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 1109,
+            "pct": 69.6
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 464,
+            "pct": 29.1
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 21,
+            "pct": 1.3
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 69.6
+      },
+      "Nottoway County": {
+        "total": 7070,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 4027,
+            "pct": 57
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 2971,
+            "pct": 42
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 72,
+            "pct": 1
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 57
+      },
+      "Orange County": {
+        "total": 20688,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 12426,
+            "pct": 60.1
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 7995,
+            "pct": 38.6
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 267,
+            "pct": 1.3
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 60.1
+      },
+      "Page County": {
+        "total": 12486,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 9345,
+            "pct": 74.8
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 3007,
+            "pct": 24.1
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 134,
+            "pct": 1.1
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 74.8
+      },
+      "Patrick County": {
+        "total": 9520,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 7485,
+            "pct": 78.6
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 1954,
+            "pct": 20.5
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 81,
+            "pct": 0.9
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 78.6
       },
       "Petersburg City": {
-        "Donald Trump": 11.2,
-        "Jo Jorgensen": 0.8,
-        "Joseph Biden": 88.0
+        "total": 14081,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 12389,
+            "pct": 88
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 1584,
+            "pct": 11.2
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 108,
+            "pct": 0.8
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 88
+      },
+      "Pittsylvania County": {
+        "total": 34151,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 23751,
+            "pct": 69.5
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 10115,
+            "pct": 29.6
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 285,
+            "pct": 0.8
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 69.5
       },
       "Poquoson City": {
-        "Donald Trump": 71.7,
-        "Jo Jorgensen": 2.0,
-        "Joseph Biden": 26.3
+        "total": 7819,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 5605,
+            "pct": 71.7
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 2054,
+            "pct": 26.3
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 160,
+            "pct": 2
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 71.7
       },
       "Portsmouth City": {
-        "Donald Trump": 28.7,
-        "Jo Jorgensen": 1.6,
-        "Joseph Biden": 69.7
+        "total": 44426,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 30948,
+            "pct": 69.7
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 12755,
+            "pct": 28.7
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 723,
+            "pct": 1.6
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 69.7
+      },
+      "Powhatan County": {
+        "total": 19696,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 14055,
+            "pct": 71.4
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 5320,
+            "pct": 27
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 321,
+            "pct": 1.6
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 71.4
+      },
+      "Prince Edward County": {
+        "total": 9543,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 4973,
+            "pct": 52.1
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 4434,
+            "pct": 46.5
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 136,
+            "pct": 1.4
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 52.1
+      },
+      "Prince George County": {
+        "total": 17401,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 10103,
+            "pct": 58.1
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 7103,
+            "pct": 40.8
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 195,
+            "pct": 1.1
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 58.1
+      },
+      "Prince William County": {
+        "total": 227327,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 142863,
+            "pct": 62.8
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 81222,
+            "pct": 35.7
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 3242,
+            "pct": 1.4
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 62.8
+      },
+      "Pulaski County": {
+        "total": 17327,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 12127,
+            "pct": 70
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 4925,
+            "pct": 28.4
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 275,
+            "pct": 1.6
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 70
       },
       "Radford City": {
-        "Donald Trump": 44.3,
-        "Jo Jorgensen": 2.3,
-        "Joseph Biden": 53.4
+        "total": 6289,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 3358,
+            "pct": 53.4
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 2786,
+            "pct": 44.3
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 145,
+            "pct": 2.3
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 53.4
+      },
+      "Rappahannock County": {
+        "total": 4964,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 2812,
+            "pct": 56.6
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 2096,
+            "pct": 42.2
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 56,
+            "pct": 1.1
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 56.6
       },
       "Richmond City": {
-        "Donald Trump": 15.0,
-        "Jo Jorgensen": 1.5,
-        "Joseph Biden": 83.4
+        "total": 110469,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 92175,
+            "pct": 83.4
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 16603,
+            "pct": 15
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 1691,
+            "pct": 1.5
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 83.4
+      },
+      "Richmond County": {
+        "total": 4091,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 2547,
+            "pct": 62.3
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 1513,
+            "pct": 37
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 31,
+            "pct": 0.8
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 62.3
       },
       "Roanoke City": {
-        "Donald Trump": 36.2,
-        "Jo Jorgensen": 1.8,
-        "Joseph Biden": 62.0
+        "total": 43157,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 26773,
+            "pct": 62
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 15607,
+            "pct": 36.2
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 777,
+            "pct": 1.8
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 62
+      },
+      "Roanoke County": {
+        "total": 56979,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 34268,
+            "pct": 60.1
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 21801,
+            "pct": 38.3
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 910,
+            "pct": 1.6
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 60.1
+      },
+      "Rockbridge County": {
+        "total": 12339,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 8088,
+            "pct": 65.5
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 4086,
+            "pct": 33.1
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 165,
+            "pct": 1.3
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 65.5
+      },
+      "Rockingham County": {
+        "total": 43646,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 30349,
+            "pct": 69.5
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 12644,
+            "pct": 29
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 653,
+            "pct": 1.5
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 69.5
+      },
+      "Russell County": {
+        "total": 13368,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 10879,
+            "pct": 81.4
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 2373,
+            "pct": 17.8
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 116,
+            "pct": 0.9
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 81.4
       },
       "Salem City": {
-        "Donald Trump": 58.9,
-        "Jo Jorgensen": 1.7,
-        "Joseph Biden": 39.4
+        "total": 13051,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 7683,
+            "pct": 58.9
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 5148,
+            "pct": 39.4
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 220,
+            "pct": 1.7
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 58.9
+      },
+      "Scott County": {
+        "total": 10845,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 9063,
+            "pct": 83.6
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 1692,
+            "pct": 15.6
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 90,
+            "pct": 0.8
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 83.6
+      },
+      "Shenandoah County": {
+        "total": 23645,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 16463,
+            "pct": 69.6
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 6836,
+            "pct": 28.9
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 346,
+            "pct": 1.5
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 69.6
+      },
+      "Smyth County": {
+        "total": 14104,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 10963,
+            "pct": 77.7
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 3008,
+            "pct": 21.3
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 133,
+            "pct": 0.9
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 77.7
+      },
+      "Southampton County": {
+        "total": 9786,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 5730,
+            "pct": 58.6
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 3969,
+            "pct": 40.6
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 87,
+            "pct": 0.9
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 58.6
+      },
+      "Spotsylvania County": {
+        "total": 75019,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 39411,
+            "pct": 52.5
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 34307,
+            "pct": 45.7
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 1301,
+            "pct": 1.7
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 52.5
+      },
+      "Stafford County": {
+        "total": 79257,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 40245,
+            "pct": 50.8
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 37636,
+            "pct": 47.5
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 1376,
+            "pct": 1.7
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 50.8
       },
       "Staunton City": {
-        "Donald Trump": 44.1,
-        "Jo Jorgensen": 1.9,
-        "Joseph Biden": 54.0
+        "total": 12925,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 6981,
+            "pct": 54
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 5695,
+            "pct": 44.1
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 249,
+            "pct": 1.9
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 54
       },
       "Suffolk City": {
-        "Donald Trump": 40.6,
-        "Jo Jorgensen": 1.5,
-        "Joseph Biden": 58.0
+        "total": 49482,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 28676,
+            "pct": 58
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 20082,
+            "pct": 40.6
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 724,
+            "pct": 1.5
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 58
+      },
+      "Surry County": {
+        "total": 4462,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 2397,
+            "pct": 53.7
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 2025,
+            "pct": 45.4
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 40,
+            "pct": 0.9
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 53.7
+      },
+      "Sussex County": {
+        "total": 5081,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 2827,
+            "pct": 55.6
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 2219,
+            "pct": 43.7
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 35,
+            "pct": 0.7
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 55.6
+      },
+      "Tazewell County": {
+        "total": 20095,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 16731,
+            "pct": 83.3
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 3205,
+            "pct": 15.9
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 159,
+            "pct": 0.8
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 83.3
       },
       "Virginia Beach City": {
-        "Donald Trump": 46.4,
-        "Jo Jorgensen": 1.9,
-        "Joseph Biden": 51.8
+        "total": 226688,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 117393,
+            "pct": 51.8
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 105087,
+            "pct": 46.4
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 4208,
+            "pct": 1.9
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 51.8
+      },
+      "Warren County": {
+        "total": 21037,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 14069,
+            "pct": 66.9
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 6603,
+            "pct": 31.4
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 365,
+            "pct": 1.7
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 66.9
+      },
+      "Washington County": {
+        "total": 28600,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 21679,
+            "pct": 75.8
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 6617,
+            "pct": 23.1
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 304,
+            "pct": 1.1
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 75.8
       },
       "Waynesboro City": {
-        "Donald Trump": 51.6,
-        "Jo Jorgensen": 2.0,
-        "Joseph Biden": 46.5
+        "total": 10677,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 5507,
+            "pct": 51.6
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 4961,
+            "pct": 46.5
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 209,
+            "pct": 2
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 51.6
+      },
+      "Westmoreland County": {
+        "total": 9909,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 5318,
+            "pct": 53.7
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 4501,
+            "pct": 45.4
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 90,
+            "pct": 0.9
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 53.7
       },
       "Williamsburg City": {
-        "Donald Trump": 28.7,
-        "Jo Jorgensen": 1.3,
-        "Joseph Biden": 70.0
+        "total": 6845,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 4790,
+            "pct": 70
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 1963,
+            "pct": 28.7
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 92,
+            "pct": 1.3
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 70
       },
       "Winchester City": {
-        "Donald Trump": 43.3,
-        "Jo Jorgensen": 1.8,
-        "Joseph Biden": 54.9
+        "total": 12044,
+        "candidates": [
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 6610,
+            "pct": 54.9
+          },
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 5221,
+            "pct": 43.3
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 213,
+            "pct": 1.8
+          }
+        ],
+        "winner": "Joseph Biden",
+        "winner_pct": 54.9
+      },
+      "Wise County": {
+        "total": 16584,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 13366,
+            "pct": 80.6
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 3110,
+            "pct": 18.8
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 108,
+            "pct": 0.7
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 80.6
+      },
+      "Wythe County": {
+        "total": 15046,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 11733,
+            "pct": 78
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 3143,
+            "pct": 20.9
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 170,
+            "pct": 1.1
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 78
+      },
+      "York County": {
+        "total": 38604,
+        "candidates": [
+          {
+            "name": "Donald Trump",
+            "party": "Republican",
+            "votes": 20241,
+            "pct": 52.4
+          },
+          {
+            "name": "Joseph Biden",
+            "party": "Democratic",
+            "votes": 17683,
+            "pct": 45.8
+          },
+          {
+            "name": "Jo Jorgensen",
+            "party": "Libertarian",
+            "votes": 680,
+            "pct": 1.8
+          }
+        ],
+        "winner": "Donald Trump",
+        "winner_pct": 52.4
       }
     },
     "U.S. Senate": {
       "Accomack County": {
-        "Daniel Gade": 52.7,
-        "Mark Warner": 47.3
+        "total": 16802,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 8863,
+            "pct": 52.7
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 7939,
+            "pct": 47.3
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 52.7
       },
       "Albemarle County": {
-        "Daniel Gade": 32.6,
-        "Mark Warner": 67.4
-      },
-      "Alleghany County": {
-        "Daniel Gade": 64.6,
-        "Mark Warner": 35.4
-      },
-      "Amelia County": {
-        "Daniel Gade": 67.3,
-        "Mark Warner": 32.7
-      },
-      "Amherst County": {
-        "Daniel Gade": 62.9,
-        "Mark Warner": 37.1
-      },
-      "Appomattox County": {
-        "Daniel Gade": 69.7,
-        "Mark Warner": 30.3
-      },
-      "Arlington County": {
-        "Daniel Gade": 20.5,
-        "Mark Warner": 79.5
-      },
-      "Augusta County": {
-        "Daniel Gade": 70.9,
-        "Mark Warner": 29.1
-      },
-      "Bath County": {
-        "Daniel Gade": 69.4,
-        "Mark Warner": 30.6
-      },
-      "Bedford County": {
-        "Daniel Gade": 71.3,
-        "Mark Warner": 28.7
-      },
-      "Bland County": {
-        "Daniel Gade": 78.4,
-        "Mark Warner": 21.6
-      },
-      "Botetourt County": {
-        "Daniel Gade": 68.5,
-        "Mark Warner": 31.5
-      },
-      "Brunswick County": {
-        "Daniel Gade": 40.3,
-        "Mark Warner": 59.7
-      },
-      "Buchanan County": {
-        "Daniel Gade": 74.1,
-        "Mark Warner": 25.9
-      },
-      "Buckingham County": {
-        "Daniel Gade": 54.6,
-        "Mark Warner": 45.4
-      },
-      "Campbell County": {
-        "Daniel Gade": 68.7,
-        "Mark Warner": 31.3
-      },
-      "Caroline County": {
-        "Daniel Gade": 49.7,
-        "Mark Warner": 50.3
-      },
-      "Carroll County": {
-        "Daniel Gade": 76.4,
-        "Mark Warner": 23.6
-      },
-      "Charles City County": {
-        "Daniel Gade": 38.7,
-        "Mark Warner": 61.3
-      },
-      "Charlotte County": {
-        "Daniel Gade": 59.0,
-        "Mark Warner": 41.0
-      },
-      "Chesterfield County": {
-        "Daniel Gade": 46.3,
-        "Mark Warner": 53.7
-      },
-      "Clarke County": {
-        "Daniel Gade": 56.3,
-        "Mark Warner": 43.7
-      },
-      "Craig County": {
-        "Daniel Gade": 75.9,
-        "Mark Warner": 24.1
-      },
-      "Culpeper County": {
-        "Daniel Gade": 58.4,
-        "Mark Warner": 41.6
-      },
-      "Cumberland County": {
-        "Daniel Gade": 56.0,
-        "Mark Warner": 44.0
-      },
-      "Dickenson County": {
-        "Daniel Gade": 71.5,
-        "Mark Warner": 28.5
-      },
-      "Dinwiddie County": {
-        "Daniel Gade": 56.6,
-        "Mark Warner": 43.4
-      },
-      "Essex County": {
-        "Daniel Gade": 47.7,
-        "Mark Warner": 52.3
-      },
-      "Fairfax County": {
-        "Daniel Gade": 30.0,
-        "Mark Warner": 70.0
-      },
-      "Fauquier County": {
-        "Daniel Gade": 58.8,
-        "Mark Warner": 41.2
-      },
-      "Floyd County": {
-        "Daniel Gade": 63.4,
-        "Mark Warner": 36.6
-      },
-      "Fluvanna County": {
-        "Daniel Gade": 50.2,
-        "Mark Warner": 49.8
-      },
-      "Franklin County": {
-        "Daniel Gade": 66.3,
-        "Mark Warner": 33.7
-      },
-      "Frederick County": {
-        "Daniel Gade": 62.5,
-        "Mark Warner": 37.5
-      },
-      "Giles County": {
-        "Daniel Gade": 69.9,
-        "Mark Warner": 30.1
-      },
-      "Gloucester County": {
-        "Daniel Gade": 66.0,
-        "Mark Warner": 34.0
-      },
-      "Goochland County": {
-        "Daniel Gade": 59.7,
-        "Mark Warner": 40.3
-      },
-      "Grayson County": {
-        "Daniel Gade": 75.4,
-        "Mark Warner": 24.6
-      },
-      "Greene County": {
-        "Daniel Gade": 59.5,
-        "Mark Warner": 40.5
-      },
-      "Greensville County": {
-        "Daniel Gade": 40.1,
-        "Mark Warner": 59.9
-      },
-      "Halifax County": {
-        "Daniel Gade": 54.3,
-        "Mark Warner": 45.7
-      },
-      "Hanover County": {
-        "Daniel Gade": 62.9,
-        "Mark Warner": 37.1
-      },
-      "Henrico County": {
-        "Daniel Gade": 34.8,
-        "Mark Warner": 65.2
-      },
-      "Henry County": {
-        "Daniel Gade": 58.6,
-        "Mark Warner": 41.4
-      },
-      "Highland County": {
-        "Daniel Gade": 66.9,
-        "Mark Warner": 33.1
-      },
-      "Isle Of Wight County": {
-        "Daniel Gade": 58.0,
-        "Mark Warner": 42.0
-      },
-      "James City County": {
-        "Daniel Gade": 47.9,
-        "Mark Warner": 52.1
-      },
-      "King & Queen County": {
-        "Daniel Gade": 58.2,
-        "Mark Warner": 41.8
-      },
-      "King George County": {
-        "Daniel Gade": 59.3,
-        "Mark Warner": 40.7
-      },
-      "King William County": {
-        "Daniel Gade": 67.3,
-        "Mark Warner": 32.7
-      },
-      "Lancaster County": {
-        "Daniel Gade": 51.3,
-        "Mark Warner": 48.7
-      },
-      "Lee County": {
-        "Daniel Gade": 77.2,
-        "Mark Warner": 22.8
-      },
-      "Loudoun County": {
-        "Daniel Gade": 38.1,
-        "Mark Warner": 61.9
-      },
-      "Louisa County": {
-        "Daniel Gade": 60.0,
-        "Mark Warner": 40.0
-      },
-      "Lunenburg County": {
-        "Daniel Gade": 57.1,
-        "Mark Warner": 42.9
-      },
-      "Madison County": {
-        "Daniel Gade": 63.8,
-        "Mark Warner": 36.2
-      },
-      "Mathews County": {
-        "Daniel Gade": 66.5,
-        "Mark Warner": 33.5
-      },
-      "Mecklenburg County": {
-        "Daniel Gade": 55.9,
-        "Mark Warner": 44.1
-      },
-      "Middlesex County": {
-        "Daniel Gade": 60.6,
-        "Mark Warner": 39.4
-      },
-      "Montgomery County": {
-        "Daniel Gade": 44.8,
-        "Mark Warner": 55.2
-      },
-      "Nelson County": {
-        "Daniel Gade": 49.2,
-        "Mark Warner": 50.8
-      },
-      "New Kent County": {
-        "Daniel Gade": 66.5,
-        "Mark Warner": 33.5
-      },
-      "Northampton County": {
-        "Daniel Gade": 41.8,
-        "Mark Warner": 58.2
-      },
-      "Northumberland County": {
-        "Daniel Gade": 56.0,
-        "Mark Warner": 44.0
-      },
-      "Nottoway County": {
-        "Daniel Gade": 55.2,
-        "Mark Warner": 44.8
-      },
-      "Orange County": {
-        "Daniel Gade": 59.2,
-        "Mark Warner": 40.8
-      },
-      "Page County": {
-        "Daniel Gade": 72.4,
-        "Mark Warner": 27.6
-      },
-      "Patrick County": {
-        "Daniel Gade": 74.9,
-        "Mark Warner": 25.1
-      },
-      "Pittsylvania County": {
-        "Daniel Gade": 65.6,
-        "Mark Warner": 34.4
-      },
-      "Powhatan County": {
-        "Daniel Gade": 71.2,
-        "Mark Warner": 28.8
-      },
-      "Prince Edward County": {
-        "Daniel Gade": 45.2,
-        "Mark Warner": 54.8
-      },
-      "Prince George County": {
-        "Daniel Gade": 57.8,
-        "Mark Warner": 42.2
-      },
-      "Prince William County": {
-        "Daniel Gade": 35.7,
-        "Mark Warner": 64.3
-      },
-      "Pulaski County": {
-        "Daniel Gade": 65.3,
-        "Mark Warner": 34.7
-      },
-      "Rappahannock County": {
-        "Daniel Gade": 55.2,
-        "Mark Warner": 44.8
-      },
-      "Richmond County": {
-        "Daniel Gade": 58.2,
-        "Mark Warner": 41.8
-      },
-      "Roanoke County": {
-        "Daniel Gade": 57.6,
-        "Mark Warner": 42.4
-      },
-      "Rockbridge County": {
-        "Daniel Gade": 62.3,
-        "Mark Warner": 37.7
-      },
-      "Rockingham County": {
-        "Daniel Gade": 68.4,
-        "Mark Warner": 31.6
-      },
-      "Russell County": {
-        "Daniel Gade": 75.2,
-        "Mark Warner": 24.8
-      },
-      "Scott County": {
-        "Daniel Gade": 79.6,
-        "Mark Warner": 20.4
-      },
-      "Shenandoah County": {
-        "Daniel Gade": 68.9,
-        "Mark Warner": 31.1
-      },
-      "Smyth County": {
-        "Daniel Gade": 71.6,
-        "Mark Warner": 28.4
-      },
-      "Southampton County": {
-        "Daniel Gade": 57.1,
-        "Mark Warner": 42.9
-      },
-      "Spotsylvania County": {
-        "Daniel Gade": 52.4,
-        "Mark Warner": 47.6
-      },
-      "Stafford County": {
-        "Daniel Gade": 48.0,
-        "Mark Warner": 52.0
-      },
-      "Surry County": {
-        "Daniel Gade": 44.5,
-        "Mark Warner": 55.5
-      },
-      "Sussex County": {
-        "Daniel Gade": 42.3,
-        "Mark Warner": 57.7
-      },
-      "Tazewell County": {
-        "Daniel Gade": 76.9,
-        "Mark Warner": 23.1
-      },
-      "Warren County": {
-        "Daniel Gade": 66.2,
-        "Mark Warner": 33.8
-      },
-      "Washington County": {
-        "Daniel Gade": 72.7,
-        "Mark Warner": 27.3
-      },
-      "Westmoreland County": {
-        "Daniel Gade": 51.0,
-        "Mark Warner": 49.0
-      },
-      "Wise County": {
-        "Daniel Gade": 74.6,
-        "Mark Warner": 25.4
-      },
-      "Wythe County": {
-        "Daniel Gade": 72.7,
-        "Mark Warner": 27.3
-      },
-      "York County": {
-        "Daniel Gade": 53.2,
-        "Mark Warner": 46.8
+        "total": 63430,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 42730,
+            "pct": 67.4
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 20700,
+            "pct": 32.6
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 67.4
       },
       "Alexandria City": {
-        "Daniel Gade": 20.5,
-        "Mark Warner": 79.5
+        "total": 81873,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 65071,
+            "pct": 79.5
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 16802,
+            "pct": 20.5
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 79.5
+      },
+      "Alleghany County": {
+        "total": 7981,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 5159,
+            "pct": 64.6
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 2822,
+            "pct": 35.4
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 64.6
+      },
+      "Amelia County": {
+        "total": 7825,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 5266,
+            "pct": 67.3
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 2559,
+            "pct": 32.7
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 67.3
+      },
+      "Amherst County": {
+        "total": 16897,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 10624,
+            "pct": 62.9
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 6273,
+            "pct": 37.1
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 62.9
+      },
+      "Appomattox County": {
+        "total": 9047,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 6306,
+            "pct": 69.7
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 2741,
+            "pct": 30.3
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 69.7
+      },
+      "Arlington County": {
+        "total": 129470,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 102880,
+            "pct": 79.5
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 26590,
+            "pct": 20.5
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 79.5
+      },
+      "Augusta County": {
+        "total": 42018,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 29794,
+            "pct": 70.9
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 12224,
+            "pct": 29.1
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 70.9
+      },
+      "Bath County": {
+        "total": 2432,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 1688,
+            "pct": 69.4
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 744,
+            "pct": 30.6
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 69.4
+      },
+      "Bedford County": {
+        "total": 48279,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 34407,
+            "pct": 71.3
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 13872,
+            "pct": 28.7
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 71.3
+      },
+      "Bland County": {
+        "total": 3383,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 2651,
+            "pct": 78.4
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 732,
+            "pct": 21.6
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 78.4
+      },
+      "Botetourt County": {
+        "total": 20702,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 14190,
+            "pct": 68.5
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 6512,
+            "pct": 31.5
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 68.5
       },
       "Bristol City": {
-        "Daniel Gade": 63.7,
-        "Mark Warner": 36.3
+        "total": 7679,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 4892,
+            "pct": 63.7
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 2787,
+            "pct": 36.3
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 63.7
+      },
+      "Brunswick County": {
+        "total": 7919,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 4727,
+            "pct": 59.7
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 3192,
+            "pct": 40.3
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 59.7
+      },
+      "Buchanan County": {
+        "total": 9724,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 7202,
+            "pct": 74.1
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 2522,
+            "pct": 25.9
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 74.1
+      },
+      "Buckingham County": {
+        "total": 8048,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 4392,
+            "pct": 54.6
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 3656,
+            "pct": 45.4
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 54.6
       },
       "Buena Vista City": {
-        "Daniel Gade": 62.8,
-        "Mark Warner": 37.2
+        "total": 2744,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 1724,
+            "pct": 62.8
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 1020,
+            "pct": 37.2
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 62.8
+      },
+      "Campbell County": {
+        "total": 29615,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 20337,
+            "pct": 68.7
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 9278,
+            "pct": 31.3
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 68.7
+      },
+      "Caroline County": {
+        "total": 16160,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 8124,
+            "pct": 50.3
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 8036,
+            "pct": 49.7
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 50.3
+      },
+      "Carroll County": {
+        "total": 15201,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 11610,
+            "pct": 76.4
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 3591,
+            "pct": 23.6
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 76.4
+      },
+      "Charles City County": {
+        "total": 4404,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 2700,
+            "pct": 61.3
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 1704,
+            "pct": 38.7
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 61.3
+      },
+      "Charlotte County": {
+        "total": 6155,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 3633,
+            "pct": 59
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 2522,
+            "pct": 41
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 59
       },
       "Charlottesville City": {
-        "Daniel Gade": 14.2,
-        "Mark Warner": 85.8
+        "total": 24081,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 20672,
+            "pct": 85.8
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 3409,
+            "pct": 14.2
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 85.8
       },
       "Chesapeake City": {
-        "Daniel Gade": 46.1,
-        "Mark Warner": 53.9
+        "total": 126283,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 68129,
+            "pct": 53.9
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 58154,
+            "pct": 46.1
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 53.9
+      },
+      "Chesterfield County": {
+        "total": 200226,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 107568,
+            "pct": 53.7
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 92658,
+            "pct": 46.3
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 53.7
+      },
+      "Clarke County": {
+        "total": 9266,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 5214,
+            "pct": 56.3
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 4052,
+            "pct": 43.7
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 56.3
       },
       "Colonial Heights City": {
-        "Daniel Gade": 64.8,
-        "Mark Warner": 35.2
+        "total": 8931,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 5788,
+            "pct": 64.8
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 3143,
+            "pct": 35.2
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 64.8
       },
       "Covington City": {
-        "Daniel Gade": 54.5,
-        "Mark Warner": 45.5
+        "total": 2543,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 1386,
+            "pct": 54.5
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 1157,
+            "pct": 45.5
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 54.5
+      },
+      "Craig County": {
+        "total": 3138,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 2381,
+            "pct": 75.9
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 757,
+            "pct": 24.1
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 75.9
+      },
+      "Culpeper County": {
+        "total": 26713,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 15590,
+            "pct": 58.4
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 11123,
+            "pct": 41.6
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 58.4
+      },
+      "Cumberland County": {
+        "total": 5264,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 2947,
+            "pct": 56
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 2317,
+            "pct": 44
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 56
       },
       "Danville City": {
-        "Daniel Gade": 34.8,
-        "Mark Warner": 65.2
+        "total": 19199,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 12519,
+            "pct": 65.2
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 6680,
+            "pct": 34.8
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 65.2
+      },
+      "Dickenson County": {
+        "total": 7194,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 5142,
+            "pct": 71.5
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 2052,
+            "pct": 28.5
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 71.5
+      },
+      "Dinwiddie County": {
+        "total": 14859,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 8414,
+            "pct": 56.6
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 6445,
+            "pct": 43.4
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 56.6
       },
       "Emporia City": {
-        "Daniel Gade": 30.6,
-        "Mark Warner": 69.4
+        "total": 2330,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 1618,
+            "pct": 69.4
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 712,
+            "pct": 30.6
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 69.4
+      },
+      "Essex County": {
+        "total": 6111,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 3194,
+            "pct": 52.3
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 2917,
+            "pct": 47.7
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 52.3
       },
       "Fairfax City": {
-        "Daniel Gade": 31.1,
-        "Mark Warner": 68.9
+        "total": 13313,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 9179,
+            "pct": 68.9
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 4134,
+            "pct": 31.1
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 68.9
+      },
+      "Fairfax County": {
+        "total": 594186,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 415791,
+            "pct": 70
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 178395,
+            "pct": 30
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 70
       },
       "Falls Church City": {
-        "Daniel Gade": 20.0,
-        "Mark Warner": 80.0
+        "total": 8766,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 7016,
+            "pct": 80
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 1750,
+            "pct": 20
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 80
+      },
+      "Fauquier County": {
+        "total": 42405,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 24937,
+            "pct": 58.8
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 17468,
+            "pct": 41.2
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 58.8
+      },
+      "Floyd County": {
+        "total": 9315,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 5908,
+            "pct": 63.4
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 3407,
+            "pct": 36.6
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 63.4
+      },
+      "Fluvanna County": {
+        "total": 15710,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 7880,
+            "pct": 50.2
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 7830,
+            "pct": 49.8
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 50.2
       },
       "Franklin City": {
-        "Daniel Gade": 35.6,
-        "Mark Warner": 64.4
+        "total": 3959,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 2549,
+            "pct": 64.4
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 1410,
+            "pct": 35.6
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 64.4
+      },
+      "Franklin County": {
+        "total": 29412,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 19505,
+            "pct": 66.3
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 9907,
+            "pct": 33.7
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 66.3
+      },
+      "Frederick County": {
+        "total": 47902,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 29940,
+            "pct": 62.5
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 17962,
+            "pct": 37.5
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 62.5
       },
       "Fredericksburg City": {
-        "Daniel Gade": 32.4,
-        "Mark Warner": 67.6
+        "total": 12575,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 8495,
+            "pct": 67.6
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 4080,
+            "pct": 32.4
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 67.6
       },
       "Galax City": {
-        "Daniel Gade": 64.6,
-        "Mark Warner": 35.4
+        "total": 2598,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 1679,
+            "pct": 64.6
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 919,
+            "pct": 35.4
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 64.6
+      },
+      "Giles County": {
+        "total": 9019,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 6306,
+            "pct": 69.9
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 2713,
+            "pct": 30.1
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 69.9
+      },
+      "Gloucester County": {
+        "total": 22126,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 14605,
+            "pct": 66
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 7521,
+            "pct": 34
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 66
+      },
+      "Goochland County": {
+        "total": 16702,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 9972,
+            "pct": 59.7
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 6730,
+            "pct": 40.3
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 59.7
+      },
+      "Grayson County": {
+        "total": 7918,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 5972,
+            "pct": 75.4
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 1946,
+            "pct": 24.6
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 75.4
+      },
+      "Greene County": {
+        "total": 11190,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 6661,
+            "pct": 59.5
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 4529,
+            "pct": 40.5
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 59.5
+      },
+      "Greensville County": {
+        "total": 4538,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 2716,
+            "pct": 59.9
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 1822,
+            "pct": 40.1
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 59.9
+      },
+      "Halifax County": {
+        "total": 18082,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 9824,
+            "pct": 54.3
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 8258,
+            "pct": 45.7
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 54.3
       },
       "Hampton City": {
-        "Daniel Gade": 27.6,
-        "Mark Warner": 72.4
+        "total": 64404,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 46627,
+            "pct": 72.4
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 17777,
+            "pct": 27.6
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 72.4
+      },
+      "Hanover County": {
+        "total": 69757,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 43893,
+            "pct": 62.9
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 25864,
+            "pct": 37.1
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 62.9
       },
       "Harrisonburg City": {
-        "Daniel Gade": 33.6,
-        "Mark Warner": 66.4
+        "total": 16750,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 11116,
+            "pct": 66.4
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 5634,
+            "pct": 33.6
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 66.4
+      },
+      "Henrico County": {
+        "total": 179885,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 117199,
+            "pct": 65.2
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 62686,
+            "pct": 34.8
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 65.2
+      },
+      "Henry County": {
+        "total": 25667,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 15051,
+            "pct": 58.6
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 10616,
+            "pct": 41.4
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 58.6
+      },
+      "Highland County": {
+        "total": 1524,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 1020,
+            "pct": 66.9
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 504,
+            "pct": 33.1
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 66.9
       },
       "Hopewell City": {
-        "Daniel Gade": 40.3,
-        "Mark Warner": 59.7
+        "total": 9542,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 5695,
+            "pct": 59.7
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 3847,
+            "pct": 40.3
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 59.7
+      },
+      "Isle Of Wight County": {
+        "total": 23367,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 13546,
+            "pct": 58
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 9821,
+            "pct": 42
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 58
+      },
+      "James City County": {
+        "total": 49285,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 25685,
+            "pct": 52.1
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 23600,
+            "pct": 47.9
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 52.1
+      },
+      "King & Queen County": {
+        "total": 4077,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 2372,
+            "pct": 58.2
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 1705,
+            "pct": 41.8
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 58.2
+      },
+      "King George County": {
+        "total": 14142,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 8384,
+            "pct": 59.3
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 5758,
+            "pct": 40.7
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 59.3
+      },
+      "King William County": {
+        "total": 10526,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 7079,
+            "pct": 67.3
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 3447,
+            "pct": 32.7
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 67.3
+      },
+      "Lancaster County": {
+        "total": 7105,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 3648,
+            "pct": 51.3
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 3457,
+            "pct": 48.7
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 51.3
+      },
+      "Lee County": {
+        "total": 9840,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 7600,
+            "pct": 77.2
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 2240,
+            "pct": 22.8
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 77.2
       },
       "Lexington City": {
-        "Daniel Gade": 32.6,
-        "Mark Warner": 67.4
+        "total": 2748,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 1853,
+            "pct": 67.4
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 895,
+            "pct": 32.6
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 67.4
+      },
+      "Loudoun County": {
+        "total": 222805,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 137814,
+            "pct": 61.9
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 84991,
+            "pct": 38.1
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 61.9
+      },
+      "Louisa County": {
+        "total": 21739,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 13039,
+            "pct": 60
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 8700,
+            "pct": 40
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 60
+      },
+      "Lunenburg County": {
+        "total": 5893,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 3362,
+            "pct": 57.1
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 2531,
+            "pct": 42.9
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 57.1
       },
       "Lynchburg City": {
-        "Daniel Gade": 48.1,
-        "Mark Warner": 51.9
+        "total": 35795,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 18587,
+            "pct": 51.9
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 17208,
+            "pct": 48.1
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 51.9
+      },
+      "Madison County": {
+        "total": 8081,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 5156,
+            "pct": 63.8
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 2925,
+            "pct": 36.2
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 63.8
       },
       "Manassas City": {
-        "Daniel Gade": 37.1,
-        "Mark Warner": 62.9
+        "total": 16774,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 10547,
+            "pct": 62.9
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 6227,
+            "pct": 37.1
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 62.9
       },
       "Manassas Park City": {
-        "Daniel Gade": 32.1,
-        "Mark Warner": 67.9
+        "total": 6013,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 4084,
+            "pct": 67.9
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 1929,
+            "pct": 32.1
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 67.9
       },
       "Martinsville City": {
-        "Daniel Gade": 32.2,
-        "Mark Warner": 67.8
+        "total": 5838,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 3957,
+            "pct": 67.8
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 1881,
+            "pct": 32.2
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 67.8
+      },
+      "Mathews County": {
+        "total": 5799,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 3856,
+            "pct": 66.5
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 1943,
+            "pct": 33.5
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 66.5
+      },
+      "Mecklenburg County": {
+        "total": 15875,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 8871,
+            "pct": 55.9
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 7004,
+            "pct": 44.1
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 55.9
+      },
+      "Middlesex County": {
+        "total": 6738,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 4080,
+            "pct": 60.6
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 2658,
+            "pct": 39.4
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 60.6
+      },
+      "Montgomery County": {
+        "total": 44581,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 24589,
+            "pct": 55.2
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 19992,
+            "pct": 44.8
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 55.2
+      },
+      "Nelson County": {
+        "total": 9199,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 4673,
+            "pct": 50.8
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 4526,
+            "pct": 49.2
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 50.8
+      },
+      "New Kent County": {
+        "total": 14213,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 9449,
+            "pct": 66.5
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 4764,
+            "pct": 33.5
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 66.5
       },
       "Newport News City": {
-        "Daniel Gade": 32.3,
-        "Mark Warner": 67.7
+        "total": 78693,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 53265,
+            "pct": 67.7
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 25428,
+            "pct": 32.3
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 67.7
       },
       "Norfolk City": {
-        "Daniel Gade": 25.9,
-        "Mark Warner": 74.1
+        "total": 89236,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 66152,
+            "pct": 74.1
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 23084,
+            "pct": 25.9
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 74.1
+      },
+      "Northampton County": {
+        "total": 6684,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 3889,
+            "pct": 58.2
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 2795,
+            "pct": 41.8
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 58.2
+      },
+      "Northumberland County": {
+        "total": 7692,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 4306,
+            "pct": 56
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 3386,
+            "pct": 44
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 56
       },
       "Norton City": {
-        "Daniel Gade": 62.6,
-        "Mark Warner": 37.4
+        "total": 1579,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 988,
+            "pct": 62.6
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 591,
+            "pct": 37.4
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 62.6
+      },
+      "Nottoway County": {
+        "total": 7005,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 3869,
+            "pct": 55.2
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 3136,
+            "pct": 44.8
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 55.2
+      },
+      "Orange County": {
+        "total": 20562,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 12170,
+            "pct": 59.2
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 8392,
+            "pct": 40.8
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 59.2
+      },
+      "Page County": {
+        "total": 12388,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 8968,
+            "pct": 72.4
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 3420,
+            "pct": 27.6
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 72.4
+      },
+      "Patrick County": {
+        "total": 9185,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 6875,
+            "pct": 74.9
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 2310,
+            "pct": 25.1
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 74.9
       },
       "Petersburg City": {
-        "Daniel Gade": 10.8,
-        "Mark Warner": 89.2
+        "total": 13918,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 12413,
+            "pct": 89.2
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 1505,
+            "pct": 10.8
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 89.2
+      },
+      "Pittsylvania County": {
+        "total": 33502,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 21993,
+            "pct": 65.6
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 11509,
+            "pct": 34.4
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 65.6
       },
       "Poquoson City": {
-        "Daniel Gade": 71.7,
-        "Mark Warner": 28.3
+        "total": 7806,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 5594,
+            "pct": 71.7
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 2212,
+            "pct": 28.3
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 71.7
       },
       "Portsmouth City": {
-        "Daniel Gade": 28.0,
-        "Mark Warner": 72.0
+        "total": 43761,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 31520,
+            "pct": 72
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 12241,
+            "pct": 28
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 72
+      },
+      "Powhatan County": {
+        "total": 19632,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 13972,
+            "pct": 71.2
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 5660,
+            "pct": 28.8
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 71.2
+      },
+      "Prince Edward County": {
+        "total": 9486,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 5195,
+            "pct": 54.8
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 4291,
+            "pct": 45.2
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 54.8
+      },
+      "Prince George County": {
+        "total": 17041,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 9842,
+            "pct": 57.8
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 7199,
+            "pct": 42.2
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 57.8
+      },
+      "Prince William County": {
+        "total": 224232,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 144162,
+            "pct": 64.3
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 80070,
+            "pct": 35.7
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 64.3
+      },
+      "Pulaski County": {
+        "total": 17144,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 11203,
+            "pct": 65.3
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 5941,
+            "pct": 34.7
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 65.3
       },
       "Radford City": {
-        "Daniel Gade": 43.1,
-        "Mark Warner": 56.9
+        "total": 6241,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 3551,
+            "pct": 56.9
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 2690,
+            "pct": 43.1
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 56.9
+      },
+      "Rappahannock County": {
+        "total": 4953,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 2734,
+            "pct": 55.2
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 2219,
+            "pct": 44.8
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 55.2
       },
       "Richmond City": {
-        "Daniel Gade": 16.6,
-        "Mark Warner": 83.4
+        "total": 109427,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 91222,
+            "pct": 83.4
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 18205,
+            "pct": 16.6
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 83.4
+      },
+      "Richmond County": {
+        "total": 4034,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 2347,
+            "pct": 58.2
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 1687,
+            "pct": 41.8
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 58.2
       },
       "Roanoke City": {
-        "Daniel Gade": 33.8,
-        "Mark Warner": 66.2
+        "total": 42844,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 28345,
+            "pct": 66.2
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 14499,
+            "pct": 33.8
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 66.2
+      },
+      "Roanoke County": {
+        "total": 56685,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 32642,
+            "pct": 57.6
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 24043,
+            "pct": 42.4
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 57.6
+      },
+      "Rockbridge County": {
+        "total": 12268,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 7637,
+            "pct": 62.3
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 4631,
+            "pct": 37.7
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 62.3
+      },
+      "Rockingham County": {
+        "total": 43439,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 29700,
+            "pct": 68.4
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 13739,
+            "pct": 31.6
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 68.4
+      },
+      "Russell County": {
+        "total": 13250,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 9962,
+            "pct": 75.2
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 3288,
+            "pct": 24.8
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 75.2
       },
       "Salem City": {
-        "Daniel Gade": 55.9,
-        "Mark Warner": 44.1
+        "total": 12932,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 7235,
+            "pct": 55.9
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 5697,
+            "pct": 44.1
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 55.9
+      },
+      "Scott County": {
+        "total": 10734,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 8543,
+            "pct": 79.6
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 2191,
+            "pct": 20.4
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 79.6
+      },
+      "Shenandoah County": {
+        "total": 23536,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 16223,
+            "pct": 68.9
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 7313,
+            "pct": 31.1
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 68.9
+      },
+      "Smyth County": {
+        "total": 13986,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 10013,
+            "pct": 71.6
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 3973,
+            "pct": 28.4
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 71.6
+      },
+      "Southampton County": {
+        "total": 9615,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 5492,
+            "pct": 57.1
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 4123,
+            "pct": 42.9
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 57.1
+      },
+      "Spotsylvania County": {
+        "total": 74605,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 39120,
+            "pct": 52.4
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 35485,
+            "pct": 47.6
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 52.4
+      },
+      "Stafford County": {
+        "total": 77955,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 40566,
+            "pct": 52
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 37389,
+            "pct": 48
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 52
       },
       "Staunton City": {
-        "Daniel Gade": 43.2,
-        "Mark Warner": 56.8
+        "total": 12835,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 7289,
+            "pct": 56.8
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 5546,
+            "pct": 43.2
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 56.8
       },
       "Suffolk City": {
-        "Daniel Gade": 40.5,
-        "Mark Warner": 59.5
+        "total": 49230,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 29275,
+            "pct": 59.5
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 19955,
+            "pct": 40.5
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 59.5
+      },
+      "Surry County": {
+        "total": 4397,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 2439,
+            "pct": 55.5
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 1958,
+            "pct": 44.5
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 55.5
+      },
+      "Sussex County": {
+        "total": 5070,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 2924,
+            "pct": 57.7
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 2146,
+            "pct": 42.3
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 57.7
+      },
+      "Tazewell County": {
+        "total": 19537,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 15033,
+            "pct": 76.9
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 4504,
+            "pct": 23.1
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 76.9
       },
       "Virginia Beach City": {
-        "Daniel Gade": 46.0,
-        "Mark Warner": 54.0
+        "total": 223790,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 120753,
+            "pct": 54
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 103037,
+            "pct": 46
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 54
+      },
+      "Warren County": {
+        "total": 20949,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 13874,
+            "pct": 66.2
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 7075,
+            "pct": 33.8
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 66.2
+      },
+      "Washington County": {
+        "total": 28400,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 20656,
+            "pct": 72.7
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 7744,
+            "pct": 27.3
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 72.7
       },
       "Waynesboro City": {
-        "Daniel Gade": 50.2,
-        "Mark Warner": 49.8
+        "total": 10599,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 5324,
+            "pct": 50.2
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 5275,
+            "pct": 49.8
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 50.2
+      },
+      "Westmoreland County": {
+        "total": 9830,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 5009,
+            "pct": 51
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 4821,
+            "pct": 49
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 51
       },
       "Williamsburg City": {
-        "Daniel Gade": 29.6,
-        "Mark Warner": 70.4
+        "total": 6831,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 4811,
+            "pct": 70.4
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 2020,
+            "pct": 29.6
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 70.4
       },
       "Winchester City": {
-        "Daniel Gade": 42.4,
-        "Mark Warner": 57.6
+        "total": 11974,
+        "candidates": [
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 6898,
+            "pct": 57.6
+          },
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 5076,
+            "pct": 42.4
+          }
+        ],
+        "winner": "Mark Warner",
+        "winner_pct": 57.6
+      },
+      "Wise County": {
+        "total": 16224,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 12096,
+            "pct": 74.6
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 4128,
+            "pct": 25.4
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 74.6
+      },
+      "Wythe County": {
+        "total": 14830,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 10787,
+            "pct": 72.7
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 4043,
+            "pct": 27.3
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 72.7
+      },
+      "York County": {
+        "total": 38549,
+        "candidates": [
+          {
+            "name": "Daniel Gade",
+            "party": "Republican",
+            "votes": 20524,
+            "pct": 53.2
+          },
+          {
+            "name": "Mark Warner",
+            "party": "Democratic",
+            "votes": 18025,
+            "pct": 46.8
+          }
+        ],
+        "winner": "Daniel Gade",
+        "winner_pct": 53.2
       }
     }
   },
