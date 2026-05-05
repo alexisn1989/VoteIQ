@@ -241,6 +241,7 @@
       <button class="tab-btn active" data-tab="hod-results">HOD Results</button>
       <button class="tab-btn" data-tab="hod-flips">HOD Flips</button>
       <button class="tab-btn" data-tab="governor">Governor</button>
+      <button class="tab-btn" data-tab="governor-flip">Gov Flip Map</button>
       <button class="tab-btn" data-tab="governor-bubbles">Gov Bubbles</button>
       <button class="tab-btn" data-tab="lt-governor">Lt. Governor</button>
       <button class="tab-btn" data-tab="lt-governor-bubbles">Lt. Gov Bubbles</button>
@@ -326,6 +327,23 @@
       </div>
       <div style="border:1px solid var(--mid);overflow:hidden;margin-bottom:20px;box-shadow:3px 3px 0 var(--navy);">
         <iframe data-src="/district-map?layer=gov_results" style="width:100%;height:520px;border:none;display:block;" title="2025 Governor Race Map"></iframe>
+      </div>
+    </div>
+    <div class="tab-panel" id="tab-governor-flip">
+      <div class="section-label"><span>04</span> Governor's Race — 2021 to 2025 Locality Flips</div>
+      <div style="display:flex;align-items:center;gap:20px;margin-bottom:12px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#1a52c8;"></span>
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--navy);">Flipped Democratic</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#c8102e;"></span>
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--navy);">Flipped Republican</span>
+        </div>
+        <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Gray = no party flip</span>
+      </div>
+      <div style="border:1px solid var(--mid);overflow:hidden;margin-bottom:20px;box-shadow:3px 3px 0 var(--navy);">
+        <iframe data-src="/virginia-map?layer=gov_2025_flip&amp;embed=1" style="width:100%;height:560px;border:none;display:block;" title="2021 to 2025 Governor Locality Flip Map"></iframe>
       </div>
     </div>
     <div class="tab-panel" id="tab-governor-bubbles">
