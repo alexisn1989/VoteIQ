@@ -2758,6 +2758,7 @@ _locality_flip_geojson_cache = {}
 _congress_flip_geojson_cache = {}
 _hod_2017_2021_flip_geojson_cache = None
 _hod_density_geojson_cache = {}
+_hod_density_points_geojson_cache = {}
 
 
 def _load_va_counties_geojson():
@@ -3085,6 +3086,27 @@ def _build_hod_density_geojson(year: str) -> dict:
     return _hod_density_geojson_cache[year]
 
 
+def _build_hod_density_points_geojson(year: str) -> dict:
+    if year in _hod_density_points_geojson_cache:
+        return _hod_density_points_geojson_cache[year]
+
+    polygons = _build_hod_density_geojson(year)
+    points = {"type": "FeatureCollection", "features": []}
+    for feat in polygons.get("features", []):
+        try:
+            centroid = shape(feat.get("geometry", {})).centroid
+        except Exception:
+            continue
+        points["features"].append({
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [centroid.x, centroid.y]},
+            "properties": dict(feat.get("properties", {})),
+        })
+
+    _hod_density_points_geojson_cache[year] = points
+    return _hod_density_points_geojson_cache[year]
+
+
 def _build_state_leg_2023_flip_geojson(chamber: str) -> dict:
     if chamber in _state_leg_2023_flip_geojson_cache:
         return _state_leg_2023_flip_geojson_cache[chamber]
@@ -3166,6 +3188,7 @@ def virginia_map_page():
     congress_midterm_flip = _build_congress_flip_geojson("2018", "2022")
     hod_state_flip = _build_hod_2017_2021_flip_geojson()
     hod_density_layers = {year: _build_hod_density_geojson(year) for year in ("2017", "2019", "2021", "2023", "2025")}
+    hod_density_point_layers = {year: _build_hod_density_points_geojson(year) for year in ("2017", "2019", "2021", "2023", "2025")}
     def _s(obj): return json.dumps(obj, default=str).replace("</script>", "<\\/script>")
     with open(os.path.join(BASE_DIR, "templates", "virginia_map.html"), "r", encoding="utf-8") as f:
         html = f.read()
@@ -3183,6 +3206,7 @@ def virginia_map_page():
         f"window._CONGRESS_MIDTERM_FLIP_GEOJSON={_s(congress_midterm_flip)};"
         f"window._HOD_STATE_FLIP_GEOJSON={_s(hod_state_flip)};"
         f"window._HOD_DENSITY_GEOJSON={_s(hod_density_layers)};"
+        f"window._HOD_DENSITY_POINTS_GEOJSON={_s(hod_density_point_layers)};"
         f"</script>"
     )
     html = html.replace("</head>", inject + "</head>", 1)
