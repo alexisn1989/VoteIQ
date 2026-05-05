@@ -482,6 +482,39 @@ def _normalize_major_party(party: str) -> str:
     return party or "Other"
 
 
+_DEM_BANDS = [(90,101,"#0000a0"),(80,90,"#3333cc"),(70,80,"#5555ee"),(60,70,"#7777ff"),(50,60,"#aaaaff")]
+_REP_BANDS = [(90,101,"#990000"),(80,90,"#cc0000"),(70,80,"#ee4444"),(60,70,"#ff8888"),(50,60,"#ffbbbb")]
+
+def _pct_to_band_color(pct: float, party: str) -> str:
+    bands = _DEM_BANDS if "democrat" in str(party).lower() else _REP_BANDS if "republican" in str(party).lower() else None
+    if not bands:
+        return "#888888"
+    for lo, hi, color in bands:
+        if lo <= pct < hi:
+            return color
+    return bands[0][2]
+
+def _vote_share_legend_inner() -> str:
+    dem_rows = "".join(
+        f"<div style='display:flex;align-items:center;gap:6px;margin:2px 0'>"
+        f"<span style='display:inline-block;width:20px;height:14px;background:{c};border:1px solid #aaa'></span>"
+        f"<span style='font-size:11px'>{lo}–{'100' if hi==101 else hi}%</span></div>"
+        for lo, hi, c in _DEM_BANDS
+    )
+    rep_rows = "".join(
+        f"<div style='display:flex;align-items:center;gap:6px;margin:2px 0'>"
+        f"<span style='display:inline-block;width:20px;height:14px;background:{c};border:1px solid #aaa'></span>"
+        f"<span style='font-size:11px'>{lo}–{'100' if hi==101 else hi}%</span></div>"
+        for lo, hi, c in _REP_BANDS
+    )
+    return (
+        f"<div style='display:flex;gap:18px;margin-top:6px'>"
+        f"<div><div style='font-weight:bold;color:#3333cc;margin-bottom:3px'>Democrat</div>{dem_rows}</div>"
+        f"<div><div style='font-weight:bold;color:#cc0000;margin-bottom:3px'>Republican</div>{rep_rows}</div>"
+        f"</div>"
+    )
+
+
 def _build_2023_state_leg_flips(chamber: str, results: dict) -> list[dict]:
     baseline = SD_2019_PARTY if chamber == "senate" else HOD_2021_PARTY
     flips = []
@@ -1036,6 +1069,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             raise RuntimeError("Norfolk superwards file could not be loaded")
 
     features = []
+    legend_type = "simple"
     m = folium.Map(location=[37.5, -79.0], zoom_start=7, tiles="CartoDB positron", min_zoom=6)
     map_var = m.get_name()
 
@@ -1512,6 +1546,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             ),
         ).add_to(m)
         title = "2025 Virginia HOD — District Flips vs 2023"
+        legend_type = "flip"
 
     elif layer in ("gov_results", "ltgov_results", "ag_results"):
         office_config = {
@@ -1566,13 +1601,10 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                 if winner else "N/A"
             )
             props["_party"] = winner_party
-            props["_opacity"] = opacity if result else 0.1
+            props["_color"] = _pct_to_band_color(winner_pct, winner_party) if result else "#cccccc"
 
         def statewide_results_style(feat):
-            party = feat["properties"].get("_party", "")
-            op = feat["properties"].get("_opacity", 0.1)
-            fill = "#1a52c8" if "democrat" in party.lower() else "#c8102e" if "republican" in party.lower() else "#aaaaaa"
-            return {"fillColor": fill, "color": "#555", "weight": 0.5, "fillOpacity": op}
+            return {"fillColor": feat["properties"].get("_color", "#cccccc"), "color": "#555", "weight": 0.5, "fillOpacity": 0.9}
 
         folium.GeoJson(
             counties_geojson,
@@ -1584,6 +1616,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             ),
         ).add_to(m)
         title = office_config["title"]
+        legend_type = "vote_share"
 
     elif layer in ("pres_2024", "senate_2024"):
         office_label = "President" if layer == "pres_2024" else "U.S. Senate"
@@ -1624,14 +1657,12 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                 f"{winner.get('name','N/A')} ({'D' if 'democrat' in winner_party.lower() else 'R' if 'republican' in winner_party.lower() else winner_party})"
                 if winner else "N/A"
             )
+            winner_pct24 = float(winner.get("pct") or 0.0)
             props["_party"] = winner_party
-            props["_opacity"] = opacity if result else 0.1
+            props["_color"] = _pct_to_band_color(winner_pct24, winner_party) if result else "#cccccc"
 
         def _2024_locality_style(feat):
-            party = feat["properties"].get("_party", "")
-            op = feat["properties"].get("_opacity", 0.1)
-            fill = "#1a52c8" if "democrat" in party.lower() else "#c8102e" if "republican" in party.lower() else "#aaaaaa"
-            return {"fillColor": fill, "color": "#555", "weight": 0.5, "fillOpacity": op}
+            return {"fillColor": feat["properties"].get("_color", "#cccccc"), "color": "#555", "weight": 0.5, "fillOpacity": 0.9}
 
         folium.GeoJson(
             counties_geojson,
@@ -1643,6 +1674,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             ),
         ).add_to(m)
         title = map_title
+        legend_type = "vote_share"
 
     elif layer == "congress_2024":
         from shapely.geometry import mapping as _mapping
@@ -1663,8 +1695,6 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                 w_party = winner.get("party", "")
                 w_pct = float(winner.get("pct") or 0.0)
                 r_label = f"{runner.get('name','—')} ({float(runner.get('pct') or 0.0):.1f}%)" if runner else "Uncontested"
-                margin = max(0.0, w_pct - 50.0)
-                opacity = round(0.25 + min(margin / 40.0, 1.0) * 0.55, 3)
                 features.append({"type": "Feature",
                     "geometry": _mapping(row.geometry.simplify(0.005, preserve_topology=True)),
                     "properties": {
@@ -1673,16 +1703,13 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                         "_party": w_party,
                         "_winner_pct": f"{w_pct:.1f}%",
                         "_runner": r_label,
-                        "_opacity": opacity if race else 0.1,
+                        "_color": _pct_to_band_color(w_pct, w_party) if race else "#cccccc",
                     }})
             except Exception:
                 continue
 
         def _congress_2024_style(feat):
-            party = feat["properties"].get("_party", "")
-            op = feat["properties"].get("_opacity", 0.1)
-            fill = "#1a52c8" if "democrat" in party.lower() else "#c8102e" if "republican" in party.lower() else "#aaaaaa"
-            return {"fillColor": fill, "color": "#555", "weight": 1.0, "fillOpacity": op}
+            return {"fillColor": feat["properties"].get("_color", "#cccccc"), "color": "#555", "weight": 1.0, "fillOpacity": 0.9}
 
         folium.GeoJson(
             {"type": "FeatureCollection", "features": features},
@@ -1694,6 +1721,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             ),
         ).add_to(m)
         title = "2024 Virginia — Congressional District Results"
+        legend_type = "vote_share"
 
     elif layer in ("gov_2021", "ltgov_2021", "ag_2021", "gov_2017", "ltgov_2017", "ag_2017", "pres_2016", "pres_2020", "senate_2020", "senate_2018"):
         year = layer.rsplit("_", 1)[-1]
@@ -1764,18 +1792,15 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                 margin = max(0.0, w_pct - 50.0)
                 opacity = round(0.2 + min(margin / 35.0, 1.0) * 0.6, 3)
             else:
-                w_name, w_pct, w_party, r_name, r_pct, opacity = "—", 0, "", "—", 0, 0.1
+                w_name, w_pct, w_party, r_name, r_pct = "—", 0.0, "", "—", 0.0
             props["_locality"] = f"{name} {lsad}".title()
             props["_winner"] = f"{w_name} ({w_pct:.1f}%)"
             props["_runner"] = f"{r_name} ({r_pct:.1f}%)"
             props["_party"] = w_party
-            props["_opacity"] = opacity
+            props["_color"] = _pct_to_band_color(w_pct, w_party) if w_party else "#cccccc"
 
         def _2021_locality_style(feat):
-            party = feat["properties"].get("_party", "")
-            op = feat["properties"].get("_opacity", 0.1)
-            fill = "#c8102e" if "republican" in party.lower() else "#1a52c8" if "democrat" in party.lower() else "#aaaaaa"
-            return {"fillColor": fill, "color": "#555", "weight": 0.5, "fillOpacity": op}
+            return {"fillColor": feat["properties"].get("_color", "#cccccc"), "color": "#555", "weight": 0.5, "fillOpacity": 0.9}
 
         folium.GeoJson(
             counties_geojson21,
@@ -1787,6 +1812,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             ),
         ).add_to(m)
         title = title_map[layer]
+        legend_type = "vote_share"
 
     elif layer in ("senate_2019_results", "hod_2019_results"):
         from shapely.geometry import mapping as _mapping
@@ -1824,8 +1850,6 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             w_party = winner.get("party", "")
             w_pct = float(winner.get("pct", 0.0))
             r_label = f"{runner.get('name','-')} ({float(runner.get('pct') or 0.0):.1f}%)" if runner else "Uncontested"
-            margin = max(0.0, w_pct - 50.0)
-            opacity = round(0.25 + min(margin / 40.0, 1.0) * 0.55, 3)
             features.append({"type": "Feature",
                 "geometry": _mapping(row.geometry.simplify(0.01, preserve_topology=True)),
                 "properties": {
@@ -1834,14 +1858,11 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                     "_party": w_party,
                     "_pct": f"{w_pct:.1f}%",
                     "_runner": r_label,
-                    "_opacity": opacity if cands else 0.1,
+                    "_color": _pct_to_band_color(w_pct, w_party) if cands else "#cccccc",
                 }})
 
         def _state_leg_2019_style(feat):
-            party = feat["properties"].get("_party", "")
-            op = feat["properties"].get("_opacity", 0.4)
-            fill = "#1a52c8" if "democrat" in party.lower() else "#c8102e" if "republican" in party.lower() else "#888"
-            return {"fillColor": fill, "color": "#555", "weight": 0.5, "fillOpacity": op}
+            return {"fillColor": feat["properties"].get("_color", "#cccccc"), "color": "#555", "weight": 0.5, "fillOpacity": 0.9}
 
         folium.GeoJson(
             {"type": "FeatureCollection", "features": features},
@@ -1853,6 +1874,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             ),
         ).add_to(m)
         title = f"2019 Virginia {chamber_label} - Numbered District Results"
+        legend_type = "vote_share"
 
     elif layer in ("congress_2022", "congress_2016", "congress_2020", "congress_2018"):
         from shapely.geometry import mapping as _mapping
@@ -1879,8 +1901,6 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                 w_party = winner.get("party", "")
                 w_pct = float(winner.get("pct") or 0.0)
                 r_label = f"{runner.get('name','—')} ({float(runner.get('pct') or 0.0):.1f}%)" if runner else "Uncontested"
-                margin = max(0.0, w_pct - 50.0)
-                opacity = round(0.25 + min(margin / 40.0, 1.0) * 0.55, 3)
                 features22.append({"type": "Feature",
                     "geometry": _mapping(row.geometry.simplify(0.005, preserve_topology=True)),
                     "properties": {
@@ -1889,16 +1909,13 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                         "_party": w_party,
                         "_winner_pct": f"{w_pct:.1f}%",
                         "_runner": r_label,
-                        "_opacity": opacity if race else 0.1,
+                        "_color": _pct_to_band_color(w_pct, w_party) if race else "#cccccc",
                     }})
             except Exception:
                 continue
 
         def _congress_2022_style(feat):
-            party = feat["properties"].get("_party", "")
-            op = feat["properties"].get("_opacity", 0.1)
-            fill = "#1a52c8" if "democrat" in party.lower() else "#c8102e" if "republican" in party.lower() else "#aaaaaa"
-            return {"fillColor": fill, "color": "#555", "weight": 1.0, "fillOpacity": op}
+            return {"fillColor": feat["properties"].get("_color", "#cccccc"), "color": "#555", "weight": 1.0, "fillOpacity": 0.9}
 
         folium.GeoJson(
             {"type": "FeatureCollection", "features": features22},
@@ -1910,6 +1927,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             ),
         ).add_to(m)
         title = f"{year} Virginia - Congressional District Results"
+        legend_type = "vote_share"
 
     elif layer in ("senate_2023_flip_2019", "hod_2023_flip_2021"):
         from shapely.geometry import mapping as _mapping
@@ -1992,6 +2010,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             ),
         ).add_to(m)
         title = f"2023 Virginia {chamber_label} — Party Change vs {baseline_year} Numbered District"
+        legend_type = "flip"
 
     elif layer in ("pres_flip", "gov_flip", "gov_2025_flip"):
         if layer == "pres_flip":
@@ -2026,8 +2045,9 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                 localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
             ),
         ).add_to(m)
+        legend_type = "flip"
 
-    elif layer in ("congress_midterm_flip", "hod_state_flip"):
+    elif layer in ("congress_midterm_flip", "hod_state_flip", "hod_2019_flip_2017"):
         if layer == "congress_midterm_flip":
             gj = _build_congress_flip_geojson("2018", "2022")
             title = "2018 → 2022 Virginia U.S. House — District Flips"
@@ -2055,6 +2075,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                 localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
             ),
         ).add_to(m)
+        legend_type = "flip"
 
     elif layer in ("pres_2020_2024_flip", "congress_2024_flip"):
         if layer == "pres_2020_2024_flip":
@@ -2084,6 +2105,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                 localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
             ),
         ).add_to(m)
+        legend_type = "flip"
 
     elif layer in ("senate_2023_results", "hod_2023_results"):
         from shapely.geometry import mapping as _mapping
@@ -2123,8 +2145,6 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                 w_pct = float(winner.get("pct", 0.0))
                 r_name = runner.get("name", "") if runner else ""
                 r_pct = float(runner.get("pct", 0.0)) if runner else 0.0
-                margin = max(0.0, w_pct - 50.0)
-                opacity = round(0.25 + min(margin / 40.0, 1.0) * 0.55, 3)
                 features.append({"type": "Feature",
                     "geometry": _mapping(row.geometry.simplify(0.01, preserve_topology=True)),
                     "properties": {
@@ -2134,16 +2154,13 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                         "_party": w_party,
                         "_pct": f"{w_pct:.1f}%",
                         "_runner": f"{r_name} ({r_pct:.1f}%)" if r_name else "Uncontested",
-                        "_opacity": opacity if cands else 0.1,
+                        "_color": _pct_to_band_color(w_pct, w_party) if cands else "#cccccc",
                     }})
             except Exception:
                 continue
 
         def state_leg_2023_style(feat):
-            party = feat["properties"].get("_party", "")
-            op = feat["properties"].get("_opacity", 0.4)
-            fill = "#1a52c8" if "democrat" in party.lower() else "#c8102e" if "republican" in party.lower() else "#888"
-            return {"fillColor": fill, "color": "#555", "weight": 0.5, "fillOpacity": op}
+            return {"fillColor": feat["properties"].get("_color", "#cccccc"), "color": "#555", "weight": 0.5, "fillOpacity": 0.9}
 
         folium.GeoJson(
             {"type": "FeatureCollection", "features": features},
@@ -2159,6 +2176,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             if chamber == "senate"
             else "2023 Virginia House of Delegates — Election Results"
         )
+        legend_type = "vote_share"
 
     elif layer == "hod_results":
         from shapely.geometry import mapping as _mapping
@@ -2184,8 +2202,6 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                 w_pct = float(winner.get("pct", 0.0))
                 r_name = runner.get("name", "—") if runner else "—"
                 r_pct = float(runner.get("pct", 0.0)) if runner else 0.0
-                margin = max(0.0, w_pct - 50.0)
-                opacity = round(0.25 + min(margin / 40.0, 1.0) * 0.55, 3)
                 runner_label = f"{r_name} ({r_pct:.1f}%)" if r_name != "—" else "Uncontested"
                 features.append({"type": "Feature",
                     "geometry": _mapping(row.geometry.simplify(0.01, preserve_topology=True)),
@@ -2195,15 +2211,12 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                         "_party": w_party,
                         "_pct": f"{w_pct:.1f}%",
                         "_runner": runner_label,
-                        "_opacity": opacity}})
+                        "_color": _pct_to_band_color(w_pct, w_party) if cands else "#cccccc"}})
             except Exception:
                 continue
 
         def hod_results_style(feat):
-            party = feat["properties"].get("_party", "")
-            op = feat["properties"].get("_opacity", 0.4)
-            fill = "#1a52c8" if "democrat" in party.lower() else "#c8102e" if "republican" in party.lower() else "#888"
-            return {"fillColor": fill, "color": "#555", "weight": 0.5, "fillOpacity": op}
+            return {"fillColor": feat["properties"].get("_color", "#cccccc"), "color": "#555", "weight": 0.5, "fillOpacity": 0.9}
 
         folium.GeoJson(
             {"type": "FeatureCollection", "features": features},
@@ -2215,6 +2228,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             ),
         ).add_to(m)
         title = "2025 Virginia House of Delegates — Election Results"
+        legend_type = "vote_share"
 
     # Rep name label at centroid of the user's highlighted district
     highlighted = [f for f in features if f["properties"].get("_highlight")] if district else []
@@ -2266,6 +2280,50 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             tooltip="📍 Your Location",
         ).add_to(m)
 
+    if legend_type == "vote_share":
+        legend_box = (
+            f"<div style='position:fixed;bottom:30px;left:30px;z-index:1000;"
+            f"background:white;padding:12px 16px;border-radius:8px;"
+            f"box-shadow:2px 2px 8px rgba(0,0,0,.3);font-family:Arial;font-size:12px'>"
+            f"<b style='font-size:13px'>{title}</b>"
+            f"{_vote_share_legend_inner()}"
+            f"</div>"
+        )
+    elif legend_type == "flip":
+        legend_box = """
+        <div style='position:fixed;bottom:30px;left:30px;z-index:1000;
+             background:white;padding:12px 16px;border-radius:8px;
+             box-shadow:2px 2px 8px rgba(0,0,0,.3);font-family:Arial;font-size:12px'>
+          <div style='display:flex;flex-direction:column;gap:4px;margin-top:4px'>
+            <div style='display:flex;align-items:center;gap:8px'>
+              <span style='display:inline-block;width:20px;height:14px;background:#1a52c8;border:1px solid #aaa'></span>
+              <span style='font-size:11px'>Flipped Democratic</span>
+            </div>
+            <div style='display:flex;align-items:center;gap:8px'>
+              <span style='display:inline-block;width:20px;height:14px;background:#c8102e;border:1px solid #aaa'></span>
+              <span style='font-size:11px'>Flipped Republican</span>
+            </div>
+            <div style='display:flex;align-items:center;gap:8px'>
+              <span style='display:inline-block;width:20px;height:14px;background:#6b9fd4;border:1px solid #aaa'></span>
+              <span style='font-size:11px'>Held Democratic</span>
+            </div>
+            <div style='display:flex;align-items:center;gap:8px'>
+              <span style='display:inline-block;width:20px;height:14px;background:#e8807a;border:1px solid #aaa'></span>
+              <span style='font-size:11px'>Held Republican</span>
+            </div>
+          </div>
+        </div>"""
+    else:
+        legend_box = """
+        <div style='position:fixed;bottom:40px;left:40px;z-index:1000;
+             background:white;padding:12px 16px;border-radius:8px;
+             box-shadow:2px 2px 8px rgba(0,0,0,.3);font-family:Arial;font-size:13px;line-height:1.8'>
+          <span style='background:#1a52c8;color:white;padding:2px 10px;border-radius:3px'>Democrat</span>
+          &nbsp;
+          <span style='background:#e03030;color:white;padding:2px 10px;border-radius:3px'>Republican</span>
+          <br><small style='color:#666'>Hover for details</small>
+        </div>"""
+
     m.get_root().html.add_child(folium.Element(f"""
     <div style="position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:1000;
          background:#0d1b2a;color:white;padding:8px 20px;border-radius:6px;
@@ -2273,14 +2331,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
          font-weight:700;letter-spacing:0.05em;white-space:nowrap;pointer-events:none;">
       {title}
     </div>
-    <div style="position:fixed;bottom:40px;left:40px;z-index:1000;
-         background:white;padding:12px 16px;border-radius:8px;
-         box-shadow:2px 2px 8px rgba(0,0,0,.3);font-family:Arial;font-size:13px;line-height:1.8">
-      <span style="background:#1a52c8;color:white;padding:2px 10px;border-radius:3px">Democrat</span>
-      &nbsp;
-      <span style="background:#e03030;color:white;padding:2px 10px;border-radius:3px">Republican</span>
-      <br><small style="color:#666">Hover for details</small>
-    </div>
+    {legend_box}
     """))
     rendered = m.get_root().render()
     bounds_js = (
@@ -2786,6 +2837,7 @@ HISTORICAL_ELECTION_META = {
             {"tab": "senate-map", "label": "Senate Map", "title": "State Senate - District Results Map",        "url": "/maps/senate/2019"},
             {"tab": "senate-flip-map", "label": "Senate Flip Map", "title": "State Senate - 2019 to 2023 Flip Map", "url": "/virginia-map?layer=sd_flip&embed=1"},
             {"tab": "hod-map",    "label": "HOD Map",    "title": "House of Delegates - District Results Map", "url": "/maps/hod/2019"},
+            {"tab": "hod-flip-map", "label": "HOD Flip Map", "title": "House of Delegates - 2017 to 2019 Flip Map", "layer": "hod_2019_flip_2017"},
         ],
         "notes": ["Maps show 2010-cycle district boundaries with 2019 election results."],
     },
@@ -3027,6 +3079,7 @@ _pres_2020_2024_flip_geojson_cache = None
 _state_leg_2023_flip_geojson_cache = {}
 _locality_flip_geojson_cache = {}
 _congress_flip_geojson_cache = {}
+_hod_flip_geojson_cache = {}
 _hod_2017_2021_flip_geojson_cache = None
 _hod_density_geojson_cache = {}
 _hod_density_points_geojson_cache = {}
@@ -3314,43 +3367,51 @@ def _build_hod_2017_2021_flip_geojson() -> dict:
     global _hod_2017_2021_flip_geojson_cache
     if _hod_2017_2021_flip_geojson_cache is not None:
         return _hod_2017_2021_flip_geojson_cache
+    _hod_2017_2021_flip_geojson_cache = _build_hod_flip_geojson("2017", "2021")
+    return _hod_2017_2021_flip_geojson_cache
+
+
+def _build_hod_flip_geojson(start_year: str, end_year: str) -> dict:
+    cache_key = f"{start_year}_{end_year}"
+    if cache_key in _hod_flip_geojson_cache:
+        return _hod_flip_geojson_cache[cache_key]
 
     decorated = json.loads(json.dumps(_load_hod_geojson()))
-    results_2017 = _load_historical_results("2017").get("hod", {})
-    results_2021 = _load_2021_results().get("hod", {})
+    start_results = _load_results_for_year(start_year).get("hod", {})
+    end_results = _load_results_for_year(end_year).get("hod", {})
     for feat in decorated.get("features", []):
         props = feat.setdefault("properties", {})
         district = int(props.get("DISTRICTN") or props.get("DISTRICT") or 0)
-        race_2017 = results_2017.get(str(district), results_2017.get(district, {}))
-        race_2021 = results_2021.get(str(district), results_2021.get(district, {}))
-        winner_2017 = (race_2017.get("candidates") or [{}])[0]
-        winner_2021 = (race_2021.get("candidates") or [{}])[0]
-        party_2017 = _normalize_major_party(winner_2017.get("party", ""))
-        party_2021 = _normalize_major_party(winner_2021.get("party", ""))
-        flipped = party_2017 != party_2021 and "Unknown" not in (party_2017, party_2021)
-        if flipped and party_2021 == "Democrat":
+        start_race = start_results.get(str(district), start_results.get(district, {}))
+        end_race = end_results.get(str(district), end_results.get(district, {}))
+        start_winner = (start_race.get("candidates") or [{}])[0]
+        end_winner = (end_race.get("candidates") or [{}])[0]
+        start_party = _normalize_major_party(start_winner.get("party", ""))
+        end_party = _normalize_major_party(end_winner.get("party", ""))
+        flipped = start_party != end_party and "Unknown" not in (start_party, end_party)
+        if flipped and end_party == "Democrat":
             status = "Flipped Democratic"
-        elif flipped and party_2021 == "Republican":
+        elif flipped and end_party == "Republican":
             status = "Flipped Republican"
-        elif party_2021 == "Democrat":
+        elif end_party == "Democrat":
             status = "Held Democratic"
-        elif party_2021 == "Republican":
+        elif end_party == "Republican":
             status = "Held Republican"
         else:
             status = "No data"
         props["_flip_status"] = status
-        props["_start_party"] = party_2017
-        props["_end_party"] = party_2021
-        props["_start_year"] = "2017"
-        props["_end_year"] = "2021"
-        props["_start_winner"] = winner_2017.get("name", "No data")
-        props["_end_winner"] = winner_2021.get("name", "No data")
-        props["_start_pct"] = float(winner_2017.get("pct") or 0.0)
-        props["_end_pct"] = float(winner_2021.get("pct") or 0.0)
-        props["_flip_label"] = f"{party_2017} to {party_2021}" if flipped else status
+        props["_start_party"] = start_party
+        props["_end_party"] = end_party
+        props["_start_year"] = start_year
+        props["_end_year"] = end_year
+        props["_start_winner"] = start_winner.get("name", "No data")
+        props["_end_winner"] = end_winner.get("name", "No data")
+        props["_start_pct"] = float(start_winner.get("pct") or 0.0)
+        props["_end_pct"] = float(end_winner.get("pct") or 0.0)
+        props["_flip_label"] = f"{start_party} to {end_party}" if flipped else status
 
-    _hod_2017_2021_flip_geojson_cache = decorated
-    return _hod_2017_2021_flip_geojson_cache
+    _hod_flip_geojson_cache[cache_key] = decorated
+    return _hod_flip_geojson_cache[cache_key]
 
 
 def _load_results_for_year(year: str) -> dict:
