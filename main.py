@@ -2288,10 +2288,13 @@ def _build_statewide_bubble_map(year: str, office: str) -> str:
 
     def _race_entry(result):
         if isinstance(result, dict) and "winner" in result:
-            winner = result.get("winner", {})
             candidates = result.get("candidates", [])
             if not candidates:
                 candidates = [c for c in (result.get("dem", {}), result.get("rep", {})) if c]
+            winner = result.get("winner", {})
+            if not isinstance(winner, dict):
+                winner_name = str(winner or "")
+                winner = next((c for c in candidates if c.get("name") == winner_name), {})
             return {
                 "total": int(result.get("total") or sum(int(c.get("votes") or 0) for c in candidates)),
                 "winner": winner.get("name", "No data"),
