@@ -2056,6 +2056,35 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             ),
         ).add_to(m)
 
+    elif layer in ("pres_2020_2024_flip", "congress_2024_flip"):
+        if layer == "pres_2020_2024_flip":
+            gj = _build_pres_2020_2024_flip_geojson()
+            title = "2020 → 2024 Virginia President — Locality Flips"
+            tip_fields = ["NAME", "_flip_status", "_winner_2020", "_winner_2024", "_party_2020", "_party_2024"]
+            tip_aliases = ["Locality:", "Result:", "2020 Winner:", "2024 Winner:", "2020 Party:", "2024 Party:"]
+        else:
+            gj = _build_congress_flip_geojson("2022", "2024")
+            title = "2022 → 2024 Virginia U.S. House — District Flips"
+            tip_fields = ["DISTRICTN", "_flip_status", "_start_winner", "_end_winner", "_start_party", "_end_party"]
+            tip_aliases = ["District:", "Result:", "2022 Winner:", "2024 Winner:", "2022 Party:", "2024 Party:"]
+
+        def _flip_2024_style(feat):
+            s = feat["properties"].get("_flip_status", "")
+            if s == "Flipped Democratic":   return {"fillColor": "#1a52c8", "color": "#111", "weight": 1.5, "fillOpacity": 0.85}
+            elif s == "Flipped Republican": return {"fillColor": "#c8102e", "color": "#111", "weight": 1.5, "fillOpacity": 0.85}
+            elif s == "Held Democratic":    return {"fillColor": "#6b9fd4", "color": "#555", "weight": 0.5, "fillOpacity": 0.4}
+            elif s == "Held Republican":    return {"fillColor": "#e8807a", "color": "#555", "weight": 0.5, "fillOpacity": 0.4}
+            return {"fillColor": "#cccccc", "color": "#555", "weight": 0.4, "fillOpacity": 0.3}
+
+        folium.GeoJson(
+            gj,
+            style_function=_flip_2024_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=tip_fields, aliases=tip_aliases,
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+
     elif layer in ("senate_2023_results", "hod_2023_results"):
         from shapely.geometry import mapping as _mapping
         chamber = "senate" if layer == "senate_2023_results" else "hod"
@@ -2401,7 +2430,7 @@ def statewide_bubble_map(year: str, office: str):
 
 @app.get("/district-map", response_class=HTMLResponse)
 def district_map(layer: str = "congressional", lat: float = None, lng: float = None, district: int = None):
-    if layer in ("congressional", "hod_results", "hod_flip", "gov_results", "ltgov_results", "ag_results", "pres_2024", "senate_2024", "congress_2024", "senate_2023_results", "hod_2023_results", "senate_2023_flip_2019", "hod_2023_flip_2021", "gov_2021", "ltgov_2021", "ag_2021", "congress_2022", "gov_2017", "ltgov_2017", "ag_2017", "senate_2019_results", "hod_2019_results", "pres_2016", "congress_2016", "pres_2020", "senate_2020", "congress_2020", "senate_2018", "congress_2018", "pres_flip", "gov_flip", "gov_2025_flip", "congress_midterm_flip", "hod_state_flip") and lat is None:
+    if layer in ("congressional", "hod_results", "hod_flip", "gov_results", "ltgov_results", "ag_results", "pres_2024", "senate_2024", "congress_2024", "senate_2023_results", "hod_2023_results", "senate_2023_flip_2019", "hod_2023_flip_2021", "gov_2021", "ltgov_2021", "ag_2021", "congress_2022", "gov_2017", "ltgov_2017", "ag_2017", "senate_2019_results", "hod_2019_results", "pres_2016", "congress_2016", "pres_2020", "senate_2020", "congress_2020", "senate_2018", "congress_2018", "pres_flip", "gov_flip", "gov_2025_flip", "congress_midterm_flip", "hod_state_flip", "pres_2020_2024_flip", "congress_2024_flip") and lat is None:
         if layer not in _district_maps:
             try:
                 _district_maps[layer] = _build_district_map(layer)
@@ -2993,6 +3022,7 @@ _va_counties_geojson_cache = None
 _va_hod_geojson_cache = None
 _va_sd_geojson_cache = None
 _pres_2016_2020_flip_geojson_cache = None
+_pres_2020_2024_flip_geojson_cache = None
 _state_leg_2023_flip_geojson_cache = {}
 _locality_flip_geojson_cache = {}
 _congress_flip_geojson_cache = {}
@@ -3096,6 +3126,60 @@ def _build_pres_2016_2020_flip_geojson() -> dict:
     return _pres_2016_2020_flip_geojson_cache
 
 
+def _locality_winner_lookup_2024(office: str) -> dict:
+    lookup = {}
+    data = _load_2024_results()
+    for locality, race in data.get("locality_results", {}).get(office, {}).items():
+        winner = race.get("winner", {})
+        lookup[_normalize_locality_key(locality)] = {
+            "name": winner.get("name", "No data"),
+            "party": _normalize_major_party(winner.get("party", "")),
+            "pct": float(winner.get("pct") or 0.0),
+        }
+    return lookup
+
+
+def _build_pres_2020_2024_flip_geojson() -> dict:
+    global _pres_2020_2024_flip_geojson_cache
+    if _pres_2020_2024_flip_geojson_cache is not None:
+        return _pres_2020_2024_flip_geojson_cache
+
+    counties = json.loads(json.dumps(_load_va_counties_geojson()))
+    winners_2020 = _locality_winner_lookup(_load_2020_results(), "President")
+    winners_2024 = _locality_winner_lookup_2024("President")
+
+    for feat in counties.get("features", []):
+        props = feat.setdefault("properties", {})
+        locality = f"{props.get('NAME', '')} {props.get('LSAD', '')}".strip()
+        key = _normalize_locality_key(locality)
+        winner_2020 = winners_2020.get(key, {})
+        winner_2024 = winners_2024.get(key, {})
+        party_2020 = winner_2020.get("party", "Unknown")
+        party_2024 = winner_2024.get("party", "Unknown")
+        flipped = party_2020 != party_2024 and "Unknown" not in (party_2020, party_2024)
+        if flipped and party_2024 == "Democrat":
+            status = "Flipped Democratic"
+        elif flipped and party_2024 == "Republican":
+            status = "Flipped Republican"
+        elif party_2024 == "Democrat":
+            status = "Held Democratic"
+        elif party_2024 == "Republican":
+            status = "Held Republican"
+        else:
+            status = "No data"
+        props["_flip_status"] = status
+        props["_party_2020"] = party_2020
+        props["_party_2024"] = party_2024
+        props["_winner_2020"] = winner_2020.get("name", "No data")
+        props["_winner_2024"] = winner_2024.get("name", "No data")
+        props["_pct_2020"] = winner_2020.get("pct", 0.0)
+        props["_pct_2024"] = winner_2024.get("pct", 0.0)
+        props["_flip_label"] = f"{party_2020} to {party_2024}" if flipped else status
+
+    _pres_2020_2024_flip_geojson_cache = counties
+    return _pres_2020_2024_flip_geojson_cache
+
+
 def _build_locality_office_flip_geojson(start_year: str, end_year: str, office: str) -> dict:
     cache_key = f"{start_year}_{end_year}_{office}"
     if cache_key in _locality_flip_geojson_cache:
@@ -3183,8 +3267,9 @@ def _build_congress_flip_geojson(start_year: str, end_year: str) -> dict:
     if cache_key in _congress_flip_geojson_cache:
         return _congress_flip_geojson_cache[cache_key]
 
-    start_results = _load_2018_results() if start_year == "2018" else _load_historical_results(start_year)
-    end_results = _load_2022_results() if end_year == "2022" else _load_historical_results(end_year)
+    _year_loaders = {"2018": _load_2018_results, "2022": _load_2022_results, "2024": _load_2024_results}
+    start_results = _year_loaders[start_year]() if start_year in _year_loaders else _load_historical_results(start_year)
+    end_results = _year_loaders[end_year]() if end_year in _year_loaders else _load_historical_results(end_year)
     start_winners = _congress_winner_lookup(start_results)
     end_winners = _congress_winner_lookup(end_results)
     decorated = json.loads(json.dumps(_get_va_cd().to_json()))
