@@ -179,6 +179,17 @@
       <div class="filter-row"><input class="filter-input" type="text" id="senate-loc-filter" placeholder="Filter by locality…" /><span class="filter-count" id="senate-loc-count"></span></div>
       <div class="table-wrap"><table><thead><tr><th>Locality</th><th>Winner</th><th>Party</th><th>Votes</th><th>Winner %</th><th>Runner-Up</th><th>Runner-Up Party</th><th>Runner-Up %</th></tr></thead><tbody id="senate-loc-tbody"></tbody></table></div>
     </div>
+    <div class="tab-panel" id="tab-pres-flip-map">
+      <div class="section-label"><span>08</span> President — 2016 to 2020 Locality Flips</div>
+      <div style="display:flex;align-items:center;gap:20px;margin-bottom:12px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#1a52c8;"></span><span style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">Flipped to Democratic</span></div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#c8102e;"></span><span style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">Flipped to Republican</span></div>
+        <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Gray = no party flip</span>
+      </div>
+      <div style="border:1px solid var(--mid);overflow:hidden;margin-bottom:20px;box-shadow:3px 3px 0 var(--navy);">
+        <iframe data-src="/district-map?layer=pres_flip" style="width:100%;height:560px;border:none;display:block;" title="2016 to 2020 President Locality Flip Map"></iframe>
+      </div>
+    </div>
   </div>
 </div>
 <footer>
