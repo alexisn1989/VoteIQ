@@ -20,7 +20,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = FastAPI()
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 
 # ── Election maps — all four modes built once at startup ──────────────────────
 import copy
@@ -1993,6 +1993,69 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         ).add_to(m)
         title = f"2023 Virginia {chamber_label} — Party Change vs {baseline_year} Numbered District"
 
+    elif layer in ("pres_flip", "gov_flip", "gov_2025_flip"):
+        if layer == "pres_flip":
+            gj = _build_pres_2016_2020_flip_geojson()
+            title = "2016 → 2020 Virginia President — Locality Flips"
+            tip_fields = ["NAME", "_flip_status", "_winner_2016", "_winner_2020", "_party_2016", "_party_2020"]
+            tip_aliases = ["Locality:", "Result:", "2016 Winner:", "2020 Winner:", "2016 Party:", "2020 Party:"]
+        elif layer == "gov_flip":
+            gj = _build_locality_office_flip_geojson("2017", "2021", "Governor")
+            title = "2017 → 2021 Virginia Governor — Locality Flips"
+            tip_fields = ["NAME", "_flip_status", "_start_winner", "_end_winner", "_start_party", "_end_party"]
+            tip_aliases = ["Locality:", "Result:", "2017 Winner:", "2021 Winner:", "2017 Party:", "2021 Party:"]
+        else:
+            gj = _build_locality_office_flip_geojson("2021", "2025", "Governor")
+            title = "2021 → 2025 Virginia Governor — Locality Flips"
+            tip_fields = ["NAME", "_flip_status", "_start_winner", "_end_winner", "_start_party", "_end_party"]
+            tip_aliases = ["Locality:", "Result:", "2021 Winner:", "2025 Winner:", "2021 Party:", "2025 Party:"]
+
+        def _locality_flip_style(feat):
+            s = feat["properties"].get("_flip_status", "")
+            if s == "Flipped Democratic":   return {"fillColor": "#1a52c8", "color": "#111", "weight": 1.0, "fillOpacity": 0.85}
+            elif s == "Flipped Republican": return {"fillColor": "#c8102e", "color": "#111", "weight": 1.0, "fillOpacity": 0.85}
+            elif s == "Held Democratic":    return {"fillColor": "#6b9fd4", "color": "#555", "weight": 0.4, "fillOpacity": 0.4}
+            elif s == "Held Republican":    return {"fillColor": "#e8807a", "color": "#555", "weight": 0.4, "fillOpacity": 0.4}
+            return {"fillColor": "#cccccc", "color": "#555", "weight": 0.4, "fillOpacity": 0.3}
+
+        folium.GeoJson(
+            gj,
+            style_function=_locality_flip_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=tip_fields, aliases=tip_aliases,
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+
+    elif layer in ("congress_midterm_flip", "hod_state_flip"):
+        if layer == "congress_midterm_flip":
+            gj = _build_congress_flip_geojson("2018", "2022")
+            title = "2018 → 2022 Virginia U.S. House — District Flips"
+            tip_fields = ["DISTRICTN", "_flip_status", "_start_winner", "_end_winner", "_start_party", "_end_party"]
+            tip_aliases = ["District:", "Result:", "2018 Winner:", "2022 Winner:", "2018 Party:", "2022 Party:"]
+        else:
+            gj = _build_hod_2017_2021_flip_geojson()
+            title = "2017 → 2021 Virginia HOD — District Flips"
+            tip_fields = ["DISTRICTN", "_flip_status", "_start_winner", "_end_winner", "_start_party", "_end_party"]
+            tip_aliases = ["District:", "Result:", "2017 Winner:", "2021 Winner:", "2017 Party:", "2021 Party:"]
+
+        def _district_flip_style(feat):
+            s = feat["properties"].get("_flip_status", "")
+            if s == "Flipped Democratic":   return {"fillColor": "#1a52c8", "color": "#111", "weight": 1.5, "fillOpacity": 0.85}
+            elif s == "Flipped Republican": return {"fillColor": "#c8102e", "color": "#111", "weight": 1.5, "fillOpacity": 0.85}
+            elif s == "Held Democratic":    return {"fillColor": "#6b9fd4", "color": "#555", "weight": 0.5, "fillOpacity": 0.4}
+            elif s == "Held Republican":    return {"fillColor": "#e8807a", "color": "#555", "weight": 0.5, "fillOpacity": 0.4}
+            return {"fillColor": "#cccccc", "color": "#555", "weight": 0.4, "fillOpacity": 0.3}
+
+        folium.GeoJson(
+            gj,
+            style_function=_district_flip_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=tip_fields, aliases=tip_aliases,
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+
     elif layer in ("senate_2023_results", "hod_2023_results"):
         from shapely.geometry import mapping as _mapping
         chamber = "senate" if layer == "senate_2023_results" else "hod"
@@ -2335,7 +2398,7 @@ def statewide_bubble_map(year: str, office: str):
 
 @app.get("/district-map", response_class=HTMLResponse)
 def district_map(layer: str = "congressional", lat: float = None, lng: float = None, district: int = None):
-    if layer in ("congressional", "hod_results", "hod_flip", "gov_results", "ltgov_results", "ag_results", "pres_2024", "senate_2024", "congress_2024", "senate_2023_results", "hod_2023_results", "senate_2023_flip_2019", "hod_2023_flip_2021", "gov_2021", "ltgov_2021", "ag_2021", "congress_2022", "gov_2017", "ltgov_2017", "ag_2017", "senate_2019_results", "hod_2019_results", "pres_2016", "congress_2016", "pres_2020", "senate_2020", "congress_2020", "senate_2018", "congress_2018") and lat is None:
+    if layer in ("congressional", "hod_results", "hod_flip", "gov_results", "ltgov_results", "ag_results", "pres_2024", "senate_2024", "congress_2024", "senate_2023_results", "hod_2023_results", "senate_2023_flip_2019", "hod_2023_flip_2021", "gov_2021", "ltgov_2021", "ag_2021", "congress_2022", "gov_2017", "ltgov_2017", "ag_2017", "senate_2019_results", "hod_2019_results", "pres_2016", "congress_2016", "pres_2020", "senate_2020", "congress_2020", "senate_2018", "congress_2018", "pres_flip", "gov_flip", "gov_2025_flip", "congress_midterm_flip", "hod_state_flip") and lat is None:
         if layer not in _district_maps:
             try:
                 _district_maps[layer] = _build_district_map(layer)
@@ -2647,12 +2710,51 @@ HISTORICAL_ELECTION_META = {
         "kind": "federal",
         "maps": [
             {"tab": "president-map", "label": "President Map", "title": "President - Locality Map", "layer": "pres_2016"},
-            {"tab": "congress-map", "label": "Congress Map", "title": "U.S. House - Numbered District Map", "layer": "congress_2016"},
+            {"tab": "congress-map", "label": "Congress Map", "title": "U.S. House - District Results Map", "url": "/maps/congress/2016"},
         ],
         "bubble_maps": [
             {"tab": "president-bubbles", "label": "President Bubbles", "title": "President - Statewide Vote Bubbles", "year": "2016", "office": "President"},
         ],
-        "notes": ["The U.S. House map uses the available congressional district layer as a numbered-district display; historical district boundaries may differ from current boundaries."],
+        "notes": ["Congressional district map shows 2010-cycle (113th Congress) boundaries with 2016 election results."],
+    },
+    "2017": {
+        "title": "2017 Virginia State Elections",
+        "subtitle": "Governor, Lieutenant Governor, Attorney General, and House of Delegates results from the November 7, 2017 general election.",
+        "date": "November 7, 2017",
+        "kind": "statewide",
+        "maps": [
+            {"tab": "governor-map",  "label": "Governor Map",  "title": "Governor - Locality Map",            "layer": "gov_2017"},
+            {"tab": "ltgov-map",     "label": "Lt. Gov Map",   "title": "Lieutenant Governor - Locality Map", "layer": "ltgov_2017"},
+            {"tab": "ag-map",        "label": "AG Map",        "title": "Attorney General - Locality Map",    "layer": "ag_2017"},
+            {"tab": "hod-map",       "label": "HOD Map",       "title": "House of Delegates - District Results Map", "url": "/maps/hod/2017"},
+        ],
+        "bubble_maps": [
+            {"tab": "governor-bubbles", "label": "Gov Bubbles",    "title": "Governor - Statewide Vote Bubbles",            "year": "2017", "office": "Governor"},
+            {"tab": "ltgov-bubbles",    "label": "Lt. Gov Bubbles","title": "Lieutenant Governor - Statewide Vote Bubbles",  "year": "2017", "office": "Lieutenant Governor"},
+            {"tab": "ag-bubbles",       "label": "AG Bubbles",     "title": "Attorney General - Statewide Vote Bubbles",    "year": "2017", "office": "Attorney General"},
+        ],
+        "notes": [],
+    },
+    "2018": {
+        "title": "2018 Virginia Midterm Election",
+        "subtitle": "U.S. Senate and U.S. House results from the November 6, 2018 general election.",
+        "date": "November 6, 2018",
+        "kind": "federal",
+        "maps": [
+            {"tab": "congress-map", "label": "Congress Map", "title": "U.S. House - District Results Map", "url": "/maps/congress/2018"},
+        ],
+        "notes": ["Congressional district map shows 2010-cycle (113th Congress) boundaries with 2018 election results."],
+    },
+    "2019": {
+        "title": "2019 Virginia State Legislative Elections",
+        "subtitle": "State Senate and House of Delegates results from the November 5, 2019 general election.",
+        "date": "November 5, 2019",
+        "kind": "district",
+        "maps": [
+            {"tab": "senate-map", "label": "Senate Map", "title": "State Senate - District Results Map",        "url": "/maps/senate/2019"},
+            {"tab": "hod-map",    "label": "HOD Map",    "title": "House of Delegates - District Results Map", "url": "/maps/hod/2019"},
+        ],
+        "notes": ["Maps show 2010-cycle district boundaries with 2019 election results."],
     },
     "2020": {
         "title": "2020 Virginia Local Elections",
@@ -2661,34 +2763,6 @@ HISTORICAL_ELECTION_META = {
         "kind": "local",
         "maps": [],
         "notes": ["This CSV contains local town races only, so no statewide choropleth map is available."],
-    },
-    "2019": {
-        "title": "2019 Virginia State Legislative Elections",
-        "subtitle": "State Senate and House of Delegates results from the November 5, 2019 general election.",
-        "date": "November 5, 2019",
-        "kind": "district",
-        "maps": [
-            {"tab": "senate-map", "label": "Senate Map", "title": "State Senate - Results Map", "layer": "senate_2019_results"},
-            {"tab": "hod-map", "label": "HOD Map", "title": "House of Delegates - Results Map", "layer": "hod_2019_results"},
-        ],
-        "notes": ["The 2019 legislative elections used pre-redistricting district boundaries; these maps display numbered district results on the available district map layer."],
-    },
-    "2017": {
-        "title": "2017 Virginia State Elections",
-        "subtitle": "Governor, Lieutenant Governor, Attorney General, and House of Delegates results from the November 7, 2017 general election.",
-        "date": "November 7, 2017",
-        "kind": "statewide",
-        "maps": [
-            {"tab": "governor-map", "label": "Governor Map", "title": "Governor - Locality Map", "layer": "gov_2017"},
-            {"tab": "ltgov-map", "label": "Lt. Gov Map", "title": "Lieutenant Governor - Locality Map", "layer": "ltgov_2017"},
-            {"tab": "ag-map", "label": "AG Map", "title": "Attorney General - Locality Map", "layer": "ag_2017"},
-        ],
-        "bubble_maps": [
-            {"tab": "governor-bubbles", "label": "Gov Bubbles", "title": "Governor - Statewide Vote Bubbles", "year": "2017", "office": "Governor"},
-            {"tab": "ltgov-bubbles", "label": "Lt. Gov Bubbles", "title": "Lieutenant Governor - Statewide Vote Bubbles", "year": "2017", "office": "Lieutenant Governor"},
-            {"tab": "ag-bubbles", "label": "AG Bubbles", "title": "Attorney General - Statewide Vote Bubbles", "year": "2017", "office": "Attorney General"},
-        ],
-        "notes": [],
     },
 }
 
@@ -2764,6 +2838,32 @@ def election_results_historical_page(year: str):
         1,
     )
     return html
+
+
+# ── Pre-built district result maps (2016-2019) ────────────────────────────────
+
+_DISTRICT_MAP_FILES = {
+    ("congress", "2016"): "va_congress_2016.html",
+    ("congress", "2018"): "va_congress_2018.html",
+    ("hod",      "2017"): "va_house_delegates_2017.html",
+    ("senate",   "2019"): "va_senate_2019.html",
+    ("hod",      "2019"): "va_house_delegates_2019.html",
+}
+
+_district_map_cache: dict[tuple, str] = {}
+
+
+@app.get("/maps/{chamber}/{year}", response_class=HTMLResponse)
+def district_result_map(chamber: str, year: str):
+    from fastapi import HTTPException
+    key = (chamber.lower(), year)
+    if key not in _DISTRICT_MAP_FILES:
+        raise HTTPException(status_code=404, detail=f"No map for {chamber}/{year}")
+    if key not in _district_map_cache:
+        path = os.path.join(BASE_DIR, "templates", _DISTRICT_MAP_FILES[key])
+        with open(path, "r", encoding="utf-8") as f:
+            _district_map_cache[key] = f.read()
+    return _district_map_cache[key]
 
 
 def _build_election_summary(year: str) -> str:
