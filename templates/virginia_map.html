@@ -103,6 +103,11 @@
   .token-card p { font-size:0.87rem; color:var(--muted); line-height:1.6; margin-bottom:14px; }
   .token-card code { display:block; background:var(--navy); color:#7dffb3; font-size:0.75rem; padding:10px 14px; margin-bottom:14px; text-align:left; word-break:break-all; }
   .token-card a { display:inline-block; font-family:'Barlow Condensed',sans-serif; font-size:0.78rem; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:white; background:var(--red); text-decoration:none; padding:10px 22px; }
+  body.embed-mode .topbar,
+  body.embed-mode header,
+  body.embed-mode .layer-tabs { display:none; }
+  body.embed-mode .stats-bar { padding:7px 16px; }
+  body.embed-mode .map-shell { flex:1; }
 
   @media (max-width:768px) {
     .map-shell { grid-template-columns:1fr; grid-template-rows:220px 1fr; }
@@ -253,6 +258,7 @@
 <script>
 // ── Data injected by server ───────────────────────────────────────────────────
 const TOKEN       = window._MAPBOX_TOKEN  || '';
+const INITIAL_LAYER = window._INITIAL_LAYER || 'counties';
 const COUNTIES_GJ = window._VA_GEOJSON   || { type:'FeatureCollection', features:[] };
 const HOD_GJ      = window._HOD_GEOJSON  || { type:'FeatureCollection', features:[] };
 const SD_GJ       = window._SD_GEOJSON   || { type:'FeatureCollection', features:[] };
@@ -585,8 +591,14 @@ let mapReady       = false;
 map.on('load', () => {
   mapReady = true;
   addLayerSources();
-  showLayer('counties');
-  updateLegend('counties');
+  currentLayer = LAYERS[INITIAL_LAYER] ? INITIAL_LAYER : 'counties';
+  showLayer(currentLayer);
+  updateLegend(currentLayer);
+  document.getElementById('sidebar-header').textContent = LAYERS[currentLayer].label;
+  document.getElementById('stat-total').textContent = LAYERS[currentLayer].statTotal;
+  document.getElementById('stat-mode').textContent = LAYERS[currentLayer].statLabel;
+  document.getElementById('layer-select').value = currentLayer;
+  document.querySelectorAll('.layer-tab').forEach(t => t.classList.toggle('active', t.dataset.layer === currentLayer));
   buildSidebar('');
 });
 

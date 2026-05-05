@@ -106,6 +106,7 @@
       <button class="tab-btn" data-tab="hod-map">HOD Map</button>
       <button class="tab-btn" data-tab="senate-flips">Senate Flips</button>
       <button class="tab-btn" data-tab="hod-flips">HOD Flips</button>
+      <button class="tab-btn" data-tab="hod-bubbles">HOD Bubbles</button>
       <button class="tab-btn" data-tab="senate-table">Senate Table</button>
       <button class="tab-btn" data-tab="hod-table">HOD Table</button>
     </div>
@@ -149,12 +150,22 @@
       <div class="map-shell"><iframe data-src="/district-map?layer=hod_2023_flip_2021" style="width:100%;height:520px;border:none;display:block;" title="2023 HOD Flip Map"></iframe></div>
       <div class="hod-table-wrap"><table><thead><tr><th>District</th><th>2023 Winner</th><th>From</th><th>To</th><th>Votes</th><th>Pct.</th></tr></thead><tbody id="hod-flips-tbody"></tbody></table></div>
     </div>
+    <div class="tab-panel" id="tab-hod-bubbles">
+      <div class="section-label"><span>05</span> House of Delegates - Vote Density Bubbles</div>
+      <p class="data-note">Bubble size is based on total votes cast in each 2023 House of Delegates district. Bubble color shows the winning party.</p>
+      <div class="legend-row">
+        <div class="legend-item"><span class="swatch" style="background:var(--dem);border-radius:50%;"></span><span class="legend-text">Democratic winner</span></div>
+        <div class="legend-item"><span class="swatch" style="background:var(--rep);border-radius:50%;"></span><span class="legend-text">Republican winner</span></div>
+        <span class="legend-text" style="color:var(--muted);">Larger bubble = more votes</span>
+      </div>
+      <div class="map-shell"><iframe data-src="/virginia-map?layer=density_2023&amp;embed=1" style="width:100%;height:620px;border:none;display:block;" title="2023 HOD Vote Density Bubble Map"></iframe></div>
+    </div>
     <div class="tab-panel" id="tab-senate-table">
-      <div class="section-label"><span>05</span> State Senate - All 40 Districts</div>
+      <div class="section-label"><span>06</span> State Senate - All 40 Districts</div>
       <div class="hod-table-wrap"><table><thead><tr><th>District</th><th>Winner</th><th>Party</th><th>Votes</th><th>Runner-Up</th><th>Pct.</th></tr></thead><tbody id="senate-tbody"></tbody></table></div>
     </div>
     <div class="tab-panel" id="tab-hod-table">
-      <div class="section-label"><span>06</span> House of Delegates - All 100 Districts</div>
+      <div class="section-label"><span>07</span> House of Delegates - All 100 Districts</div>
       <div class="hod-table-wrap"><table><thead><tr><th>District</th><th>Winner</th><th>Party</th><th>Votes</th><th>Runner-Up</th><th>Pct.</th></tr></thead><tbody id="hod-tbody"></tbody></table></div>
     </div>
   </div>

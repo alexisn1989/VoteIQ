@@ -3175,7 +3175,13 @@ def _load_sd_geojson():
 
 @app.get("/virignia-map", response_class=HTMLResponse)
 @app.get("/virginia-map", response_class=HTMLResponse)
-def virginia_map_page():
+def virginia_map_page(layer: str = "counties", embed: bool = False):
+    allowed_layers = {
+        "counties", "pres_flip", "gov_flip", "gov_2025_flip", "congress_midterm_flip",
+        "hod_state_flip", "density_2017", "density_2019", "density_2021",
+        "density_2023", "density_2025", "sd_flip", "hod_flip", "hod", "sd",
+    }
+    initial_layer = layer if layer in allowed_layers else "counties"
     mapbox_token = os.getenv("MAPBOX_TOKEN", "")
     counties = _load_va_counties_geojson()
     hod = _load_hod_geojson()
@@ -3195,6 +3201,7 @@ def virginia_map_page():
     inject = (
         f"<script>"
         f"window._MAPBOX_TOKEN={json.dumps(mapbox_token)};"
+        f"window._INITIAL_LAYER={json.dumps(initial_layer)};"
         f"window._VA_GEOJSON={_s(counties)};"
         f"window._HOD_GEOJSON={_s(hod)};"
         f"window._SD_GEOJSON={_s(sd)};"
@@ -3209,6 +3216,8 @@ def virginia_map_page():
         f"window._HOD_DENSITY_POINTS_GEOJSON={_s(hod_density_point_layers)};"
         f"</script>"
     )
+    if embed:
+        html = html.replace("<body>", '<body class="embed-mode">', 1)
     html = html.replace("</head>", inject + "</head>", 1)
     return html
 
