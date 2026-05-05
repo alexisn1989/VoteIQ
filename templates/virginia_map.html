@@ -43,6 +43,9 @@
   .stat-val { font-family:'Barlow Condensed',sans-serif; font-size:1rem; font-weight:700; color:white; letter-spacing:0.04em; }
   .stat-lbl { font-family:'Barlow Condensed',sans-serif; font-size:0.62rem; font-weight:600; letter-spacing:0.16em; text-transform:uppercase; color:var(--muted); }
   .stats-sep { color:var(--red); font-size:0.8rem; }
+  .layer-picker { margin-left:auto; display:flex; align-items:center; gap:8px; }
+  .layer-picker label { font-family:'Barlow Condensed',sans-serif; font-size:0.62rem; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:var(--mid); }
+  .layer-picker select { min-width:210px; border:1px solid var(--mid); background:white; color:var(--navy); font-family:'Barlow Condensed',sans-serif; font-size:0.76rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; padding:5px 28px 5px 8px; }
 
   /* main layout */
   .map-shell { position:relative; z-index:10; flex:1; display:grid; grid-template-columns:260px 1fr; min-height:0; }
@@ -105,7 +108,9 @@
     .map-shell { grid-template-columns:1fr; grid-template-rows:220px 1fr; }
     .sidebar { border-right:none; border-bottom:2px solid var(--navy); }
     header { padding:12px 20px; }
-    .stats-bar { padding:7px 20px; gap:14px; }
+    .stats-bar { padding:7px 20px; gap:14px; flex-wrap:wrap; }
+    .layer-picker { width:100%; margin-left:0; }
+    .layer-picker select { flex:1; min-width:0; }
     .layer-tabs { flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; }
     .layer-tab { flex:0 0 auto; min-width:160px; padding:9px 14px; font-size:0.65rem; }
   }
@@ -181,6 +186,26 @@
   <div class="stat-item"><span class="stat-val" id="stat-mode">Counties</span><span class="stat-lbl">Layer</span></div>
   <span class="stats-sep">◆</span>
   <div class="stat-item"><span class="stat-val" id="stat-sel">None</span><span class="stat-lbl">Selected</span></div>
+  <div class="layer-picker">
+    <label for="layer-select">Layer</label>
+    <select id="layer-select" aria-label="Map layer">
+      <option value="counties">Counties & Cities</option>
+      <option value="density_2017">2017 Bubbles</option>
+      <option value="density_2019">2019 Bubbles</option>
+      <option value="density_2021">2021 Bubbles</option>
+      <option value="density_2023">2023 Bubbles</option>
+      <option value="density_2025">2025 Bubbles</option>
+      <option value="pres_flip">2016 to 2020 President</option>
+      <option value="gov_flip">2017 to 2021 Governor</option>
+      <option value="gov_2025_flip">2021 to 2025 Governor</option>
+      <option value="congress_midterm_flip">2018 to 2022 Congress</option>
+      <option value="hod_state_flip">2017 to 2021 HOD</option>
+      <option value="sd_flip">2023 Senate Flips</option>
+      <option value="hod_flip">2023 HOD Flips</option>
+      <option value="hod">House of Delegates</option>
+      <option value="sd">State Senate</option>
+    </select>
+  </div>
 </div>
 
 <div class="map-shell">
@@ -723,6 +748,7 @@ function switchLayer(key) {
   document.getElementById('stat-total').textContent = cfg.statTotal;
   document.getElementById('stat-mode').textContent = cfg.statLabel;
   document.querySelectorAll('.layer-tab').forEach(t => t.classList.toggle('active', t.dataset.layer === key));
+  document.getElementById('layer-select').value = key;
   document.getElementById('list-search').value = '';
   buildSidebar('');
 }
@@ -730,6 +756,7 @@ function switchLayer(key) {
 document.querySelectorAll('.layer-tab').forEach(btn =>
   btn.addEventListener('click', () => switchLayer(btn.dataset.layer))
 );
+document.getElementById('layer-select').addEventListener('change', e => switchLayer(e.target.value));
 
 // ── Legend ────────────────────────────────────────────────────────────────────
 function updateLegend(key) {
