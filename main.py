@@ -2453,6 +2453,28 @@ def _build_statewide_bubble_map(year: str, office: str) -> str:
             ),
         ).add_to(m)
 
+    # Build size-key bubbles at 15%, 50%, 100% of max_total
+    def _fmt_votes(n):
+        if n >= 1_000_000: return f"{n/1_000_000:.1f}M"
+        if n >= 1_000:     return f"{round(n/1_000)}k"
+        return str(n)
+    _key_fracs = [0.15, 0.50, 1.0]
+    _key_items_html = ""
+    for frac in _key_fracs:
+        ref_total = int(max_total * frac)
+        r = 4 + math.sqrt(frac) * 34
+        sz = int(r * 2 + 4)
+        cx = cy = sz // 2
+        label = _fmt_votes(ref_total) if ref_total else "—"
+        _key_items_html += (
+            f"<div style='display:flex;flex-direction:column;align-items:center;gap:2px'>"
+            f"<svg width='{sz}' height='{sz}'>"
+            f"<circle cx='{cx}' cy='{cy}' r='{r:.1f}' fill='#888' fill-opacity='0.45' stroke='white' stroke-width='1.5'/>"
+            f"</svg>"
+            f"<span style='font-size:10px;color:#555'>{label}</span>"
+            f"</div>"
+        )
+
     title = f"{year} Virginia {office} - Statewide Vote Bubbles"
     m.get_root().html.add_child(folium.Element(f"""
     <div style="position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:1000;
@@ -2460,10 +2482,13 @@ def _build_statewide_bubble_map(year: str, office: str) -> str:
          box-shadow:2px 2px 8px rgba(0,0,0,.4);font-family:Arial;font-size:14px;
          font-weight:700;letter-spacing:0.05em;white-space:nowrap;pointer-events:none;">{escape(title)}</div>
     <div style="position:fixed;bottom:36px;left:36px;z-index:1000;background:white;padding:12px 16px;border-radius:8px;
-         box-shadow:2px 2px 8px rgba(0,0,0,.3);font-family:Arial;font-size:13px;line-height:1.8">
-      <span style="background:#1a52c8;color:white;padding:2px 10px;border-radius:3px">Democratic winner</span>
-      &nbsp;<span style="background:#c8102e;color:white;padding:2px 10px;border-radius:3px">Republican winner</span>
-      <br><small style="color:#666">Bubble size = locality vote total when available</small>
+         box-shadow:2px 2px 8px rgba(0,0,0,.3);font-family:Arial;font-size:12px">
+      <span style="background:#1a52c8;color:white;padding:2px 8px;border-radius:3px;font-size:11px">Democratic winner</span>
+      &nbsp;<span style="background:#c8102e;color:white;padding:2px 8px;border-radius:3px;font-size:11px">Republican winner</span>
+      <div style="margin-top:8px;font-weight:bold;color:#444;font-size:11px;letter-spacing:0.04em">VOTES CAST</div>
+      <div style="display:flex;align-items:flex-end;gap:10px;margin-top:4px">
+        {_key_items_html}
+      </div>
     </div>
     """))
     rendered = m.get_root().render()
