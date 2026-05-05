@@ -516,7 +516,7 @@ def _vote_share_legend_inner() -> str:
 
 
 def _build_2023_state_leg_flips(chamber: str, results: dict) -> list[dict]:
-    baseline = SD_2019_PARTY if chamber == "senate" else HOD_2021_PARTY
+    baseline = SD_PRE2023_PARTY if chamber == "senate" else HOD_PRE2023_PARTY
     flips = []
     for district, race in sorted(results.items()):
         candidates = race.get("candidates", [])
@@ -699,6 +699,7 @@ HOD_2023_PARTY = {d: "Republican" for d in [
 # Prior-cycle numbered district baselines. These were elected under pre-2021
 # redistricting boundaries, so 2023 flip views label them as numbered-district
 # comparisons rather than same-boundary seat flips.
+# HOD_2021_PARTY: old pre-redistricting district numbers (2011 maps, used only for pre-2023 HOD flip reference)
 HOD_2021_PARTY = {d: "Republican" for d in [
     1, 3, 4, 5, 6, 7, 8, 9, 12, 14, 15, 16, 17, 18, 19, 20,
     22, 23, 24, 25, 26, 27, 28, 29, 30, 33, 54, 55, 56, 58,
@@ -715,6 +716,28 @@ SD_2019_PARTY = {d: "Republican" for d in [
 ]}
 SD_2019_PARTY.update({
     d: "Democrat" for d in range(1, 41) if d not in SD_2019_PARTY
+})
+
+# HOD_PRE2023_PARTY: pre-election party for each NEW 2021-redistricted HOD district (used for 2023 flip map)
+# Derived from 2021 incumbent name matching + winner defaults for open seats.
+# Pre-election composition: 50 R, 50 D → result 49 R, 51 D (net +1 D)
+HOD_PRE2023_PARTY = {d: "Republican" for d in [
+    22, 30, 31, 32, 33, 34, 35, 36, 37, 39, 40, 41, 42, 43, 44, 45, 46, 47,
+    48, 49, 50, 51, 52, 53, 56, 57, 59, 60, 61, 62, 63, 64, 66, 67, 68, 69,
+    71, 72, 73, 74, 75, 82, 83, 86, 89, 90, 97, 98, 99, 100,
+]}
+HOD_PRE2023_PARTY.update({
+    d: "Democrat" for d in range(1, 101) if d not in HOD_PRE2023_PARTY
+})
+
+# SD_PRE2023_PARTY: pre-election party for each NEW 2021-redistricted Senate district (used for 2023 flip map)
+# Pre-election composition: 19 R, 21 D → result 18 R, 22 D (net +1 D, SD16 flipped D)
+# SD16: Siobhan Dunnavant (R incumbent) ran and lost to VanValkenburg (D) — confirmed flip
+SD_PRE2023_PARTY = {d: "Republican" for d in [
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 16, 17, 19, 20, 25, 26, 27, 28,
+]}
+SD_PRE2023_PARTY.update({
+    d: "Democrat" for d in range(1, 41) if d not in SD_PRE2023_PARTY
 })
 
 # Virginia State Senate — 40 districts (2021 redistricting, 2026 session members)
@@ -1932,8 +1955,8 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
     elif layer in ("senate_2023_flip_2019", "hod_2023_flip_2021"):
         from shapely.geometry import mapping as _mapping
         chamber = "senate" if layer == "senate_2023_flip_2019" else "hod"
-        baseline = SD_2019_PARTY if chamber == "senate" else HOD_2021_PARTY
-        baseline_year = "2019" if chamber == "senate" else "2021"
+        baseline = SD_PRE2023_PARTY if chamber == "senate" else HOD_PRE2023_PARTY
+        baseline_year = "Pre-2023"
         chamber_label = "State Senate" if chamber == "senate" else "House of Delegates"
 
         if chamber == "senate":
@@ -2009,7 +2032,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                 localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
             ),
         ).add_to(m)
-        title = f"2023 Virginia {chamber_label} — Party Change vs {baseline_year} Numbered District"
+        title = f"2023 Virginia {chamber_label} — Seat Flips vs Pre-Election Party"
         legend_type = "flip"
 
     elif layer in ("pres_flip", "gov_flip", "gov_2025_flip"):
