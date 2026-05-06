@@ -2095,9 +2095,9 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             tip_aliases = ["District:", "Result:", "2017 Winner:", "2019 Winner:", "2017 Party:", "2019 Party:"]
         else:
             gj = _build_hod_2017_2021_flip_geojson()
-            title = "Pre-Election → 2021 Virginia HOD — District Flips"
-            tip_fields = ["DISTRICTN", "_flip_status", "_end_winner", "_end_pct", "_start_party", "_end_party"]
-            tip_aliases = ["District:", "Result:", "2021 Winner:", "Winner %:", "Pre-Election Party:", "2021 Party:"]
+            title = "2019 → 2021 Virginia HOD — District Flips"
+            tip_fields = ["DISTRICTN", "_flip_status", "_start_winner", "_end_winner", "_start_party", "_end_party"]
+            tip_aliases = ["District:", "Result:", "2019 Winner:", "2021 Winner:", "2019 Party:", "2021 Party:"]
 
         def _district_flip_style(feat):
             s = feat["properties"].get("_flip_status", "")
@@ -3486,40 +3486,7 @@ def _build_hod_2017_2021_flip_geojson() -> dict:
     global _hod_2017_2021_flip_geojson_cache
     if _hod_2017_2021_flip_geojson_cache is not None:
         return _hod_2017_2021_flip_geojson_cache
-
-    decorated = json.loads(json.dumps(_load_hod_geojson()))
-    results_2021 = _load_2021_results().get("hod", {})
-
-    for feat in decorated.get("features", []):
-        props = feat.setdefault("properties", {})
-        district = int(props.get("DISTRICTN") or props.get("DISTRICT") or 0)
-        from_party = HOD_PRE2021_PARTY.get(district, "Unknown")
-        race = results_2021.get(str(district), results_2021.get(district, {}))
-        winner = (race.get("candidates") or [{}])[0]
-        to_party = _normalize_major_party(winner.get("party", ""))
-        flipped = from_party != to_party and "Unknown" not in (from_party, to_party)
-        if flipped and to_party == "Democrat":
-            status = "Flipped Democratic"
-        elif flipped and to_party == "Republican":
-            status = "Flipped Republican"
-        elif to_party == "Democrat":
-            status = "Held Democratic"
-        elif to_party == "Republican":
-            status = "Held Republican"
-        else:
-            status = "No data"
-        props["DISTRICTN"] = district
-        props["_flip_status"] = status
-        props["_start_party"] = from_party
-        props["_end_party"] = to_party
-        props["_start_year"] = "Pre-2021"
-        props["_end_year"] = "2021"
-        props["_start_winner"] = "Incumbent" if from_party != "Unknown" else "Open"
-        props["_end_winner"] = winner.get("name", "No data")
-        props["_end_pct"] = float(winner.get("pct") or 0.0)
-        props["_flip_label"] = f"{from_party} to {to_party}" if flipped else status
-
-    _hod_2017_2021_flip_geojson_cache = decorated
+    _hod_2017_2021_flip_geojson_cache = _build_hod_flip_geojson("2019", "2021")
     return _hod_2017_2021_flip_geojson_cache
 
 
