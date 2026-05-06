@@ -257,7 +257,7 @@
       </div>
       <div class="hod-table-wrap">
         <table id="gov-loc-table">
-          <thead><tr><th>Locality</th><th>Winner</th><th>Winner %</th><th>Runner-Up</th><th>Runner-Up %</th></tr></thead>
+          <thead><tr><th>Locality</th><th>Winner</th><th>Party</th><th>Votes</th><th>Winner %</th><th>Runner-Up</th><th>Runner-Up %</th></tr></thead>
           <tbody id="gov-loc-tbody"></tbody>
         </table>
       </div>
@@ -272,7 +272,7 @@
       </div>
       <div class="hod-table-wrap">
         <table id="ltgov-loc-table">
-          <thead><tr><th>Locality</th><th>Winner</th><th>Winner %</th><th>Runner-Up</th><th>Runner-Up %</th></tr></thead>
+          <thead><tr><th>Locality</th><th>Winner</th><th>Party</th><th>Votes</th><th>Winner %</th><th>Runner-Up</th><th>Runner-Up %</th></tr></thead>
           <tbody id="ltgov-loc-tbody"></tbody>
         </table>
       </div>
@@ -287,9 +287,27 @@
       </div>
       <div class="hod-table-wrap">
         <table id="ag-loc-table">
-          <thead><tr><th>Locality</th><th>Winner</th><th>Winner %</th><th>Runner-Up</th><th>Runner-Up %</th></tr></thead>
+          <thead><tr><th>Locality</th><th>Winner</th><th>Party</th><th>Votes</th><th>Winner %</th><th>Runner-Up</th><th>Runner-Up %</th></tr></thead>
           <tbody id="ag-loc-tbody"></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- 2017→2021 Governor Flip Map -->
+    <div class="tab-panel" id="tab-gov-flip-map">
+      <div class="section-label"><span>09</span> Governor — 2017 to 2021 Locality Flips</div>
+      <p class="data-note">Shows which localities flipped party between the 2017 and 2021 governor races.</p>
+      <div style="border:1px solid var(--mid);overflow:hidden;margin-bottom:20px;box-shadow:3px 3px 0 var(--navy);">
+        <iframe data-src="/district-map?layer=gov_flip" style="width:100%;height:560px;border:none;display:block;" title="2017→2021 Governor Flip Map"></iframe>
+      </div>
+    </div>
+
+    <!-- 2017→2021 HOD Flip Map -->
+    <div class="tab-panel" id="tab-hod-flip-map">
+      <div class="section-label"><span>10</span> House of Delegates — 2017 to 2021 District Flips</div>
+      <p class="data-note">Shows which House of Delegates districts flipped party between 2017 and 2021.</p>
+      <div style="border:1px solid var(--mid);overflow:hidden;margin-bottom:20px;box-shadow:3px 3px 0 var(--navy);">
+        <iframe data-src="/district-map?layer=hod_state_flip" style="width:100%;height:560px;border:none;display:block;" title="2017→2021 HOD Flip Map"></iframe>
       </div>
     </div>
 
@@ -390,21 +408,26 @@ function buildLocTable(race, tbodyId, countId, filter) {
   const sorted = Object.entries(locs).sort((a,b) => a[0].localeCompare(b[0]));
   let shown = 0;
   tbody.innerHTML = '';
-  sorted.forEach(([loc, cands]) => {
+  sorted.forEach(([loc, result]) => {
     if (f && !loc.toLowerCase().includes(f)) return;
     shown++;
-    const entries = Object.entries(cands).sort((a,b)=>b[1]-a[1]);
-    const [wname, wpct] = entries[0] || ['—', 0];
-    const [rname, rpct] = entries[1] || ['—', 0];
-    tbody.innerHTML += `<tr>
+    const entries = Array.isArray(result.candidates)
+      ? result.candidates
+      : Object.entries(result).map(([name, pct]) => ({ name, pct, party: '', votes: 0 })).sort((a,b)=>(b.pct||0)-(a.pct||0));
+    const winner = entries[0] || {};
+    const runner = entries[1] || {};
+    const pc = partyClass(winner.party);
+    tbody.innerHTML += `<tr class="${pc}-row">
       <td>${loc}</td>
-      <td class="td-winner">${wname}</td>
-      <td class="td-pct">${wpct}%</td>
-      <td>${rname}</td>
-      <td class="td-pct">${rpct}%</td>
+      <td class="td-winner">${winner.name || '?'}</td>
+      <td><span class="inline-badge ${pc}">${winner.party || '?'}</span></td>
+      <td>${(winner.votes || 0).toLocaleString()}</td>
+      <td class="td-pct">${winner.pct || 0}%</td>
+      <td>${runner.name || '?'}</td>
+      <td class="td-pct">${runner.pct || 0}%</td>
     </tr>`;
   });
-  if (!shown) tbody.innerHTML = '<tr class="no-results-row"><td colspan="5">No matching localities.</td></tr>';
+  if (!shown) tbody.innerHTML = '<tr class="no-results-row"><td colspan="7">No matching localities.</td></tr>';
   document.getElementById(countId).textContent = `${shown} localit${shown!==1?'ies':'y'}`;
 }
 
