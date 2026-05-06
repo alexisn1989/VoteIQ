@@ -2218,6 +2218,60 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         )
         legend_type = "vote_share"
 
+    elif layer == "hod_2021_results":
+        from shapely.geometry import mapping as _mapping
+        if _va_hod_gdf is None:
+            import address_lookup as _al2
+            if _al2.va_hod is not None:
+                _va_hod_gdf = _al2.va_hod
+            else:
+                _va_hod_gdf = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL HOD.shp"))
+                _va_hod_gdf = _va_hod_gdf.to_crs(epsg=4326)
+                _al2.va_hod = _va_hod_gdf
+
+        hod_data = _load_2021_results().get("hod", {})
+        for _, row in _va_hod_gdf.iterrows():
+            try:
+                d = int(row["DISTRICT"])
+                race = hod_data.get(str(d), hod_data.get(d, {}))
+                cands = race.get("candidates", [])
+                winner = cands[0] if cands else {}
+                runner = cands[1] if len(cands) > 1 else {}
+                w_name = winner.get("name", "No data")
+                w_party = winner.get("party", "")
+                w_pct = float(winner.get("pct", 0.0))
+                r_name = runner.get("name", "—") if runner else "—"
+                r_pct = float(runner.get("pct", 0.0)) if runner else 0.0
+                runner_label = f"{r_name} ({r_pct:.1f}%)" if r_name != "—" else "Uncontested"
+                features.append({"type": "Feature",
+                    "geometry": _mapping(row.geometry.simplify(0.01, preserve_topology=True)),
+                    "properties": {
+                        "DISTRICT": d,
+                        "_district": f"HOD District {d}",
+                        "_winner": w_name,
+                        "_party": w_party,
+                        "_pct": f"{w_pct:.1f}%",
+                        "_runner": runner_label,
+                        "_color": _pct_to_band_color(w_pct, w_party) if cands else "#cccccc",
+                    }})
+            except Exception:
+                continue
+
+        def hod_2021_results_style(feat):
+            return {"fillColor": feat["properties"].get("_color", "#cccccc"), "color": "#555", "weight": 0.5, "fillOpacity": 0.9}
+
+        folium.GeoJson(
+            {"type": "FeatureCollection", "features": features},
+            style_function=hod_2021_results_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["_district", "_winner", "_party", "_pct", "_runner"],
+                aliases=["District:", "Winner:", "Party:", "Vote Share:", "Runner-Up:"],
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        title = "2021 Virginia House of Delegates — Election Results"
+        legend_type = "vote_share"
+
     elif layer == "hod_results":
         from shapely.geometry import mapping as _mapping
         if _va_hod_gdf is None:
@@ -2546,7 +2600,7 @@ def statewide_bubble_map(year: str, office: str):
 
 @app.get("/district-map", response_class=HTMLResponse)
 def district_map(layer: str = "congressional", lat: float = None, lng: float = None, district: int = None):
-    if layer in ("congressional", "hod_results", "hod_flip", "gov_results", "ltgov_results", "ag_results", "pres_2024", "senate_2024", "congress_2024", "senate_2023_results", "hod_2023_results", "senate_2023_flip_2019", "hod_2023_flip_2021", "gov_2021", "ltgov_2021", "ag_2021", "congress_2022", "gov_2017", "ltgov_2017", "ag_2017", "senate_2019_results", "hod_2019_results", "pres_2016", "congress_2016", "pres_2020", "senate_2020", "congress_2020", "senate_2018", "congress_2018", "pres_flip", "gov_flip", "gov_2025_flip", "congress_midterm_flip", "hod_state_flip", "pres_2020_2024_flip", "congress_2024_flip") and lat is None:
+    if layer in ("congressional", "hod_results", "hod_flip", "gov_results", "ltgov_results", "ag_results", "pres_2024", "senate_2024", "congress_2024", "senate_2023_results", "hod_2023_results", "senate_2023_flip_2019", "hod_2023_flip_2021", "gov_2021", "ltgov_2021", "ag_2021", "hod_2021_results", "congress_2022", "gov_2017", "ltgov_2017", "ag_2017", "senate_2019_results", "hod_2019_results", "pres_2016", "congress_2016", "pres_2020", "senate_2020", "congress_2020", "senate_2018", "congress_2018", "pres_flip", "gov_flip", "gov_2025_flip", "congress_midterm_flip", "hod_state_flip", "pres_2020_2024_flip", "congress_2024_flip") and lat is None:
         if layer not in _district_maps:
             try:
                 _district_maps[layer] = _build_district_map(layer)
