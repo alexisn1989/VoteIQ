@@ -699,7 +699,12 @@
 
   function lastName(fullName) {
     if (!fullName) return '—';
-    var parts = fullName.split(' ');
+    var cleaned = String(fullName).replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
+    var parts = cleaned.split(' ');
+    var suffixes = ['jr', 'sr', 'ii', 'iii', 'iv', 'v'];
+    while (parts.length > 1 && suffixes.includes(parts[parts.length - 1].replace(/\./g, '').toLowerCase())) {
+      parts.pop();
+    }
     return parts[parts.length - 1].replace(/,$/,'');
   }
 
