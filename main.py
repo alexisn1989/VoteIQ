@@ -2076,6 +2076,11 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             title = "2018 → 2022 Virginia U.S. House — District Flips"
             tip_fields = ["DISTRICTN", "_flip_status", "_start_winner", "_end_winner", "_start_party", "_end_party"]
             tip_aliases = ["District:", "Result:", "2018 Winner:", "2022 Winner:", "2018 Party:", "2022 Party:"]
+        elif layer == "hod_2019_flip_2017":
+            gj = _build_hod_flip_geojson("2017", "2019")
+            title = "2017 → 2019 Virginia HOD — District Flips"
+            tip_fields = ["DISTRICTN", "_flip_status", "_start_winner", "_end_winner", "_start_party", "_end_party"]
+            tip_aliases = ["District:", "Result:", "2017 Winner:", "2019 Winner:", "2017 Party:", "2019 Party:"]
         else:
             gj = _build_hod_2017_2021_flip_geojson()
             title = "2017 → 2021 Virginia HOD — District Flips"
