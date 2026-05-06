@@ -546,9 +546,10 @@ def _build_2023_state_leg_flips(chamber: str, results: dict) -> list[dict]:
 
 
 # All district GDFs are lazy — borrowed from address_lookup on first use
-_va_cd_gdf  = None
-_va_hod_gdf = None
-_va_sd_gdf  = None
+_va_cd_gdf      = None
+_va_hod_gdf     = None
+_va_old_hod_gdf = None   # pre-2023 (2010-cycle) HOD boundaries — Census TIGER 2021
+_va_sd_gdf      = None
 _vb_council_map_gdf   = None
 _nn_council_map_gdf   = None
 _norfolk_ward_map_gdf      = None
@@ -2220,19 +2221,15 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
 
     elif layer == "hod_2021_results":
         from shapely.geometry import mapping as _mapping
-        if _va_hod_gdf is None:
-            import address_lookup as _al2
-            if _al2.va_hod is not None:
-                _va_hod_gdf = _al2.va_hod
-            else:
-                _va_hod_gdf = gpd.read_file(os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL HOD.shp"))
-                _va_hod_gdf = _va_hod_gdf.to_crs(epsg=4326)
-                _al2.va_hod = _va_hod_gdf
+        global _va_old_hod_gdf
+        if _va_old_hod_gdf is None:
+            _va_old_hod_gdf = gpd.read_file(os.path.join(BASE_DIR, "tl_2021_51_sldl", "tl_2021_51_sldl.shp"))
+            _va_old_hod_gdf = _va_old_hod_gdf.to_crs(epsg=4326)
 
         hod_data = _load_2021_results().get("hod", {})
-        for _, row in _va_hod_gdf.iterrows():
+        for _, row in _va_old_hod_gdf.iterrows():
             try:
-                d = int(row["DISTRICT"])
+                d = int(row["SLDLST"])
                 race = hod_data.get(str(d), hod_data.get(d, {}))
                 cands = race.get("candidates", [])
                 winner = cands[0] if cands else {}
@@ -3192,6 +3189,7 @@ Answer questions about these results clearly and concisely (2-4 sentences). Be f
 
 _va_counties_geojson_cache = None
 _va_hod_geojson_cache = None
+_va_old_hod_geojson_cache = None   # pre-2023 (2010-cycle) HOD boundaries
 _va_sd_geojson_cache = None
 _pres_2016_2020_flip_geojson_cache = None
 _pres_2020_2024_flip_geojson_cache = None
@@ -3495,7 +3493,11 @@ def _build_hod_flip_geojson(start_year: str, end_year: str) -> dict:
     if cache_key in _hod_flip_geojson_cache:
         return _hod_flip_geojson_cache[cache_key]
 
-    decorated = json.loads(json.dumps(_load_hod_geojson()))
+    # Elections before 2023 used pre-redistricting (2010-cycle) district boundaries
+    if int(end_year) < 2023:
+        decorated = json.loads(json.dumps(_load_old_hod_geojson()))
+    else:
+        decorated = json.loads(json.dumps(_load_hod_geojson()))
     start_results = _load_results_for_year(start_year).get("hod", {})
     end_results = _load_results_for_year(end_year).get("hod", {})
     for feat in decorated.get("features", []):
@@ -3555,7 +3557,10 @@ def _build_hod_density_geojson(year: str) -> dict:
     if year in _hod_density_geojson_cache:
         return _hod_density_geojson_cache[year]
 
-    decorated = json.loads(json.dumps(_load_hod_geojson()))
+    if int(year) < 2023:
+        decorated = json.loads(json.dumps(_load_old_hod_geojson()))
+    else:
+        decorated = json.loads(json.dumps(_load_hod_geojson()))
     hod_results = _load_results_for_year(year).get("hod", {})
     max_total = 0
 
@@ -3668,6 +3673,20 @@ def _load_hod_geojson():
     path = os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL HOD.shp")
     _va_hod_geojson_cache = _shp_to_geojson(path)
     return _va_hod_geojson_cache
+
+
+def _load_old_hod_geojson():
+    """Pre-2023 (2010-cycle) HOD boundaries from Census TIGER 2021 SLDL."""
+    global _va_old_hod_geojson_cache
+    if _va_old_hod_geojson_cache is not None:
+        return _va_old_hod_geojson_cache
+    path = os.path.join(BASE_DIR, "tl_2021_51_sldl", "tl_2021_51_sldl.shp")
+    gdf = gpd.read_file(path).to_crs(epsg=4326)
+    gdf["geometry"] = gdf["geometry"].simplify(0.005, preserve_topology=True)
+    gdf["DISTRICT"] = gdf["SLDLST"].apply(lambda x: int(x))
+    gdf["DISTRICTN"] = gdf["DISTRICT"]
+    _va_old_hod_geojson_cache = json.loads(gdf.to_json())
+    return _va_old_hod_geojson_cache
 
 
 def _load_sd_geojson():
