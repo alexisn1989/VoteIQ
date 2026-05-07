@@ -2588,7 +2588,7 @@ def _build_statewide_bubble_map(year: str, office: str) -> str:
 
 
 @app.get("/statewide-bubble-map", response_class=HTMLResponse)
-def statewide_bubble_map(year: str, office: str):
+def statewide_bubble_map(year: str, office: str, v: str = None):
     key = f"{year}:{office}"
     if key not in _statewide_bubble_maps:
         _statewide_bubble_maps[key] = _build_statewide_bubble_map(year, office)
