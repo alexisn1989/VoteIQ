@@ -143,12 +143,32 @@ def _build_election_map(mode: str) -> str:
                     f"Winner: <b>{props['winner']}</b>"
                 ),
             ).add_to(m)
-        legend_html = """
-        <b style="font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:#555">Vote Density</b><br>
-        <span style="background:#1a52c8;color:white;padding:2px 10px;border-radius:3px">Yes won</span>
-        &nbsp;
-        <span style="background:#ff4444;color:white;padding:2px 10px;border-radius:3px">No won</span>
-        <br><small style="color:#666">Bigger circle = more votes cast</small>"""
+        def _fmt_v(n):
+            if n >= 1_000_000: return f"{n/1_000_000:.1f}M"
+            if n >= 1_000: return f"{round(n/1_000)}k"
+            return str(n)
+        size_key_html = ""
+        for frac in [0.15, 0.50, 1.0]:
+            ref_total = int(max_total * frac)
+            r_px = 4 + math.sqrt(frac) * 34
+            sz = int(r_px * 2 + 4)
+            cx = cy = sz // 2
+            lbl = _fmt_v(ref_total) if ref_total else "—"
+            size_key_html += (
+                f"<div style='display:flex;flex-direction:column;align-items:center;gap:2px'>"
+                f"<svg width='{sz}' height='{sz}'>"
+                f"<circle cx='{cx}' cy='{cy}' r='{r_px:.1f}' fill='#888' fill-opacity='0.45' stroke='white' stroke-width='1.5'/>"
+                f"</svg>"
+                f"<span style='font-size:10px;color:#555;white-space:nowrap'>≈ {lbl} votes</span>"
+                f"</div>"
+            )
+        legend_html = (
+            f"<b style='font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:#555'>Vote Density</b><br>"
+            f"<span style='background:#1a52c8;color:white;padding:2px 8px;border-radius:3px;font-size:11px'>Yes won</span>"
+            f"&nbsp;<span style='background:#ff4444;color:white;padding:2px 8px;border-radius:3px;font-size:11px'>No won</span>"
+            f"<div style='margin-top:7px;font-weight:bold;color:#444;font-size:11px;letter-spacing:0.04em'>CIRCLE SIZE = VOTES CAST</div>"
+            f"<div style='display:flex;align-items:flex-end;gap:12px;margin-top:4px'>{size_key_html}</div>"
+        )
     else:
         def style_fn(feat):
             pct = feat["properties"].get("pct_yes")
@@ -170,13 +190,25 @@ def _build_election_map(mode: str) -> str:
                 localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
             ),
         ).add_to(m)
+        yes_rows = "".join(
+            f"<div style='display:flex;align-items:center;gap:5px;margin:2px 0'>"
+            f"<span style='display:inline-block;width:18px;height:13px;background:{c};border:1px solid #aaa'></span>"
+            f"<span style='font-size:10px'>Yes {lo}–{hi}%</span></div>"
+            for lo, hi, c in [(90,100,"#1212ff"),(80,90,"#3535ff"),(70,80,"#5858ff"),(60,70,"#7b7bff"),(50,60,"#9e9eff")]
+        )
+        no_rows = "".join(
+            f"<div style='display:flex;align-items:center;gap:5px;margin:2px 0'>"
+            f"<span style='display:inline-block;width:18px;height:13px;background:{c};border:1px solid #aaa'></span>"
+            f"<span style='font-size:10px'>No {lo}–{hi}%</span></div>"
+            for lo, hi, c in [(50,60,"#ff9e9e"),(60,70,"#ff7b7b"),(70,80,"#ff5858"),(80,90,"#ff3535"),(90,100,"#ff1212")]
+        )
         legend_html = (
-            f"<b style='font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:#555'>"
-            f"{_MODE_LABELS[mode]}</b><br>"
-            f"<span style='background:#1a52c8;color:white;padding:2px 10px;border-radius:3px'>Yes</span>"
-            f"&nbsp;"
-            f"<span style='background:#ff4444;color:white;padding:2px 10px;border-radius:3px'>No</span>"
-            f"<br><small style='color:#666'>Deeper color = larger margin</small>"
+            f"<b style='font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:#555'>{_MODE_LABELS[mode]}</b>"
+            f"<div style='font-size:10px;color:#777;margin:3px 0 5px;font-style:italic'>Vote share %</div>"
+            f"<div style='display:flex;gap:12px'>"
+            f"<div><div style='font-weight:bold;color:#1a52c8;font-size:11px;margin-bottom:3px'>Yes wins</div>{yes_rows}</div>"
+            f"<div><div style='font-weight:bold;color:#e03030;font-size:11px;margin-bottom:3px'>No wins</div>{no_rows}</div>"
+            f"</div>"
         )
 
     m.get_root().html.add_child(folium.Element(f"""
@@ -508,11 +540,78 @@ def _vote_share_legend_inner() -> str:
         for lo, hi, c in _REP_BANDS
     )
     return (
-        f"<div style='display:flex;gap:18px;margin-top:6px'>"
+        f"<div style='font-size:10px;color:#666;margin-top:4px;margin-bottom:6px;font-style:italic'>Winner's vote share %</div>"
+        f"<div style='display:flex;gap:18px'>"
         f"<div><div style='font-weight:bold;color:#3333cc;margin-bottom:3px'>Democrat</div>{dem_rows}</div>"
         f"<div><div style='font-weight:bold;color:#cc0000;margin-bottom:3px'>Republican</div>{rep_rows}</div>"
         f"</div>"
     )
+
+
+_STATEWIDE_BASELINE_RACES = (
+    ("2016", "President"),
+    ("2017", "Governor"),
+    ("2017", "Lieutenant Governor"),
+    ("2017", "Attorney General"),
+    ("2018", "U.S. Senate"),
+    ("2020", "President"),
+    ("2020", "U.S. Senate"),
+    ("2021", "Governor"),
+    ("2021", "Lieutenant Governor"),
+    ("2021", "Attorney General"),
+    ("2024", "President"),
+    ("2024", "U.S. Senate"),
+)
+
+_statewide_baseline_d_share_cache = None
+
+
+def _statewide_two_party_d_share(data: dict, office: str) -> float | None:
+    for race in data.get("statewide", []):
+        if (race.get("race") or race.get("office")) != office:
+            continue
+        dem = rep = 0.0
+        for candidate in race.get("candidates", []):
+            party = (candidate.get("party") or "").lower()
+            value = candidate.get("votes")
+            if value is None:
+                value = candidate.get("pct")
+            try:
+                value = float(value or 0)
+            except (TypeError, ValueError):
+                value = 0.0
+            if "dem" in party:
+                dem += value
+            elif "rep" in party:
+                rep += value
+        if dem + rep > 0:
+            return dem / (dem + rep) * 100
+    return None
+
+
+def _statewide_baseline_d_share() -> float | None:
+    global _statewide_baseline_d_share_cache
+    if _statewide_baseline_d_share_cache is not None:
+        return _statewide_baseline_d_share_cache
+    shares = []
+    for year, office in _STATEWIDE_BASELINE_RACES:
+        share = _statewide_two_party_d_share(_load_results_for_year(year), office)
+        if share is not None:
+            shares.append(share)
+    _statewide_baseline_d_share_cache = sum(shares) / len(shares) if shares else None
+    return _statewide_baseline_d_share_cache
+
+
+def _baseline_summary_for_statewide_race(year: str, office: str) -> str:
+    current = _statewide_two_party_d_share(_load_results_for_year(year), office)
+    baseline = _statewide_baseline_d_share()
+    if current is None or baseline is None:
+        return ""
+    delta = current - baseline
+    if abs(delta) < 0.05:
+        return "Even vs baseline"
+    side = "D" if delta > 0 else "R"
+    return f"{side}+{abs(delta):.1f} vs baseline"
 
 
 def _build_2023_state_leg_flips(chamber: str, results: dict) -> list[dict]:
@@ -1652,6 +1751,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             ),
         ).add_to(m)
         title = office_config["title"]
+        baseline_summary = _baseline_summary_for_statewide_race("2025", office_config["office"])
         legend_type = "vote_share"
 
     elif layer in ("pres_2024", "senate_2024"):
@@ -1710,6 +1810,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             ),
         ).add_to(m)
         title = map_title
+        baseline_summary = _baseline_summary_for_statewide_race("2024", office_label)
         legend_type = "vote_share"
 
     elif layer == "congress_2024":
@@ -1848,6 +1949,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             ),
         ).add_to(m)
         title = title_map[layer]
+        baseline_summary = _baseline_summary_for_statewide_race(year, race_name)
         legend_type = "vote_share"
 
     elif layer in ("senate_2019_results", "hod_2019_results"):
@@ -2476,6 +2578,16 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
           <br><small style='color:#666'>Hover for details</small>
         </div>"""
 
+    baseline_summary_html = ""
+    baseline_summary = locals().get("baseline_summary", "")
+    if baseline_summary:
+        baseline_summary_html = (
+            f"<div style=\"font-size:11px;font-weight:600;letter-spacing:0.02em;"
+            f"opacity:0.9;margin-top:3px;text-transform:none;\">"
+            f"{escape(baseline_summary)}"
+            f"</div>"
+        )
+
     flip_summary_html = ""
     if legend_type == "flip":
         dem_flips = 0
@@ -2507,6 +2619,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
          box-shadow:2px 2px 8px rgba(0,0,0,.4);font-family:Arial;font-size:14px;
          font-weight:700;letter-spacing:0.05em;white-space:nowrap;pointer-events:none;text-align:center;">
       {title}
+      {baseline_summary_html}
       {flip_summary_html}
     </div>
     {legend_box}
@@ -2649,7 +2762,7 @@ def _build_statewide_bubble_map(year: str, office: str) -> str:
             f"<svg width='{sz}' height='{sz}'>"
             f"<circle cx='{cx}' cy='{cy}' r='{r:.1f}' fill='#888' fill-opacity='0.45' stroke='white' stroke-width='1.5'/>"
             f"</svg>"
-            f"<span style='font-size:10px;color:#555'>{label}</span>"
+            f"<span style='font-size:10px;color:#555;white-space:nowrap'>≈ {label} votes</span>"
             f"</div>"
         )
 
@@ -2663,8 +2776,8 @@ def _build_statewide_bubble_map(year: str, office: str) -> str:
          box-shadow:2px 2px 8px rgba(0,0,0,.3);font-family:Arial;font-size:12px">
       <span style="background:#1a52c8;color:white;padding:2px 8px;border-radius:3px;font-size:11px">Democratic winner</span>
       &nbsp;<span style="background:#c8102e;color:white;padding:2px 8px;border-radius:3px;font-size:11px">Republican winner</span>
-      <div style="margin-top:8px;font-weight:bold;color:#444;font-size:11px;letter-spacing:0.04em">VOTES CAST</div>
-      <div style="display:flex;align-items:flex-end;gap:10px;margin-top:4px">
+      <div style="margin-top:8px;font-weight:bold;color:#444;font-size:11px;letter-spacing:0.04em">CIRCLE SIZE = VOTES CAST</div>
+      <div style="display:flex;align-items:flex-end;gap:14px;margin-top:4px">
         {_key_items_html}
       </div>
     </div>
