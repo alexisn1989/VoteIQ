@@ -3805,9 +3805,10 @@ def _load_sd_geojson():
     return _va_sd_geojson_cache
 
 
-@app.get("/baseline-map")
-def baseline_map_redirect():
-    return RedirectResponse(url="/virginia-map?layer=locality_baseline", status_code=302)
+@app.get("/baseline-map", response_class=HTMLResponse)
+def baseline_map_page():
+    map_html = _build_district_map("locality_baseline")
+    return HTMLResponse(content=map_html)
 
 
 @app.get("/virignia-map", response_class=HTMLResponse)
@@ -3817,7 +3818,6 @@ def virginia_map_page(layer: str = "counties", embed: bool = False):
         "counties", "pres_flip", "gov_flip", "gov_2025_flip", "congress_midterm_flip",
         "hod_state_flip", "density_2017", "density_2019", "density_2021",
         "density_2023", "density_2025", "sd_flip", "hod_flip", "hod", "sd",
-        "locality_baseline",
     }
     initial_layer = layer if layer in allowed_layers else "counties"
     mapbox_token = os.getenv("MAPBOX_TOKEN", "")
@@ -3831,7 +3831,6 @@ def virginia_map_page(layer: str = "counties", embed: bool = False):
     gov_2025_flip = _build_locality_office_flip_geojson("2021", "2025", "Governor")
     congress_midterm_flip = _build_congress_flip_geojson("2018", "2022")
     hod_state_flip = _build_hod_2017_2021_flip_geojson()
-    locality_baseline = _build_locality_baseline_geojson()
     hod_density_layers = {year: _build_hod_density_geojson(year) for year in ("2017", "2019", "2021", "2023", "2025")}
     hod_density_point_layers = {year: _build_hod_density_points_geojson(year) for year in ("2017", "2019", "2021", "2023", "2025")}
     def _s(obj): return json.dumps(obj, default=str).replace("</script>", "<\\/script>")
@@ -3851,7 +3850,6 @@ def virginia_map_page(layer: str = "counties", embed: bool = False):
         f"window._GOV_2025_FLIP_GEOJSON={_s(gov_2025_flip)};"
         f"window._CONGRESS_MIDTERM_FLIP_GEOJSON={_s(congress_midterm_flip)};"
         f"window._HOD_STATE_FLIP_GEOJSON={_s(hod_state_flip)};"
-        f"window._LOCALITY_BASELINE_GEOJSON={_s(locality_baseline)};"
         f"window._HOD_DENSITY_GEOJSON={_s(hod_density_layers)};"
         f"window._HOD_DENSITY_POINTS_GEOJSON={_s(hod_density_point_layers)};"
         f"</script>"
