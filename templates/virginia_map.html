@@ -152,6 +152,9 @@
   <button class="layer-tab" id="tab-density-2025" data-layer="density_2025">
     <span class="tab-dot"></span>2025 Bubbles<span class="layer-count">HOD</span>
   </button>
+  <button class="layer-tab" id="tab-locality-baseline" data-layer="locality_baseline">
+    <span class="tab-dot"></span>Partisan Baseline<span class="layer-count">2016–24</span>
+  </button>
   <button class="layer-tab" id="tab-pres-flip" data-layer="pres_flip">
     <span class="tab-dot"></span>2016 to 2020 President<span class="layer-count">Flip</span>
   </button>
@@ -191,6 +194,7 @@
     <label for="layer-select">Layer</label>
     <select id="layer-select" aria-label="Map layer">
       <option value="counties">Counties & Cities</option>
+      <option value="locality_baseline">Partisan Baseline (2016–2024)</option>
       <option value="density_2017">2017 Bubbles</option>
       <option value="density_2019">2019 Bubbles</option>
       <option value="density_2021">2021 Bubbles</option>
@@ -262,6 +266,7 @@ const GOV_FLIP_GJ = window._GOV_FLIP_GEOJSON || { type:'FeatureCollection', feat
 const GOV_2025_FLIP_GJ = window._GOV_2025_FLIP_GEOJSON || { type:'FeatureCollection', features:[] };
 const CONGRESS_MIDTERM_FLIP_GJ = window._CONGRESS_MIDTERM_FLIP_GEOJSON || { type:'FeatureCollection', features:[] };
 const HOD_STATE_FLIP_GJ = window._HOD_STATE_FLIP_GEOJSON || { type:'FeatureCollection', features:[] };
+const LOCALITY_BASELINE_GJ = window._LOCALITY_BASELINE_GEOJSON || { type:'FeatureCollection', features:[] };
 const HOD_DENSITY_GJ = window._HOD_DENSITY_GEOJSON || {};
 const HOD_DENSITY_POINTS_GJ = window._HOD_DENSITY_POINTS_GEOJSON || {};
 
@@ -317,6 +322,28 @@ const LAYERS = {
       { color:'#c8102e', border:'#8a0020', label:'Selected' },
     ],
     statLabel: 'Counties',
+    statTotal: 134,
+  },
+  locality_baseline: {
+    geojson: LOCALITY_BASELINE_GJ,
+    label: 'Partisan Baseline — Avg of 12 Statewide Races (2016–2024)',
+    fillColor: ['get', '_bl_color'],
+    hoverColor: '#d4cfc4',
+    getLabel: p => p._bl_locality || `${p.NAME} ${p.LSAD}`,
+    getTitle: p => p._bl_locality || p.NAME,
+    getSub:   p => `${p._bl_lean || 'No data'} | D avg: ${p._bl_tpv_d || '-'}`,
+    getSidebarName: p => p._bl_locality || p.NAME,
+    getSidebarTag:  p => p._bl_lean || 'No data',
+    sortKey: p => p.NAME,
+    legend: [
+      { color:'#0045ff', border:'#0d1b2a', label:'Strong Democrat (D+25+)' },
+      { color:'#7ba8f7', border:'#0d1b2a', label:'Lean Democrat (D+10–25)' },
+      { color:'#d8e6ff', border:'#0d1b2a', label:'Slight Democrat (D+0–10)' },
+      { color:'#ffd8d8', border:'#0d1b2a', label:'Slight Republican (R+0–10)' },
+      { color:'#f78080', border:'#0d1b2a', label:'Lean Republican (R+10–25)' },
+      { color:'#ff0000', border:'#0d1b2a', label:'Strong Republican (R+25+)' },
+    ],
+    statLabel: 'Localities',
     statTotal: 134,
   },
   pres_flip: {

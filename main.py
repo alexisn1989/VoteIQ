@@ -2083,6 +2083,25 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         ).add_to(m)
         legend_type = "flip"
 
+    elif layer == "locality_baseline":
+        gj = _build_locality_baseline_geojson()
+
+        def _baseline_style(feat):
+            return {"fillColor": feat["properties"].get("_bl_color", "#cccccc"),
+                    "color": "#666", "weight": 0.5, "fillOpacity": 0.88}
+
+        folium.GeoJson(
+            gj,
+            style_function=_baseline_style,
+            tooltip=folium.GeoJsonTooltip(
+                fields=["_bl_locality", "_bl_lean", "_bl_tpv_d", "_bl_d_pct", "_bl_r_pct", "_bl_n"],
+                aliases=["Locality:", "Partisan Lean:", "Avg D Two-Party %:", "Avg D Raw %:", "Avg R Raw %:", "Races:"],
+                localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
+            ),
+        ).add_to(m)
+        title = "Virginia Partisan Baseline — Average of 12 Statewide Races (2016–2024)"
+        legend_type = "baseline"
+
     elif layer in ("congress_midterm_flip", "hod_state_flip", "hod_2019_flip_2017"):
         if layer == "congress_midterm_flip":
             gj = _build_congress_flip_geojson("2018", "2022")
@@ -3188,6 +3207,7 @@ Answer questions about these results clearly and concisely (2-4 sentences). Be f
 
 
 _va_counties_geojson_cache = None
+_locality_baseline_geojson_cache = None
 _va_hod_geojson_cache = None
 _va_old_hod_geojson_cache = None   # pre-2023 (2010-cycle) HOD boundaries
 _va_sd_geojson_cache = None
@@ -3213,6 +3233,93 @@ def _load_va_counties_geojson():
 
 def _normalize_locality_key(name: str) -> str:
     return str(name or "").upper().replace("&", "AND").strip()
+
+
+def _build_locality_baseline_geojson():
+    """Average D two-party vote share across all 12 statewide races (2016-2024)."""
+    global _locality_baseline_geojson_cache
+    if _locality_baseline_geojson_cache is not None:
+        return _locality_baseline_geojson_cache
+
+    RACES = [
+        ("2016", "President"),
+        ("2017", "Governor"),
+        ("2017", "Lieutenant Governor"),
+        ("2017", "Attorney General"),
+        ("2018", "U.S. Senate"),
+        ("2020", "President"),
+        ("2020", "U.S. Senate"),
+        ("2021", "Governor"),
+        ("2021", "Lieutenant Governor"),
+        ("2021", "Attorney General"),
+        ("2024", "President"),
+        ("2024", "U.S. Senate"),
+    ]
+
+    from collections import defaultdict
+    locality_data = defaultdict(lambda: {"d": [], "r": []})
+
+    for year, office in RACES:
+        data = _load_results_for_year(year)
+        race_results = data.get("locality_results", {}).get(office, {})
+        for loc_name, result in race_results.items():
+            if not isinstance(result, dict):
+                continue
+            norm = _normalize_locality_key(loc_name)
+            d_pct = r_pct = None
+            if "candidates" in result:
+                for c in result["candidates"]:
+                    p = (c.get("party") or "").lower()
+                    pct = float(c.get("pct") or 0)
+                    if "dem" in p and d_pct is None:
+                        d_pct = pct
+                    elif "rep" in p and r_pct is None:
+                        r_pct = pct
+            elif "dem" in result and "rep" in result:
+                d_pct = float((result["dem"] or {}).get("pct") or 0)
+                r_pct = float((result["rep"] or {}).get("pct") or 0)
+            if d_pct is not None and r_pct is not None and (d_pct + r_pct) > 0:
+                locality_data[norm]["d"].append(d_pct)
+                locality_data[norm]["r"].append(r_pct)
+
+    def _lean_color(d_lean):
+        intensity = min(abs(d_lean) / 30.0, 1.0)
+        if d_lean >= 0:
+            r = int(255 - intensity * 210)
+            g = int(255 - intensity * 160)
+            b = 255
+        else:
+            r = 255
+            g = int(255 - intensity * 160)
+            b = int(255 - intensity * 210)
+        return f"#{r:02x}{g:02x}{b:02x}"
+
+    counties = json.loads(json.dumps(_load_va_counties_geojson()))
+    for feat in counties.get("features", []):
+        props = feat.setdefault("properties", {})
+        locality = f"{props.get('NAME', '')} {props.get('LSAD', '')}".strip()
+        norm = _normalize_locality_key(locality)
+        ld = locality_data.get(norm, {})
+        d_list = ld.get("d", [])
+        r_list = ld.get("r", [])
+        n = len(d_list)
+        if n:
+            avg_d = sum(d_list) / n
+            avg_r = sum(r_list) / n
+            tpv_d = avg_d / (avg_d + avg_r) * 100
+        else:
+            avg_d = avg_r = tpv_d = 50.0
+        d_lean = tpv_d - 50.0
+        props["_bl_locality"] = locality
+        props["_bl_d_pct"] = f"{avg_d:.1f}%"
+        props["_bl_r_pct"] = f"{avg_r:.1f}%"
+        props["_bl_tpv_d"] = f"{tpv_d:.1f}%"
+        props["_bl_lean"] = f"+{d_lean:.1f} D" if d_lean >= 0 else f"+{abs(d_lean):.1f} R"
+        props["_bl_n"] = n
+        props["_bl_color"] = _lean_color(d_lean)
+
+    _locality_baseline_geojson_cache = counties
+    return _locality_baseline_geojson_cache
 
 
 def _locality_winner_lookup(results: dict, office: str) -> dict:
@@ -3705,6 +3812,7 @@ def virginia_map_page(layer: str = "counties", embed: bool = False):
         "counties", "pres_flip", "gov_flip", "gov_2025_flip", "congress_midterm_flip",
         "hod_state_flip", "density_2017", "density_2019", "density_2021",
         "density_2023", "density_2025", "sd_flip", "hod_flip", "hod", "sd",
+        "locality_baseline",
     }
     initial_layer = layer if layer in allowed_layers else "counties"
     mapbox_token = os.getenv("MAPBOX_TOKEN", "")
@@ -3718,6 +3826,7 @@ def virginia_map_page(layer: str = "counties", embed: bool = False):
     gov_2025_flip = _build_locality_office_flip_geojson("2021", "2025", "Governor")
     congress_midterm_flip = _build_congress_flip_geojson("2018", "2022")
     hod_state_flip = _build_hod_2017_2021_flip_geojson()
+    locality_baseline = _build_locality_baseline_geojson()
     hod_density_layers = {year: _build_hod_density_geojson(year) for year in ("2017", "2019", "2021", "2023", "2025")}
     hod_density_point_layers = {year: _build_hod_density_points_geojson(year) for year in ("2017", "2019", "2021", "2023", "2025")}
     def _s(obj): return json.dumps(obj, default=str).replace("</script>", "<\\/script>")
@@ -3737,6 +3846,7 @@ def virginia_map_page(layer: str = "counties", embed: bool = False):
         f"window._GOV_2025_FLIP_GEOJSON={_s(gov_2025_flip)};"
         f"window._CONGRESS_MIDTERM_FLIP_GEOJSON={_s(congress_midterm_flip)};"
         f"window._HOD_STATE_FLIP_GEOJSON={_s(hod_state_flip)};"
+        f"window._LOCALITY_BASELINE_GEOJSON={_s(locality_baseline)};"
         f"window._HOD_DENSITY_GEOJSON={_s(hod_density_layers)};"
         f"window._HOD_DENSITY_POINTS_GEOJSON={_s(hod_density_point_layers)};"
         f"</script>"
