@@ -2476,12 +2476,38 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
           <br><small style='color:#666'>Hover for details</small>
         </div>"""
 
+    flip_summary_html = ""
+    if legend_type == "flip":
+        dem_flips = 0
+        rep_flips = 0
+        summary_features = features or (gj.get("features", []) if isinstance(locals().get("gj"), dict) else [])
+        for feat in summary_features:
+            status = feat.get("properties", {}).get("_flip_status") or feat.get("properties", {}).get("_status", "")
+            if status == "Flipped Democratic":
+                dem_flips += 1
+            elif status == "Flipped Republican":
+                rep_flips += 1
+        net = dem_flips - rep_flips
+        if net > 0:
+            summary = f"Net Democratic gain +{net}"
+        elif net < 0:
+            summary = f"Net Republican gain +{abs(net)}"
+        else:
+            summary = "No net party change"
+        flip_summary_html = (
+            f"<div style="font-size:11px;font-weight:600;letter-spacing:0.02em;"
+            f"opacity:0.9;margin-top:3px;text-transform:none;">"
+            f"{escape(summary)} &nbsp;|&nbsp; D flips: {dem_flips} &nbsp;|&nbsp; R flips: {rep_flips}"
+            f"</div>"
+        )
+
     m.get_root().html.add_child(folium.Element(f"""
     <div style="position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:1000;
          background:#0d1b2a;color:white;padding:8px 20px;border-radius:6px;
          box-shadow:2px 2px 8px rgba(0,0,0,.4);font-family:Arial;font-size:14px;
-         font-weight:700;letter-spacing:0.05em;white-space:nowrap;pointer-events:none;">
+         font-weight:700;letter-spacing:0.05em;white-space:nowrap;pointer-events:none;text-align:center;">
       {title}
+      {flip_summary_html}
     </div>
     {legend_box}
     """))
