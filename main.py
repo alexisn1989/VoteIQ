@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -3803,6 +3803,11 @@ def _load_sd_geojson():
     path = os.path.join(BASE_DIR, "SCV Final 2021 Redistricting Plans", "SCV FINAL SD.shp")
     _va_sd_geojson_cache = _shp_to_geojson(path)
     return _va_sd_geojson_cache
+
+
+@app.get("/baseline-map")
+def baseline_map_redirect():
+    return RedirectResponse(url="/virginia-map?layer=locality_baseline", status_code=302)
 
 
 @app.get("/virignia-map", response_class=HTMLResponse)
