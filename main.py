@@ -517,6 +517,47 @@ def _normalize_major_party(party: str) -> str:
 _DEM_BANDS = [(90,101,"#0000a0"),(80,90,"#3333cc"),(70,80,"#5555ee"),(60,70,"#7777ff"),(50,60,"#aaaaff")]
 _REP_BANDS = [(90,101,"#990000"),(80,90,"#cc0000"),(70,80,"#ee4444"),(60,70,"#ff8888"),(50,60,"#ffbbbb")]
 
+_bl_lookup_cache: dict = {}
+
+def _get_bl_lookup() -> dict:
+    """Return {normalized_geo_key: tpv_d_float} for baseline swing annotation."""
+    global _bl_lookup_cache
+    if _bl_lookup_cache:
+        return _bl_lookup_cache
+    gj = _build_locality_baseline_geojson()
+    for bf in gj.get("features", []):
+        bp = bf.get("properties", {})
+        key = f"{bp.get('NAME', '')} {bp.get('LSAD', '')}".strip().upper().replace("&", "AND")
+        try:
+            _bl_lookup_cache[key] = float(str(bp.get("_bl_tpv_d", "50")).replace("%", ""))
+        except Exception:
+            _bl_lookup_cache[key] = 50.0
+    return _bl_lookup_cache
+
+def _partisan_lean(tpv_d: float) -> str:
+    if tpv_d >= 65:   return "Solid D"
+    if tpv_d >= 57:   return "Likely D"
+    if tpv_d >= 52.5: return "Lean D"
+    if tpv_d >= 47.5: return "Toss-up"
+    if tpv_d >= 43:   return "Lean R"
+    if tpv_d >= 35:   return "Likely R"
+    return "Solid R"
+
+def _annotate_baseline(props: dict, geo_key: str, dem_pct: float, rep_pct: float) -> None:
+    """Inject _result, _baseline, _swing, _lean into a feature's properties dict."""
+    bl_tpv_d = _get_bl_lookup().get(geo_key, 50.0)
+    tp = dem_pct + rep_pct
+    el_tpv_d = dem_pct / tp * 100 if tp > 0 else 50.0
+    swing = el_tpv_d - bl_tpv_d
+    props["_result"]   = f"D {el_tpv_d:.1f}% / R {100 - el_tpv_d:.1f}%"
+    props["_baseline"] = f"D {bl_tpv_d:.1f}% avg (12 races)"
+    props["_swing"]    = (
+        "≈ on baseline" if abs(swing) < 0.5
+        else f"▲ +{swing:.1f} pts D vs baseline" if swing > 0
+        else f"▼ {abs(swing):.1f} pts R vs baseline"
+    )
+    props["_lean"] = _partisan_lean(el_tpv_d)
+
 def _pct_to_band_color(pct: float, party: str) -> str:
     bands = _DEM_BANDS if "democrat" in str(party).lower() else _REP_BANDS if "republican" in str(party).lower() else None
     if not bands:
@@ -1706,27 +1747,6 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
 
         race_lookup = {_nloc(k): v for k, v in race_data.items()}
 
-        # Load baseline for swing computation
-        _bl_gj = _build_locality_baseline_geojson()
-        _bl_lookup = {}
-        for _bf in _bl_gj.get("features", []):
-            _bp = _bf.get("properties", {})
-            _bkey = _nloc(f"{_bp.get('NAME', '')} {_bp.get('LSAD', '')}".strip())
-            try:
-                _bl_tpv = float(str(_bp.get("_bl_tpv_d", "50")).replace("%", ""))
-            except Exception:
-                _bl_tpv = 50.0
-            _bl_lookup[_bkey] = _bl_tpv
-
-        def _election_lean(tpv_d):
-            if tpv_d >= 65:   return "Solid D"
-            if tpv_d >= 57:   return "Likely D"
-            if tpv_d >= 52.5: return "Lean D"
-            if tpv_d >= 47.5: return "Toss-up"
-            if tpv_d >= 43:   return "Lean R"
-            if tpv_d >= 35:   return "Likely R"
-            return "Solid R"
-
         counties_path = os.path.join(BASE_DIR, "va_counties.json")
         with open(counties_path, encoding="utf-8") as _cf:
             counties_geojson = json.load(_cf)
@@ -1749,31 +1769,16 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             winner_pct = result.get("winner_pct", 0.0)
             margin = max(0.0, winner_pct - 50.0)
             opacity = round(0.2 + min(margin / 35.0, 1.0) * 0.6, 3)
-            # Two-party vote share for this election
-            _tp = dem_pct + rep_pct
-            el_tpv_d = dem_pct / _tp * 100 if _tp > 0 else 50.0
-            # Baseline and swing
-            bl_tpv_d = _bl_lookup.get(geo_key, 50.0)
-            swing = el_tpv_d - bl_tpv_d
-            if abs(swing) < 0.5:
-                swing_str = "≈ on baseline"
-            elif swing > 0:
-                swing_str = f"▲ +{swing:.1f} pts D vs baseline"
-            else:
-                swing_str = f"▼ {abs(swing):.1f} pts R vs baseline"
             props["_locality"] = f"{name} {lsad}".title()
-            props["_result"] = f"D {el_tpv_d:.1f}% / R {100-el_tpv_d:.1f}%"
             props["_democrat"] = f"{dem_name} ({dem_pct:.1f}%)"
             props["_republican"] = f"{rep_name} ({rep_pct:.1f}%)"
             props["_winner"] = (
                 f"{winner.get('name', 'N/A')} ({'D' if 'democrat' in winner_party.lower() else 'R' if 'republican' in winner_party.lower() else winner_party})"
                 if winner else "N/A"
             )
-            props["_baseline"] = f"D {bl_tpv_d:.1f}% avg (12 races)"
-            props["_swing"] = swing_str
-            props["_lean"] = _election_lean(el_tpv_d)
             props["_party"] = winner_party
             props["_color"] = _pct_to_band_color(winner_pct, winner_party) if result else "#cccccc"
+            _annotate_baseline(props, geo_key, dem_pct, rep_pct)
 
         def statewide_results_style(feat):
             return {"fillColor": feat["properties"].get("_color", "#cccccc"), "color": "#555", "weight": 0.5, "fillOpacity": 0.9}
@@ -1833,6 +1838,7 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             winner_pct24 = float(winner.get("pct") or 0.0)
             props["_party"] = winner_party
             props["_color"] = _pct_to_band_color(winner_pct24, winner_party) if result else "#cccccc"
+            _annotate_baseline(props, geo_key, dem_pct, rep_pct)
 
         def _2024_locality_style(feat):
             return {"fillColor": feat["properties"].get("_color", "#cccccc"), "color": "#555", "weight": 0.5, "fillOpacity": 0.9}
@@ -1841,8 +1847,8 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             counties_geojson,
             style_function=_2024_locality_style,
             tooltip=folium.GeoJsonTooltip(
-                fields=["_locality", "_winner", "_democrat", "_republican"],
-                aliases=["Locality:", "Winner:", "Democratic:", "Republican:"],
+                fields=["_locality", "_winner", "_result", "_baseline", "_swing", "_lean"],
+                aliases=["County:", "Winner:", "Result:", "Baseline:", "Swing:", "Lean:"],
                 localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
             ),
         ).add_to(m)
@@ -1967,11 +1973,20 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                 opacity = round(0.2 + min(margin / 35.0, 1.0) * 0.6, 3)
             else:
                 w_name, w_pct, w_party, r_name, r_pct = "—", 0.0, "", "—", 0.0
+            r_party = cand_party.get(r_name, "")
+            if "democrat" in w_party.lower():
+                _dem_p, _rep_p = w_pct, (r_pct if "republican" in r_party.lower() else 0.0)
+            elif "republican" in w_party.lower():
+                _dem_p, _rep_p = (r_pct if "democrat" in r_party.lower() else 0.0), w_pct
+            else:
+                _dem_p = next((pct for n, pct in sorted_cands if "democrat" in cand_party.get(n, "").lower()), 0.0)
+                _rep_p = next((pct for n, pct in sorted_cands if "republican" in cand_party.get(n, "").lower()), 0.0)
             props["_locality"] = f"{name} {lsad}".title()
             props["_winner"] = f"{w_name} ({w_pct:.1f}%)"
             props["_runner"] = f"{r_name} ({r_pct:.1f}%)"
             props["_party"] = w_party
             props["_color"] = _pct_to_band_color(w_pct, w_party) if w_party else "#cccccc"
+            _annotate_baseline(props, geo_key, _dem_p, _rep_p)
 
         def _2021_locality_style(feat):
             return {"fillColor": feat["properties"].get("_color", "#cccccc"), "color": "#555", "weight": 0.5, "fillOpacity": 0.9}
@@ -1980,8 +1995,8 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             counties_geojson21,
             style_function=_2021_locality_style,
             tooltip=folium.GeoJsonTooltip(
-                fields=["_locality", "_winner", "_runner"],
-                aliases=["Locality:", "Winner:", "Runner-Up:"],
+                fields=["_locality", "_winner", "_result", "_baseline", "_swing", "_lean"],
+                aliases=["County:", "Winner:", "Result:", "Baseline:", "Swing:", "Lean:"],
                 localize=True, sticky=True, style="font-family:Arial;font-size:13px;",
             ),
         ).add_to(m)
