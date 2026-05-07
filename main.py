@@ -2495,8 +2495,8 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
         else:
             summary = "No net party change"
         flip_summary_html = (
-            f"<div style="font-size:11px;font-weight:600;letter-spacing:0.02em;"
-            f"opacity:0.9;margin-top:3px;text-transform:none;">"
+            f"<div style=\"font-size:11px;font-weight:600;letter-spacing:0.02em;"
+            f"opacity:0.9;margin-top:3px;text-transform:none;\">"
             f"{escape(summary)} &nbsp;|&nbsp; D flips: {dem_flips} &nbsp;|&nbsp; R flips: {rep_flips}"
             f"</div>"
         )
