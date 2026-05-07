@@ -2951,7 +2951,7 @@ HISTORICAL_ELECTION_META = {
         "kind": "district",
         "maps": [
             {"tab": "senate-map", "label": "Senate Map", "title": "State Senate - District Results Map",        "url": "/maps/senate/2019"},
-            {"tab": "senate-flip-map", "label": "Senate Flip Map", "title": "State Senate - 2019 to 2023 Flip Map", "url": "/virginia-map?layer=sd_flip&embed=1"},
+            {"tab": "senate-flip-map", "label": "Senate Flip Map", "title": "State Senate - 2019 to 2023 Flip Map", "layer": "senate_2023_flip_2019"},
             {"tab": "hod-map",    "label": "HOD Map",    "title": "House of Delegates - District Results Map", "url": "/maps/hod/2019"},
             {"tab": "hod-flip-map", "label": "HOD Flip Map", "title": "House of Delegates - 2017 to 2019 Flip Map", "layer": "hod_2019_flip_2017"},
         ],
