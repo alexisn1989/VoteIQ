@@ -2399,6 +2399,48 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             f"{_vote_share_legend_inner()}"
             f"</div>"
         )
+    elif legend_type == "baseline":
+        legend_box = """
+        <div style='position:fixed;bottom:30px;left:30px;z-index:1000;
+             background:white;padding:12px 16px;border-radius:8px;
+             box-shadow:2px 2px 8px rgba(0,0,0,.3);font-family:Arial;font-size:11px;min-width:180px'>
+          <b style='font-size:12px;display:block;margin-bottom:8px'>Avg D Two-Party Vote Share</b>
+          <div style='display:flex;flex-direction:column;gap:3px'>
+            <div style='display:flex;align-items:center;gap:6px'>
+              <span style='display:inline-block;width:20px;height:13px;background:#1545ff;border:1px solid #aaa'></span>
+              <span>D+25% or more</span>
+            </div>
+            <div style='display:flex;align-items:center;gap:6px'>
+              <span style='display:inline-block;width:20px;height:13px;background:#5f8aff;border:1px solid #aaa'></span>
+              <span>D+15% to D+25%</span>
+            </div>
+            <div style='display:flex;align-items:center;gap:6px'>
+              <span style='display:inline-block;width:20px;height:13px;background:#b0c8ff;border:1px solid #aaa'></span>
+              <span>D+5% to D+15%</span>
+            </div>
+            <div style='display:flex;align-items:center;gap:6px'>
+              <span style='display:inline-block;width:20px;height:13px;background:#e0ebff;border:1px solid #aaa'></span>
+              <span>D+0% to D+5%</span>
+            </div>
+            <div style='display:flex;align-items:center;gap:6px'>
+              <span style='display:inline-block;width:20px;height:13px;background:#ffe0e0;border:1px solid #aaa'></span>
+              <span>R+0% to R+5%</span>
+            </div>
+            <div style='display:flex;align-items:center;gap:6px'>
+              <span style='display:inline-block;width:20px;height:13px;background:#ffb0b0;border:1px solid #aaa'></span>
+              <span>R+5% to R+15%</span>
+            </div>
+            <div style='display:flex;align-items:center;gap:6px'>
+              <span style='display:inline-block;width:20px;height:13px;background:#ff6060;border:1px solid #aaa'></span>
+              <span>R+15% to R+25%</span>
+            </div>
+            <div style='display:flex;align-items:center;gap:6px'>
+              <span style='display:inline-block;width:20px;height:13px;background:#ff1515;border:1px solid #aaa'></span>
+              <span>R+25% or more</span>
+            </div>
+          </div>
+          <div style='margin-top:6px;font-size:10px;color:#666'>Avg of 12 races, 2016–2024</div>
+        </div>"""
     elif legend_type == "flip":
         legend_box = """
         <div style='position:fixed;bottom:30px;left:30px;z-index:1000;
