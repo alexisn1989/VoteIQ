@@ -565,7 +565,14 @@ def _pct_to_band_color(pct: float, party: str) -> str:
     for lo, hi, color in bands:
         if lo <= pct < hi:
             return color
-    return bands[0][2]
+    return bands[-1][2]  # lightest shade for anything below 50% (third-party effect)
+
+def _color_from_tpv(d_tpv: float) -> str:
+    """Color a locality by D two-party vote share — fixes dark-color bug on close races with 3rd parties."""
+    if d_tpv >= 50:
+        return _pct_to_band_color(d_tpv, "Democrat")
+    else:
+        return _pct_to_band_color(100 - d_tpv, "Republican")
 
 def _vote_share_legend_inner() -> str:
     dem_rows = "".join(
@@ -1777,7 +1784,9 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                 if winner else "N/A"
             )
             props["_party"] = winner_party
-            props["_color"] = _pct_to_band_color(winner_pct, winner_party) if result else "#cccccc"
+            _tp25 = dem_pct + rep_pct
+            _d_tpv25 = dem_pct / _tp25 * 100 if _tp25 > 0 else 50.0
+            props["_color"] = _color_from_tpv(_d_tpv25) if result else "#cccccc"
             _annotate_baseline(props, geo_key, dem_pct, rep_pct)
 
         def statewide_results_style(feat):
@@ -1835,9 +1844,10 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
                 f"{winner.get('name','N/A')} ({'D' if 'democrat' in winner_party.lower() else 'R' if 'republican' in winner_party.lower() else winner_party})"
                 if winner else "N/A"
             )
-            winner_pct24 = float(winner.get("pct") or 0.0)
             props["_party"] = winner_party
-            props["_color"] = _pct_to_band_color(winner_pct24, winner_party) if result else "#cccccc"
+            _tp24 = dem_pct + rep_pct
+            _d_tpv24 = dem_pct / _tp24 * 100 if _tp24 > 0 else 50.0
+            props["_color"] = _color_from_tpv(_d_tpv24) if result else "#cccccc"
             _annotate_baseline(props, geo_key, dem_pct, rep_pct)
 
         def _2024_locality_style(feat):
@@ -1985,7 +1995,9 @@ def _build_district_map(layer: str, user_lat: float = None, user_lng: float = No
             props["_winner"] = f"{w_name} ({w_pct:.1f}%)"
             props["_runner"] = f"{r_name} ({r_pct:.1f}%)"
             props["_party"] = w_party
-            props["_color"] = _pct_to_band_color(w_pct, w_party) if w_party else "#cccccc"
+            _tp_old = _dem_p + _rep_p
+            _d_tpv_old = _dem_p / _tp_old * 100 if _tp_old > 0 else 50.0
+            props["_color"] = _color_from_tpv(_d_tpv_old) if w_party else "#cccccc"
             _annotate_baseline(props, geo_key, _dem_p, _rep_p)
 
         def _2021_locality_style(feat):
