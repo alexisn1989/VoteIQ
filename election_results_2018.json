@@ -29,669 +29,3196 @@
   "locality_results": {
     "U.S. Senate": {
       "Accomack County": {
-        "Corey Stewart": 51.9,
-        "Matthew Waters": 1.1,
-        "Timothy Kaine": 47.1
+        "winner": "Corey Stewart",
+        "total": 12745,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 5997,
+            "pct": 47.1
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 6605,
+            "pct": 51.9
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 135,
+            "pct": 1.1
+          }
+        ]
       },
       "Albemarle County": {
-        "Corey Stewart": 30.8,
-        "Matthew Waters": 2.2,
-        "Timothy Kaine": 67.1
+        "winner": "Timothy Kaine",
+        "total": 53326,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 35701,
+            "pct": 67.1
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 16371,
+            "pct": 30.8
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 1161,
+            "pct": 2.2
+          }
+        ]
       },
       "Alleghany County": {
-        "Corey Stewart": 63.0,
-        "Matthew Waters": 1.2,
-        "Timothy Kaine": 35.8
+        "winner": "Corey Stewart",
+        "total": 5453,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 1952,
+            "pct": 35.8
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 3433,
+            "pct": 63.0
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 66,
+            "pct": 1.2
+          }
+        ]
       },
       "Amelia County": {
-        "Corey Stewart": 65.4,
-        "Matthew Waters": 1.4,
-        "Timothy Kaine": 33.2
+        "winner": "Corey Stewart",
+        "total": 5849,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 1938,
+            "pct": 33.2
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 3823,
+            "pct": 65.4
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 81,
+            "pct": 1.4
+          }
+        ]
       },
       "Amherst County": {
-        "Corey Stewart": 62.1,
-        "Matthew Waters": 1.7,
-        "Timothy Kaine": 36.2
+        "winner": "Corey Stewart",
+        "total": 12545,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 4541,
+            "pct": 36.2
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 7779,
+            "pct": 62.1
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 215,
+            "pct": 1.7
+          }
+        ]
       },
       "Appomattox County": {
-        "Corey Stewart": 71.1,
-        "Matthew Waters": 1.5,
-        "Timothy Kaine": 27.4
+        "winner": "Corey Stewart",
+        "total": 6681,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 1828,
+            "pct": 27.4
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 4751,
+            "pct": 71.1
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 99,
+            "pct": 1.5
+          }
+        ]
       },
       "Arlington County": {
-        "Corey Stewart": 15.5,
-        "Matthew Waters": 2.6,
-        "Timothy Kaine": 81.9
+        "winner": "Timothy Kaine",
+        "total": 106913,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 87258,
+            "pct": 81.9
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 16495,
+            "pct": 15.5
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 2771,
+            "pct": 2.6
+          }
+        ]
       },
       "Augusta County": {
-        "Corey Stewart": 69.8,
-        "Matthew Waters": 1.8,
-        "Timothy Kaine": 28.3
+        "winner": "Corey Stewart",
+        "total": 29807,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 8427,
+            "pct": 28.3
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 20796,
+            "pct": 69.8
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 550,
+            "pct": 1.8
+          }
+        ]
       },
       "Bath County": {
-        "Corey Stewart": 65.6,
-        "Matthew Waters": 1.4,
-        "Timothy Kaine": 33.1
+        "winner": "Corey Stewart",
+        "total": 1748,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 576,
+            "pct": 33.1
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 1142,
+            "pct": 65.6
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 24,
+            "pct": 1.4
+          }
+        ]
       },
       "Bedford County": {
-        "Corey Stewart": 71.2,
-        "Matthew Waters": 1.7,
-        "Timothy Kaine": 27.1
+        "winner": "Corey Stewart",
+        "total": 35548,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 9632,
+            "pct": 27.1
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 25301,
+            "pct": 71.2
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 603,
+            "pct": 1.7
+          }
+        ]
       },
       "Bland County": {
-        "Corey Stewart": 78.2,
-        "Matthew Waters": 1.2,
-        "Timothy Kaine": 20.6
+        "winner": "Corey Stewart",
+        "total": 2453,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 504,
+            "pct": 20.6
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 1916,
+            "pct": 78.2
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 30,
+            "pct": 1.2
+          }
+        ]
       },
       "Botetourt County": {
-        "Corey Stewart": 69.1,
-        "Matthew Waters": 1.6,
-        "Timothy Kaine": 29.3
+        "winner": "Corey Stewart",
+        "total": 15522,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 4543,
+            "pct": 29.3
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 10720,
+            "pct": 69.1
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 246,
+            "pct": 1.6
+          }
+        ]
       },
       "Brunswick County": {
-        "Corey Stewart": 38.9,
-        "Matthew Waters": 0.7,
-        "Timothy Kaine": 60.4
+        "winner": "Timothy Kaine",
+        "total": 6156,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 3717,
+            "pct": 60.4
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 2394,
+            "pct": 38.9
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 41,
+            "pct": 0.7
+          }
+        ]
       },
       "Buchanan County": {
-        "Corey Stewart": 69.1,
-        "Matthew Waters": 0.8,
-        "Timothy Kaine": 30.1
+        "winner": "Corey Stewart",
+        "total": 5933,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 1785,
+            "pct": 30.1
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 4095,
+            "pct": 69.1
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 50,
+            "pct": 0.8
+          }
+        ]
       },
       "Buckingham County": {
-        "Corey Stewart": 53.0,
-        "Matthew Waters": 1.4,
-        "Timothy Kaine": 45.7
+        "winner": "Corey Stewart",
+        "total": 6139,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2802,
+            "pct": 45.7
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 3249,
+            "pct": 53.0
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 83,
+            "pct": 1.4
+          }
+        ]
       },
       "Campbell County": {
-        "Corey Stewart": 69.4,
-        "Matthew Waters": 1.9,
-        "Timothy Kaine": 28.7
+        "winner": "Corey Stewart",
+        "total": 21979,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 6305,
+            "pct": 28.7
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 15239,
+            "pct": 69.4
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 408,
+            "pct": 1.9
+          }
+        ]
       },
       "Caroline County": {
-        "Corey Stewart": 46.9,
-        "Matthew Waters": 1.6,
-        "Timothy Kaine": 51.5
+        "winner": "Timothy Kaine",
+        "total": 11353,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 5838,
+            "pct": 51.5
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 5323,
+            "pct": 46.9
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 179,
+            "pct": 1.6
+          }
+        ]
       },
       "Carroll County": {
-        "Corey Stewart": 75.8,
-        "Matthew Waters": 1.1,
-        "Timothy Kaine": 23.2
+        "winner": "Corey Stewart",
+        "total": 10621,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2459,
+            "pct": 23.2
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 8042,
+            "pct": 75.8
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 114,
+            "pct": 1.1
+          }
+        ]
       },
       "Charles City County": {
-        "Corey Stewart": 35.0,
-        "Matthew Waters": 1.1,
-        "Timothy Kaine": 63.9
+        "winner": "Timothy Kaine",
+        "total": 3337,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2131,
+            "pct": 63.9
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 1168,
+            "pct": 35.0
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 36,
+            "pct": 1.1
+          }
+        ]
       },
       "Charlotte County": {
-        "Corey Stewart": 59.2,
-        "Matthew Waters": 1.1,
-        "Timothy Kaine": 39.7
+        "winner": "Corey Stewart",
+        "total": 4719,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 1871,
+            "pct": 39.7
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 2792,
+            "pct": 59.2
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 52,
+            "pct": 1.1
+          }
+        ]
       },
       "Chesterfield County": {
-        "Corey Stewart": 44.2,
-        "Matthew Waters": 1.8,
-        "Timothy Kaine": 54.1
+        "winner": "Timothy Kaine",
+        "total": 153854,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 83091,
+            "pct": 54.1
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 67835,
+            "pct": 44.2
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 2705,
+            "pct": 1.8
+          }
+        ]
       },
       "Clarke County": {
-        "Corey Stewart": 53.5,
-        "Matthew Waters": 1.8,
-        "Timothy Kaine": 44.7
+        "winner": "Corey Stewart",
+        "total": 7186,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 3210,
+            "pct": 44.7
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 3845,
+            "pct": 53.5
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 126,
+            "pct": 1.8
+          }
+        ]
       },
       "Craig County": {
-        "Corey Stewart": 73.8,
-        "Matthew Waters": 1.4,
-        "Timothy Kaine": 24.9
+        "winner": "Corey Stewart",
+        "total": 2193,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 544,
+            "pct": 24.9
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 1615,
+            "pct": 73.8
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 30,
+            "pct": 1.4
+          }
+        ]
       },
       "Culpeper County": {
-        "Corey Stewart": 56.3,
-        "Matthew Waters": 1.9,
-        "Timothy Kaine": 41.8
+        "winner": "Corey Stewart",
+        "total": 19404,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 8093,
+            "pct": 41.8
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 10913,
+            "pct": 56.3
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 361,
+            "pct": 1.9
+          }
+        ]
       },
       "Cumberland County": {
-        "Corey Stewart": 54.1,
-        "Matthew Waters": 1.8,
-        "Timothy Kaine": 44.1
+        "winner": "Corey Stewart",
+        "total": 4194,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 1849,
+            "pct": 44.1
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 2270,
+            "pct": 54.1
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 74,
+            "pct": 1.8
+          }
+        ]
       },
       "Dickenson County": {
-        "Corey Stewart": 65.5,
-        "Matthew Waters": 0.4,
-        "Timothy Kaine": 34.1
+        "winner": "Corey Stewart",
+        "total": 4475,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 1524,
+            "pct": 34.1
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 2926,
+            "pct": 65.5
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 20,
+            "pct": 0.4
+          }
+        ]
       },
       "Dinwiddie County": {
-        "Corey Stewart": 53.2,
-        "Matthew Waters": 0.7,
-        "Timothy Kaine": 46.0
+        "winner": "Corey Stewart",
+        "total": 10576,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 4865,
+            "pct": 46.0
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 5626,
+            "pct": 53.2
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 78,
+            "pct": 0.7
+          }
+        ]
       },
       "Essex County": {
-        "Corey Stewart": 47.9,
-        "Matthew Waters": 0.8,
-        "Timothy Kaine": 51.3
+        "winner": "Timothy Kaine",
+        "total": 4418,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2266,
+            "pct": 51.3
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 2115,
+            "pct": 47.9
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 36,
+            "pct": 0.8
+          }
+        ]
       },
       "Fairfax County": {
-        "Corey Stewart": 26.9,
-        "Matthew Waters": 2.0,
-        "Timothy Kaine": 71.1
+        "winner": "Timothy Kaine",
+        "total": 480485,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 340740,
+            "pct": 71.1
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 129095,
+            "pct": 26.9
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 9517,
+            "pct": 2.0
+          }
+        ]
       },
       "Fauquier County": {
-        "Corey Stewart": 55.3,
-        "Matthew Waters": 2.0,
-        "Timothy Kaine": 42.7
+        "winner": "Corey Stewart",
+        "total": 32214,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 13735,
+            "pct": 42.7
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 17801,
+            "pct": 55.3
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 634,
+            "pct": 2.0
+          }
+        ]
       },
       "Floyd County": {
-        "Corey Stewart": 62.0,
-        "Matthew Waters": 1.2,
-        "Timothy Kaine": 36.8
+        "winner": "Corey Stewart",
+        "total": 6746,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2480,
+            "pct": 36.8
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 4180,
+            "pct": 62.0
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 78,
+            "pct": 1.2
+          }
+        ]
       },
       "Fluvanna County": {
-        "Corey Stewart": 48.3,
-        "Matthew Waters": 1.8,
-        "Timothy Kaine": 49.9
+        "winner": "Timothy Kaine",
+        "total": 12001,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 5981,
+            "pct": 49.9
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 5793,
+            "pct": 48.3
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 217,
+            "pct": 1.8
+          }
+        ]
       },
       "Franklin County": {
-        "Corey Stewart": 67.0,
-        "Matthew Waters": 1.4,
-        "Timothy Kaine": 31.6
+        "winner": "Corey Stewart",
+        "total": 22181,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 6995,
+            "pct": 31.6
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 14849,
+            "pct": 67.0
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 321,
+            "pct": 1.4
+          }
+        ]
       },
       "Frederick County": {
-        "Corey Stewart": 60.4,
-        "Matthew Waters": 1.9,
-        "Timothy Kaine": 37.7
+        "winner": "Corey Stewart",
+        "total": 34217,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 12885,
+            "pct": 37.7
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 20640,
+            "pct": 60.4
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 637,
+            "pct": 1.9
+          }
+        ]
       },
       "Giles County": {
-        "Corey Stewart": 67.8,
-        "Matthew Waters": 1.5,
-        "Timothy Kaine": 30.7
+        "winner": "Corey Stewart",
+        "total": 6638,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2036,
+            "pct": 30.7
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 4500,
+            "pct": 67.8
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 97,
+            "pct": 1.5
+          }
+        ]
       },
       "Gloucester County": {
-        "Corey Stewart": 62.8,
-        "Matthew Waters": 1.8,
-        "Timothy Kaine": 35.4
+        "winner": "Corey Stewart",
+        "total": 15637,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 5529,
+            "pct": 35.4
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 9816,
+            "pct": 62.8
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 277,
+            "pct": 1.8
+          }
+        ]
       },
       "Goochland County": {
-        "Corey Stewart": 56.6,
-        "Matthew Waters": 2.1,
-        "Timothy Kaine": 41.3
+        "winner": "Corey Stewart",
+        "total": 13225,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 5443,
+            "pct": 41.3
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 7472,
+            "pct": 56.6
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 279,
+            "pct": 2.1
+          }
+        ]
       },
       "Grayson County": {
-        "Corey Stewart": 74.2,
-        "Matthew Waters": 1.2,
-        "Timothy Kaine": 24.7
+        "winner": "Corey Stewart",
+        "total": 5733,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 1412,
+            "pct": 24.7
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 4249,
+            "pct": 74.2
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 67,
+            "pct": 1.2
+          }
+        ]
       },
       "Greene County": {
-        "Corey Stewart": 58.5,
-        "Matthew Waters": 2.3,
-        "Timothy Kaine": 39.2
+        "winner": "Corey Stewart",
+        "total": 8130,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 3183,
+            "pct": 39.2
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 4749,
+            "pct": 58.5
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 190,
+            "pct": 2.3
+          }
+        ]
       },
       "Greensville County": {
-        "Corey Stewart": 39.0,
-        "Matthew Waters": 0.5,
-        "Timothy Kaine": 60.4
+        "winner": "Timothy Kaine",
+        "total": 3491,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2109,
+            "pct": 60.4
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 1363,
+            "pct": 39.0
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 19,
+            "pct": 0.5
+          }
+        ]
       },
       "Halifax County": {
-        "Corey Stewart": 56.2,
-        "Matthew Waters": 0.9,
-        "Timothy Kaine": 42.9
+        "winner": "Corey Stewart",
+        "total": 13686,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 5869,
+            "pct": 42.9
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 7691,
+            "pct": 56.2
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 119,
+            "pct": 0.9
+          }
+        ]
       },
       "Hanover County": {
-        "Corey Stewart": 60.3,
-        "Matthew Waters": 2.0,
-        "Timothy Kaine": 37.7
+        "winner": "Corey Stewart",
+        "total": 53734,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 20228,
+            "pct": 37.7
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 32333,
+            "pct": 60.3
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 1082,
+            "pct": 2.0
+          }
+        ]
       },
       "Henrico County": {
-        "Corey Stewart": 32.9,
-        "Matthew Waters": 1.8,
-        "Timothy Kaine": 65.3
+        "winner": "Timothy Kaine",
+        "total": 145536,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 94826,
+            "pct": 65.3
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 47786,
+            "pct": 32.9
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 2678,
+            "pct": 1.8
+          }
+        ]
       },
       "Henry County": {
-        "Corey Stewart": 61.3,
-        "Matthew Waters": 1.0,
-        "Timothy Kaine": 37.7
+        "winner": "Corey Stewart",
+        "total": 18728,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 7061,
+            "pct": 37.7
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 11471,
+            "pct": 61.3
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 190,
+            "pct": 1.0
+          }
+        ]
       },
       "Highland County": {
-        "Corey Stewart": 65.2,
-        "Matthew Waters": 1.0,
-        "Timothy Kaine": 33.8
+        "winner": "Corey Stewart",
+        "total": 1184,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 400,
+            "pct": 33.8
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 772,
+            "pct": 65.2
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 12,
+            "pct": 1.0
+          }
+        ]
       },
       "Isle Of Wight County": {
-        "Corey Stewart": 54.6,
-        "Matthew Waters": 1.6,
-        "Timothy Kaine": 43.8
+        "winner": "Corey Stewart",
+        "total": 16809,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 7357,
+            "pct": 43.8
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 9171,
+            "pct": 54.6
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 263,
+            "pct": 1.6
+          }
+        ]
       },
       "James City County": {
-        "Corey Stewart": 46.3,
-        "Matthew Waters": 1.7,
-        "Timothy Kaine": 52.0
+        "winner": "Timothy Kaine",
+        "total": 38823,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 20146,
+            "pct": 52.0
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 17955,
+            "pct": 46.3
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 664,
+            "pct": 1.7
+          }
+        ]
       },
       "King & Queen County": {
-        "Corey Stewart": 54.4,
-        "Matthew Waters": 1.3,
-        "Timothy Kaine": 44.4
+        "winner": "Corey Stewart",
+        "total": 2974,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 1318,
+            "pct": 44.4
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 1615,
+            "pct": 54.4
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 38,
+            "pct": 1.3
+          }
+        ]
       },
       "King George County": {
-        "Corey Stewart": 57.0,
-        "Matthew Waters": 2.2,
-        "Timothy Kaine": 40.8
+        "winner": "Corey Stewart",
+        "total": 9750,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 3976,
+            "pct": 40.8
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 5546,
+            "pct": 57.0
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 213,
+            "pct": 2.2
+          }
+        ]
       },
       "King William County": {
-        "Corey Stewart": 62.7,
-        "Matthew Waters": 1.6,
-        "Timothy Kaine": 35.6
+        "winner": "Corey Stewart",
+        "total": 7518,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2675,
+            "pct": 35.6
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 4707,
+            "pct": 62.7
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 122,
+            "pct": 1.6
+          }
+        ]
       },
       "Lancaster County": {
-        "Corey Stewart": 51.7,
-        "Matthew Waters": 1.3,
-        "Timothy Kaine": 47.0
+        "winner": "Corey Stewart",
+        "total": 5706,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2683,
+            "pct": 47.0
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 2947,
+            "pct": 51.7
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 74,
+            "pct": 1.3
+          }
+        ]
       },
       "Lee County": {
-        "Corey Stewart": 74.7,
-        "Matthew Waters": 0.8,
-        "Timothy Kaine": 24.5
+        "winner": "Corey Stewart",
+        "total": 6821,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 1671,
+            "pct": 24.5
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 5096,
+            "pct": 74.7
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 52,
+            "pct": 0.8
+          }
+        ]
       },
       "Loudoun County": {
-        "Corey Stewart": 34.8,
-        "Matthew Waters": 2.0,
-        "Timothy Kaine": 63.2
+        "winner": "Timothy Kaine",
+        "total": 168025,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 106064,
+            "pct": 63.2
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 58369,
+            "pct": 34.8
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 3318,
+            "pct": 2.0
+          }
+        ]
       },
       "Louisa County": {
-        "Corey Stewart": 57.0,
-        "Matthew Waters": 1.6,
-        "Timothy Kaine": 41.4
+        "winner": "Corey Stewart",
+        "total": 15428,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 6384,
+            "pct": 41.4
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 8790,
+            "pct": 57.0
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 242,
+            "pct": 1.6
+          }
+        ]
       },
       "Lunenburg County": {
-        "Corey Stewart": 55.4,
-        "Matthew Waters": 1.1,
-        "Timothy Kaine": 43.4
+        "winner": "Corey Stewart",
+        "total": 4475,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 1943,
+            "pct": 43.4
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 2480,
+            "pct": 55.4
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 51,
+            "pct": 1.1
+          }
+        ]
       },
       "Madison County": {
-        "Corey Stewart": 60.8,
-        "Matthew Waters": 1.5,
-        "Timothy Kaine": 37.8
+        "winner": "Corey Stewart",
+        "total": 6029,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2273,
+            "pct": 37.8
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 3655,
+            "pct": 60.8
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 88,
+            "pct": 1.5
+          }
+        ]
       },
       "Mathews County": {
-        "Corey Stewart": 63.2,
-        "Matthew Waters": 1.3,
-        "Timothy Kaine": 35.5
+        "winner": "Corey Stewart",
+        "total": 4416,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 1566,
+            "pct": 35.5
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 2791,
+            "pct": 63.2
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 58,
+            "pct": 1.3
+          }
+        ]
       },
       "Mecklenburg County": {
-        "Corey Stewart": 55.4,
-        "Matthew Waters": 1.0,
-        "Timothy Kaine": 43.6
+        "winner": "Corey Stewart",
+        "total": 11805,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 5149,
+            "pct": 43.6
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 6533,
+            "pct": 55.4
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 118,
+            "pct": 1.0
+          }
+        ]
       },
       "Middlesex County": {
-        "Corey Stewart": 58.8,
-        "Matthew Waters": 1.6,
-        "Timothy Kaine": 39.6
+        "winner": "Corey Stewart",
+        "total": 5130,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2031,
+            "pct": 39.6
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 3014,
+            "pct": 58.8
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 83,
+            "pct": 1.6
+          }
+        ]
       },
       "Montgomery County": {
-        "Corey Stewart": 40.6,
-        "Matthew Waters": 2.7,
-        "Timothy Kaine": 56.7
+        "winner": "Timothy Kaine",
+        "total": 35508,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 20109,
+            "pct": 56.7
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 14382,
+            "pct": 40.6
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 966,
+            "pct": 2.7
+          }
+        ]
       },
       "Nelson County": {
-        "Corey Stewart": 46.4,
-        "Matthew Waters": 1.9,
-        "Timothy Kaine": 51.7
+        "winner": "Timothy Kaine",
+        "total": 7378,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 3808,
+            "pct": 51.7
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 3417,
+            "pct": 46.4
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 138,
+            "pct": 1.9
+          }
+        ]
       },
       "New Kent County": {
-        "Corey Stewart": 63.5,
-        "Matthew Waters": 1.5,
-        "Timothy Kaine": 35.0
+        "winner": "Corey Stewart",
+        "total": 10683,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 3736,
+            "pct": 35.0
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 6774,
+            "pct": 63.5
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 159,
+            "pct": 1.5
+          }
+        ]
       },
       "Northampton County": {
-        "Corey Stewart": 41.6,
-        "Matthew Waters": 1.2,
-        "Timothy Kaine": 57.3
+        "winner": "Timothy Kaine",
+        "total": 5116,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2924,
+            "pct": 57.3
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 2124,
+            "pct": 41.6
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 59,
+            "pct": 1.2
+          }
+        ]
       },
       "Northumberland County": {
-        "Corey Stewart": 57.0,
-        "Matthew Waters": 1.0,
-        "Timothy Kaine": 42.0
+        "winner": "Corey Stewart",
+        "total": 6269,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2631,
+            "pct": 42.0
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 3567,
+            "pct": 57.0
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 63,
+            "pct": 1.0
+          }
+        ]
       },
       "Nottoway County": {
-        "Corey Stewart": 52.3,
-        "Matthew Waters": 1.2,
-        "Timothy Kaine": 46.5
+        "winner": "Corey Stewart",
+        "total": 5305,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2466,
+            "pct": 46.5
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 2775,
+            "pct": 52.3
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 64,
+            "pct": 1.2
+          }
+        ]
       },
       "Orange County": {
-        "Corey Stewart": 57.4,
-        "Matthew Waters": 1.4,
-        "Timothy Kaine": 41.2
+        "winner": "Corey Stewart",
+        "total": 14952,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 6148,
+            "pct": 41.2
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 8577,
+            "pct": 57.4
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 215,
+            "pct": 1.4
+          }
+        ]
       },
       "Page County": {
-        "Corey Stewart": 70.3,
-        "Matthew Waters": 1.3,
-        "Timothy Kaine": 28.4
+        "winner": "Corey Stewart",
+        "total": 8295,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2356,
+            "pct": 28.4
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 5825,
+            "pct": 70.3
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 106,
+            "pct": 1.3
+          }
+        ]
       },
       "Patrick County": {
-        "Corey Stewart": 74.7,
-        "Matthew Waters": 0.8,
-        "Timothy Kaine": 24.4
+        "winner": "Corey Stewart",
+        "total": 6689,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 1633,
+            "pct": 24.4
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 4999,
+            "pct": 74.7
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 56,
+            "pct": 0.8
+          }
+        ]
       },
       "Pittsylvania County": {
-        "Corey Stewart": 66.9,
-        "Matthew Waters": 1.1,
-        "Timothy Kaine": 32.0
+        "winner": "Corey Stewart",
+        "total": 25306,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 8105,
+            "pct": 32.0
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 16923,
+            "pct": 66.9
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 267,
+            "pct": 1.1
+          }
+        ]
       },
       "Powhatan County": {
-        "Corey Stewart": 68.6,
-        "Matthew Waters": 2.1,
-        "Timothy Kaine": 29.3
+        "winner": "Corey Stewart",
+        "total": 14972,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 4384,
+            "pct": 29.3
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 10254,
+            "pct": 68.6
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 310,
+            "pct": 2.1
+          }
+        ]
       },
       "Prince Edward County": {
-        "Corey Stewart": 43.4,
-        "Matthew Waters": 1.6,
-        "Timothy Kaine": 55.1
+        "winner": "Timothy Kaine",
+        "total": 7073,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 3893,
+            "pct": 55.1
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 3064,
+            "pct": 43.4
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 111,
+            "pct": 1.6
+          }
+        ]
       },
       "Prince George County": {
-        "Corey Stewart": 55.5,
-        "Matthew Waters": 1.1,
-        "Timothy Kaine": 43.4
+        "winner": "Corey Stewart",
+        "total": 12632,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 5475,
+            "pct": 43.4
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 7004,
+            "pct": 55.5
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 143,
+            "pct": 1.1
+          }
+        ]
       },
       "Prince William County": {
-        "Corey Stewart": 33.0,
-        "Matthew Waters": 1.9,
-        "Timothy Kaine": 65.1
+        "winner": "Timothy Kaine",
+        "total": 163926,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 106449,
+            "pct": 65.1
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 54040,
+            "pct": 33.0
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 3063,
+            "pct": 1.9
+          }
+        ]
       },
       "Pulaski County": {
-        "Corey Stewart": 64.9,
-        "Matthew Waters": 1.4,
-        "Timothy Kaine": 33.7
+        "winner": "Corey Stewart",
+        "total": 12081,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 4063,
+            "pct": 33.7
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 7835,
+            "pct": 64.9
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 169,
+            "pct": 1.4
+          }
+        ]
       },
       "Rappahannock County": {
-        "Corey Stewart": 51.3,
-        "Matthew Waters": 1.1,
-        "Timothy Kaine": 47.7
+        "winner": "Corey Stewart",
+        "total": 3883,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 1845,
+            "pct": 47.7
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 1984,
+            "pct": 51.3
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 42,
+            "pct": 1.1
+          }
+        ]
       },
       "Richmond County": {
-        "Corey Stewart": 58.2,
-        "Matthew Waters": 0.7,
-        "Timothy Kaine": 41.2
+        "winner": "Corey Stewart",
+        "total": 2899,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 1191,
+            "pct": 41.2
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 1683,
+            "pct": 58.2
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 20,
+            "pct": 0.7
+          }
+        ]
       },
       "Roanoke County": {
-        "Corey Stewart": 57.7,
-        "Matthew Waters": 1.7,
-        "Timothy Kaine": 40.6
+        "winner": "Corey Stewart",
+        "total": 41966,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 17012,
+            "pct": 40.6
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 24194,
+            "pct": 57.7
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 724,
+            "pct": 1.7
+          }
+        ]
       },
       "Rockbridge County": {
-        "Corey Stewart": 60.1,
-        "Matthew Waters": 1.5,
-        "Timothy Kaine": 38.3
+        "winner": "Corey Stewart",
+        "total": 9349,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 3584,
+            "pct": 38.3
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 5622,
+            "pct": 60.1
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 143,
+            "pct": 1.5
+          }
+        ]
       },
       "Rockingham County": {
-        "Corey Stewart": 66.9,
-        "Matthew Waters": 2.1,
-        "Timothy Kaine": 31.0
+        "winner": "Corey Stewart",
+        "total": 31645,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 9811,
+            "pct": 31.0
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 21151,
+            "pct": 66.9
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 654,
+            "pct": 2.1
+          }
+        ]
       },
       "Russell County": {
-        "Corey Stewart": 71.3,
-        "Matthew Waters": 1.1,
-        "Timothy Kaine": 27.6
+        "winner": "Corey Stewart",
+        "total": 8951,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2471,
+            "pct": 27.6
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 6379,
+            "pct": 71.3
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 97,
+            "pct": 1.1
+          }
+        ]
       },
       "Scott County": {
-        "Corey Stewart": 77.5,
-        "Matthew Waters": 0.8,
-        "Timothy Kaine": 21.7
+        "winner": "Corey Stewart",
+        "total": 7522,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 1627,
+            "pct": 21.7
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 5824,
+            "pct": 77.5
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 63,
+            "pct": 0.8
+          }
+        ]
       },
       "Shenandoah County": {
-        "Corey Stewart": 65.8,
-        "Matthew Waters": 1.6,
-        "Timothy Kaine": 32.6
+        "winner": "Corey Stewart",
+        "total": 16485,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 5362,
+            "pct": 32.6
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 10836,
+            "pct": 65.8
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 270,
+            "pct": 1.6
+          }
+        ]
       },
       "Smyth County": {
-        "Corey Stewart": 71.1,
-        "Matthew Waters": 1.1,
-        "Timothy Kaine": 27.8
+        "winner": "Corey Stewart",
+        "total": 9668,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2683,
+            "pct": 27.8
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 6864,
+            "pct": 71.1
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 110,
+            "pct": 1.1
+          }
+        ]
       },
       "Southampton County": {
-        "Corey Stewart": 55.4,
-        "Matthew Waters": 1.0,
-        "Timothy Kaine": 43.6
+        "winner": "Corey Stewart",
+        "total": 6989,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 3047,
+            "pct": 43.6
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 3869,
+            "pct": 55.4
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 67,
+            "pct": 1.0
+          }
+        ]
       },
       "Spotsylvania County": {
-        "Corey Stewart": 51.0,
-        "Matthew Waters": 1.7,
-        "Timothy Kaine": 47.3
+        "winner": "Corey Stewart",
+        "total": 51974,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 24554,
+            "pct": 47.3
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 26466,
+            "pct": 51.0
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 896,
+            "pct": 1.7
+          }
+        ]
       },
       "Stafford County": {
-        "Corey Stewart": 47.1,
-        "Matthew Waters": 1.9,
-        "Timothy Kaine": 51.0
+        "winner": "Timothy Kaine",
+        "total": 56049,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 28536,
+            "pct": 51.0
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 26368,
+            "pct": 47.1
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 1088,
+            "pct": 1.9
+          }
+        ]
       },
       "Surry County": {
-        "Corey Stewart": 41.4,
-        "Matthew Waters": 1.0,
-        "Timothy Kaine": 57.6
+        "winner": "Timothy Kaine",
+        "total": 3477,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 1997,
+            "pct": 57.6
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 1436,
+            "pct": 41.4
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 35,
+            "pct": 1.0
+          }
+        ]
       },
       "Sussex County": {
-        "Corey Stewart": 41.1,
-        "Matthew Waters": 0.8,
-        "Timothy Kaine": 58.1
+        "winner": "Timothy Kaine",
+        "total": 3888,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2258,
+            "pct": 58.1
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 1598,
+            "pct": 41.1
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 32,
+            "pct": 0.8
+          }
+        ]
       },
       "Tazewell County": {
-        "Corey Stewart": 78.1,
-        "Matthew Waters": 0.9,
-        "Timothy Kaine": 21.0
+        "winner": "Corey Stewart",
+        "total": 13371,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2809,
+            "pct": 21.0
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 10428,
+            "pct": 78.1
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 118,
+            "pct": 0.9
+          }
+        ]
       },
       "Warren County": {
-        "Corey Stewart": 62.3,
-        "Matthew Waters": 2.1,
-        "Timothy Kaine": 35.5
+        "winner": "Corey Stewart",
+        "total": 14262,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 5060,
+            "pct": 35.5
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 8875,
+            "pct": 62.3
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 304,
+            "pct": 2.1
+          }
+        ]
       },
       "Washington County": {
-        "Corey Stewart": 70.2,
-        "Matthew Waters": 1.3,
-        "Timothy Kaine": 28.5
+        "winner": "Corey Stewart",
+        "total": 20457,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 5825,
+            "pct": 28.5
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 14350,
+            "pct": 70.2
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 267,
+            "pct": 1.3
+          }
+        ]
       },
       "Westmoreland County": {
-        "Corey Stewart": 49.2,
-        "Matthew Waters": 1.1,
-        "Timothy Kaine": 49.6
+        "winner": "Timothy Kaine",
+        "total": 6949,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 3448,
+            "pct": 49.6
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 3421,
+            "pct": 49.2
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 78,
+            "pct": 1.1
+          }
+        ]
       },
       "Wise County": {
-        "Corey Stewart": 73.0,
-        "Matthew Waters": 0.9,
-        "Timothy Kaine": 26.1
+        "winner": "Corey Stewart",
+        "total": 10955,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2860,
+            "pct": 26.1
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 7991,
+            "pct": 73.0
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 98,
+            "pct": 0.9
+          }
+        ]
       },
       "Wythe County": {
-        "Corey Stewart": 71.7,
-        "Matthew Waters": 1.4,
-        "Timothy Kaine": 26.9
+        "winner": "Corey Stewart",
+        "total": 10713,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2879,
+            "pct": 26.9
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 7669,
+            "pct": 71.7
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 153,
+            "pct": 1.4
+          }
+        ]
       },
       "York County": {
-        "Corey Stewart": 51.1,
-        "Matthew Waters": 1.8,
-        "Timothy Kaine": 47.0
+        "winner": "Corey Stewart",
+        "total": 29034,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 13634,
+            "pct": 47.0
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 14828,
+            "pct": 51.1
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 534,
+            "pct": 1.8
+          }
+        ]
       },
       "Alexandria City": {
-        "Corey Stewart": 16.4,
-        "Matthew Waters": 2.2,
-        "Timothy Kaine": 81.4
+        "winner": "Timothy Kaine",
+        "total": 65812,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 53307,
+            "pct": 81.4
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 10734,
+            "pct": 16.4
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 1468,
+            "pct": 2.2
+          }
+        ]
       },
       "Bristol City": {
-        "Corey Stewart": 65.1,
-        "Matthew Waters": 1.3,
-        "Timothy Kaine": 33.6
+        "winner": "Corey Stewart",
+        "total": 5272,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 1770,
+            "pct": 33.6
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 3427,
+            "pct": 65.1
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 67,
+            "pct": 1.3
+          }
+        ]
       },
       "Buena Vista City": {
-        "Corey Stewart": 59.8,
-        "Matthew Waters": 2.1,
-        "Timothy Kaine": 38.1
+        "winner": "Corey Stewart",
+        "total": 1754,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 666,
+            "pct": 38.1
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 1047,
+            "pct": 59.8
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 37,
+            "pct": 2.1
+          }
+        ]
       },
       "Charlottesville City": {
-        "Corey Stewart": 11.5,
-        "Matthew Waters": 2.2,
-        "Timothy Kaine": 86.3
+        "winner": "Timothy Kaine",
+        "total": 20490,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 17641,
+            "pct": 86.3
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 2346,
+            "pct": 11.5
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 451,
+            "pct": 2.2
+          }
+        ]
       },
       "Chesapeake City": {
-        "Corey Stewart": 43.7,
-        "Matthew Waters": 1.6,
-        "Timothy Kaine": 54.6
+        "winner": "Timothy Kaine",
+        "total": 90752,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 49506,
+            "pct": 54.6
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 39632,
+            "pct": 43.7
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 1493,
+            "pct": 1.6
+          }
+        ]
       },
       "Colonial Heights City": {
-        "Corey Stewart": 65.3,
-        "Matthew Waters": 1.9,
-        "Timothy Kaine": 32.8
+        "winner": "Corey Stewart",
+        "total": 6415,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2105,
+            "pct": 32.8
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 4183,
+            "pct": 65.3
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 120,
+            "pct": 1.9
+          }
+        ]
       },
       "Covington City": {
-        "Corey Stewart": 53.9,
-        "Matthew Waters": 1.9,
-        "Timothy Kaine": 44.2
+        "winner": "Corey Stewart",
+        "total": 1776,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 785,
+            "pct": 44.2
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 957,
+            "pct": 53.9
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 33,
+            "pct": 1.9
+          }
+        ]
       },
       "Danville City": {
-        "Corey Stewart": 36.5,
-        "Matthew Waters": 1.1,
-        "Timothy Kaine": 62.4
+        "winner": "Timothy Kaine",
+        "total": 15115,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 9418,
+            "pct": 62.4
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 5518,
+            "pct": 36.5
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 163,
+            "pct": 1.1
+          }
+        ]
       },
       "Emporia City": {
-        "Corey Stewart": 34.0,
-        "Matthew Waters": 1.0,
-        "Timothy Kaine": 65.0
+        "winner": "Timothy Kaine",
+        "total": 1790,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 1163,
+            "pct": 65.0
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 608,
+            "pct": 34.0
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 18,
+            "pct": 1.0
+          }
+        ]
       },
       "Fairfax City": {
-        "Corey Stewart": 28.3,
-        "Matthew Waters": 2.3,
-        "Timothy Kaine": 69.4
+        "winner": "Timothy Kaine",
+        "total": 10589,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 7330,
+            "pct": 69.4
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 2988,
+            "pct": 28.3
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 245,
+            "pct": 2.3
+          }
+        ]
       },
       "Falls Church City": {
-        "Corey Stewart": 15.5,
-        "Matthew Waters": 2.0,
-        "Timothy Kaine": 82.5
+        "winner": "Timothy Kaine",
+        "total": 7189,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 5902,
+            "pct": 82.5
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 1112,
+            "pct": 15.5
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 144,
+            "pct": 2.0
+          }
+        ]
       },
       "Franklin City": {
-        "Corey Stewart": 35.6,
-        "Matthew Waters": 1.0,
-        "Timothy Kaine": 63.4
+        "winner": "Timothy Kaine",
+        "total": 2991,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 1894,
+            "pct": 63.4
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 1065,
+            "pct": 35.6
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 30,
+            "pct": 1.0
+          }
+        ]
       },
       "Fredericksburg City": {
-        "Corey Stewart": 29.2,
-        "Matthew Waters": 2.4,
-        "Timothy Kaine": 68.3
+        "winner": "Timothy Kaine",
+        "total": 9710,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 6621,
+            "pct": 68.3
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 2832,
+            "pct": 29.2
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 237,
+            "pct": 2.4
+          }
+        ]
       },
       "Galax City": {
-        "Corey Stewart": 65.5,
-        "Matthew Waters": 0.7,
-        "Timothy Kaine": 33.9
+        "winner": "Corey Stewart",
+        "total": 1830,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 620,
+            "pct": 33.9
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 1198,
+            "pct": 65.5
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 12,
+            "pct": 0.7
+          }
+        ]
       },
       "Hampton City": {
-        "Corey Stewart": 25.2,
-        "Matthew Waters": 1.3,
-        "Timothy Kaine": 73.5
+        "winner": "Timothy Kaine",
+        "total": 50497,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 37078,
+            "pct": 73.5
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 12696,
+            "pct": 25.2
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 651,
+            "pct": 1.3
+          }
+        ]
       },
       "Harrisonburg City": {
-        "Corey Stewart": 29.6,
-        "Matthew Waters": 3.0,
-        "Timothy Kaine": 67.4
+        "winner": "Timothy Kaine",
+        "total": 13724,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 9234,
+            "pct": 67.4
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 4056,
+            "pct": 29.6
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 404,
+            "pct": 3.0
+          }
+        ]
       },
       "Hopewell City": {
-        "Corey Stewart": 42.1,
-        "Matthew Waters": 1.6,
-        "Timothy Kaine": 56.4
+        "winner": "Timothy Kaine",
+        "total": 6884,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 3878,
+            "pct": 56.4
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 2894,
+            "pct": 42.1
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 107,
+            "pct": 1.6
+          }
+        ]
       },
       "Lexington City": {
-        "Corey Stewart": 26.9,
-        "Matthew Waters": 1.7,
-        "Timothy Kaine": 71.4
+        "winner": "Timothy Kaine",
+        "total": 2120,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 1511,
+            "pct": 71.4
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 569,
+            "pct": 26.9
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 36,
+            "pct": 1.7
+          }
+        ]
       },
       "Lynchburg City": {
-        "Corey Stewart": 45.6,
-        "Matthew Waters": 3.7,
-        "Timothy Kaine": 50.7
+        "winner": "Timothy Kaine",
+        "total": 26845,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 13582,
+            "pct": 50.7
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 12238,
+            "pct": 45.6
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 993,
+            "pct": 3.7
+          }
+        ]
       },
       "Manassas City": {
-        "Corey Stewart": 34.8,
-        "Matthew Waters": 2.2,
-        "Timothy Kaine": 63.0
+        "winner": "Timothy Kaine",
+        "total": 12929,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 8130,
+            "pct": 63.0
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 4496,
+            "pct": 34.8
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 287,
+            "pct": 2.2
+          }
+        ]
       },
       "Manassas Park City": {
-        "Corey Stewart": 28.8,
-        "Matthew Waters": 2.0,
-        "Timothy Kaine": 69.2
+        "winner": "Timothy Kaine",
+        "total": 4385,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 3032,
+            "pct": 69.2
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 1260,
+            "pct": 28.8
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 89,
+            "pct": 2.0
+          }
+        ]
       },
       "Martinsville City": {
-        "Corey Stewart": 34.5,
-        "Matthew Waters": 1.8,
-        "Timothy Kaine": 63.7
+        "winner": "Timothy Kaine",
+        "total": 4544,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2889,
+            "pct": 63.7
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 1566,
+            "pct": 34.5
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 82,
+            "pct": 1.8
+          }
+        ]
       },
       "Newport News City": {
-        "Corey Stewart": 30.7,
-        "Matthew Waters": 1.7,
-        "Timothy Kaine": 67.6
+        "winner": "Timothy Kaine",
+        "total": 58331,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 39398,
+            "pct": 67.6
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 17891,
+            "pct": 30.7
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 974,
+            "pct": 1.7
+          }
+        ]
       },
       "Norfolk City": {
-        "Corey Stewart": 23.1,
-        "Matthew Waters": 1.8,
-        "Timothy Kaine": 75.0
+        "winner": "Timothy Kaine",
+        "total": 67505,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 50565,
+            "pct": 75.0
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 15603,
+            "pct": 23.1
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 1233,
+            "pct": 1.8
+          }
+        ]
       },
       "Norton City": {
-        "Corey Stewart": 61.3,
-        "Matthew Waters": 1.5,
-        "Timothy Kaine": 37.2
+        "winner": "Corey Stewart",
+        "total": 1099,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 408,
+            "pct": 37.2
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 672,
+            "pct": 61.3
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 16,
+            "pct": 1.5
+          }
+        ]
       },
       "Petersburg City": {
-        "Corey Stewart": 9.7,
-        "Matthew Waters": 0.7,
-        "Timothy Kaine": 89.6
+        "winner": "Timothy Kaine",
+        "total": 10243,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 9170,
+            "pct": 89.6
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 989,
+            "pct": 9.7
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 75,
+            "pct": 0.7
+          }
+        ]
       },
       "Poquoson City": {
-        "Corey Stewart": 68.6,
-        "Matthew Waters": 2.3,
-        "Timothy Kaine": 29.0
+        "winner": "Corey Stewart",
+        "total": 5995,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 1737,
+            "pct": 29.0
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 4105,
+            "pct": 68.6
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 140,
+            "pct": 2.3
+          }
+        ]
       },
       "Portsmouth City": {
-        "Corey Stewart": 26.0,
-        "Matthew Waters": 1.6,
-        "Timothy Kaine": 72.4
+        "winner": "Timothy Kaine",
+        "total": 33170,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 23985,
+            "pct": 72.4
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 8601,
+            "pct": 26.0
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 528,
+            "pct": 1.6
+          }
+        ]
       },
       "Radford City": {
-        "Corey Stewart": 38.6,
-        "Matthew Waters": 2.6,
-        "Timothy Kaine": 58.8
+        "winner": "Timothy Kaine",
+        "total": 5078,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 2979,
+            "pct": 58.8
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 1958,
+            "pct": 38.6
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 130,
+            "pct": 2.6
+          }
+        ]
       },
       "Richmond City": {
-        "Corey Stewart": 13.4,
-        "Matthew Waters": 1.9,
-        "Timothy Kaine": 84.7
+        "winner": "Timothy Kaine",
+        "total": 89273,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 75485,
+            "pct": 84.7
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 11962,
+            "pct": 13.4
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 1662,
+            "pct": 1.9
+          }
+        ]
       },
       "Roanoke City": {
-        "Corey Stewart": 33.6,
-        "Matthew Waters": 1.9,
-        "Timothy Kaine": 64.5
+        "winner": "Timothy Kaine",
+        "total": 31282,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 20149,
+            "pct": 64.5
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 10509,
+            "pct": 33.6
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 587,
+            "pct": 1.9
+          }
+        ]
       },
       "Salem City": {
-        "Corey Stewart": 56.4,
-        "Matthew Waters": 1.9,
-        "Timothy Kaine": 41.7
+        "winner": "Corey Stewart",
+        "total": 9883,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 4116,
+            "pct": 41.7
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 5571,
+            "pct": 56.4
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 186,
+            "pct": 1.9
+          }
+        ]
       },
       "Staunton City": {
-        "Corey Stewart": 41.1,
-        "Matthew Waters": 2.4,
-        "Timothy Kaine": 56.5
+        "winner": "Timothy Kaine",
+        "total": 9599,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 5417,
+            "pct": 56.5
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 3937,
+            "pct": 41.1
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 228,
+            "pct": 2.4
+          }
+        ]
       },
       "Suffolk City": {
-        "Corey Stewart": 38.0,
-        "Matthew Waters": 1.3,
-        "Timothy Kaine": 60.7
+        "winner": "Timothy Kaine",
+        "total": 35292,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 21397,
+            "pct": 60.7
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 13397,
+            "pct": 38.0
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 461,
+            "pct": 1.3
+          }
+        ]
       },
       "Virginia Beach City": {
-        "Corey Stewart": 43.5,
-        "Matthew Waters": 2.3,
-        "Timothy Kaine": 54.3
+        "winner": "Timothy Kaine",
+        "total": 169443,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 91813,
+            "pct": 54.3
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 73575,
+            "pct": 43.5
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 3851,
+            "pct": 2.3
+          }
+        ]
       },
       "Waynesboro City": {
-        "Corey Stewart": 48.2,
-        "Matthew Waters": 1.9,
-        "Timothy Kaine": 49.9
+        "winner": "Timothy Kaine",
+        "total": 7718,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 3849,
+            "pct": 49.9
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 3713,
+            "pct": 48.2
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 149,
+            "pct": 1.9
+          }
+        ]
       },
       "Williamsburg City": {
-        "Corey Stewart": 25.0,
-        "Matthew Waters": 1.8,
-        "Timothy Kaine": 73.2
+        "winner": "Timothy Kaine",
+        "total": 6200,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 4530,
+            "pct": 73.2
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 1547,
+            "pct": 25.0
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 114,
+            "pct": 1.8
+          }
+        ]
       },
       "Winchester City": {
-        "Corey Stewart": 40.1,
-        "Matthew Waters": 2.3,
-        "Timothy Kaine": 57.5
+        "winner": "Timothy Kaine",
+        "total": 9124,
+        "candidates": [
+          {
+            "name": "Timothy Kaine",
+            "party": "Democratic",
+            "votes": 5242,
+            "pct": 57.5
+          },
+          {
+            "name": "Corey Stewart",
+            "party": "Republican",
+            "votes": 3657,
+            "pct": 40.1
+          },
+          {
+            "name": "Matthew Waters",
+            "party": "Libertarian",
+            "votes": 210,
+            "pct": 2.3
+          }
+        ]
       }
     }
   },
