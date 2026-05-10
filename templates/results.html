@@ -569,7 +569,7 @@ if (document.getElementById('viqInput')) {
       viqAddMsg('user',text); viqMsgs.push({role:'user',content:text});
       viqAddMsg('assistant','',true);
       try {
-        const res=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({district:viqDistrict,messages:viqMsgs,locality:viqLocality,hod_district:viqHod,sd_district:viqSd})});
+        const res=await fetch('/api/bills-chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({district:viqDistrict,messages:viqMsgs,locality:viqLocality,hod_district:viqHod,sd_district:viqSd})});
         if(!res.ok) throw new Error();
         const data=await res.json(); viqRemoveTyping(); viqAddMsg('assistant',data.reply);
       } catch(err){ viqRemoveTyping(); viqAddMsg('assistant','Something went wrong — please try again.'); }

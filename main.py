@@ -3451,6 +3451,116 @@ Answer questions about these results clearly and concisely (2-4 sentences). Be f
     return ChatResponse(reply=response.content[0].text)
 
 
+# ── Bills RAG chat ────────────────────────────────────────────────────────────
+
+import voyageai as _voyageai
+import chromadb as _chromadb
+from chromadb import EmbeddingFunction, Documents, Embeddings
+
+_vo = _voyageai.Client(api_key=os.getenv("VOYAGE_API_KEY"))
+_BILLS_MODEL      = "voyage-law-2"
+_BILLS_COLLECTION = "voteiq_bills"
+
+class _VoyageEF(EmbeddingFunction):
+    def __call__(self, input: Documents) -> Embeddings:
+        return _vo.embed(list(input), model=_BILLS_MODEL, input_type="document").embeddings
+
+_bills_collection = None
+
+def _get_bills_collection():
+    global _bills_collection
+    if _bills_collection is None:
+        c = _chromadb.HttpClient(
+            ssl=True,
+            host="api.trychroma.com",
+            tenant=os.getenv("CHROMA_TENANT"),
+            database=os.getenv("CHROMA_DATABASE"),
+            headers={"x-chroma-token": os.getenv("CHROMA_API_KEY")},
+        )
+        _bills_collection = c.get_or_create_collection(
+            name=_BILLS_COLLECTION,
+            embedding_function=_VoyageEF(),
+            metadata={"hnsw:space": "cosine"},
+        )
+    return _bills_collection
+
+
+class BillsChatRequest(BaseModel):
+    messages: list[ChatMessage]
+    district: str = ""
+    locality: str = ""
+    hod_district: int | None = None
+    sd_district: int | None = None
+
+
+@app.get("/api/bills-debug")
+async def bills_debug():
+    try:
+        col = _get_bills_collection()
+        count = col.count()
+        test_vec = _vo.embed(["HB4 affordable housing"], model=_BILLS_MODEL, input_type="query").embeddings[0]
+        res = col.query(query_embeddings=[test_vec], n_results=2, include=["documents"])
+        return {"status": "ok", "doc_count": count, "sample": res["documents"][0]}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@app.post("/api/bills-chat", response_model=ChatResponse)
+async def bills_chat(req: BillsChatRequest):
+    user_query = next(
+        (m.content for m in reversed(req.messages) if m.role == "user"), ""
+    )
+
+    try:
+        query_vec = _vo.embed([user_query], model=_BILLS_MODEL, input_type="query").embeddings[0]
+    except Exception as e:
+        return ChatResponse(reply=f"[VoteIQ error — Voyage AI: {e}]")
+
+    try:
+        results = _get_bills_collection().query(
+            query_embeddings=[query_vec],
+            n_results=6,
+            include=["documents", "metadatas"],
+        )
+    except Exception as e:
+        return ChatResponse(reply=f"[VoteIQ error — ChromaDB: {e}]")
+
+    context_blocks = []
+    for doc, meta in zip(results["documents"][0], results["metadatas"][0]):
+        label = f"[{meta['chunk_type']} — {meta['bill_id']} {meta['session']}]"
+        context_blocks.append(f"{label}\n{doc}")
+    context = "\n\n---\n\n".join(context_blocks)
+
+    district_note = ""
+    if req.district:
+        parts = [f"Congressional district: {req.district}"]
+        if req.locality:
+            parts.append(f"locality: {req.locality}")
+        if req.hod_district:
+            parts.append(f"HOD district: {req.hod_district}")
+        if req.sd_district:
+            parts.append(f"Senate district: {req.sd_district}")
+        district_note = f"\nUSER'S DISTRICT CONTEXT: {', '.join(parts)}\n"
+
+    system_prompt = f"""You are VoteIQ, a nonpartisan Virginia legislation assistant. Today is May 2026. \
+The 2026 Virginia General Assembly session has already concluded. \
+Answer the user's question using ONLY the bill excerpts below — do not rely on your training data. \
+Be concise (2-4 sentences), factual, and cite the bill number when relevant.{district_note}
+If the excerpts don't contain enough information to answer, say: \
+"I don't have that detail in my current bill data — try asking about HB1, HB2, or HB4."
+
+BILL EXCERPTS FROM 2026 VIRGINIA GENERAL ASSEMBLY:
+{context}"""
+
+    response = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=500,
+        system=system_prompt,
+        messages=[{"role": m.role, "content": m.content} for m in req.messages],
+    )
+    return ChatResponse(reply=response.content[0].text)
+
+
 _va_counties_geojson_cache = None
 _locality_baseline_geojson_cache = None
 _va_hod_geojson_cache = None

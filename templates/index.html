@@ -528,7 +528,7 @@
       viqMsgs.push({ role: 'user', content: text });
       viqAddMsg('assistant', '', true);
       try {
-        const res = await fetch('/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ district: viqDistrict, locality: viqLocality, hod_district: viqHod, sd_district: viqSd, messages: viqMsgs }) });
+        const res = await fetch('/api/bills-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ district: viqDistrict, locality: viqLocality, hod_district: viqHod, sd_district: viqSd, messages: viqMsgs }) });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
         viqRemoveTyping();
