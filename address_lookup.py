@@ -30,6 +30,26 @@ _portsmouth_officials = {}  # "mayor", "vice_mayor", "sheriff", etc. -> entry; "
 _hampton_officials = {}       # "mayor", "vice_mayor", "sheriff", etc. -> entry; "council" -> list
 _newport_news_officials = {}  # "mayor", "vice_mayor", "sheriff", etc. -> entry; "council" -> list
 _suffolk_officials = {}       # "mayor", "vice_mayor", "sheriff", etc. -> entry; "council" -> list
+_polling_places_by_number = {}
+_polling_places_by_name = {}
+
+
+def _norm_text(value):
+    import re
+    return re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
+
+
+def _precinct_number(value):
+    import re
+    match = re.search(r"\d+", str(value or ""))
+    return str(int(match.group(0))) if match else ""
+
+
+def _precinct_name_alias(value):
+    import re
+    return _norm_text(re.sub(r"^\s*\d+\s*-?\s*", "", str(value or "")))
+
+
 try:
     with open(os.path.join(BASE_DIR, "voteiq_officials.json"), encoding="utf-8") as _f:
         for _m in json.load(_f):
@@ -151,6 +171,42 @@ try:
                 _vb_council[_num] = _entry
 except Exception as _e:
     print(f"address_lookup: could not load voteiq_officials.json: {_e}")
+
+
+try:
+    with open(os.path.join(BASE_DIR, "polling_place_addresses.json"), encoding="utf-8") as _f:
+        for _record in json.load(_f).get("records", []):
+            _locality_key = _record.get("locality_key") or _norm_text(_record.get("locality"))
+            _number = _record.get("precinct_number") or _precinct_number(_record.get("precinct"))
+            if _locality_key and _number:
+                _polling_places_by_number[(_locality_key, _number)] = _record
+            _name_keys = {
+                _record.get("precinct_key") or _norm_text(_record.get("precinct")),
+                _precinct_name_alias(_record.get("precinct")),
+                _norm_text(_record.get("location")),
+            }
+            for _name_key in _name_keys:
+                if _locality_key and _name_key:
+                    _polling_places_by_name[(_locality_key, _name_key)] = _record
+except Exception as _e:
+    print(f"address_lookup: could not load polling_place_addresses.json: {_e}")
+
+
+def _polling_place_for(locality, precinct_number=None, precinct_name=None):
+    locality_key = _norm_text(locality)
+    if not locality_key:
+        return None
+    number = _precinct_number(precinct_number)
+    if number:
+        found = _polling_places_by_number.get((locality_key, number))
+        if found:
+            return found
+    for name_key in {_norm_text(precinct_name), _precinct_name_alias(precinct_name)}:
+        if name_key:
+            found = _polling_places_by_name.get((locality_key, name_key))
+            if found:
+                return found
+    return None
 
 
 def _load_city_precincts(city_names):
@@ -349,11 +405,13 @@ def find_district(address):
         # Get locality and precinct
         locality = None
         precinct = None
+        vb_polling_place = None
         if vb_local is not None:
             for idx, row in vb_local.iterrows():
                 if row['geometry'].contains(point):
                     locality = row['LocalityNa']
                     precinct = row['PrecinctNa']
+                    vb_polling_place = _polling_place_for(locality, precinct, precinct)
                     break
 
         # Get Virginia Beach city council district
@@ -410,24 +468,30 @@ def find_district(address):
         hampton_precinct = None
         hampton_precinct_number = None
         hampton_polling_location = None
+        hampton_polling_place = None
         if "hampton" in (locality or "").lower() and hampton_precinct_gdf is not None:
             hampton_precinct, hampton_precinct_number, hampton_polling_location = _match_precinct(hampton_precinct_gdf, point)
+            hampton_polling_place = _polling_place_for(locality, hampton_precinct_number, hampton_precinct)
             if hampton_precinct and not precinct:
                 precinct = hampton_precinct
 
         portsmouth_precinct = None
         portsmouth_precinct_number = None
         portsmouth_polling_location = None
+        portsmouth_polling_place = None
         if "portsmouth" in (locality or "").lower() and portsmouth_precinct_gdf is not None:
             portsmouth_precinct, portsmouth_precinct_number, portsmouth_polling_location = _match_precinct(portsmouth_precinct_gdf, point)
+            portsmouth_polling_place = _polling_place_for(locality, portsmouth_precinct_number, portsmouth_precinct)
             if portsmouth_precinct and not precinct:
                 precinct = portsmouth_precinct
 
         suffolk_precinct = None
         suffolk_precinct_number = None
         suffolk_polling_location = None
+        suffolk_polling_place = None
         if "suffolk" in (locality or "").lower() and suffolk_precinct_gdf is not None:
             suffolk_precinct, suffolk_precinct_number, suffolk_polling_location = _match_precinct(suffolk_precinct_gdf, point)
+            suffolk_polling_place = _polling_place_for(locality, suffolk_precinct_number, suffolk_precinct)
             if suffolk_precinct and not precinct:
                 precinct = suffolk_precinct
 
@@ -438,6 +502,7 @@ def find_district(address):
             "hod_district": hod_district,
             "sd_district": sd_district,
             "vb_council_district": vb_council_district,
+            "vb_polling_place": vb_polling_place,
             "norfolk_ward": norfolk_ward,
             "norfolk_ward_rep": norfolk_ward_rep,
             "norfolk_ward_sbm": norfolk_ward_sbm,
@@ -448,13 +513,16 @@ def find_district(address):
             "nn_council_district_name": nn_council_district_name,
             "hampton_precinct": hampton_precinct,
             "hampton_precinct_number": hampton_precinct_number,
-            "hampton_polling_location": hampton_polling_location,
+            "hampton_polling_location": (hampton_polling_place or {}).get("location") or hampton_polling_location,
+            "hampton_polling_place": hampton_polling_place,
             "portsmouth_precinct": portsmouth_precinct,
             "portsmouth_precinct_number": portsmouth_precinct_number,
-            "portsmouth_polling_location": portsmouth_polling_location,
+            "portsmouth_polling_location": (portsmouth_polling_place or {}).get("location") or portsmouth_polling_location,
+            "portsmouth_polling_place": portsmouth_polling_place,
             "suffolk_precinct": suffolk_precinct,
             "suffolk_precinct_number": suffolk_precinct_number,
-            "suffolk_polling_location": suffolk_polling_location,
+            "suffolk_polling_location": (suffolk_polling_place or {}).get("location") or suffolk_polling_location,
+            "suffolk_polling_place": suffolk_polling_place,
             "precinct": precinct or "Not found",
             "lat": lat,
             "lng": lng
