@@ -3477,10 +3477,9 @@ def _get_bills_collection():
             database=os.getenv("CHROMA_DATABASE"),
             headers={"x-chroma-token": os.getenv("CHROMA_API_KEY")},
         )
-        _bills_collection = c.get_or_create_collection(
+        _bills_collection = c.get_collection(
             name=_BILLS_COLLECTION,
             embedding_function=_VoyageEF(),
-            metadata={"hnsw:space": "cosine"},
         )
     return _bills_collection
 
@@ -3502,7 +3501,7 @@ async def bills_debug():
         res = col.query(query_embeddings=[test_vec], n_results=2, include=["documents"])
         return {"status": "ok", "doc_count": count, "sample": res["documents"][0]}
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return {"status": "error", "error": str(e), "type": type(e).__name__}
 
 
 @app.post("/api/bills-chat", response_model=ChatResponse)
