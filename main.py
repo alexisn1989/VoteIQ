@@ -3453,24 +3453,31 @@ Answer questions about these results clearly and concisely (2-4 sentences). Be f
 
 # ── Bills RAG chat ────────────────────────────────────────────────────────────
 
-import voyageai as _voyageai
-import chromadb as _chromadb
-from chromadb import EmbeddingFunction, Documents, Embeddings
-
-_vo = _voyageai.Client(api_key=os.getenv("VOYAGE_API_KEY"))
 _BILLS_MODEL      = "voyage-law-2"
 _BILLS_COLLECTION = "voteiq_bills"
-
-class _VoyageEF(EmbeddingFunction):
-    def __call__(self, input: Documents) -> Embeddings:
-        return _vo.embed(list(input), model=_BILLS_MODEL, input_type="document").embeddings
-
+_vo               = None
 _bills_collection = None
+
+def _get_voyage_client():
+    global _vo
+    if _vo is None:
+        import voyageai
+        _vo = voyageai.Client(api_key=os.getenv("VOYAGE_API_KEY"))
+    return _vo
 
 def _get_bills_collection():
     global _bills_collection
     if _bills_collection is None:
-        c = _chromadb.HttpClient(
+        import chromadb
+        from chromadb import EmbeddingFunction, Documents, Embeddings
+
+        class _VoyageEF(EmbeddingFunction):
+            def __call__(self, input: Documents) -> Embeddings:
+                return _get_voyage_client().embed(
+                    list(input), model=_BILLS_MODEL, input_type="document"
+                ).embeddings
+
+        c = chromadb.HttpClient(
             ssl=True,
             host="api.trychroma.com",
             tenant=os.getenv("CHROMA_TENANT"),
@@ -3497,7 +3504,7 @@ async def bills_debug():
     try:
         col = _get_bills_collection()
         count = col.count()
-        test_vec = _vo.embed(["HB4 affordable housing"], model=_BILLS_MODEL, input_type="query").embeddings[0]
+        test_vec = _get_voyage_client().embed(["HB4 affordable housing"], model=_BILLS_MODEL, input_type="query").embeddings[0]
         res = col.query(query_embeddings=[test_vec], n_results=2, include=["documents"])
         return {"status": "ok", "doc_count": count, "sample": res["documents"][0]}
     except Exception as e:
@@ -3511,7 +3518,7 @@ async def bills_chat(req: BillsChatRequest):
     )
 
     try:
-        query_vec = _vo.embed([user_query], model=_BILLS_MODEL, input_type="query").embeddings[0]
+        query_vec = _get_voyage_client().embed([user_query], model=_BILLS_MODEL, input_type="query").embeddings[0]
     except Exception as e:
         return ChatResponse(reply=f"[VoteIQ error — Voyage AI: {e}]")
 
