@@ -3362,10 +3362,11 @@ def _build_election_summary(year: str) -> str:
             data = _load_2024_results()
             lines = ["2024 Virginia Federal Election results:"]
             for race in data.get("statewide", []):
-                cands = race.get("candidates", [])
+                cands = [c for c in race.get("candidates", []) if c.get("name","").upper() != "WRITE IN VOTES"]
                 if cands:
                     w, r = cands[0], cands[1] if len(cands) > 1 else {}
-                    lines.append(f"  {race['race']}: {w['name']} ({w['party']}) {w['pct']}% vs {r.get('name','—')} {r.get('pct',0)}%")
+                    label = race.get("race") or race.get("office", "?")
+                    lines.append(f"  {label}: {w['name']} ({w['party']}) {w['pct']}% vs {r.get('name','—')} ({r.get('party','')}) {r.get('pct',0)}%")
             for dist, race in sorted(data.get("congress", {}).items()):
                 cands = race.get("candidates", [])
                 if cands:
