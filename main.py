@@ -3348,11 +3348,15 @@ def _build_election_summary(year: str) -> str:
             for race in data.get("statewide", []):
                 cands = race.get("candidates", [])
                 if cands:
-                    w, r = cands[0], cands[1] if len(cands) > 1 else {}
-                    lines.append(f"  {race['race']}: {w['name']} ({w['party']}) {w['pct']}% vs {r.get('name','—')} {r.get('pct',0)}%")
+                    w  = cands[0]
+                    r  = cands[1] if len(cands) > 1 else {}
+                    label = race.get("race") or race.get("office", "?")
+                    lines.append(f"  {label}: {w['name']} ({w['party']}) {w['pct']}% vs {r.get('name','—')} ({r.get('party','')}) {r.get('pct',0)}%")
             hod = data.get("hod", {})
             dem_w = sum(1 for d in hod.values() if (d.get("candidates") or [{}])[0].get("party","").lower().startswith("d"))
-            lines.append(f"  House of Delegates: Democrats {dem_w} seats, Republicans {len(hod)-dem_w} seats")
+            rep_w = len(hod) - dem_w
+            lines.append(f"  House of Delegates: Democrats {dem_w} seats, Republicans {rep_w} seats (100 total)")
+            lines.append(f"  State Senate: Democrats 21 seats, Republicans 19 seats (40 total)")
             return "\n".join(lines)
         elif year == "2024":
             data = _load_2024_results()
