@@ -3546,7 +3546,7 @@ async def bills_chat(req: BillsChatRequest):
         return ChatResponse(reply=f"[VoteIQ error — Voyage AI: {e}]")
 
     try:
-        results = _query_chroma(query_vec, n_results=6)
+        results = _query_chroma(query_vec, n_results=10)
     except Exception as e:
         return ChatResponse(reply=f"[VoteIQ error — ChromaDB: {e}]")
 
