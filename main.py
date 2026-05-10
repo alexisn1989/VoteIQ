@@ -3550,11 +3550,14 @@ async def bills_chat(req: BillsChatRequest):
     except Exception as e:
         return ChatResponse(reply=f"[VoteIQ error — ChromaDB: {e}]")
 
-    context_blocks = []
-    for doc, meta in zip(results["documents"][0], results["metadatas"][0]):
-        label = f"[{meta['chunk_type']} — {meta['bill_id']} {meta['session']}]"
-        context_blocks.append(f"{label}\n{doc}")
-    context = "\n\n---\n\n".join(context_blocks)
+    try:
+        context_blocks = []
+        for doc, meta in zip(results["documents"][0], results["metadatas"][0]):
+            label = f"[{meta.get('chunk_type','?')} — {meta.get('bill_id','?')} {meta.get('session','?')}]"
+            context_blocks.append(f"{label}\n{doc}")
+        context = "\n\n---\n\n".join(context_blocks)
+    except Exception as e:
+        return ChatResponse(reply=f"[VoteIQ error — parsing results: {e}]")
 
     district_note = ""
     if req.district:
@@ -3577,13 +3580,16 @@ If the excerpts don't contain enough information to answer, say: \
 BILL EXCERPTS FROM 2026 VIRGINIA GENERAL ASSEMBLY:
 {context}"""
 
-    response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=500,
-        system=system_prompt,
-        messages=[{"role": m.role, "content": m.content} for m in req.messages],
-    )
-    return ChatResponse(reply=response.content[0].text)
+    try:
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=500,
+            system=system_prompt,
+            messages=[{"role": m.role, "content": m.content} for m in req.messages],
+        )
+        return ChatResponse(reply=response.content[0].text)
+    except Exception as e:
+        return ChatResponse(reply=f"[VoteIQ error — Claude: {e}]")
 
 
 _va_counties_geojson_cache = None
