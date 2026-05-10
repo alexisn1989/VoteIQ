@@ -1,0 +1,70 @@
+{
+  "meta": {
+    "type": "election_results_summary",
+    "state": "Virginia",
+    "description": "Statewide election results summary for Virginia, 2016–2025",
+    "last_updated": "2026-05-10"
+  },
+  "rag_chunks": [
+    {
+      "chunk_id": 1,
+      "section": "2025 Governor's Race",
+      "content": "In the 2025 Virginia Governor's race, Abigail Spanberger (Democrat) defeated Winsome Earle-Sears (Republican) with 1,976,857 votes (57.7%) to 1,449,586 votes (42.3%), a margin of approximately 527,000 votes. Spanberger, a former U.S. Representative, became Virginia's first woman elected governor. Earle-Sears, the incumbent Lieutenant Governor, was the Republican nominee. Virginia governors cannot serve consecutive terms, so incumbent Glenn Youngkin was ineligible to run."
+    },
+    {
+      "chunk_id": 2,
+      "section": "2025 Lieutenant Governor and Attorney General Races",
+      "content": "In the 2025 Virginia Lieutenant Governor's race, Ghazala Hashmi (Democrat) defeated John J. Reid II (Republican) with 1,900,104 votes to 1,505,395 votes. In the 2025 Attorney General's race, Jay Jones (Democrat) defeated incumbent Jason Miyares (Republican) with 1,804,940 votes to 1,577,843 votes. Democrats swept all three statewide offices in 2025, reversing the Republican sweep of 2021."
+    },
+    {
+      "chunk_id": 3,
+      "section": "2025 Virginia General Assembly Results",
+      "content": "In the 2025 Virginia General Assembly elections, Democrats retained narrow majorities in both chambers. In the House of Delegates, Democrats won 51 seats to Republicans' 49 seats — a shift from Democrats' 64-36 majority after 2023. In the State Senate, Democrats held a 21-19 advantage over Republicans, unchanged from the 2023 realignment. Democrats controlled both chambers of the General Assembly heading into the 2026 legislative session."
+    },
+    {
+      "chunk_id": 4,
+      "section": "2024 Presidential Election in Virginia",
+      "content": "In the 2024 presidential election, Virginia voted for Kamala Harris (Democrat) over Donald Trump (Republican) with 2,335,395 votes (52.0%) to 2,075,085 votes (46.2%). Total turnout was approximately 4,537,976 voters. Third-party candidates received approximately 71,000 votes combined. Virginia has voted Democratic in every presidential election since 2008, reflecting the state's shift from a reliably Republican state to a competitive lean-Democratic state."
+    },
+    {
+      "chunk_id": 5,
+      "section": "2023 Virginia General Assembly Elections",
+      "content": "In the 2023 Virginia General Assembly elections, Democrats flipped the House of Delegates from Republican to Democratic control and held the State Senate. Democrats won 64 House of Delegates seats to Republicans' 36 — a gain of approximately 5 seats. Total voter turnout for the 2023 November General and Special Elections was approximately 2,507,159. The results gave Democrats full control of the General Assembly for the first time since 2019."
+    },
+    {
+      "chunk_id": 6,
+      "section": "2021 Governor's Race and Statewide Offices",
+      "content": "In the 2021 Virginia Governor's race, Glenn Youngkin (Republican) defeated Terry McAuliffe (Democrat) with 1,663,158 votes (50.6%) to 1,599,470 votes (48.6%), a margin of approximately 63,000 votes. In the same election, Winsome Earle-Sears (Republican) won Lieutenant Governor over Hala Ayala (Democrat) 1,658,332 to 1,608,030, and Jason Miyares (Republican) won Attorney General over incumbent Mark Herring (Democrat) 1,647,100 to 1,620,564. Republicans swept all three statewide offices in 2021."
+    },
+    {
+      "chunk_id": 7,
+      "section": "2020 Presidential Election in Virginia",
+      "content": "In the 2020 presidential election, Virginia voted for Joe Biden (Democrat) over Donald Trump (Republican) with 2,413,568 votes (54.1%) to 1,962,430 votes (44.0%). Libertarian Jo Jorgensen received 64,761 votes. Biden's margin of approximately 451,000 votes was wider than Hillary Clinton's 2016 margin, continuing Virginia's shift toward Democrats in presidential elections."
+    },
+    {
+      "chunk_id": 8,
+      "section": "2017 Governor's Race and Statewide Offices",
+      "content": "In the 2017 Virginia Governor's race, Ralph Northam (Democrat) defeated Ed Gillespie (Republican) with 1,408,818 votes (53.9%) to 1,175,732 votes (45.0%). Justin Fairfax (Democrat) won Lieutenant Governor over Jill Vogel (Republican) 1,368,412 to 1,224,520. Mark Herring (Democrat) won Attorney General over John Adams (Republican) 1,385,390 to 1,209,540. Democrats swept all three statewide offices. Democrats also flipped 15 House of Delegates seats in 2017, gaining a near-majority."
+    },
+    {
+      "chunk_id": 9,
+      "section": "2016 Presidential Election in Virginia",
+      "content": "In the 2016 presidential election, Virginia voted for Hillary Clinton (Democrat) over Donald Trump (Republican) with 1,981,473 votes (49.7%) to 1,769,443 votes (44.4%). Third-party candidates Gary Johnson (Libertarian, 118,274), Evan McMullin (Independent, 54,054), and Jill Stein (Green, 27,638) combined for approximately 200,000 votes. Clinton's win continued Virginia's Democratic streak in presidential elections that began in 2008 with Barack Obama."
+    },
+    {
+      "chunk_id": 10,
+      "section": "Virginia Political Trends 2016–2025",
+      "content": "Virginia has shifted from a reliably Republican state to a competitive lean-Democratic state over the past decade. Key trends: Democrats have won every presidential election in Virginia since 2008. Statewide offices have alternated — Democrats swept 2017, Republicans swept 2021, Democrats swept 2025. The suburbs of Northern Virginia (Fairfax, Arlington, Loudoun, Prince William counties) have driven Democratic gains, while rural Southwest Virginia remains strongly Republican. Virginia's competitive status makes it a bellwether for national political trends."
+    },
+    {
+      "chunk_id": 11,
+      "section": "US Senate Races in Virginia (2018 and 2022)",
+      "content": "In the 2018 US Senate election, incumbent Tim Kaine (Democrat) won re-election over Republican challenger Corey Stewart. In the 2022 US Senate election, incumbent Mark Warner (Democrat) won re-election over Republican challenger Hung Cao. Both Kaine and Warner have represented Virginia in the US Senate since 2013 and 2009 respectively, reflecting Virginia's shift to consistent Democratic representation in federal statewide races."
+    },
+    {
+      "chunk_id": 12,
+      "section": "Virginia Governor Term Limits and Election Cycle",
+      "content": "Virginia is the only US state that prohibits its governor from serving consecutive terms. Governors may serve non-consecutive terms — for example, Terry McAuliffe served 2014–2018 and ran again unsuccessfully in 2021. Virginia holds its governor, lieutenant governor, and attorney general elections in odd years (e.g., 2017, 2021, 2025), one year after presidential elections. Virginia General Assembly elections are also held in odd years, with all 100 House of Delegates seats and all 40 State Senate seats up for election in 2023 and 2025."
+    }
+  ]
+}

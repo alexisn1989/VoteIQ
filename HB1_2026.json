@@ -1,0 +1,281 @@
+{
+  "bill": {
+    "bill": "H 1",
+    "companion_bill": "SB1",
+    "document_id": "26101997D",
+    "house_bill_number": "HB1",
+    "session": "2026",
+    "title": "An Act to amend and reenact § 40.1-28.10 of the Code of Virginia, relating to minimum wage",
+    "bill_title_short": "Minimum wage; increases incrementally to $15.00 per hour by January 1, 2028",
+    "code_section": "§ 40.1-28.10",
+    "subject": "Minimum wages",
+    "offered": "January 14, 2026",
+    "prefiled": "November 17, 2025",
+    "approved": "April 8, 2026",
+    "referred_to_committee": "Committee on Labor and Commerce",
+    "primary_patron": "Ward",
+    "all_patrons": [
+      "Ward", "Guzman", "Hernandez", "McClure", "Anderson", "Anthony",
+      "Askew", "Bennett-Parker", "Bulova", "Callsen", "Carnegie", "Carr",
+      "Carroll", "Clark", "Cohen", "Cole, J.G.", "Cole, N.T.",
+      "Convirs-Fowler", "Cousins", "Delaney", "Dougherty", "Downey",
+      "Feggans", "Franklin, L.V.", "Franklin, M.A.", "Gardner", "Glass",
+      "Hayes", "Helmer", "Henson", "Herring", "Hope", "Keys-Gamarra",
+      "Krizek", "Laufer", "LeVere Bolling", "Lopez", "Maldonado",
+      "Martinez", "McAuliff", "McGuire", "McQuinn", "Mehta",
+      "Mundon King", "Nivar", "Pope Adams", "Price", "Rasoul", "Reaser",
+      "Reid", "Schmidt", "Scott, D.", "Seibold", "Sewell", "Shin",
+      "Simon", "Simonds", "Singh", "Sullivan", "Thomas", "Thornton",
+      "Torian", "Tran", "Watts", "Willett"
+    ],
+    "patron_count": 66,
+    "summary": "Increases the minimum wage incrementally to $15.00 per hour by January 1, 2028. Codifies the adjusted state hourly minimum wage of $12.77 per hour effective January 1, 2026, increases to $13.75 effective January 1, 2027, and $15.00 effective January 1, 2028. Effective January 1, 2029, and annually thereafter, requires adjustment to reflect increases in the consumer price index.",
+    "provisions": {
+      "A": {
+        "1": "Prior to May 1, 2021, every employer shall pay to each of its employees wages at a rate not less than the federal minimum wage.",
+        "2": "Beginning May 1, 2021, every employer shall pay to each of his employees at a rate not less than the federal minimum wage or 75 percent of the Virginia minimum wage provided for in this section, whichever is greater. 'Employee' means any person enrolled in an established employer on-the-job or other training program for a period not to exceed 90 days which meets standards set by the Commissioner."
+      },
+      "B": { "period": { "from": "January 1, 2026", "until": "January 1, 2027" }, "rate_per_hour": 12.77, "condition": "greater of state rate or federal minimum wage" },
+      "C": { "period": { "from": "January 1, 2027", "until": "January 1, 2028" }, "rate_per_hour": 13.75, "condition": "greater of state rate or federal minimum wage" },
+      "D": { "period": { "from": "January 1, 2028", "until": "January 1, 2029" }, "rate_per_hour": 15.00, "condition": "greater of state rate or federal minimum wage" },
+      "E": { "period": { "from": "January 1, 2029", "until": null }, "rate": "adjusted state hourly minimum wage", "condition": "greater of adjusted state rate or federal minimum wage" },
+      "F": {
+        "annual_adjustment_deadline": "October 1 (beginning October 1, 2028)",
+        "effective_date": "January 1 of the following year",
+        "index": "U.S. Average Consumer Price Index for all items, all urban consumers (CPI-U)",
+        "published_by": "Bureau of Labor Statistics, U.S. Department of Labor",
+        "method": "Prior year state minimum wage plus CPI-U percentage increase for most recent available calendar year",
+        "minimum_adjustment": 0
+      }
+    },
+    "schedule": [
+      { "from": "January 1, 2026", "until": "January 1, 2027", "min_wage": 12.77 },
+      { "from": "January 1, 2027", "until": "January 1, 2028", "min_wage": 13.75 },
+      { "from": "January 1, 2028", "until": "January 1, 2029", "min_wage": 15.00 },
+      { "from": "January 1, 2029", "until": null,              "min_wage": "CPI-adjusted annually" }
+    ],
+    "fiscal_impact": {
+      "published": "2026-03-11T14:41:00",
+      "status": "ORIGINAL",
+      "budget_amendment_necessary": true,
+      "items_impacted_in_HB30": [60, 62, 63, 64, 66, 291, 469],
+      "impacted_agencies": ["Compensation Board", "DMAS", "Central Appropriations"],
+      "summary": "Estimated increase of $546,761 general fund in FY2027, rising sharply to $14M general fund in FY2028 and over $38M by FY2031. The dramatic growth is driven almost entirely by Medicaid (DMAS): the $15.00/hr wage in FY2028 exceeds the current Medicaid attendant care rate of $13.88/hr, requiring the state to raise wages for approximately 80,000 home care workers whose pay is set by Medicaid reimbursement rates. FY2027 costs are modest because the $13.75/hr rate stays below the current $13.88/hr Medicaid rate, so no Medicaid adjustment is needed that year. In short, the cost is not a direct government payroll expense — it is the state's share of higher Medicaid reimbursements paid to home care providers.",
+      "general_fund_expenditures": {
+        "Central Appropriations": { "FY2026": 0, "FY2027": 546761,  "FY2028": 2573516,  "FY2029": 5054223,  "FY2030": 7150975,  "FY2031": 9141111  },
+        "Compensation Board":     { "FY2026": 0, "FY2027": 0,       "FY2028": 210442,   "FY2029": 505061,   "FY2030": 505061,   "FY2031": 505061   },
+        "DMAS":                   { "FY2026": 0, "FY2027": 0,       "FY2028": 11239831, "FY2029": 28284665, "FY2030": 28514950, "FY2031": 28742650 },
+        "TOTAL":                  { "FY2026": 0, "FY2027": 546761,  "FY2028": 14023789, "FY2029": 33843949, "FY2030": 36170986, "FY2031": 38388822 }
+      },
+      "nongeneral_fund_expenditures": {
+        "note": "Nongeneral fund amounts for Central Appropriations do not need to be appropriated and are provided for reference only.",
+        "Central Appropriations": { "FY2026": 0, "FY2027": 489371, "FY2028": 2128490,  "FY2029": 4496101,  "FY2030": 6314470,  "FY2031": 8871011  },
+        "DMAS":                   { "FY2026": 0, "FY2027": 0,      "FY2028": 12509813, "FY2029": 31479818, "FY2030": 31777495, "FY2031": 32072585 },
+        "TOTAL":                  { "FY2026": 0, "FY2027": 489371, "FY2028": 14638303, "FY2029": 35975919, "FY2030": 38091965, "FY2031": 40943596 }
+      },
+      "central_appropriations_detail": {
+        "existing_HB30_gf_budgeted": { "FY2027": 392803, "FY2028": 1357202 },
+        "assumed_annual_cpi_increase_pct": 3.84,
+        "house_budget_amendments": { "FY2027_gf": 546761, "FY2028_gf": 14000000 },
+        "wage_schedule": [
+          { "effective": "January 1, 2026", "hourly": 12.77, "equivalent_salary": 26562, "fiscal_year": "FY2026", "gf_central_impact": 0,       "ngf_central_impact": 0       },
+          { "effective": "January 1, 2027", "hourly": 13.75, "equivalent_salary": 28600, "fiscal_year": "FY2027", "gf_central_impact": 546761,  "ngf_central_impact": 489371  },
+          { "effective": "January 1, 2028", "hourly": 15.00, "equivalent_salary": 31200, "fiscal_year": "FY2028", "gf_central_impact": 2573516, "ngf_central_impact": 2128490 },
+          { "effective": "January 1, 2029", "hourly": 15.58, "equivalent_salary": 32406, "fiscal_year": "FY2029", "gf_central_impact": 5054223, "ngf_central_impact": 4496101 },
+          { "effective": "January 1, 2030", "hourly": 16.18, "equivalent_salary": 33654, "fiscal_year": "FY2030", "gf_central_impact": 7150975, "ngf_central_impact": 6314470 },
+          { "effective": "January 1, 2031", "hourly": 16.80, "equivalent_salary": 34944, "fiscal_year": "FY2031", "gf_central_impact": 9141111, "ngf_central_impact": 8871011 }
+        ]
+      },
+      "doli_analysis": {
+        "agency": "Department of Labor and Industry",
+        "enforcement_responsibility": true,
+        "additional_cost_FY2027_gf": 6500000,
+        "additional_cost_FY2028_gf": 3600000,
+        "new_positions": 25,
+        "cpi_adjustment_admin_impact": "Not anticipated to create fiscal impact"
+      },
+      "compensation_board_analysis": {
+        "positions_impacted_FY2028": 482,
+        "implementation_note": "Costs prorated to reflect January 1, 2028 implementation date",
+        "fully_annualized_cost_from_FY2029": 505061,
+        "breakdown_by_office": {
+          "Sheriffs":                 { "FY2028": 59265,  "FY2029_ongoing": 142236 },
+          "Finance Directors":        { "FY2028": 13926,  "FY2029_ongoing": 33423  },
+          "Commissioners of Revenue": { "FY2028": 65795,  "FY2029_ongoing": 157909 },
+          "Commonwealth's Attorneys": { "FY2028": 2331,   "FY2029_ongoing": 5593   },
+          "Circuit Court Clerks":     { "FY2028": 0,      "FY2029_ongoing": 0      },
+          "Treasurers":               { "FY2028": 69125,  "FY2029_ongoing": 165900 },
+          "Grand Total":              { "FY2028": 210442, "FY2029_ongoing": 505061 }
+        }
+      },
+      "dmas_analysis": {
+        "agency": "Department of Medical Assistance Services",
+        "primary_impact": "Personal care services — consumer directed attendant wages must meet minimum wage",
+        "current_attendant_wages": {
+          "outside_northern_virginia_per_hour": 13.88,
+          "northern_virginia_per_hour": 17.97
+        },
+        "note_FY2027": "Minimum wage of $13.75 is below current $13.88/hr rate; no impact anticipated",
+        "impact_begins": "January 1, 2028 ($15.00/hr exceeds current $13.88/hr rate)",
+        "statewide_cost_estimates": {
+          "FY2028": { "total": 23700000, "general_fund": 11239831 },
+          "FY2029": { "total": 59800000, "general_fund": 28284665 },
+          "FY2030": { "total": 60300000, "general_fund": 28514950 }
+        },
+        "additional_pressure_noted": [
+          "Home and community based long-term care services",
+          "Behavioral health services",
+          "Nursing facilities",
+          "Hospitals",
+          "Non-emergency transportation providers"
+        ]
+      },
+      "other_potential_impacts": [
+        "State agencies funding state-supported local employees — indeterminate",
+        "Contractor services (security, custodial) — indeterminate",
+        "Capital outlay project labor costs — indeterminate",
+        "Public education wage labor — indeterminate; state Direct Aid to Public Education impact at next rebenchmarking"
+      ]
+    }
+  },
+
+  "votes": {
+    "bill": "H 1",
+    "house_bill_number": "HB1",
+    "session": "2026",
+    "vote_records": [
+      {
+        "vote_id": 1,
+        "date": "2026-03-04",
+        "chamber": "Senate",
+        "committee": null,
+        "description": "Final Passage",
+        "result": "PASSED",
+        "total_yeas": 21,
+        "total_nays": 19,
+        "rule_36": 0,
+        "not_voting": 0,
+        "abstentions": 0,
+        "total_members_voting": 40,
+        "yeas": [
+          "Aird", "Bagby", "Bennett-Parker", "Boysko", "Carroll Foy",
+          "Deeds", "Favola", "Jones", "Locke", "Lucas", "Marsden",
+          "McPike", "Pekarsky", "Perry", "Roem", "Rouse", "Salim",
+          "Srinivasan", "Surovell", "VanValkenburg", "Williams Graves"
+        ],
+        "nays": [
+          "Cifers", "Craig", "DeSteph", "Diggs", "Durant", "French",
+          "Hackworth", "Head", "Jordan", "McDougle", "Mulchi", "Obenshain",
+          "Peake", "Pillion", "Reeves", "Stanley", "Stuart", "Sturtevant",
+          "Suetterlein"
+        ]
+      },
+      {
+        "vote_id": 3,
+        "date": "2026-03-03",
+        "chamber": "Senate",
+        "committee": "Finance and Appropriations",
+        "description": "Reported from Finance and Appropriations",
+        "result": "REPORTED",
+        "total_yeas": 9,
+        "total_nays": 5,
+        "rule_36": 0,
+        "not_voting": 0,
+        "abstentions": 0,
+        "total_members_voting": 14,
+        "yeas": [
+          "Lucas", "Deeds", "Locke", "Favola", "Surovell",
+          "McPike", "Boysko", "Rouse", "Aird"
+        ],
+        "nays": [
+          "McDougle", "Obenshain", "Stuart", "Reeves", "Pillion"
+        ]
+      },
+      {
+        "vote_id": 4,
+        "date": "2026-02-23",
+        "chamber": "Senate",
+        "committee": "Commerce and Labor",
+        "description": "Reported from Commerce and Labor and rereferred to Finance and Appropriations",
+        "result": "REPORTED AND REREFERRED",
+        "total_yeas": 8,
+        "total_nays": 5,
+        "rule_36": 0,
+        "not_voting": 0,
+        "abstentions": 0,
+        "total_members_voting": 13,
+        "yeas": [
+          "Deeds", "Lucas", "Surovell", "Locke", "McPike",
+          "Rouse", "Bagby", "Boysko"
+        ],
+        "nays": [
+          "Obenshain", "McDougle", "DeSteph", "Peake", "Stuart"
+        ]
+      },
+      {
+        "vote_id": 5,
+        "date": "2026-02-03",
+        "chamber": "House of Delegates",
+        "committee": null,
+        "description": "Read third time and passed House",
+        "result": "PASSED",
+        "total_yeas": 64,
+        "total_nays": 34,
+        "rule_36": 0,
+        "not_voting": 2,
+        "abstentions": 0,
+        "total_members_voting": 98,
+        "yeas": [
+          "Anderson", "Anthony", "Askew", "Austin", "Bennett-Parker",
+          "Bulova", "Callsen", "Carnegie", "Carr", "Carroll", "Clark",
+          "Cohen", "Cole, J.G.", "Cole, N.T.", "Convirs-Fowler", "Cousins",
+          "Delaney", "Dougherty", "Downey", "Feggans", "Franklin, L.V.",
+          "Franklin, M.A.", "Gardner", "Glass", "Guzman", "Hayes", "Helmer",
+          "Henson", "Hernandez", "Herring", "Hope", "Krizek", "Laufer",
+          "LeVere Bolling", "Lopez", "Maldonado", "Martinez", "McAuliff",
+          "McClure", "McGuire", "McQuinn", "Mehta", "Nivar", "Pope Adams",
+          "Price", "Rasoul", "Reaser", "Reid", "Schmidt", "Seibold", "Sewell",
+          "Shin", "Simon", "Simonds", "Singh", "Sullivan", "Thomas",
+          "Thornton", "Torian", "Tran", "Ward", "Watts", "Willett",
+          "Mr. Speaker"
+        ],
+        "nays": [
+          "Ballard", "Bloxom", "Cherry", "Cornett", "Davis", "Fowler",
+          "Garrett", "Griffin", "Hamilton", "Hodges", "Kent", "Kilgore",
+          "Leftwich", "McLaughlin", "McNamara", "Morefield", "Oates",
+          "O'Quinn", "Pence", "Phillips", "Runion", "Scott, P.A.", "Tata",
+          "Wachsmann", "Walker", "Ware", "Webert", "Whittle", "Wiley",
+          "Williams", "Wilt", "Wright", "Wyatt", "Zehr"
+        ],
+        "not_voting_members": ["Keys-Gamarra", "Knight"],
+        "errata": [
+          { "member": "Austin", "recorded": "yea",        "intended": "nay" },
+          { "member": "Knight", "recorded": "not_voting", "intended": "nay" }
+        ]
+      },
+      {
+        "vote_id": 6,
+        "date": "2026-01-28",
+        "chamber": "House of Delegates",
+        "committee": "Appropriations",
+        "description": "Reported from Appropriations",
+        "result": "REPORTED",
+        "total_yeas": 15,
+        "total_nays": 7,
+        "rule_36": 0,
+        "not_voting": 0,
+        "abstentions": 0,
+        "total_members_voting": 22,
+        "yeas": [
+          "Torian", "Carr", "McQuinn", "Krizek", "Hayes", "Reid",
+          "Willett", "Sewell", "Askew", "Herring", "Price", "Tran",
+          "Simonds", "Thomas", "Laufer"
+        ],
+        "nays": [
+          "Austin", "Morefield", "Bloxom", "Hodges", "Wyatt", "Wiley",
+          "McLaughlin"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,798 @@
+{
+  "bill": {
+    "bill": "H 2",
+    "companion_bill": null,
+    "document_id": "26101998D",
+    "house_bill_number": "HB2",
+    "session": "2026",
+    "version": "Enrolled",
+    "chapter": "CHAPTER 1030",
+    "title": "An Act to reduce heating-related costs of living for low-income residents by requiring certain electric utilities to provide energy efficiency upgrades; report.",
+    "bill_title_short": "Phase I and Phase II Utilities; energy efficiency upgrades; low-income residents; report.",
+    "code_section": null,
+    "subject": "Energy efficiency programs; low-income residents; electric utilities",
+    "offered": "January 14, 2026",
+    "prefiled": "November 17, 2025",
+    "approved": "April 22, 2026",
+    "signed_by_governor": "April 22, 2026",
+    "effective_date": "July 1, 2026",
+    "referred_to_committee": "Committee on Labor and Commerce",
+    "primary_patron": "Sickles",
+    "all_patrons": [
+      "Sickles",
+      "Carr",
+      "Glass"
+    ],
+    "patron_count": 3,
+    "summary": "Establishes a Commonwealth policy to reduce heating-related costs of living for low-income residents where feasible and cost-effective. Requires Phase I and Phase II Utilities to make best, reasonable efforts by December 31, 2031, to provide prescriptive efficiency measures and related efficiency improvements to qualifying low-income households, subject to State Corporation Commission public-interest review. Requires utility filings, consultation with the Department of Energy and DHCD, reporting to the Commission, and reasonable efforts to incorporate relevant task force recommendations.",
+    "summary_as_passed_house": "States that it is the policy of the Commonwealth to reduce, wherever feasible and cost-effective, heating-related costs of living for low-income residents. The bill requires Dominion Energy Virginia and Appalachian Power to make best, reasonable efforts to provide by December 31, 2031, prescriptive efficiency measures, as defined in the bill, and related efficiency improvements to at least 30 percent of the qualifying households, as defined in the bill, identified by such utilities, provided that the State Corporation Commission determines that such measures and improvements are in the public interest. The bill requires such utilities to report to the Commission its activities, plans, and filings regarding the bill's provisions no later than January 1, 2028, annually thereafter, and in any recurring filing that the Commission deems appropriate. The bill also requires that Dominion Energy and Appalachian Power make reasonable efforts to incorporate recommendations or feedback provided by the task force that evaluates barriers to access and enrollment in programs for income-qualified energy customers.",
+    "versions": {
+      "introduced": {
+        "version": "Introduced",
+        "document_id": "26101998D",
+        "bill_number": "HOUSE BILL NO. 2",
+        "offered": "January 14, 2026",
+        "prefiled": "November 17, 2025",
+        "patrons": [
+          "Sickles",
+          "Carr",
+          "Glass"
+        ],
+        "referred_to_committee": "Committee on Labor and Commerce",
+        "title": "A BILL to reduce heating-related costs of living for low-income residents by requiring certain electric utilities to provide energy efficiency upgrades; report.",
+        "sections": [
+          {
+            "section": "1",
+            "heading": "Policy and utility targets",
+            "text": "It shall be the policy of the Commonwealth to reduce, wherever feasible and cost-effective, heating-related costs of living for low-income residents. Phase I and Phase II Utilities shall make best, reasonable efforts to provide by December 31, 2031, prescriptive efficiency measures and related efficiency improvements to at least 30 percent of the qualifying households identified by the Phase I or Phase II Utility, or in the case of a Phase II Utility to 8,400 qualifying households, whichever is less, provided that such measures and improvements are determined by the State Corporation Commission to be in the public interest."
+          },
+          {
+            "section": "2",
+            "heading": "Prescriptive efficiency measure standards",
+            "text": "Prescriptive efficiency measures undertaken at qualifying households shall be reasonably expected to lower each household's total heating-related energy costs, subject to Commission review and approval and based upon widely available and credible energy consumption and cost data, including U.S. Department of Energy data as appropriate, and to reduce onsite air pollution, with special emphasis on improving indoor air quality where feasible. The Phase I or Phase II Utility or its designated agent, not an installer, shall make best efforts to identify qualifying households and make these determinations."
+          },
+          {
+            "section": "3",
+            "heading": "Department of Energy consultation",
+            "text": "A Phase I or Phase II Utility shall consult directly with the Department of Energy to utilize, wherever feasible, state-derived or federally derived sources of funding for the purposes of implementing Section 1."
+          },
+          {
+            "section": "4",
+            "heading": "Commission incentives and feasibility review",
+            "text": "The Commission may provide performance-based incentives, including early action credit for prescriptive efficiency measures installed before January 1, 2030. Before January 1, 2030, the Commission may determine whether the target described in Section 1 is feasible and may adjust the target at its sole discretion. The Commission shall not penalize a utility for inability to meet the 30 percent target."
+          },
+          {
+            "section": "5",
+            "heading": "Reports and savings data",
+            "text": "No later than January 1, 2028, annually thereafter, and in any recurring filing the Commission deems appropriate, each Phase I and Phase II Utility shall report to the Commission its activities, plans, and progress. In any such filing and at least biennially, each utility shall also report updated and aggregated ratepayer data regarding bill and energy savings from all energy efficiency and demand response programs. Any required potential-savings study shall assume, in at least one projected scenario, 75 percent customer awareness across each customer class."
+          },
+          {
+            "section": "6",
+            "heading": "Definitions",
+            "text": "Defines installer, low-income resident, Phase I Utility, Phase II Utility, prescriptive efficiency measure, and qualifying household. In the introduced version, low-income resident means an individual or household with income no more than 60 percent of median state income or 80 percent of local median income, whichever is greatest."
+          }
+        ],
+        "definitions": {
+          "installer": "Any entity that directly provides energy efficiency or weatherization upgrades to low-income residents in the Commonwealth and receives federal, state, or utility funding from a Phase I or Phase II Utility, in whole or in part, to provide such upgrades.",
+          "low_income_resident": "Any individual or household with an income no more than 60 percent of the median state income or 80 percent of the median income of the locality in which such individual or household resides, whichever is greatest.",
+          "phase_i_utility": "Has the same meaning as provided in subdivision A 1 of Section 56-585.1 of the Code of Virginia.",
+          "phase_ii_utility": "Has the same meaning as provided in subdivision A 1 of Section 56-585.1 of the Code of Virginia.",
+          "prescriptive_efficiency_measure": "A utility-provided energy efficiency upgrade or upgrades at a qualifying household that substantially reduce or eliminate the household's reliance on fuel delivered to the household and stored onsite and utilized for household heating, cooking, or water heating, thereby reducing total energy-related costs of living for that household, and combined, wherever feasible, with additional efficiency measures, including insulation, when that household also qualifies for such additional efficiency measures.",
+          "qualifying_household": "Any single-family or multifamily dwelling occupied by a low-income resident that is a customer of a Phase I or Phase II Utility who relies on fuel delivered to the household and stored onsite for household heating, cooking, or water heating, has measured or rated appliance efficiency ratings of less than 83 percent, and is eligible for or has received building envelope upgrades through federal, state, or utility funded energy efficiency or weatherization programs."
+        }
+      }
+    },
+    "target": {
+      "deadline": "December 31, 2031",
+      "phase_i_utility": {
+        "target": "30 percent of qualifying households identified by the utility or 2,000 qualifying households, whichever is less"
+      },
+      "phase_ii_utility": {
+        "target": "30 percent of qualifying households identified by the utility or 8,400 qualifying households, whichever is less"
+      },
+      "condition": "Measures and improvements must be determined by the State Corporation Commission to be in the public interest."
+    },
+    "schedule": [
+      {
+        "from": "April 22, 2026",
+        "until": "December 31, 2031",
+        "min_wage": "not applicable; utilities must make best, reasonable efforts to meet household efficiency-upgrade targets"
+      },
+      {
+        "from": "January 1, 2028",
+        "until": null,
+        "min_wage": "not applicable; annual utility reporting to the State Corporation Commission begins"
+      }
+    ],
+    "provisions": {
+      "1": {
+        "policy": "Reduce, wherever feasible and cost-effective, heating-related costs of living for low-income residents.",
+        "utility_obligation": "Phase I and Phase II Utilities shall make best, reasonable efforts to provide prescriptive efficiency measures and related efficiency improvements by December 31, 2031.",
+        "commission_review": "Measures and improvements must be determined by the State Corporation Commission to be in the public interest."
+      },
+      "2": {
+        "program_filing": "Each Phase I and Phase II Utility shall incorporate prescriptive efficiency measures in its next applicable income-qualified and age-qualified energy efficiency program filing with the Commission.",
+        "household_cost_test": "Measures must be reasonably expected to lower each qualifying household's total annual heating-related energy costs, subject to Commission review and approval.",
+        "air_quality_test": "Measures must reduce onsite air pollution, with special emphasis on improving indoor air quality where feasible.",
+        "responsibility": "The utility or its designated agent, not an installer, has the duty to make best efforts to identify qualifying households and make the required determinations."
+      },
+      "3": {
+        "consultation": "Each utility shall consult directly with the Department of Energy and DHCD to use feasible state-derived or federally derived funding sources to reduce total utility program costs.",
+        "dhcd_role": "DHCD shall make available all low-income energy efficiency related programs it administers to support or enhance utility income-qualified and age-qualified energy efficiency programs."
+      },
+      "4": {
+        "performance_incentives": "The Commission may provide performance-based incentives, including early action credit for prescriptive efficiency measures installed before January 1, 2030.",
+        "target_adjustment": "Before January 1, 2030, the Commission may determine whether the Section 1 target is feasible and may adjust the target at its sole discretion.",
+        "no_penalty": "The Commission shall not penalize a utility for inability to meet the Section 1 targets."
+      },
+      "5": {
+        "reporting_start": "January 1, 2028",
+        "frequency": "Annually thereafter and in any recurring filing the Commission deems appropriate.",
+        "required_reporting": "Each utility shall report activities, plans, and progress regarding the act.",
+        "ratepayer_data": "At least triennially, each utility shall report updated and aggregated ratepayer data regarding bill and energy savings from all energy efficiency and demand response programs.",
+        "potential_savings_scenario": "Any required potential-savings study shall assume, in at least one projected scenario, 75 percent customer awareness of such programs across each customer class."
+      },
+      "6": {
+        "task_force_feedback": "Utilities shall make reasonable efforts to incorporate recommendations or feedback from a task force evaluating barriers to access and enrollment in current energy efficiency programs for income-qualified customers."
+      },
+      "7": {
+        "definitions": [
+          "Installer",
+          "Low-income resident",
+          "Phase I Utility",
+          "Phase II Utility",
+          "Prescriptive efficiency measures",
+          "Qualifying household"
+        ]
+      }
+    },
+    "sections": [
+      {
+        "section": "1",
+        "heading": "Policy and utility targets",
+        "text": "It shall be the policy of the Commonwealth to reduce, wherever feasible and cost-effective, heating-related costs of living for low-income residents. Phase I and Phase II Utilities shall make best, reasonable efforts to provide by December 31, 2031, prescriptive efficiency measures and related efficiency improvements to at least 30 percent of qualifying households identified by the utility, or for a Phase I Utility to 2,000 qualifying households, whichever is less, or for a Phase II Utility to 8,400 qualifying households, whichever is less, provided that such measures and improvements are determined by the State Corporation Commission to be in the public interest."
+      },
+      {
+        "section": "2",
+        "heading": "Program filings and household determinations",
+        "text": "Each Phase I and Phase II Utility shall incorporate prescriptive efficiency measures in its next applicable income-qualified and age-qualified energy efficiency program filing with the Commission. Measures must be reasonably expected to lower each household's total annual heating-related energy costs and reduce onsite air pollution, with special emphasis on improving indoor air quality where feasible. The utility or its designated agent, not an installer, must make best efforts to identify qualifying households and make these determinations."
+      },
+      {
+        "section": "3",
+        "heading": "Department consultation and funding",
+        "text": "Each Phase I or Phase II Utility shall consult directly with the Department of Energy and DHCD to use state-derived or federally derived funding sources where feasible to reduce total utility program costs. DHCD shall make available all low-income energy efficiency related programs it administers to support or enhance these utility programs."
+      },
+      {
+        "section": "4",
+        "heading": "Commission incentives and target adjustment",
+        "text": "The Commission may provide performance-based incentives, including early action credit for prescriptive efficiency measures installed before January 1, 2030. Before January 1, 2030, the Commission may determine whether the target is feasible and may adjust it at its sole discretion. The Commission shall not penalize a utility for inability to meet the target."
+      },
+      {
+        "section": "5",
+        "heading": "Reports and savings data",
+        "text": "No later than January 1, 2028, and annually thereafter, each Phase I and Phase II Utility shall report to the Commission its activities, plans, and progress. In such filings and at least triennially, utilities shall also report updated and aggregated ratepayer data regarding bill and energy savings from all energy efficiency and demand response programs. Any potential-savings study needed to comply shall assume, in at least one projected scenario, 75 percent customer awareness across each customer class."
+      },
+      {
+        "section": "6",
+        "heading": "Task force recommendations",
+        "text": "A Phase I and Phase II Utility shall make reasonable efforts to incorporate recommendations or feedback from a task force that evaluates barriers to access and enrollment in current energy efficiency programs for income-qualified energy customers and develops a plan for improving coordination among utility, state, and federal programs."
+      },
+      {
+        "section": "7",
+        "heading": "Definitions",
+        "text": "Defines installer, low-income resident, Phase I Utility, Phase II Utility, prescriptive efficiency measures, and qualifying household. A low-income resident means an individual or household with income no more than 60 percent of median state income, 80 percent of local median income, or 200 percent of the federal poverty level, whichever is greater. Prescriptive efficiency measures are utility-provided upgrades at qualifying households that substantially reduce or eliminate reliance on fuel delivered to the household and stored on site for heating, cooking, or water heating, and do not include equipment that uses such delivered and stored fuel."
+      }
+    ],
+    "definitions": {
+      "installer": "Any entity that directly provides energy efficiency or weatherization upgrades to low-income residents in the Commonwealth and receives federal, state, or utility funding from a Phase I or Phase II Utility, in whole or in part, to provide such upgrades.",
+      "low_income_resident": "Any individual or household with an income of no more than 60 percent of the median state income, 80 percent of the median income of the locality in which such individual or household resides, or 200 percent of the federal poverty level, whichever is greater.",
+      "phase_i_utility": "Has the same meaning as provided in subdivision A 1 of Section 56-585.1 of the Code of Virginia.",
+      "phase_ii_utility": "Has the same meaning as provided in subdivision A 1 of Section 56-585.1 of the Code of Virginia.",
+      "prescriptive_efficiency_measures": "Utility-provided energy efficiency upgrades at qualifying households that substantially reduce or eliminate the household's reliance on fuel delivered to the household and stored on site and used for household heating, cooking, or water heating, and thereby reduce total annual energy-related costs of living for that household. Such measures are combined, wherever feasible, with additional energy efficiency measures, including insulation, when the household also qualifies for those measures. The term does not include equipment that utilizes fuel delivered and stored on site.",
+      "qualifying_household": "Any single-family or multifamily dwelling occupied by a low-income resident who is a customer of a Phase I or Phase II Utility, relies on fuel delivered to the household and stored on site for household heating, cooking, or water heating, has measured or rated appliance efficiency ratings of less than 83 percent, and is eligible for or has received building envelope upgrades through federal, state, or utility funded energy efficiency or weatherization programs."
+    },
+    "fiscal_impact": {
+      "published": null,
+      "status": "ORIGINAL",
+      "budget_amendment_necessary": true,
+      "budget_amendment_type": "Budget",
+      "items_impacted_in_HB30": [
+        475
+      ],
+      "technical_amendment_necessary": false,
+      "impacted_agencies": [
+        "State Corporation Commission",
+        "Department of Energy",
+        "Department of Housing and Community Development",
+        "Phase I Utilities",
+        "Phase II Utilities"
+      ],
+      "summary": "The State Corporation Commission can meet the requirements of the bill with the fiscal adjustments identified and within its existing funding authority when considered individually. The SCC will need one additional full-time employee. Nongeneral fund expenditures from fund 0208 are estimated at $86,500 per year from FY2027 through FY2031.",
+      "revenue": {
+        "general": {
+          "fund_code": "XXXX",
+          "FY2027": null,
+          "FY2028": null,
+          "FY2029": null,
+          "FY2030": null,
+          "FY2031": null
+        },
+        "nongeneral": {
+          "fund_code": "XXXX",
+          "FY2027": null,
+          "FY2028": null,
+          "FY2029": null,
+          "FY2030": null,
+          "FY2031": null
+        }
+      },
+      "general_fund_expenditures": {
+        "fund_code": "XXXX",
+        "TOTAL": {
+          "FY2026": 0,
+          "FY2027": 0,
+          "FY2028": 0,
+          "FY2029": 0,
+          "FY2030": 0,
+          "FY2031": 0
+        }
+      },
+      "nongeneral_fund_expenditures": {
+        "fund_code": "0208",
+        "TOTAL": {
+          "FY2026": 0,
+          "FY2027": 86500,
+          "FY2028": 86500,
+          "FY2029": 86500,
+          "FY2030": 86500,
+          "FY2031": 86500
+        }
+      },
+      "fte_change": {
+        "general": {
+          "fund_code": "XXXX",
+          "FY2027": 0,
+          "FY2028": 0,
+          "FY2029": 0,
+          "FY2030": 0,
+          "FY2031": 0
+        },
+        "nongeneral": {
+          "fund_code": "0208",
+          "FY2027": 1,
+          "FY2028": 1,
+          "FY2029": 1,
+          "FY2030": 1,
+          "FY2031": 1
+        }
+      },
+      "fiscal_analysis": {
+        "revenue": "When considered individually, the State Corporation Commission can meet the requirements of this bill with the adjustments identified in the fiscal impact summary table and within its existing funding authority. If enacted, the SCC will review operational and fiscal impacts of this legislation along with other enacted 2026 electric utility bills to determine implementation.",
+        "expenditures": "To meet the requirements of this bill, the SCC will need to hire one full-time employee.",
+        "change_in_fte": "This bill will require an additional full-time employee for the SCC.",
+        "other_comments": "The SCC is already annually handling Demand Side Management proceedings and Energy Efficient target proceedings, plus a new Energy Efficiency Potential Study that will result in additional proceedings. Adding additional requirements to the DSM proceedings for additional investigation by Staff will increase existing workload."
+      },
+      "dmas_analysis": {
+        "agency": "Department of Medical Assistance Services",
+        "primary_impact": "No DMAS impact was identified in the supplied chapter text.",
+        "current_attendant_wages": {
+          "outside_northern_virginia_per_hour": 0,
+          "northern_virginia_per_hour": 0
+        },
+        "impact_begins": "Not applicable",
+        "statewide_cost_estimates": {
+          "FY2028": {
+            "total": 0,
+            "general_fund": 0
+          },
+          "FY2029": {
+            "total": 0,
+            "general_fund": 0
+          },
+          "FY2030": {
+            "total": 0,
+            "general_fund": 0
+          }
+        },
+        "additional_pressure_noted": []
+      }
+    }
+  },
+  "votes": {
+    "bill": "H 2",
+    "house_bill_number": "HB2",
+    "session": "2026",
+    "vote_records": [
+      {
+        "vote_id": 1,
+        "date": "2026-04-22",
+        "chamber": "Senate",
+        "committee": null,
+        "description": "Senate concurred in Governor's recommendation",
+        "result": "PASSED",
+        "total_yeas": 21,
+        "total_nays": 17,
+        "rule_36": 0,
+        "not_voting": 2,
+        "abstentions": 0,
+        "total_members_voting": 38,
+        "yeas": [
+          "Aird",
+          "Bagby",
+          "Bennett-Parker",
+          "Boysko",
+          "Carroll Foy",
+          "Deeds",
+          "Favola",
+          "Jones",
+          "Locke",
+          "Lucas",
+          "Marsden",
+          "McPike",
+          "Pekarsky",
+          "Perry",
+          "Roem",
+          "Rouse",
+          "Salim",
+          "Srinivasan",
+          "Surovell",
+          "VanValkenburg",
+          "Williams Graves"
+        ],
+        "nays": [
+          "Cifers",
+          "Craig",
+          "DeSteph",
+          "Diggs",
+          "Durant",
+          "French",
+          "Hackworth",
+          "Jordan",
+          "McDougle",
+          "Mulchi",
+          "Obenshain",
+          "Pillion",
+          "Reeves",
+          "Stanley",
+          "Stuart",
+          "Sturtevant",
+          "Suetterlein"
+        ],
+        "not_voting_members": [
+          "Head",
+          "Peake"
+        ]
+      },
+      {
+        "vote_id": 2,
+        "date": "2026-04-22",
+        "chamber": "House of Delegates",
+        "committee": null,
+        "description": "House concurred in Governor's recommendation",
+        "result": "PASSED",
+        "total_yeas": 64,
+        "total_nays": 35,
+        "rule_36": 0,
+        "not_voting": 1,
+        "abstentions": 0,
+        "total_members_voting": 99,
+        "yeas": [
+          "Anderson",
+          "Anthony",
+          "Askew",
+          "Bloxom",
+          "Bulova",
+          "Callsen",
+          "Carnegie",
+          "Carr",
+          "Carroll",
+          "Clark",
+          "Cohen",
+          "Cole, J.G.",
+          "Cole, N.T.",
+          "Convirs-Fowler",
+          "Cousins",
+          "Delaney",
+          "Dougherty",
+          "Downey",
+          "Feggans",
+          "Franklin, L.V.",
+          "Franklin, M.A.",
+          "Gardner",
+          "Glass",
+          "Guzman",
+          "Hayes",
+          "Henson",
+          "Hernandez",
+          "Herring",
+          "Hope",
+          "Keys-Gamarra",
+          "Krizek",
+          "Laufer",
+          "LeVere Bolling",
+          "Lopez",
+          "Maldonado",
+          "Martinez",
+          "McAuliff",
+          "McClure",
+          "McGuire",
+          "McPike",
+          "McQuinn",
+          "Mehta",
+          "Nivar",
+          "Pope Adams",
+          "Price",
+          "Rasoul",
+          "Reaser",
+          "Reid",
+          "Schmidt",
+          "Seibold",
+          "Sewell",
+          "Shin",
+          "Simon",
+          "Simonds",
+          "Singh",
+          "Sullivan",
+          "Thomas",
+          "Thornton",
+          "Torian",
+          "Tran",
+          "Ward",
+          "Watts",
+          "Willett",
+          "Mr. Speaker"
+        ],
+        "nays": [
+          "Austin",
+          "Ballard",
+          "Cherry",
+          "Cornett",
+          "Davis",
+          "Fowler",
+          "Garrett",
+          "Griffin",
+          "Hamilton",
+          "Hodges",
+          "Kent",
+          "Kilgore",
+          "Leftwich",
+          "McLaughlin",
+          "McNamara",
+          "Morefield",
+          "Oates",
+          "O'Quinn",
+          "Pence",
+          "Phillips",
+          "Rice",
+          "Runion",
+          "Scott, P.A.",
+          "Tata",
+          "Wachsmann",
+          "Walker",
+          "Ware",
+          "Webert",
+          "Whittle",
+          "Wiley",
+          "Williams",
+          "Wilt",
+          "Wright",
+          "Wyatt",
+          "Zehr"
+        ],
+        "not_voting_members": [
+          "Helmer"
+        ],
+        "errata": [
+          {
+            "member": "Helmer",
+            "recorded": "not_voting",
+            "intended": "yea",
+            "note": "Delegate Helmer was recorded as not voting. Intended to vote yea."
+          }
+        ]
+      },
+      {
+        "vote_id": 3,
+        "date": "2026-02-26",
+        "chamber": "Senate",
+        "committee": null,
+        "description": "Passed Senate",
+        "result": "PASSED",
+        "total_yeas": 24,
+        "total_nays": 16,
+        "rule_36": 0,
+        "not_voting": 0,
+        "abstentions": 0,
+        "total_members_voting": 40,
+        "yeas": [
+          "Aird",
+          "Bagby",
+          "Bennett-Parker",
+          "Boysko",
+          "Carroll Foy",
+          "Deeds",
+          "Favola",
+          "Hackworth",
+          "Jones",
+          "Locke",
+          "Lucas",
+          "Marsden",
+          "McPike",
+          "Pekarsky",
+          "Perry",
+          "Pillion",
+          "Roem",
+          "Rouse",
+          "Salim",
+          "Srinivasan",
+          "Stanley",
+          "Surovell",
+          "VanValkenburg",
+          "Williams Graves"
+        ],
+        "nays": [
+          "Cifers",
+          "Craig",
+          "DeSteph",
+          "Diggs",
+          "Durant",
+          "French",
+          "Head",
+          "Jordan",
+          "McDougle",
+          "Mulchi",
+          "Obenshain",
+          "Peake",
+          "Reeves",
+          "Stuart",
+          "Sturtevant",
+          "Suetterlein"
+        ],
+        "not_voting_members": []
+      },
+      {
+        "vote_id": 4,
+        "date": "2026-02-23",
+        "chamber": "Senate",
+        "committee": "Commerce and Labor",
+        "description": "Reported from Commerce and Labor",
+        "result": "REPORTED",
+        "total_yeas": 8,
+        "total_nays": 6,
+        "rule_36": 0,
+        "not_voting": 0,
+        "abstentions": 0,
+        "total_members_voting": 14,
+        "yeas": [
+          "Deeds",
+          "Lucas",
+          "Surovell",
+          "Locke",
+          "McPike",
+          "Rouse",
+          "Bagby",
+          "Boysko"
+        ],
+        "nays": [
+          "Obenshain",
+          "Stanley",
+          "McDougle",
+          "DeSteph",
+          "Peake",
+          "Stuart"
+        ],
+        "not_voting_members": []
+      },
+      {
+        "vote_id": 5,
+        "date": "2026-01-28",
+        "chamber": "House of Delegates",
+        "committee": null,
+        "description": "Read third time and passed House",
+        "result": "PASSED",
+        "total_yeas": 65,
+        "total_nays": 30,
+        "rule_36": 0,
+        "not_voting": 5,
+        "abstentions": 0,
+        "total_members_voting": 95,
+        "yeas": [
+          "Anderson",
+          "Anthony",
+          "Askew",
+          "Bennett-Parker",
+          "Bloxom",
+          "Bulova",
+          "Callsen",
+          "Carnegie",
+          "Carr",
+          "Carroll",
+          "Clark",
+          "Cohen",
+          "Cole, J.G.",
+          "Cole, N.T.",
+          "Convirs-Fowler",
+          "Cousins",
+          "Delaney",
+          "Dougherty",
+          "Downey",
+          "Feggans",
+          "Franklin, L.V.",
+          "Gardner",
+          "Glass",
+          "Guzman",
+          "Hayes",
+          "Helmer",
+          "Henson",
+          "Hernandez",
+          "Herring",
+          "Hope",
+          "Keys-Gamarra",
+          "Krizek",
+          "Laufer",
+          "LeVere Bolling",
+          "Lopez",
+          "Maldonado",
+          "Martinez",
+          "McAuliff",
+          "McClure",
+          "McGuire",
+          "McQuinn",
+          "Mehta",
+          "Morefield",
+          "Nivar",
+          "Pope Adams",
+          "Price",
+          "Rasoul",
+          "Reaser",
+          "Reid",
+          "Schmidt",
+          "Seibold",
+          "Sewell",
+          "Shin",
+          "Simon",
+          "Simonds",
+          "Singh",
+          "Sullivan",
+          "Thomas",
+          "Thornton",
+          "Torian",
+          "Tran",
+          "Ward",
+          "Watts",
+          "Willett",
+          "Mr. Speaker"
+        ],
+        "nays": [
+          "Austin",
+          "Ballard",
+          "Cherry",
+          "Cornett",
+          "Davis",
+          "Fowler",
+          "Griffin",
+          "Hamilton",
+          "Hodges",
+          "Kent",
+          "Kilgore",
+          "Leftwich",
+          "McLaughlin",
+          "McNamara",
+          "Oates",
+          "O'Quinn",
+          "Pence",
+          "Phillips",
+          "Runion",
+          "Scott, P.A.",
+          "Tata",
+          "Wachsmann",
+          "Walker",
+          "Ware",
+          "Webert",
+          "Whittle",
+          "Wiley",
+          "Wilt",
+          "Wyatt",
+          "Zehr"
+        ],
+        "not_voting_members": [
+          "Franklin, M.A.",
+          "Garrett",
+          "Knight",
+          "Williams",
+          "Wright"
+        ],
+        "errata": [
+          {
+            "member": "Knight",
+            "recorded": "not_voting",
+            "intended": "nay",
+            "note": "Delegate Knight was recorded as not voting. Intended to vote nay."
+          },
+          {
+            "member": "Garrett",
+            "recorded": "not_voting",
+            "intended": "nay",
+            "note": "Delegate Garrett was recorded as not voting. Intended to vote nay."
+          },
+          {
+            "member": "Franklin, M.A.",
+            "recorded": "not_voting",
+            "intended": "yea",
+            "note": "Delegate Franklin, M.A. was recorded as not voting. Intended to vote yea."
+          }
+        ]
+      },
+      {
+        "vote_id": 6,
+        "date": "2026-01-22",
+        "chamber": "House of Delegates",
+        "committee": "Labor and Commerce",
+        "description": "Reported from Labor and Commerce with substitute",
+        "result": "REPORTED WITH SUBSTITUTE",
+        "total_yeas": 16,
+        "total_nays": 6,
+        "rule_36": 0,
+        "not_voting": 0,
+        "abstentions": 0,
+        "total_members_voting": 22,
+        "yeas": [
+          "Ward",
+          "Sullivan",
+          "Lopez",
+          "Convirs-Fowler",
+          "Helmer",
+          "Maldonado",
+          "Shin",
+          "LeVere Bolling",
+          "Feggans",
+          "Clark",
+          "Cousins",
+          "Anthony",
+          "Cohen",
+          "Singh",
+          "Nivar",
+          "Williams"
+        ],
+        "nays": [
+          "Kilgore",
+          "O'Quinn",
+          "Webert",
+          "Wilt",
+          "Runion",
+          "Ballard"
+        ],
+        "not_voting_members": []
+      },
+      {
+        "vote_id": 7,
+        "date": "2026-01-20",
+        "chamber": "House of Delegates",
+        "committee": "Labor and Commerce",
+        "subcommittee": "Subcommittee #3",
+        "description": "Subcommittee recommends reporting with substitute",
+        "result": "RECOMMENDED REPORTING WITH SUBSTITUTE",
+        "total_yeas": 7,
+        "total_nays": 2,
+        "rule_36": 0,
+        "not_voting": 0,
+        "abstentions": 0,
+        "total_members_voting": 9,
+        "yeas": [
+          "Sullivan",
+          "Shin",
+          "Feggans",
+          "Clark",
+          "Anthony",
+          "Nivar",
+          "Williams"
+        ],
+        "nays": [
+          "Kilgore",
+          "Wilt"
+        ],
+        "not_voting_members": []
+      }
+    ]
+  }
+}

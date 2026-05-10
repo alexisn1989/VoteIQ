@@ -1,0 +1,189 @@
+{
+  "bill": {
+    "house_bill_number": "HB4",
+    "session": "2026",
+    "chapter": "352",
+    "title": "An Act to amend the Code of Virginia by adding in Title 36 a chapter numbered 13, consisting of sections numbered 36-176 through 36-180, relating to preservation of affordable housing; definitions; civil penalty.",
+    "bill_title_short": "Affordable housing; preservation, definitions, civil penalty.",
+    "subject": "Affordable Housing",
+    "approved": "April 8, 2026",
+    "offered": null,
+    "prefiled": null,
+    "primary_patron": null,
+    "all_patrons": [],
+    "patron_count": 0,
+    "companion_bill": null,
+    "code_sections": ["§ 36-176", "§ 36-177", "§ 36-178", "§ 36-179", "§ 36-180"],
+    "summary": "Authorizes localities to adopt ordinances requiring owners of publicly supported housing to provide 24-month written notice before terminating affordability restrictions. Creates a right of first refusal mechanism allowing localities or qualified designees to match third-party purchase offers, conditioned on a 15-year affordability commitment. Establishes civil penalties up to $5,000 per violation and requires localities with populations over 3,500 that adopt these ordinances to notify DHCD annually.",
+    "definitions": {
+      "Affordability restriction": "A limit on the amount of rent that an owner may charge at publicly supported housing as set forth in a contract.",
+      "Bona fide offer to purchase": "A signed purchase agreement made in good faith.",
+      "Publicly supported housing": "Any building or combination of structures (10+ rental units) with an affordability restriction receiving benefits from federal/state housing programs.",
+      "Qualified designee": "Nonprofit, for-profit organization, housing authority, or tenant association that enters an agreement with a locality to evaluate or exercise the right of first refusal.",
+      "Sale or sell": "Conveying or disposing of publicly supported housing within a two-year period; excludes transfers to affiliates, family, foreclosure, or eminent domain.",
+      "Tenant association": "Association established by tenants, operating democratically, independent of owners/management.",
+      "Termination": "Cessation or removal of an affordability restriction without equivalent replacement."
+    }
+  },
+  "rag_chunks": [
+    {
+      "chunk_id": 1,
+      "section": "§ 36-176 Definitions: Publicly Supported Housing",
+      "content": "Publicly supported housing means any building or combination of structures operated as a single entity consisting of 10 or more rental dwelling units with an affordability restriction in a contract. This restriction requires rent to be affordable for persons and families of low or moderate income. Such housing must receive benefits from specific programs including Section 8 (Project-Based), federal Low-Income Housing Tax Credits (LIHTC), Section 101 Rent Supplements, Section 202, Below Market Interest Rate programs, Sections 515 and 538, tax-exempt mortgage revenue bonds, Community Development Block Grants (CDBG), HOME Investment Partnership Program, National and Virginia Housing Trust Funds, and the Virginia housing opportunity tax credit."
+    },
+    {
+      "chunk_id": 2,
+      "section": "§ 36-176 Definitions: Sale and Termination",
+      "content": "Sale or sell refers to an owner conveying or disposing of publicly supported housing through transactions within a two-year period, excluding transfers of ownership interest alone. Exemptions from the definition of 'sale' include transfers to affiliates, partial owners, family members, or those resulting from death/divorce, foreclosure, or eminent domain. Termination is defined as the cessation or removal of an affordability restriction without an equivalent replacement. This includes the expiration of government program restrictions, non-renewal of contracts, or the prepayment of government program mortgage loans that originally required the affordability restriction."
+    },
+    {
+      "chunk_id": 3,
+      "section": "§ 36-177 Notice Requirements for Termination",
+      "content": "Any locality may adopt an ordinance requiring owners of publicly supported housing to provide a 24-month written notice before terminating an affordability restriction. This notice must be sent to the locality, all current tenants, and the tenant association. The notice must clearly state in plain language the owner's intent: whether they plan to allow restrictions to expire, convert the property to nonresidential use, negotiate a renewal, or sell to a third-party buyer. If selling, the owner must disclose if the buyer intends to maintain equivalent affordability restrictions. If multiple terminations occur within one year, a single 24-month notice is sufficient."
+    },
+    {
+      "chunk_id": 4,
+      "section": "§ 36-177 Compliance and Penalties",
+      "content": "Localities may require owners to submit verification of compliance within 30 days of a notice requirement. If a locality does not contest the owner's verification within 60 days, a certificate of compliance is recorded in the land records. Localities are authorized to establish a schedule of fines for non-compliance, with a maximum penalty of $5,000 per violation. However, no fine can be imposed if a certificate of compliance was already recorded or if the owner was not properly notified of their non-compliance by the locality."
+    },
+    {
+      "chunk_id": 5,
+      "section": "§ 36-178 Qualified Designee and Affordability Commitment",
+      "content": "A locality that has adopted a notice ordinance may appoint a 'qualified designee' to act as a purchaser of the publicly supported housing. A qualified designee can be a nonprofit, for-profit organization, public housing authority, or tenant association. To be selected, the designee must enter into a written agreement with the locality, committing to preserve the property's affordability for at least 15 years. The designee then assumes all rights and responsibilities of the locality regarding the potential purchase of the housing development."
+    },
+    {
+      "chunk_id": 6,
+      "section": "§ 36-179 Right of First Refusal: Recording and Content",
+      "content": "A locality or its qualified designee may record a notice of right of first refusal in the local land records. This notice must include a legal description of the property, an acknowledgment of the right of first refusal (or its assignment), and a list of exemptions. It must state that any bona fide offer from a third-party must acknowledge the property is subject to this right. The right of first refusal expires 24 months after the termination of the affordability restrictions. Proof of delivery to the owner via electronic, in-person, or registered mail is required."
+    },
+    {
+      "chunk_id": 7,
+      "section": "§ 36-179 Right of First Refusal: Matching Offers",
+      "content": "When an owner accepts a third-party offer, they must notify the locality and designee within five business days. The locality or designee then has 30 days to exercise their right of first refusal by delivering a matching offer. A matching offer must include a 15-year affordability commitment. While it generally follows the third-party terms, a matching offer is valid if it includes an earnest money deposit of at least 4% of the sales price (or the third-party amount, whichever is less) and makes that deposit refundable for up to 90 days if financing fails."
+    },
+    {
+      "chunk_id": 8,
+      "section": "§ 36-179 Exemptions from Right of First Refusal",
+      "content": "The matching offer requirement does not apply if: 1. No notice of right of first refusal was previously recorded. 2. A third-party buyer agrees in writing to extend the property's affordability for a period determined by the locality (not to exceed 30 years). 3. The transfer is not considered a 'sale' under the chapter's definitions. 4. More than 24 months have passed since the affordability restrictions terminated. 5. The owner accepted a third-party offer before a reasonable time following the adoption of the local ordinance."
+    },
+    {
+      "chunk_id": 9,
+      "section": "§ 36-179 and § 36-180 Legal Action and Reporting",
+      "content": "Localities or designees may bring civil actions against owners who violate right of first refusal provisions. Courts are authorized to award punitive damages, injunctive relief, and reasonable attorney fees to prevailing plaintiffs. Violations cannot be pursued if a certificate of compliance is on record. Additionally, under § 36-180, any locality with a population over 3,500 that adopts these ordinances must notify the Department of Housing and Community Development (DHCD) in their annual report."
+    },
+    {
+      "chunk_id": 10,
+      "section": "Introduced Text: Procedures and Definitions",
+      "content": "The introduced version of HB4 set out operational details for local affordable housing preservation ordinances. It allowed a locality to require a 24-month written termination notice to the locality, current tenants, and any tenant association before an affordability restriction ends. That notice would state whether the owner intended to let restrictions terminate, convert the property to nonresidential use, negotiate a replacement affordability restriction, or sell to a third-party buyer. Owners with less than 24 months remaining when a local ordinance takes effect were required to give notice within 90 days of the ordinance's effective date. Localities could require verification of compliance within 30 days and record certificates of compliance in land records if compliance was not contested. For right-of-first-refusal procedures, the introduced text allowed a locality or qualified designee to record notice in land records, required owner notice within five business days after accepting a third-party offer, and provided 30 days for the locality or designee to submit a matching offer committing to affordability for at least 15 years."
+    }
+  ],
+  "votes": {
+    "bill": "H 4",
+    "house_bill_number": "HB4",
+    "session": "2026",
+    "vote_records": [
+      {
+        "vote_id": 1,
+        "date": "2026-03-10",
+        "chamber": "Senate",
+        "committee": null,
+        "description": "Passed Senate",
+        "result": "PASSED",
+        "total_yeas": 21,
+        "total_nays": 19,
+        "rule_36": 0,
+        "not_voting": 0,
+        "abstentions": 0,
+        "total_members_voting": 40,
+        "yeas": [
+          "Aird", "Bagby", "Bennett-Parker", "Boysko", "Carroll Foy", "Deeds",
+          "Favola", "Jones", "Locke", "Lucas", "Marsden", "McPike", "Pekarsky",
+          "Perry", "Roem", "Rouse", "Salim", "Srinivasan", "Surovell",
+          "VanValkenburg", "Williams Graves"
+        ],
+        "nays": [
+          "Cifers", "Craig", "DeSteph", "Diggs", "Durant", "French", "Hackworth",
+          "Head", "Jordan", "McDougle", "Mulchi", "Obenshain", "Peake", "Pillion",
+          "Reeves", "Stanley", "Stuart", "Sturtevant", "Suetterlein"
+        ]
+      },
+      {
+        "vote_id": 3,
+        "date": "2026-03-04",
+        "chamber": "Senate",
+        "committee": "General Laws and Technology",
+        "description": "Reported from General Laws and Technology",
+        "result": "REPORTED",
+        "total_yeas": 9,
+        "total_nays": 6,
+        "rule_36": 0,
+        "not_voting": 0,
+        "abstentions": 0,
+        "total_members_voting": 15,
+        "yeas": [
+          "McPike", "Locke", "Rouse", "VanValkenburg", "Roem",
+          "Carroll Foy", "Williams Graves", "Marsden", "Pekarsky"
+        ],
+        "nays": ["Reeves", "Pillion", "Head", "Jordan", "French", "Craig"]
+      },
+      {
+        "vote_id": 4,
+        "date": "2026-02-02",
+        "chamber": "House of Delegates",
+        "committee": null,
+        "description": "Read third time and passed House",
+        "result": "PASSED",
+        "total_yeas": 65,
+        "total_nays": 34,
+        "rule_36": 0,
+        "not_voting": 1,
+        "abstentions": 0,
+        "total_members_voting": 99,
+        "yeas": [
+          "Anderson", "Anthony", "Askew", "Bennett-Parker", "Bulova", "Callsen",
+          "Carnegie", "Carr", "Carroll", "Clark", "Cohen", "Cole, J.G.",
+          "Cole, N.T.", "Convirs-Fowler", "Cousins", "Delaney", "Dougherty",
+          "Downey", "Feggans", "Franklin, L.V.", "Franklin, M.A.", "Gardner",
+          "Glass", "Guzman", "Hayes", "Helmer", "Henson", "Hernandez",
+          "Herring", "Hope", "Keys-Gamarra", "Krizek", "Laufer",
+          "LeVere Bolling", "Lopez", "Maldonado", "Martinez", "McAuliff",
+          "McClure", "McGuire", "McQuinn", "Mehta", "Nivar", "Oates",
+          "Pope Adams", "Price", "Rasoul", "Reaser", "Reid", "Schmidt",
+          "Seibold", "Sewell", "Shin", "Simon", "Simonds", "Singh",
+          "Sullivan", "Thomas", "Thornton", "Torian", "Tran", "Ward",
+          "Watts", "Willett", "Mr. Speaker"
+        ],
+        "nays": [
+          "Austin", "Ballard", "Bloxom", "Cherry", "Cornett", "Davis",
+          "Fowler", "Garrett", "Griffin", "Hamilton", "Hodges", "Kent",
+          "Kilgore", "Leftwich", "McLaughlin", "McNamara", "Morefield",
+          "O'Quinn", "Pence", "Phillips", "Runion", "Scott, P.A.", "Tata",
+          "Wachsmann", "Walker", "Ware", "Webert", "Whittle", "Wiley",
+          "Williams", "Wilt", "Wright", "Wyatt", "Zehr"
+        ],
+        "not_voting_members": ["Knight"],
+        "errata": [
+          { "member": "Knight", "recorded": "not_voting", "intended": "nay" },
+          { "member": "Oates", "recorded": "yea", "intended": "nay" }
+        ]
+      },
+      {
+        "vote_id": 5,
+        "date": "2026-01-22",
+        "chamber": "House of Delegates",
+        "committee": "General Laws",
+        "subcommittee": "Housing/Consumer Protection",
+        "description": "Subcommittee recommends reporting",
+        "result": "REPORTED",
+        "total_yeas": 7,
+        "total_nays": 3,
+        "rule_36": 0,
+        "not_voting": 0,
+        "abstentions": 0,
+        "total_members_voting": 10,
+        "yeas": ["Simon", "Carr", "Price", "Hernandez", "Guzman", "Carroll", "Franklin, L.V."],
+        "nays": ["Austin", "Bloxom", "Wiley"]
+      }
+    ]
+  }
+}
