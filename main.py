@@ -3501,14 +3501,22 @@ class BillsChatRequest(BaseModel):
 
 @app.get("/api/bills-debug")
 async def bills_debug():
+    chroma_key = os.getenv("CHROMA_API_KEY", "")
+    voyage_key = os.getenv("VOYAGE_API_KEY", "")
+    env_info = {
+        "CHROMA_API_KEY": chroma_key[:8] + "..." if chroma_key else "MISSING",
+        "CHROMA_TENANT":  os.getenv("CHROMA_TENANT", "MISSING"),
+        "CHROMA_DATABASE": os.getenv("CHROMA_DATABASE", "MISSING"),
+        "VOYAGE_API_KEY": voyage_key[:8] + "..." if voyage_key else "MISSING",
+    }
     try:
         col = _get_bills_collection()
         count = col.count()
         test_vec = _get_voyage_client().embed(["HB4 affordable housing"], model=_BILLS_MODEL, input_type="query").embeddings[0]
         res = col.query(query_embeddings=[test_vec], n_results=2, include=["documents"])
-        return {"status": "ok", "doc_count": count, "sample": res["documents"][0]}
+        return {"status": "ok", "doc_count": count, "env": env_info, "sample": res["documents"][0]}
     except Exception as e:
-        return {"status": "error", "error": str(e), "type": type(e).__name__}
+        return {"status": "error", "error": str(e), "type": type(e).__name__, "env": env_info}
 
 
 @app.post("/api/bills-chat", response_model=ChatResponse)
