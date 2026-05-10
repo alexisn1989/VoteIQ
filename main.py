@@ -3549,6 +3549,20 @@ def _query_chroma(query_embedding: list, n_results: int = 6):
     r.raise_for_status()
     return r.json()
 
+def _get_bill_summaries():
+    """Always fetch all bill_summary chunks so Claude knows what each bill is about."""
+    import httpx
+    col_id = _get_chroma_collection_id()
+    r = httpx.post(
+        f"{_chroma_base()}/collections/{col_id}/get",
+        headers=_chroma_headers(),
+        json={"where": {"chunk_type": {"$eq": "bill_summary"}},
+              "include": ["documents", "metadatas"]},
+        timeout=15,
+    )
+    r.raise_for_status()
+    return r.json()
+
 
 class BillsChatRequest(BaseModel):
     messages: list[ChatMessage]
@@ -3599,9 +3613,24 @@ async def bills_chat(req: BillsChatRequest):
 
     try:
         context_blocks = []
+        # Always include bill summaries so Claude knows what each bill is about
+        try:
+            summaries = _get_bill_summaries()
+            seen_ids = set()
+            for doc, meta in zip(summaries.get("documents", []), summaries.get("metadatas", [])):
+                chunk_id = meta.get("bill_id", "") + "_summary"
+                if chunk_id not in seen_ids:
+                    seen_ids.add(chunk_id)
+                    label = f"[bill_summary — {meta.get('bill_id','?')} {meta.get('session','?')}]"
+                    context_blocks.append(f"{label}\n{doc}")
+        except Exception:
+            pass  # don't fail the whole request if summary fetch fails
+
+        seen_docs = set(b.split("\n", 1)[1] if "\n" in b else b for b in context_blocks)
         for doc, meta in zip(results["documents"][0], results["metadatas"][0]):
-            label = f"[{meta.get('chunk_type','?')} — {meta.get('bill_id','?')} {meta.get('session','?')}]"
-            context_blocks.append(f"{label}\n{doc}")
+            if doc not in seen_docs:
+                label = f"[{meta.get('chunk_type','?')} — {meta.get('bill_id','?')} {meta.get('session','?')}]"
+                context_blocks.append(f"{label}\n{doc}")
         context = "\n\n---\n\n".join(context_blocks)
     except Exception as e:
         return ChatResponse(reply=f"[VoteIQ error — parsing results: {e}]")
