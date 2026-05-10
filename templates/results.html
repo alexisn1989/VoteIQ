@@ -487,6 +487,7 @@ async function lookup() {
     const usRep = data.us_rep;
     const del = data.state_delegate;
     const sen = data.state_senator;
+    const cityPrecinct = data.portsmouth || data.hampton || data.suffolk;
 
     const partyColor = p => p==='Democrat' ? '#1a52c8' : p==='Republican' ? '#c8102e' : '#777';
     const partyTag = p => p
@@ -495,7 +496,13 @@ async function lookup() {
 
     card.innerHTML =
       `<p style="margin-bottom:4px;">📍 <strong>${d.locality}</strong></p>`+
-      ((d.precinct && d.precinct !== 'Not found') ? `<p style="margin-bottom:8px;font-size:0.82rem;color:var(--muted);"><strong>Precinct:</strong> ${d.precinct}</p>` : '')+
+      (cityPrecinct && cityPrecinct.precinct
+        ? `<div style="margin-top:8px;margin-bottom:8px;padding:8px 10px;background:#f4f1eb;border-left:3px solid #7a7468;font-size:0.82rem;line-height:1.8;">`+
+          `<div style="font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:4px;">Voting Precinct</div>`+
+          `<div><strong>${cityPrecinct.precinct_number ? cityPrecinct.precinct_number + ' · ' : ''}${cityPrecinct.precinct}</strong></div>`+
+          (cityPrecinct.polling_location ? `<div style="font-size:0.75rem;color:#7a7468;">${cityPrecinct.polling_location}</div>` : '')+
+        `</div>`
+        : ((d.precinct && d.precinct !== 'Not found') ? `<p style="margin-bottom:8px;font-size:0.82rem;color:var(--muted);"><strong>Precinct:</strong> ${d.precinct}</p>` : ''))+
       (usRep ?
         `<div style="margin-top:8px;padding:8px 10px;background:#f4f1eb;border-left:3px solid #1a52c8;font-size:0.82rem;line-height:1.8;">`+
           `<div style="font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:4px;">U.S. House · District ${usRep.district_number}</div>`+

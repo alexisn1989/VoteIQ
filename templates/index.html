@@ -293,6 +293,7 @@
       const hampton = data.hampton;
       const newportNews = data.newport_news;
       const suffolk = data.suffolk;
+      const cityPrecinct = portsmouth || hampton || suffolk;
       const schoolBoard = data.vb_school_board;
       const vaStatewide = data.va_statewide || [];
       const president = data.us_president;
@@ -338,6 +339,12 @@
           (schoolBoard && schoolBoard.at_large ? officialCard('School Board · At-Large',                           schoolBoard.at_large.name, 'Virginia Beach', schoolBoard.at_large.party) : '')
         : '';
       const allCards =
+        (cityPrecinct && cityPrecinct.precinct ? officialCard(
+          'Voting Precinct',
+          ((cityPrecinct.precinct_number ? cityPrecinct.precinct_number + ' · ' : '') + cityPrecinct.precinct),
+          cityPrecinct.polling_location || d.locality,
+          ''
+        ) : '') +
         (president ? repBlock('President', null, president.name, president.party, president.title) : '') +
         vaStatewide.map(s => repBlock(s.title, null, s.name, s.party, 'Virginia')).join('') +
         usSenators.map(s => repBlock('U.S. Senate', null, s.name, s.party, s.title)).join('') +
@@ -403,7 +410,7 @@
         '<div style="background:white;border:1px solid #ddd8cc;border-top:4px solid #c8102e;padding:20px 24px;margin-top:20px;">' +
         '<h3 style="font-family:Barlow Condensed,sans-serif;font-size:0.8rem;color:#c8102e;margin-bottom:12px;letter-spacing:0.12em;text-transform:uppercase;">Your Representatives</h3>' +
         '<p style="margin-bottom:6px;font-size:0.9rem;">📍 <strong>' + escapeHtml(d.locality) + '</strong></p>' +
-        ((d.precinct && d.precinct !== 'Not found') ? '<p style="margin-bottom:10px;font-size:0.82rem;color:#7a7468;"><strong>Precinct:</strong> ' + escapeHtml(d.precinct) + '</p>' : '') +
+        ((cityPrecinct && cityPrecinct.precinct) ? '<p style="margin-bottom:10px;font-size:0.82rem;color:#7a7468;"><strong>Precinct:</strong> ' + escapeHtml((cityPrecinct.precinct_number ? cityPrecinct.precinct_number + ' · ' : '') + cityPrecinct.precinct) + (cityPrecinct.polling_location ? ' · ' + escapeHtml(cityPrecinct.polling_location) : '') + '</p>' : ((d.precinct && d.precinct !== 'Not found') ? '<p style="margin-bottom:10px;font-size:0.82rem;color:#7a7468;"><strong>Precinct:</strong> ' + escapeHtml(d.precinct) + '</p>' : '')) +
         '<div style="display:grid;grid-template-columns:' + gridCols + ';gap:0 16px;">' +
         allCards +
         '</div>' +
