@@ -1102,6 +1102,9 @@ def lookup(address: str):
             "school_board": [{"name": m["name"], "party": m.get("party", "")} for m in _chesapeake_officials.get("school_board", [])],
         } if "chesapeake" in result.get("locality", "").lower() else None,
         "portsmouth": {
+            "precinct": result.get("portsmouth_precinct") or result.get("precinct"),
+            "precinct_number": result.get("portsmouth_precinct_number"),
+            "polling_location": result.get("portsmouth_polling_location"),
             "mayor":                  (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_portsmouth_officials.get("mayor")),
             "vice_mayor":             (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_portsmouth_officials.get("vice_mayor")),
             "sheriff":                (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_portsmouth_officials.get("sheriff")),
@@ -1113,6 +1116,9 @@ def lookup(address: str):
             "school_board": [{"name": m["name"], "party": m.get("party", "")} for m in _portsmouth_officials.get("school_board", [])],
         } if "portsmouth" in result.get("locality", "").lower() else None,
         "hampton": {
+            "precinct": result.get("hampton_precinct") or result.get("precinct"),
+            "precinct_number": result.get("hampton_precinct_number"),
+            "polling_location": result.get("hampton_polling_location"),
             "mayor":                  (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_hampton_officials.get("mayor")),
             "vice_mayor":             (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_hampton_officials.get("vice_mayor")),
             "sheriff":                (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_hampton_officials.get("sheriff")),
@@ -1140,6 +1146,9 @@ def lookup(address: str):
             ),
         } if "newport news" in result.get("locality", "").lower() else None,
         "suffolk": {
+            "precinct": result.get("suffolk_precinct") or result.get("precinct"),
+            "precinct_number": result.get("suffolk_precinct_number"),
+            "polling_location": result.get("suffolk_polling_location"),
             "mayor":                  (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_suffolk_officials.get("mayor")),
             "vice_mayor":             (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_suffolk_officials.get("vice_mayor")),
             "sheriff":                (lambda m: {"name": m["name"], "party": m.get("party", "")} if m else None)(_suffolk_officials.get("sheriff")),

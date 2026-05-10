@@ -16,6 +16,9 @@ va_sd    = None
 vb_council_gdf = None  # VB city council district boundaries
 norfolk_combined_gdf = None    # Norfolk wards + superwards merged into one GDF
 nn_council_gdf = None  # Newport News city council district boundaries
+hampton_precinct_gdf = None  # Hampton voting precinct boundaries
+portsmouth_precinct_gdf = None  # Portsmouth voting precinct boundaries
+suffolk_precinct_gdf = None  # Suffolk voting precinct boundaries
 _loaded  = False
 
 # VB council lookup: district number (int) -> {name, email}
@@ -150,8 +153,54 @@ except Exception as _e:
     print(f"address_lookup: could not load voteiq_officials.json: {_e}")
 
 
+def _load_city_precincts(city_names):
+    for city_name in city_names:
+        direct_names = (
+            f"{city_name.upper()}_CITY.shp",
+            f"{city_name.title()}_city.shp",
+            f"{city_name.lower()}_city.shp",
+        )
+        path = next(
+            (
+                os.path.join(BASE_DIR, name)
+                for name in direct_names
+                if os.path.exists(os.path.join(BASE_DIR, name))
+            ),
+            os.path.join(BASE_DIR, direct_names[0]),
+        )
+        if not os.path.exists(path):
+            for root, _dirs, files in os.walk(BASE_DIR):
+                if ".venv" in root.split(os.sep):
+                    continue
+                for file_name in files:
+                    if file_name.lower().endswith(".shp") and city_name.lower() in file_name.lower():
+                        path = os.path.join(root, file_name)
+                        break
+                if os.path.exists(path):
+                    break
+        if os.path.exists(path):
+            gdf = gpd.read_file(path).to_crs(epsg=4326)
+            print(f"address_lookup: {city_name.lower()}_precinct_gdf loaded from {path}")
+            return gdf
+
+    print(f"address_lookup: {'/'.join(city_names)} precinct shapefile not available")
+    return None
+
+
+def _match_precinct(gdf, point):
+    if gdf is None:
+        return None, None, None
+    for _, row in gdf.iterrows():
+        if row['geometry'].contains(point):
+            precinct_name = row.get('PrecinctNa') or row.get('Precinct_1') or row.get('PrecinctDi')
+            precinct_number = row.get('PrecinctNu') or row.get('PrecinctFI')
+            polling_location = row.get('PollingLoc')
+            return precinct_name, precinct_number, polling_location
+    return None, None, None
+
+
 def _load_shapefiles():
-    global va_cd, vb_local, va_hod, va_sd, vb_council_gdf, norfolk_combined_gdf, nn_council_gdf, _loaded
+    global va_cd, vb_local, va_hod, va_sd, vb_council_gdf, norfolk_combined_gdf, nn_council_gdf, hampton_precinct_gdf, portsmouth_precinct_gdf, suffolk_precinct_gdf, _loaded
     if _loaded:
         return
     _loaded = True
@@ -200,6 +249,21 @@ def _load_shapefiles():
         print("address_lookup: nn_council_gdf loaded")
     except Exception as e:
         print(f"address_lookup: could not load nn_council_gdf: {e}")
+
+    try:
+        hampton_precinct_gdf = _load_city_precincts(("HAMPTON", "Hampton"))
+    except Exception as e:
+        print(f"address_lookup: could not load hampton_precinct_gdf: {e}")
+
+    try:
+        portsmouth_precinct_gdf = _load_city_precincts(("PORTSMOUTH", "Portsmouth"))
+    except Exception as e:
+        print(f"address_lookup: could not load portsmouth_precinct_gdf: {e}")
+
+    try:
+        suffolk_precinct_gdf = _load_city_precincts(("SUFFOLK", "Suffolk"))
+    except Exception as e:
+        print(f"address_lookup: could not load suffolk_precinct_gdf: {e}")
 
     try:
         import geopandas as _gpd
@@ -343,6 +407,30 @@ def find_district(address):
                     nn_council_district_name = row['LONGNAME']
                     break
 
+        hampton_precinct = None
+        hampton_precinct_number = None
+        hampton_polling_location = None
+        if "hampton" in (locality or "").lower() and hampton_precinct_gdf is not None:
+            hampton_precinct, hampton_precinct_number, hampton_polling_location = _match_precinct(hampton_precinct_gdf, point)
+            if hampton_precinct and not precinct:
+                precinct = hampton_precinct
+
+        portsmouth_precinct = None
+        portsmouth_precinct_number = None
+        portsmouth_polling_location = None
+        if "portsmouth" in (locality or "").lower() and portsmouth_precinct_gdf is not None:
+            portsmouth_precinct, portsmouth_precinct_number, portsmouth_polling_location = _match_precinct(portsmouth_precinct_gdf, point)
+            if portsmouth_precinct and not precinct:
+                precinct = portsmouth_precinct
+
+        suffolk_precinct = None
+        suffolk_precinct_number = None
+        suffolk_polling_location = None
+        if "suffolk" in (locality or "").lower() and suffolk_precinct_gdf is not None:
+            suffolk_precinct, suffolk_precinct_number, suffolk_polling_location = _match_precinct(suffolk_precinct_gdf, point)
+            if suffolk_precinct and not precinct:
+                precinct = suffolk_precinct
+
         return {
             "locality": locality or "Virginia",
             "district": district or "Not found",
@@ -358,6 +446,15 @@ def find_district(address):
             "norfolk_superward_sbm": norfolk_superward_sbm,
             "nn_council_district": nn_council_district,
             "nn_council_district_name": nn_council_district_name,
+            "hampton_precinct": hampton_precinct,
+            "hampton_precinct_number": hampton_precinct_number,
+            "hampton_polling_location": hampton_polling_location,
+            "portsmouth_precinct": portsmouth_precinct,
+            "portsmouth_precinct_number": portsmouth_precinct_number,
+            "portsmouth_polling_location": portsmouth_polling_location,
+            "suffolk_precinct": suffolk_precinct,
+            "suffolk_precinct_number": suffolk_precinct_number,
+            "suffolk_polling_location": suffolk_polling_location,
             "precinct": precinct or "Not found",
             "lat": lat,
             "lng": lng

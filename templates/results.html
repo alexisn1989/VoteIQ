@@ -494,7 +494,8 @@ async function lookup() {
       : '';
 
     card.innerHTML =
-      `<p>📍 <strong>${d.locality}</strong></p>`+
+      `<p style="margin-bottom:4px;">📍 <strong>${d.locality}</strong></p>`+
+      ((d.precinct && d.precinct !== 'Not found') ? `<p style="margin-bottom:8px;font-size:0.82rem;color:var(--muted);"><strong>Precinct:</strong> ${d.precinct}</p>` : '')+
       (usRep ?
         `<div style="margin-top:8px;padding:8px 10px;background:#f4f1eb;border-left:3px solid #1a52c8;font-size:0.82rem;line-height:1.8;">`+
           `<div style="font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:4px;">U.S. House · District ${usRep.district_number}</div>`+
@@ -583,4 +584,3 @@ if (document.getElementById('viqInput')) {
 </script>
 </body>
 </html>
-
