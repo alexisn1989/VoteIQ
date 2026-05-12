@@ -346,8 +346,8 @@
           cityPrecinct.address || cityPrecinct.polling_address || cityPrecinct.polling_location || cityPrecinct.location || d.locality,
           ''
         ) : '') +
-        (president ? repBlock('President', null, president.name, president.party, president.title) : '') +
-        vaStatewide.map(s => repBlock(s.title, null, s.name, s.party, 'Virginia')).join('') +
+        (president ? repBlock('President', null, president.name, president.party, president.title, president.url) : '') +
+        vaStatewide.map(s => repBlock(s.title, null, s.name, s.party, 'Virginia', s.url)).join('') +
         usSenators.map(s => repBlock('U.S. Senate', null, s.name, s.party, s.title, s.url)).join('') +
         (usRep ? repBlock('U.S. House · District ' + usRep.district_number, null, usRep.rep, usRep.party, usRep.region, usRep.url) : repBlock('U.S. House', null, d.district || 'Not found', null, null)) +
         (del ? repBlock('House of Delegates', del.district_number, del.delegate, del.party, del.locality, del.url) : '') +

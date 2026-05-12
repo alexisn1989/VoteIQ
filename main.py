@@ -1221,11 +1221,11 @@ def lookup(address: str):
             {"name": "Mark Warner", "party": "Democrat", "title": "Virginia · Senior Senator", "url": "https://www.warner.senate.gov/public/index.cfm/contact"},
             {"name": "Tim Kaine",   "party": "Democrat", "title": "Virginia · Junior Senator", "url": "https://www.kaine.senate.gov/contact"},
         ],
-        "us_president": {"name": "Donald J. Trump", "party": "Republican", "title": "United States"},
+        "us_president": {"name": "Donald J. Trump", "party": "Republican", "title": "United States", "url": "https://www.whitehouse.gov/contact/"},
         "va_statewide": [
-            {"name": "Abigail D. Spanberger", "party": "Democrat", "title": "Governor"},
-            {"name": "Ghazala F. Hashmi",     "party": "Democrat", "title": "Lieutenant Governor"},
-            {"name": "Jay C. Jones",          "party": "Democrat", "title": "Attorney General"},
+            {"name": "Abigail D. Spanberger", "party": "Democrat", "title": "Governor",            "url": "https://www.governor.virginia.gov/contact-the-governor/"},
+            {"name": "Ghazala F. Hashmi",     "party": "Democrat", "title": "Lieutenant Governor", "url": "https://www.ltgov.virginia.gov/contact/"},
+            {"name": "Jay C. Jones",          "party": "Democrat", "title": "Attorney General",    "url": "https://www.ag.virginia.gov/about/contact/"},
         ],
     }
 
