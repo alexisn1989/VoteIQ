@@ -901,6 +901,21 @@ SD_PRE2023_PARTY.update({
 })
 
 # Virginia State Senate — 40 districts (2021 redistricting, 2026 session members)
+_HOD_BASE = "https://house.vga.virginia.gov/members/{}"
+_HOD_MEMBER_URL = {
+    1:"H0219",2:"H0375",3:"H0239",4:"H0208",5:"H0406",6:"H0269",7:"H0370",8:"H0344",9:"H0294",10:"H0317",
+    11:"H0403",12:"H0351",13:"H0264",14:"H0108",15:"H0355",16:"H0281",17:"H0405",18:"H0305",19:"H0365",20:"H0340",
+    21:"H0382",22:"H0297",23:"H0404",24:"H0227",25:"H0343",26:"H0385",27:"H0380",28:"H0301",29:"H0374",30:"H0395",
+    31:"H0377",32:"H0329",33:"H0398",34:"H0231",35:"H0321",36:"H0350",37:"H0253",38:"H0266",39:"H0357",40:"H0308",
+    41:"H0393",42:"H0333",43:"H0224",44:"H0242",45:"H0056",46:"H0390",47:"H0348",48:"H0384",49:"H0401",50:"H0136",
+    51:"H0383",52:"H0325",53:"H0364",54:"H0354",55:"H0371",56:"H0362",57:"H0397",58:"H0327",59:"H0259",60:"H0328",
+    61:"H0247",62:"H0394",63:"H0342",64:"H0388",65:"H0314",66:"H0389",67:"H0369",68:"H0238",69:"H0392",70:"H0323",
+    71:"H0386",72:"H0124",73:"H0396",74:"H0335",75:"H0391",76:"H0361",77:"H0402",78:"H0212",79:"H0356",80:"H0372",
+    81:"H0207",82:"H0399",83:"H0347",84:"H0336",85:"H0284",86:"H0400",87:"H0173",88:"H0322",89:"H0387",90:"H0262",
+    91:"H0285",92:"H0353",93:"H0349",94:"H0366",95:"H0311",96:"H0295",97:"H0360",98:"H0407",99:"H0345",100:"H0267",
+}
+_HOD_MEMBER_URL = {d: _HOD_BASE.format(mid) for d, mid in _HOD_MEMBER_URL.items()}
+
 _SD_URL = "https://apps.senate.virginia.gov/Senator/memberpage.php?id={}"
 SD_CONTEXT = {
     1:  {"senator": "Timmy French",             "party": "Republican", "region": "Clarke, Frederick, Shenandoah, Warren; Winchester",                                                                           "url": _SD_URL.format("S121")},
@@ -1208,7 +1223,7 @@ def lookup(address: str):
             "delegate": hod_info["delegate"],
             "party": hod_info["party"],
             "locality": hod_info["locality"],
-            "url": f"https://virginiageneralassembly.gov/house/members/memberPage.php?id=H{hod_num}",
+            "url": _HOD_MEMBER_URL.get(hod_num),
         } if hod_info else None,
         "state_senator": {
             "district_number": sd_num,
