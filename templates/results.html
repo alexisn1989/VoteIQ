@@ -505,7 +505,7 @@ async function lookup() {
         ? `<div style="margin-top:8px;margin-bottom:8px;padding:8px 10px;background:#f4f1eb;border-left:3px solid #7a7468;font-size:0.82rem;line-height:1.8;">`+
           `<div style="font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:4px;">Voting Precinct</div>`+
           `<div><strong>${cityPrecinct.number || cityPrecinct.precinct_number ? (cityPrecinct.number || cityPrecinct.precinct_number) + ' · ' : ''}${cityPrecinct.name || cityPrecinct.precinct}</strong></div>`+
-          (precinctAddress ? `<div style="font-size:0.75rem;color:#7a7468;">${precinctAddress} · <a href="${mapsUrl(precinctAddress)}" target="_blank" rel="noopener" style="color:#c8102e;text-decoration:underline;text-underline-offset:2px;font-weight:600;">Open in Google Maps</a></div>` : '')+
+          (precinctAddress ? `<div style="font-size:0.75rem;color:#7a7468;"><a href="${mapsUrl(precinctAddress)}" target="_blank" rel="noopener" style="color:#c8102e;text-decoration:underline;text-underline-offset:2px;">${precinctAddress}</a></div>` : '')+
           (cityPrecinct.room || cityPrecinct.polling_room ? `<div style="font-size:0.75rem;color:#7a7468;">${cityPrecinct.room || cityPrecinct.polling_room}</div>` : '')+
         `</div>`
         : ((d.precinct && d.precinct !== 'Not found') ? `<p style="margin-bottom:8px;font-size:0.82rem;color:var(--muted);"><strong>Precinct:</strong> ${d.precinct}</p>` : ''))+
