@@ -1208,8 +1208,8 @@ def lookup(address: str):
             "council": [{"name": m["name"], "party": m.get("party", "")} for m in _suffolk_officials.get("council", [])],
         } if "suffolk" in result.get("locality", "").lower() else None,
         "vb_school_board": {
-            "member": (lambda o: {"name": o["name"], "party": o.get("party", "")} if o else None)(_vb_school_board.get(vb_num)),
-            "at_large": (lambda o: {"name": o["name"], "party": o.get("party", "")} if o else None)(_vb_school_board.get("at_large")),
+            "member": (lambda o: {"name": o["name"], "party": o.get("party", ""), "url": o.get("url", "")} if o else None)(_vb_school_board.get(vb_num)),
+            "at_large": (lambda o: {"name": o["name"], "party": o.get("party", ""), "url": o.get("url", "")} if o else None)(_vb_school_board.get("at_large")),
         } if vb_num is not None else None,
         "us_rep": {
             "district_number": int(cd_num_raw) if cd_num_raw not in ("", "N/A") else None,
