@@ -322,20 +322,25 @@
         return '<span style="display:inline-block;background:' + bg + ';color:#fff;font-size:0.68rem;font-family:Barlow Condensed,sans-serif;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1px 7px;border-radius:3px;margin-left:5px;">' + escapeHtml(label) + '</span>';
       };
       const partyBorder = (party) => party && party.includes('Democrat') ? '#1a52c8' : party && party.includes('Republican') ? '#c8102e' : '#7a7468';
-      const officialCard = (label, name, city, party) =>
+      const mapsUrl = value => 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(value);
+      const officialCard = (label, name, city, party, cityUrl, nameUrl) =>
         '<div style="margin-bottom:8px;padding:8px 10px;background:#faf9f6;border-left:3px solid ' + partyBorder(party) + ';font-size:0.86rem;line-height:1.7;">' +
         '<div style="font-family:Barlow Condensed,sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:3px;">' + escapeHtml(label) + '</div>' +
-        '<div><strong>' + escapeHtml(name) + '</strong>' + partyBadge(party) + '</div>' +
-        (city ? '<div style="font-size:0.75rem;color:#7a7468;">' + escapeHtml(city) + '</div>' : '') +
+        '<div><strong>' + (nameUrl ? '<a href="' + escapeHtml(nameUrl) + '" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;text-underline-offset:2px;">' + escapeHtml(name) + '</a>' : escapeHtml(name)) + '</strong>' + partyBadge(party) + '</div>' +
+        (city ? '<div style="font-size:0.75rem;color:#7a7468;">' + (cityUrl ? '<a href="' + escapeHtml(cityUrl) + '" target="_blank" rel="noopener" style="color:#c8102e;text-decoration:underline;text-underline-offset:2px;">' + escapeHtml(city) + '</a>' : escapeHtml(city)) + '</div>' : '') +
         '</div>';
+      const precinctAddress = cityPrecinct
+        ? (cityPrecinct.address || cityPrecinct.polling_address || cityPrecinct.polling_location || cityPrecinct.location || '')
+        : '';
+      const vbCouncilUrl = 'https://clerk.virginiabeach.gov/city-council/city-council-members';
       const councilBlock = council
-        ? (council.mayor                  ? officialCard('Mayor',                          council.mayor.name,                  'Virginia Beach', council.mayor.party)                  : '') +
-          (council.sheriff                ? officialCard('Sheriff',                        council.sheriff.name,                'Virginia Beach', council.sheriff.party)                : '') +
-          (council.commonwealths_attorney ? officialCard("Commonwealth's Attorney",        council.commonwealths_attorney.name, 'Virginia Beach', council.commonwealths_attorney.party) : '') +
+        ? (council.mayor                  ? officialCard('Mayor',                          council.mayor.name,                  'Virginia Beach', council.mayor.party, '', vbCouncilUrl) : '') +
+          (council.sheriff                ? officialCard('Sheriff',                        council.sheriff.name,                'Virginia Beach', council.sheriff.party, '', council.sheriff.url) : '') +
+          (council.commonwealths_attorney ? officialCard("Commonwealth's Attorney",        council.commonwealths_attorney.name, 'Virginia Beach', council.commonwealths_attorney.party, '', council.commonwealths_attorney.url) : '') +
           (council.commissioner           ? officialCard('Commissioner of the Revenue',    council.commissioner.name,           'Virginia Beach', council.commissioner.party)           : '') +
           (council.treasurer              ? officialCard('City Treasurer',                 council.treasurer.name,              'Virginia Beach', council.treasurer.party)              : '') +
           (council.clerk                  ? officialCard('Clerk of the Circuit Court',     council.clerk.name,                  'Virginia Beach', council.clerk.party)                  : '') +
-          officialCard('City Council · ' + council.district, council.name, 'Virginia Beach', council.party) +
+          officialCard('City Council · ' + council.district, council.name, 'Virginia Beach', council.party, '', vbCouncilUrl) +
           (schoolBoard && schoolBoard.member   ? officialCard('School Board · District ' + council.district_number, schoolBoard.member.name,   'Virginia Beach', schoolBoard.member.party)   : '') +
           (schoolBoard && schoolBoard.at_large ? officialCard('School Board · At-Large',                           schoolBoard.at_large.name, 'Virginia Beach', schoolBoard.at_large.party) : '')
         : '';
@@ -343,8 +348,9 @@
         (cityPrecinct && (cityPrecinct.name || cityPrecinct.precinct) ? officialCard(
           'Voting Precinct',
           ((cityPrecinct.number || cityPrecinct.precinct_number ? (cityPrecinct.number || cityPrecinct.precinct_number) + ' · ' : '') + (cityPrecinct.name || cityPrecinct.precinct)),
-          cityPrecinct.address || cityPrecinct.polling_address || cityPrecinct.polling_location || cityPrecinct.location || d.locality,
-          ''
+          precinctAddress || d.locality,
+          '',
+          precinctAddress ? mapsUrl(precinctAddress) : ''
         ) : '') +
         (president ? repBlock('President', null, president.name, president.party, president.title, president.url) : '') +
         vaStatewide.map(s => repBlock(s.title, null, s.name, s.party, 'Virginia', s.url)).join('') +
@@ -355,7 +361,7 @@
         councilBlock +
         (norfolk && norfolk.mayor                  ? officialCard('Mayor',                       norfolk.mayor.name,                  'Norfolk', norfolk.mayor.party)                  : '') +
         (norfolk && norfolk.sheriff                ? officialCard('Sheriff',                     norfolk.sheriff.name,                'Norfolk', norfolk.sheriff.party)                : '') +
-        (norfolk && norfolk.commonwealths_attorney ? officialCard("Commonwealth's Attorney",     norfolk.commonwealths_attorney.name, 'Norfolk', norfolk.commonwealths_attorney.party) : '') +
+        (norfolk && norfolk.commonwealths_attorney ? officialCard("Commonwealth's Attorney",     norfolk.commonwealths_attorney.name, 'Norfolk', norfolk.commonwealths_attorney.party, '', norfolk.commonwealths_attorney.url) : '') +
         (norfolk && norfolk.treasurer              ? officialCard('City Treasurer',              norfolk.treasurer.name,    'Norfolk', norfolk.treasurer.party)              : '') +
         (norfolk && norfolk.commissioner           ? officialCard('Commissioner of the Revenue', norfolk.commissioner.name, 'Norfolk', norfolk.commissioner.party)           : '') +
         (norfolk && norfolk.ward_rep ? officialCard('City Council · Ward ' + norfolk.ward, norfolk.ward_rep, 'Norfolk', '') : '') +
@@ -365,7 +371,7 @@
         (chesapeake ? officialCard('Mayor', chesapeake.mayor ? chesapeake.mayor.name : '', 'Chesapeake', chesapeake.mayor ? chesapeake.mayor.party : '') : '') +
         (chesapeake ? officialCard('Vice Mayor', chesapeake.vice_mayor ? chesapeake.vice_mayor.name : '', 'Chesapeake', chesapeake.vice_mayor ? chesapeake.vice_mayor.party : '') : '') +
         (chesapeake ? officialCard('Sheriff', chesapeake.sheriff ? chesapeake.sheriff.name : '', 'Chesapeake', chesapeake.sheriff ? chesapeake.sheriff.party : '') : '') +
-        (chesapeake ? officialCard("Commonwealth's Attorney", chesapeake.commonwealths_attorney ? chesapeake.commonwealths_attorney.name : '', 'Chesapeake', chesapeake.commonwealths_attorney ? chesapeake.commonwealths_attorney.party : '') : '') +
+        (chesapeake ? officialCard("Commonwealth's Attorney", chesapeake.commonwealths_attorney ? chesapeake.commonwealths_attorney.name : '', 'Chesapeake', chesapeake.commonwealths_attorney ? chesapeake.commonwealths_attorney.party : '', '', chesapeake.commonwealths_attorney ? chesapeake.commonwealths_attorney.url : '') : '') +
         (chesapeake ? officialCard('Commissioner of the Revenue', chesapeake.commissioner ? chesapeake.commissioner.name : '', 'Chesapeake', chesapeake.commissioner ? chesapeake.commissioner.party : '') : '') +
         (chesapeake ? officialCard('City Treasurer', chesapeake.treasurer ? chesapeake.treasurer.name : '', 'Chesapeake', chesapeake.treasurer ? chesapeake.treasurer.party : '') : '') +
         (chesapeake ? officialCard('Clerk of the Circuit Court', chesapeake.clerk ? chesapeake.clerk.name : '', 'Chesapeake', chesapeake.clerk ? chesapeake.clerk.party : '') : '') +
@@ -374,7 +380,7 @@
         (portsmouth ? officialCard('Mayor', portsmouth.mayor ? portsmouth.mayor.name : '', 'Portsmouth', portsmouth.mayor ? portsmouth.mayor.party : '') : '') +
         (portsmouth ? officialCard('Vice Mayor', portsmouth.vice_mayor ? portsmouth.vice_mayor.name : '', 'Portsmouth', portsmouth.vice_mayor ? portsmouth.vice_mayor.party : '') : '') +
         (portsmouth ? officialCard('Sheriff', portsmouth.sheriff ? portsmouth.sheriff.name : '', 'Portsmouth', portsmouth.sheriff ? portsmouth.sheriff.party : '') : '') +
-        (portsmouth ? officialCard("Commonwealth's Attorney", portsmouth.commonwealths_attorney ? portsmouth.commonwealths_attorney.name : '', 'Portsmouth', portsmouth.commonwealths_attorney ? portsmouth.commonwealths_attorney.party : '') : '') +
+        (portsmouth ? officialCard("Commonwealth's Attorney", portsmouth.commonwealths_attorney ? portsmouth.commonwealths_attorney.name : '', 'Portsmouth', portsmouth.commonwealths_attorney ? portsmouth.commonwealths_attorney.party : '', '', portsmouth.commonwealths_attorney ? portsmouth.commonwealths_attorney.url : '') : '') +
         (portsmouth ? officialCard('Commissioner of the Revenue', portsmouth.commissioner ? portsmouth.commissioner.name : '', 'Portsmouth', portsmouth.commissioner ? portsmouth.commissioner.party : '') : '') +
         (portsmouth ? officialCard('City Treasurer', portsmouth.treasurer ? portsmouth.treasurer.name : '', 'Portsmouth', portsmouth.treasurer ? portsmouth.treasurer.party : '') : '') +
         (portsmouth ? officialCard('Clerk of the Circuit Court', portsmouth.clerk ? portsmouth.clerk.name : '', 'Portsmouth', portsmouth.clerk ? portsmouth.clerk.party : '') : '') +
@@ -383,7 +389,7 @@
         (hampton ? officialCard('Mayor', hampton.mayor ? hampton.mayor.name : '', 'Hampton', hampton.mayor ? hampton.mayor.party : '') : '') +
         (hampton ? officialCard('Vice Mayor', hampton.vice_mayor ? hampton.vice_mayor.name : '', 'Hampton', hampton.vice_mayor ? hampton.vice_mayor.party : '') : '') +
         (hampton ? officialCard('Sheriff', hampton.sheriff ? hampton.sheriff.name : '', 'Hampton', hampton.sheriff ? hampton.sheriff.party : '') : '') +
-        (hampton ? officialCard("Commonwealth's Attorney", hampton.commonwealths_attorney ? hampton.commonwealths_attorney.name : '', 'Hampton', hampton.commonwealths_attorney ? hampton.commonwealths_attorney.party : '') : '') +
+        (hampton ? officialCard("Commonwealth's Attorney", hampton.commonwealths_attorney ? hampton.commonwealths_attorney.name : '', 'Hampton', hampton.commonwealths_attorney ? hampton.commonwealths_attorney.party : '', '', hampton.commonwealths_attorney ? hampton.commonwealths_attorney.url : '') : '') +
         (hampton ? officialCard('Commissioner of the Revenue', hampton.commissioner ? hampton.commissioner.name : '', 'Hampton', hampton.commissioner ? hampton.commissioner.party : '') : '') +
         (hampton ? officialCard('City Treasurer', hampton.treasurer ? hampton.treasurer.name : '', 'Hampton', hampton.treasurer ? hampton.treasurer.party : '') : '') +
         (hampton ? officialCard('Clerk of the Circuit Court', hampton.clerk ? hampton.clerk.name : '', 'Hampton', hampton.clerk ? hampton.clerk.party : '') : '') +
@@ -392,7 +398,7 @@
         (newportNews ? officialCard('Mayor', newportNews.mayor ? newportNews.mayor.name : '', 'Newport News', newportNews.mayor ? newportNews.mayor.party : '') : '') +
         (newportNews ? officialCard('Vice Mayor', newportNews.vice_mayor ? newportNews.vice_mayor.name : '', 'Newport News', newportNews.vice_mayor ? newportNews.vice_mayor.party : '') : '') +
         (newportNews ? officialCard('Sheriff', newportNews.sheriff ? newportNews.sheriff.name : '', 'Newport News', newportNews.sheriff ? newportNews.sheriff.party : '') : '') +
-        (newportNews ? officialCard("Commonwealth's Attorney", newportNews.commonwealths_attorney ? newportNews.commonwealths_attorney.name : '', 'Newport News', newportNews.commonwealths_attorney ? newportNews.commonwealths_attorney.party : '') : '') +
+        (newportNews ? officialCard("Commonwealth's Attorney", newportNews.commonwealths_attorney ? newportNews.commonwealths_attorney.name : '', 'Newport News', newportNews.commonwealths_attorney ? newportNews.commonwealths_attorney.party : '', '', newportNews.commonwealths_attorney ? newportNews.commonwealths_attorney.url : '') : '') +
         (newportNews ? officialCard('Commissioner of the Revenue', newportNews.commissioner ? newportNews.commissioner.name : '', 'Newport News', newportNews.commissioner ? newportNews.commissioner.party : '') : '') +
         (newportNews ? officialCard('City Treasurer', newportNews.treasurer ? newportNews.treasurer.name : '', 'Newport News', newportNews.treasurer ? newportNews.treasurer.party : '') : '') +
         (newportNews ? officialCard('Clerk of the Circuit Court', newportNews.clerk ? newportNews.clerk.name : '', 'Newport News', newportNews.clerk ? newportNews.clerk.party : '') : '') +
@@ -401,7 +407,7 @@
         (suffolk ? officialCard('Mayor', suffolk.mayor ? suffolk.mayor.name : '', 'Suffolk', suffolk.mayor ? suffolk.mayor.party : '') : '') +
         (suffolk ? officialCard('Vice Mayor', suffolk.vice_mayor ? suffolk.vice_mayor.name : '', 'Suffolk', suffolk.vice_mayor ? suffolk.vice_mayor.party : '') : '') +
         (suffolk ? officialCard('Sheriff', suffolk.sheriff ? suffolk.sheriff.name : '', 'Suffolk', suffolk.sheriff ? suffolk.sheriff.party : '') : '') +
-        (suffolk ? officialCard("Commonwealth's Attorney", suffolk.commonwealths_attorney ? suffolk.commonwealths_attorney.name : '', 'Suffolk', suffolk.commonwealths_attorney ? suffolk.commonwealths_attorney.party : '') : '') +
+        (suffolk ? officialCard("Commonwealth's Attorney", suffolk.commonwealths_attorney ? suffolk.commonwealths_attorney.name : '', 'Suffolk', suffolk.commonwealths_attorney ? suffolk.commonwealths_attorney.party : '', '', suffolk.commonwealths_attorney ? suffolk.commonwealths_attorney.url : '') : '') +
         (suffolk ? officialCard('Commissioner of the Revenue', suffolk.commissioner ? suffolk.commissioner.name : '', 'Suffolk', suffolk.commissioner ? suffolk.commissioner.party : '') : '') +
         (suffolk ? officialCard('City Treasurer', suffolk.treasurer ? suffolk.treasurer.name : '', 'Suffolk', suffolk.treasurer ? suffolk.treasurer.party : '') : '') +
         (suffolk ? officialCard('Clerk of the Circuit Court', suffolk.clerk ? suffolk.clerk.name : '', 'Suffolk', suffolk.clerk ? suffolk.clerk.party : '') : '') +
@@ -411,7 +417,7 @@
         '<div style="background:white;border:1px solid #ddd8cc;border-top:4px solid #c8102e;padding:20px 24px;margin-top:20px;">' +
         '<h3 style="font-family:Barlow Condensed,sans-serif;font-size:0.8rem;color:#c8102e;margin-bottom:12px;letter-spacing:0.12em;text-transform:uppercase;">Your Representatives</h3>' +
         '<p style="margin-bottom:6px;font-size:0.9rem;">📍 <strong>' + escapeHtml(d.locality) + '</strong></p>' +
-        ((cityPrecinct && (cityPrecinct.name || cityPrecinct.precinct)) ? '<p style="margin-bottom:10px;font-size:0.82rem;color:#7a7468;"><strong>Precinct:</strong> ' + escapeHtml(((cityPrecinct.number || cityPrecinct.precinct_number) ? (cityPrecinct.number || cityPrecinct.precinct_number) + ' · ' : '') + (cityPrecinct.name || cityPrecinct.precinct)) + ((cityPrecinct.address || cityPrecinct.polling_address || cityPrecinct.polling_location || cityPrecinct.location) ? ' · ' + escapeHtml(cityPrecinct.address || cityPrecinct.polling_address || cityPrecinct.polling_location || cityPrecinct.location) : '') + '</p>' : ((d.precinct && d.precinct !== 'Not found') ? '<p style="margin-bottom:10px;font-size:0.82rem;color:#7a7468;"><strong>Precinct:</strong> ' + escapeHtml(d.precinct) + '</p>' : '')) +
+        ((cityPrecinct && (cityPrecinct.name || cityPrecinct.precinct)) ? '<p style="margin-bottom:10px;font-size:0.82rem;color:#7a7468;"><strong>Precinct:</strong> ' + escapeHtml(((cityPrecinct.number || cityPrecinct.precinct_number) ? (cityPrecinct.number || cityPrecinct.precinct_number) + ' · ' : '') + (cityPrecinct.name || cityPrecinct.precinct)) + (precinctAddress ? ' · <a href="' + escapeHtml(mapsUrl(precinctAddress)) + '" target="_blank" rel="noopener" style="color:#c8102e;text-decoration:underline;text-underline-offset:2px;">' + escapeHtml(precinctAddress) + '</a>' : '') + '</p>' : ((d.precinct && d.precinct !== 'Not found') ? '<p style="margin-bottom:10px;font-size:0.82rem;color:#7a7468;"><strong>Precinct:</strong> ' + escapeHtml(d.precinct) + '</p>' : '')) +
         '<div style="display:grid;grid-template-columns:' + gridCols + ';gap:0 16px;">' +
         allCards +
         '</div>' +

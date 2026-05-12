@@ -11,7 +11,8 @@
         "district": "Norfolk Commonwealth's Attorney",
         "email": "",
         "jurisdiction": "Norfolk",
-        "party": "Democrat (nonpartisan)"
+        "party": "Democrat (nonpartisan)",
+        "url": "https://www.norfolk.gov/577/Commonwealths-Attorneys-Office"
     },
     {
         "name": "Daun Sessoms Hester",
@@ -39,7 +40,8 @@
         "district": "Commonwealth's Attorney",
         "email": "cstolle@vbgov.com",
         "jurisdiction": "Virginia Beach",
-        "party": "Republican (nonpartisan)"
+        "party": "Republican (nonpartisan)",
+        "url": "https://www.vbgov.com/government/departments/commonwealths-attorney/Pages/default.aspx"
     },
     {
         "name": "Philip Kellam",
@@ -66,6 +68,7 @@
         "name": "Rocky Holcomb",
         "district": "Sheriff",
         "email": "sheriff@vbso.net",
+        "url": "https://rockyholcombvbsheriff.com/",
         "jurisdiction": "Virginia Beach",
         "party": "Republican (nonpartisan)"
     },
@@ -249,7 +252,8 @@
         "district": "Chesapeake Commonwealth's Attorney",
         "email": "",
         "jurisdiction": "Chesapeake",
-        "party": "Democrat (nonpartisan)"
+        "party": "Democrat (nonpartisan)",
+        "url": "https://www.cityofchesapeake.net/1237/Commonwealths-Attorney"
     },
     {
         "name": "Victoria L. Proffitt",
@@ -389,7 +393,8 @@
         "district": "Portsmouth Commonwealth's Attorney",
         "email": "",
         "jurisdiction": "Portsmouth",
-        "party": ""
+        "party": "",
+        "url": "https://www.portsmouthcwa.com/"
     },
     {
         "name": "Michael A. Moore",
@@ -557,7 +562,8 @@
         "district": "Hampton Commonwealth's Attorney",
         "email": "",
         "jurisdiction": "Hampton",
-        "party": "Democrat (nonpartisan)"
+        "party": "Democrat (nonpartisan)",
+        "url": "https://www.hampton.gov/226/Commonwealths-Attorney"
     },
     {
         "name": "Michael A. Harris",
@@ -690,7 +696,8 @@
         "district": "Newport News Commonwealth's Attorney",
         "email": "",
         "jurisdiction": "Newport News",
-        "party": "Democrat (nonpartisan)"
+        "party": "Democrat (nonpartisan)",
+        "url": "https://www.nnva.gov/476/Commonwealths-Attorney"
     },
     {
         "name": "Tiffany Boyle",
@@ -823,7 +830,8 @@
         "district": "Suffolk Commonwealth's Attorney",
         "email": "",
         "jurisdiction": "Suffolk",
-        "party": "Democrat"
+        "party": "Democrat",
+        "url": "https://www.suffolkva.us/204/Commonwealths-Attorney"
     },
     {
         "name": "Susan L. Draper",
