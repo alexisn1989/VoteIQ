@@ -338,7 +338,7 @@
           (council.sheriff                ? officialCard('Sheriff',                        council.sheriff.name,                'Virginia Beach', council.sheriff.party, '', council.sheriff.url) : '') +
           (council.commonwealths_attorney ? officialCard("Commonwealth's Attorney",        council.commonwealths_attorney.name, 'Virginia Beach', council.commonwealths_attorney.party, '', council.commonwealths_attorney.url) : '') +
           (council.commissioner           ? officialCard('Commissioner of the Revenue',    council.commissioner.name,           'Virginia Beach', council.commissioner.party, '', council.commissioner.url) : '') +
-          (council.treasurer              ? officialCard('City Treasurer',                 council.treasurer.name,              'Virginia Beach', council.treasurer.party)              : '') +
+          (council.treasurer              ? officialCard('City Treasurer',                 council.treasurer.name,              'Virginia Beach', council.treasurer.party, '', council.treasurer.url) : '') +
           (council.clerk                  ? officialCard('Clerk of the Circuit Court',     council.clerk.name,                  'Virginia Beach', council.clerk.party)                  : '') +
           officialCard('City Council · ' + council.district, council.name, 'Virginia Beach', council.party, '', vbCouncilUrl) +
           (schoolBoard && schoolBoard.member   ? officialCard('School Board · District ' + council.district_number, schoolBoard.member.name,   'Virginia Beach', schoolBoard.member.party)   : '') +
