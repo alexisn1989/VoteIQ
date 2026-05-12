@@ -54,7 +54,7 @@ try:
     with open(os.path.join(BASE_DIR, "voteiq_officials.json"), encoding="utf-8") as _f:
         for _m in json.load(_f):
             _d = _m["district"]
-            _entry = {"name": _m["name"], "email": _m["email"], "district": _d, "party": _m.get("party", "")}
+            _entry = {"name": _m["name"], "email": _m["email"], "district": _d, "party": _m.get("party", ""), "url": _m.get("url", "")}
             if _d == "Mayor":
                 _vb_council[0] = _entry
             elif _d in ("Sheriff", "Commonwealth's Attorney", "Commissioner of the Revenue", "City Treasurer", "Clerk of the Circuit Court"):
