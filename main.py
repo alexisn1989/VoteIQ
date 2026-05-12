@@ -1238,7 +1238,7 @@ def lookup(address: str):
         ],
         "us_president": {"name": "Donald J. Trump", "party": "Republican", "title": "United States", "url": "https://www.whitehouse.gov/contact/"},
         "va_statewide": [
-            {"name": "Abigail D. Spanberger", "party": "Democrat", "title": "Governor",            "url": "https://www.governor.virginia.gov/contact-the-governor/"},
+            {"name": "Abigail D. Spanberger", "party": "Democrat", "title": "Governor",            "url": "https://www.governor.virginia.gov/contact/"},
             {"name": "Ghazala F. Hashmi",     "party": "Democrat", "title": "Lieutenant Governor", "url": "https://www.ltgov.virginia.gov/contact/"},
             {"name": "Jay C. Jones",          "party": "Democrat", "title": "Attorney General",    "url": "https://www.ag.virginia.gov/about/contact/"},
         ],
