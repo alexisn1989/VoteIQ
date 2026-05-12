@@ -508,7 +508,7 @@ async function lookup() {
       (usRep ?
         `<div style="margin-top:8px;padding:8px 10px;background:#f4f1eb;border-left:3px solid #1a52c8;font-size:0.82rem;line-height:1.8;">`+
           `<div style="font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:4px;">U.S. House · District ${usRep.district_number}</div>`+
-          `<div><strong>${usRep.rep}</strong>${partyTag(usRep.party)}</div>`+
+          `<div><strong>${usRep.url ? `<a href="${usRep.url}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;text-underline-offset:2px;">${usRep.rep}</a>` : usRep.rep}</strong>${partyTag(usRep.party)}</div>`+
           `<div style="font-size:0.75rem;color:#7a7468;">${(usRep.region||'').substring(0,50)}${usRep.region&&usRep.region.length>50?'…':''}</div>`+
         `</div>` :
         `<div style="margin-top:8px;padding:8px 10px;background:#f4f1eb;border-left:3px solid #1a52c8;font-size:0.82rem;line-height:1.8;">`+
@@ -518,12 +518,12 @@ async function lookup() {
       )+
       (del ? `<div style="margin-top:6px;padding:8px 10px;background:#f4f1eb;border-left:3px solid #1a52c8;font-size:0.82rem;line-height:1.8;">`+
         `<div style="font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:4px;">House of Delegates · District ${del.district_number}</div>`+
-        `<div><strong>${del.delegate}</strong>${partyTag(del.party)}</div>`+
+        `<div><strong>${del.url ? `<a href="${del.url}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;text-underline-offset:2px;">${del.delegate}</a>` : del.delegate}</strong>${partyTag(del.party)}</div>`+
         `<div style="font-size:0.75rem;color:#7a7468;">${del.locality}</div>`+
       `</div>` : '')+
       (sen ? `<div style="margin-top:6px;padding:8px 10px;background:#f4f1eb;border-left:3px solid #c8102e;font-size:0.82rem;line-height:1.8;">`+
         `<div style="font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:4px;">State Senate · District ${sen.district_number}</div>`+
-        `<div><strong>${sen.senator}</strong>${partyTag(sen.party)}</div>`+
+        `<div><strong>${sen.url ? `<a href="${sen.url}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;text-underline-offset:2px;">${sen.senator}</a>` : sen.senator}</strong>${partyTag(sen.party)}</div>`+
         `<div style="font-size:0.75rem;color:#7a7468;">${(sen.region||'').substring(0,50)}${sen.region&&sen.region.length>50?'…':''}</div>`+
       `</div>` : '')+
       `<p style="margin-top:8px;font-size:0.78rem;"><a href="https://whosmy.virginiageneralassembly.gov/" target="_blank" style="color:var(--red)">Verify at VA General Assembly →</a></p>`;

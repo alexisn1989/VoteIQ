@@ -179,8 +179,8 @@
   <div class="features">
     <div class="feature-card">
       <div class="feature-icon">📍</div>
-      <h3>Find Your District</h3>
-      <p>Enter any Virginia address to instantly see your congressional district under both the current and proposed new maps.</p>
+      <h3>Find Your Districts</h3>
+      <p>Enter any Virginia address to see your local districts, House of Delegates district, State Senate district, and U.S. House district.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">🗺️</div>
@@ -189,8 +189,8 @@
     </div>
     <div class="feature-card">
       <div class="feature-icon">🏛️</div>
-      <h3>Know Your Rep</h3>
-      <p>See your current U.S. House representative and who would represent you in Congress if voters approve the new map.</p>
+      <h3>Know Your Reps</h3>
+      <p>Find who represents you at every level, from city council and school board to the Virginia General Assembly and Congress.</p>
     </div>
   </div>
 
@@ -309,10 +309,10 @@
       const partyTag = p => p
         ? '<span style="display:inline-block;background:' + partyColor(p) + ';color:#fff;font-size:0.68rem;font-family:Barlow Condensed,sans-serif;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1px 7px;border-radius:3px;margin-left:5px;">' + escapeHtml(p[0]) + '</span>'
         : '';
-      const repBlock = (label, num, name, party, sub) =>
+      const repBlock = (label, num, name, party, sub, url) =>
         '<div style="margin-bottom:8px;padding:8px 10px;background:#faf9f6;border-left:3px solid ' + partyColor(party) + ';font-size:0.86rem;line-height:1.7;">' +
         '<div style="font-family:Barlow Condensed,sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7a7468;margin-bottom:3px;">' + escapeHtml(label) + (num ? ' · District ' + escapeHtml(num) : '') + '</div>' +
-        '<div><strong>' + escapeHtml(name) + '</strong>' + partyTag(party) + '</div>' +
+        '<div><strong>' + (url ? '<a href="' + url + '" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;text-underline-offset:2px;">' + escapeHtml(name) + '</a>' : escapeHtml(name)) + '</strong>' + partyTag(party) + '</div>' +
         '<div style="font-size:0.75rem;color:#7a7468;">' + escapeHtml((sub || '').substring(0, 55)) + ((sub || '').length > 55 ? '…' : '') + '</div>' +
         '</div>';
       const partyBadge = (party) => {
@@ -348,10 +348,10 @@
         ) : '') +
         (president ? repBlock('President', null, president.name, president.party, president.title) : '') +
         vaStatewide.map(s => repBlock(s.title, null, s.name, s.party, 'Virginia')).join('') +
-        usSenators.map(s => repBlock('U.S. Senate', null, s.name, s.party, s.title)).join('') +
-        (usRep ? repBlock('U.S. House · District ' + usRep.district_number, null, usRep.rep, usRep.party, usRep.region) : repBlock('U.S. House', null, d.district || 'Not found', null, null)) +
-        (del ? repBlock('House of Delegates', del.district_number, del.delegate, del.party, del.locality) : '') +
-        (sen ? repBlock('State Senate', sen.district_number, sen.senator, sen.party, sen.region) : '') +
+        usSenators.map(s => repBlock('U.S. Senate', null, s.name, s.party, s.title, s.url)).join('') +
+        (usRep ? repBlock('U.S. House · District ' + usRep.district_number, null, usRep.rep, usRep.party, usRep.region, usRep.url) : repBlock('U.S. House', null, d.district || 'Not found', null, null)) +
+        (del ? repBlock('House of Delegates', del.district_number, del.delegate, del.party, del.locality, del.url) : '') +
+        (sen ? repBlock('State Senate', sen.district_number, sen.senator, sen.party, sen.region, sen.url) : '') +
         councilBlock +
         (norfolk && norfolk.mayor                  ? officialCard('Mayor',                       norfolk.mayor.name,                  'Norfolk', norfolk.mayor.party)                  : '') +
         (norfolk && norfolk.sheriff                ? officialCard('Sheriff',                     norfolk.sheriff.name,                'Norfolk', norfolk.sheriff.party)                : '') +
