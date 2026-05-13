@@ -30,7 +30,7 @@ SESSION_LABEL   = "2026"
 LIS_BASE        = "https://lis.virginia.gov"
 COLLECTION_NAME = "voteiq_bills"
 EMBED_MODEL     = "voyage-law-2"
-VOYAGE_BATCH    = 64    # standard batch size
+VOYAGE_BATCH    = 16    # conservative batch size to avoid rate limits
 CHROMA_BATCH    = 100   # upsert batch size for ChromaDB
 
 
@@ -237,7 +237,7 @@ def main():
     chunks = []
     skipped = 0
     for b in all_raw:
-        c = bill_to_chunk(b)
+        c = bill_to_chunk(b, SESSION_LABEL)
         if c:
             chunks.append(c)
         else:
@@ -269,7 +269,7 @@ def main():
         all_embeddings.extend(embs)
         print(f"  embedded {i + len(batch)}/{len(texts)}")
         if i + VOYAGE_BATCH < len(texts):
-            time.sleep(1)  # brief pause between batches
+            time.sleep(3)  # pause between batches to stay under rate limit
 
     # 4. Upsert
     print(f"[upsert] Connecting to ChromaDB...")

@@ -1,8 +1,12 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+from slowapi.middleware import SlowAPIMiddleware
 import uvicorn
 import folium
 import geopandas as gpd
@@ -19,6 +23,10 @@ load_dotenv()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = FastAPI()
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 
@@ -2939,7 +2947,8 @@ def district_map(layer: str = "congressional", lat: float = None, lng: float = N
 
 
 @app.post("/chat", response_model=ChatResponse)
-async def chat(req: ChatRequest):
+@limiter.limit("10/minute")
+async def chat(request: Request, req: ChatRequest):
     ctx = DISTRICT_CONTEXT.get(req.district)
     if not ctx:
         return ChatResponse(reply="Unknown district.")
@@ -3011,7 +3020,7 @@ Your job is to help voters understand who represents them and what those officia
 
 Keep answers 2-4 sentences. Be factual and nonpartisan. For official contact info direct users to house.gov, senate.gov, or virginiageneralassembly.gov. Never express opinions on representatives or tell people how to vote."""
     response = client.messages.create(
-        model="claude-sonnet-4-5",
+        model="claude-sonnet-4-6",
         max_tokens=1000,
         system=system_prompt,
         messages=[{"role": m.role, "content": m.content} for m in req.messages],
@@ -3499,7 +3508,8 @@ class ElectionChatRequest(BaseModel):
 
 
 @app.post("/api/election-chat", response_model=ChatResponse)
-async def election_chat(req: ElectionChatRequest):
+@limiter.limit("10/minute")
+async def election_chat(request: Request, req: ElectionChatRequest):
     summary = _build_election_summary(req.year)
     system_prompt = f"""You are a friendly Virginia election results assistant on the VoteIQ platform.
 
@@ -3509,7 +3519,7 @@ Here are the official {req.year} Virginia election results:
 
 Answer questions about these results clearly and concisely (2-4 sentences). Be factual and nonpartisan. Give specific numbers when asked about candidates, margins, or localities. If you don't have the data, say so honestly. Never express opinions on candidates or tell users how to vote."""
     response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model="claude-sonnet-4-6",
         max_tokens=400,
         system=system_prompt,
         messages=[{"role": m.role, "content": m.content} for m in req.messages],
@@ -3555,6 +3565,114 @@ def _get_chroma_collection_id():
         _chroma_collection_id = r.json()["id"]
     return _chroma_collection_id
 
+def _session_year(value) -> str:
+    match = _SESSION_YEAR_RE.search(str(value or ""))
+    return match.group(0) if match else ""
+
+def _fetch_bills_by_id(bill_ids: list[str], session_year: str | None = None) -> list[tuple[str, dict]]:
+    """Exact lookup by bill_id metadata. If session_year given, filters to that year only.
+    Otherwise returns results from every embedded session."""
+    import httpx
+    col_id = _get_chroma_collection_id()
+    results = []
+    for bid in bill_ids:
+        bid = re.sub(r"\s+", "", bid).upper()
+        where: dict = {"bill_id": {"$eq": bid}}
+        try:
+            r = httpx.post(
+                f"{_chroma_base()}/collections/{col_id}/get",
+                headers=_chroma_headers(),
+                json={"where": where, "include": ["documents", "metadatas"], "limit": 200},
+                timeout=15,
+            )
+            r.raise_for_status()
+            data = r.json()
+            for doc, meta in zip(data.get("documents", []), data.get("metadatas", [])):
+                found_year = _session_year(meta.get("session")) or _session_year(meta.get("session_id")) or _session_year(doc)
+                if session_year and found_year != session_year:
+                    continue
+                results.append((doc, meta))
+        except Exception:
+            pass
+    return results
+
+
+def _fetch_bills_by_session(session_year: str, limit: int = 80) -> list[tuple[str, dict]]:
+    """Fetch representative bill excerpts for a whole embedded session/year."""
+    import httpx
+    col_id = _get_chroma_collection_id()
+    results = []
+    seen_docs: set[str] = set()
+    seen_bills: set[str] = set()
+
+    def add_items(documents, metadatas):
+        fallback: list[tuple[str, dict]] = []
+        for doc, meta in zip(documents, metadatas):
+            if doc in seen_docs:
+                continue
+            found_year = _session_year(meta.get("session")) or _session_year(meta.get("session_id")) or _session_year(doc)
+            if found_year != session_year:
+                continue
+            seen_docs.add(doc)
+            bill_id = str(meta.get("bill_id") or "").upper()
+            chunk_type = meta.get("chunk_type", "")
+            item = (doc, meta)
+            if chunk_type == "bill_summary" and bill_id and bill_id not in seen_bills:
+                seen_bills.add(bill_id)
+                results.append(item)
+            else:
+                fallback.append(item)
+            if len(results) >= limit:
+                return
+        if len(results) < limit:
+            for item in fallback:
+                results.append(item)
+                if len(results) >= limit:
+                    return
+
+    try:
+        r = httpx.post(
+            f"{_chroma_base()}/collections/{col_id}/get",
+            headers=_chroma_headers(),
+            json={
+                "where": {"session": {"$eq": session_year}},
+                "include": ["documents", "metadatas"],
+                "limit": limit * 3,
+            },
+            timeout=20,
+        )
+        r.raise_for_status()
+        data = r.json()
+        add_items(data.get("documents", []), data.get("metadatas", []))
+    except Exception:
+        pass
+
+    try:
+        r = httpx.post(
+            f"{_chroma_base()}/collections/{col_id}/get",
+            headers=_chroma_headers(),
+            json={"include": ["documents", "metadatas"], "limit": 1000},
+            timeout=20,
+        )
+        r.raise_for_status()
+        data = r.json()
+        add_items(data.get("documents", []), data.get("metadatas", []))
+    except Exception:
+        pass
+    return results
+
+
+_BILL_NUMBER_RE = re.compile(r"\b(HB|SB|HJ|SJ|HR|SR)\s*(\d+)\b", re.IGNORECASE)
+_SESSION_YEAR_RE = re.compile(r"\b(19|20)\d{2}\b")
+
+def _extract_bill_numbers(text: str) -> list[str]:
+    return [f"{m.group(1).upper()}{m.group(2)}" for m in _BILL_NUMBER_RE.finditer(text)]
+
+def _extract_session_year(text: str) -> str | None:
+    m = _SESSION_YEAR_RE.search(text)
+    return m.group(0) if m else None
+
+
 def _query_chroma(query_embedding: list, n_results: int = 6):
     import httpx
     col_id = _get_chroma_collection_id()
@@ -3562,20 +3680,6 @@ def _query_chroma(query_embedding: list, n_results: int = 6):
         f"{_chroma_base()}/collections/{col_id}/query",
         headers=_chroma_headers(),
         json={"query_embeddings": [query_embedding], "n_results": n_results,
-              "include": ["documents", "metadatas"]},
-        timeout=15,
-    )
-    r.raise_for_status()
-    return r.json()
-
-def _get_bill_summaries():
-    """Always fetch all bill_summary chunks so Claude knows what each bill is about."""
-    import httpx
-    col_id = _get_chroma_collection_id()
-    r = httpx.post(
-        f"{_chroma_base()}/collections/{col_id}/get",
-        headers=_chroma_headers(),
-        json={"where": {"chunk_type": {"$eq": "bill_summary"}},
               "include": ["documents", "metadatas"]},
         timeout=15,
     )
@@ -3615,7 +3719,8 @@ async def bills_debug():
 
 
 @app.post("/api/bills-chat", response_model=ChatResponse)
-async def bills_chat(req: BillsChatRequest):
+@limiter.limit("10/minute")
+async def bills_chat(request: Request, req: BillsChatRequest):
     user_query = next(
         (m.content for m in reversed(req.messages) if m.role == "user"), ""
     )
@@ -3630,26 +3735,78 @@ async def bills_chat(req: BillsChatRequest):
     except Exception as e:
         return ChatResponse(reply=f"[VoteIQ error — ChromaDB: {e}]")
 
+    exact_lookup_note = ""
     try:
         context_blocks = []
-        # Always include bill summaries so Claude knows what each bill is about
-        try:
-            summaries = _get_bill_summaries()
-            seen_ids = set()
-            for doc, meta in zip(summaries.get("documents", []), summaries.get("metadatas", [])):
-                chunk_id = meta.get("bill_id", "") + "_summary"
-                if chunk_id not in seen_ids:
-                    seen_ids.add(chunk_id)
-                    label = f"[bill_summary — {meta.get('bill_id','?')} {meta.get('session','?')}]"
-                    context_blocks.append(f"{label}\n{doc}")
-        except Exception:
-            pass  # don't fail the whole request if summary fetch fails
+        seen_docs: set[str] = set()
 
-        seen_docs = set(b.split("\n", 1)[1] if "\n" in b else b for b in context_blocks)
+        # Exact bill-number lookup — always runs when query names a specific bill
+        mentioned = _extract_bill_numbers(user_query)
+        session_year = _extract_session_year(user_query)
+        if mentioned:
+            exact_docs = _fetch_bills_by_id(mentioned, session_year)
+            if session_year:
+                if exact_docs:
+                    exact_lookup_note = (
+                        f"\nEXACT LOOKUP: Found excerpts for {', '.join(mentioned)} "
+                        f"from the {session_year} session.\n"
+                    )
+                else:
+                    exact_lookup_note = (
+                        f"\nEXACT LOOKUP: No excerpts were found for {', '.join(mentioned)} "
+                        f"from the {session_year} session. If the excerpts below include the same "
+                        "bill number from another session, describe it only as related data from a "
+                        "different session.\n"
+                    )
+            else:
+                years_found = sorted(
+                    {
+                        _session_year(meta.get("session"))
+                        or _session_year(meta.get("session_id"))
+                        or _session_year(doc)
+                        for doc, meta in exact_docs
+                    }
+                )
+                years_found = [year for year in years_found if year]
+                if years_found:
+                    exact_lookup_note = (
+                        f"\nEXACT LOOKUP: Found excerpts for {', '.join(mentioned)} "
+                        f"from embedded sessions: {', '.join(years_found)}.\n"
+                    )
+            for doc, meta in exact_docs:
+                if doc not in seen_docs:
+                    seen_docs.add(doc)
+                    label = f"[{meta.get('chunk_type','?')} — {meta.get('bill_id','?')} {meta.get('session','?')}]"
+                    context_blocks.append(f"{label}\n{doc}")
+        elif session_year:
+            session_docs = _fetch_bills_by_session(session_year)
+            if session_docs:
+                exact_lookup_note = (
+                    f"\nSESSION LOOKUP: Found {len(session_docs)} representative bill excerpts "
+                    f"from the embedded {session_year} session. Answer using these {session_year} "
+                    "excerpts first; mention other years only if the user asks for comparison.\n"
+                )
+            else:
+                exact_lookup_note = (
+                    f"\nSESSION LOOKUP: No embedded bill excerpts were found for the {session_year} session.\n"
+                )
+            for doc, meta in session_docs:
+                if doc not in seen_docs:
+                    seen_docs.add(doc)
+                    label = f"[{meta.get('chunk_type','?')} — {meta.get('bill_id','?')} {meta.get('session','?')}]"
+                    context_blocks.append(f"{label}\n{doc}")
+
+        # Semantic search results
         for doc, meta in zip(results["documents"][0], results["metadatas"][0]):
+            if session_year:
+                found_year = _session_year(meta.get("session")) or _session_year(meta.get("session_id")) or _session_year(doc)
+                if found_year and found_year != session_year:
+                    continue
             if doc not in seen_docs:
+                seen_docs.add(doc)
                 label = f"[{meta.get('chunk_type','?')} — {meta.get('bill_id','?')} {meta.get('session','?')}]"
                 context_blocks.append(f"{label}\n{doc}")
+
         context = "\n\n---\n\n".join(context_blocks)
     except Exception as e:
         return ChatResponse(reply=f"[VoteIQ error — parsing results: {e}]")
@@ -3666,18 +3823,19 @@ async def bills_chat(req: BillsChatRequest):
         district_note = f"\nUSER'S DISTRICT CONTEXT: {', '.join(parts)}\n"
 
     system_prompt = f"""You are VoteIQ, a nonpartisan Virginia civic assistant. Today is May 2026. \
-You have access to two types of data: (1) Virginia General Assembly bills from the 2025 and 2026 sessions, \
-and (2) Virginia election results from 2016–2025. \
+You have access only to the retrieved excerpts below, which may include Virginia General Assembly bills and Virginia election results. \
+Do not claim complete coverage of any session unless the excerpts themselves establish it. \
 Answer the user's question using ONLY the excerpts below — do not rely on your training data. \
 Be concise (2-4 sentences), factual, and cite bill numbers and session years when relevant.{district_note}
-If the excerpts don't contain enough information to answer, say so briefly and suggest what topics you can help with.
+If the user asks for a specific bill and session, answer for that exact session only. If excerpts only show a different session for the same bill number, make that distinction clearly.
+If the excerpts don't contain enough information to answer, say so briefly and suggest what topics you can help with.{exact_lookup_note}
 
 EXCERPTS:
 {context}"""
 
     try:
         response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model="claude-sonnet-4-6",
             max_tokens=500,
             system=system_prompt,
             messages=[{"role": m.role, "content": m.content} for m in req.messages],
