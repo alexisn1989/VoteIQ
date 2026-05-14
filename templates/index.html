@@ -367,15 +367,15 @@
         (norfolk && norfolk.ward_sbm ? officialCard('School Board · Ward ' + norfolk.ward, norfolk.ward_sbm, 'Norfolk', '') : '') +
         (norfolk && norfolk.superward_rep ? officialCard('City Council · Superward ' + norfolk.superward, norfolk.superward_rep, 'Norfolk', '') : '') +
         (norfolk && norfolk.superward_sbm ? officialCard('School Board · Superward ' + norfolk.superward, norfolk.superward_sbm, 'Norfolk', '') : '') +
-        (chesapeake ? officialCard('Mayor', chesapeake.mayor ? chesapeake.mayor.name : '', 'Chesapeake', chesapeake.mayor ? chesapeake.mayor.party : '') : '') +
-        (chesapeake ? officialCard('Vice Mayor', chesapeake.vice_mayor ? chesapeake.vice_mayor.name : '', 'Chesapeake', chesapeake.vice_mayor ? chesapeake.vice_mayor.party : '') : '') +
-        (chesapeake ? officialCard('Sheriff', chesapeake.sheriff ? chesapeake.sheriff.name : '', 'Chesapeake', chesapeake.sheriff ? chesapeake.sheriff.party : '') : '') +
+        (chesapeake ? officialCard('Mayor', chesapeake.mayor ? chesapeake.mayor.name : '', 'Chesapeake', chesapeake.mayor ? chesapeake.mayor.party : '', '', chesapeake.mayor ? chesapeake.mayor.url : '') : '') +
+        (chesapeake ? officialCard('Vice Mayor', chesapeake.vice_mayor ? chesapeake.vice_mayor.name : '', 'Chesapeake', chesapeake.vice_mayor ? chesapeake.vice_mayor.party : '', '', chesapeake.vice_mayor ? chesapeake.vice_mayor.url : '') : '') +
+        (chesapeake ? officialCard('Sheriff', chesapeake.sheriff ? chesapeake.sheriff.name : '', 'Chesapeake', chesapeake.sheriff ? chesapeake.sheriff.party : '', '', chesapeake.sheriff ? chesapeake.sheriff.url : '') : '') +
         (chesapeake ? officialCard("Commonwealth's Attorney", chesapeake.commonwealths_attorney ? chesapeake.commonwealths_attorney.name : '', 'Chesapeake', chesapeake.commonwealths_attorney ? chesapeake.commonwealths_attorney.party : '', '', chesapeake.commonwealths_attorney ? chesapeake.commonwealths_attorney.url : '') : '') +
         (chesapeake ? officialCard('Commissioner of the Revenue', chesapeake.commissioner ? chesapeake.commissioner.name : '', 'Chesapeake', chesapeake.commissioner ? chesapeake.commissioner.party : '') : '') +
-        (chesapeake ? officialCard('City Treasurer', chesapeake.treasurer ? chesapeake.treasurer.name : '', 'Chesapeake', chesapeake.treasurer ? chesapeake.treasurer.party : '') : '') +
-        (chesapeake ? officialCard('Clerk of the Circuit Court', chesapeake.clerk ? chesapeake.clerk.name : '', 'Chesapeake', chesapeake.clerk ? chesapeake.clerk.party : '') : '') +
-        (chesapeake && chesapeake.council ? chesapeake.council.map(m => officialCard('City Council · At-Large', m.name, 'Chesapeake', m.party)).join('') : '') +
-        (chesapeake && chesapeake.school_board ? chesapeake.school_board.map(m => officialCard('School Board', m.name, 'Chesapeake', m.party)).join('') : '') +
+        (chesapeake ? officialCard('City Treasurer', chesapeake.treasurer ? chesapeake.treasurer.name : '', 'Chesapeake', chesapeake.treasurer ? chesapeake.treasurer.party : '', '', chesapeake.treasurer ? chesapeake.treasurer.url : '') : '') +
+        (chesapeake ? officialCard('Clerk of the Circuit Court', chesapeake.clerk ? chesapeake.clerk.name : '', 'Chesapeake', chesapeake.clerk ? chesapeake.clerk.party : '', '', chesapeake.clerk ? chesapeake.clerk.url : '') : '') +
+        (chesapeake && chesapeake.council ? chesapeake.council.map(m => officialCard('City Council · At-Large', m.name, 'Chesapeake', m.party, '', m.url)).join('') : '') +
+        (chesapeake && chesapeake.school_board ? chesapeake.school_board.map(m => officialCard('School Board', m.name, 'Chesapeake', m.party, '', m.url)).join('') : '') +
         (portsmouth ? officialCard('Mayor', portsmouth.mayor ? portsmouth.mayor.name : '', 'Portsmouth', portsmouth.mayor ? portsmouth.mayor.party : '') : '') +
         (portsmouth ? officialCard('Vice Mayor', portsmouth.vice_mayor ? portsmouth.vice_mayor.name : '', 'Portsmouth', portsmouth.vice_mayor ? portsmouth.vice_mayor.party : '') : '') +
         (portsmouth ? officialCard('Sheriff', portsmouth.sheriff ? portsmouth.sheriff.name : '', 'Portsmouth', portsmouth.sheriff ? portsmouth.sheriff.party : '') : '') +
