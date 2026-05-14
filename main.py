@@ -1236,8 +1236,8 @@ def lookup(address: str):
             "commissioner":           (lambda m: {"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} if m else None)(_hampton_officials.get("commissioner")),
             "treasurer":              (lambda m: {"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} if m else None)(_hampton_officials.get("treasurer")),
             "clerk":                  (lambda m: {"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} if m else None)(_hampton_officials.get("clerk")),
-            "council": [{"name": m["name"], "party": m.get("party", "")} for m in _hampton_officials.get("council", [])],
-            "school_board": [{"name": m["name"], "party": m.get("party", "")} for m in _hampton_officials.get("school_board", [])],
+            "council": [{"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} for m in _hampton_officials.get("council", [])],
+            "school_board": [{"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} for m in _hampton_officials.get("school_board", [])],
         } if "hampton" in result.get("locality", "").lower() else None,
         "newport_news": {
             "precinct": result.get("newport_news_precinct") or result.get("precinct"),
