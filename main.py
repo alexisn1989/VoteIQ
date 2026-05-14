@@ -1253,10 +1253,10 @@ def lookup(address: str):
             "clerk":                  (lambda m: {"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} if m else None)(_newport_news_officials.get("clerk")),
             "council_district": result.get("nn_council_district"),
             "council_district_name": result.get("nn_council_district_name"),
-            "council": [{"name": m["name"], "party": m.get("party", "")} for m in _newport_news_officials.get(f"council_{result.get('nn_council_district')}", [])],
+            "council": [{"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} for m in _newport_news_officials.get(f"council_{result.get('nn_council_district')}", [])],
             "school_board": (
-                [{"name": m["name"], "party": m.get("party", "")} for m in _newport_news_officials.get(f"school_board_{result.get('nn_council_district')}", [])] +
-                [{"name": m["name"], "party": m.get("party", "")} for m in _newport_news_officials.get("school_board_at_large", [])]
+                [{"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} for m in _newport_news_officials.get(f"school_board_{result.get('nn_council_district')}", [])] +
+                [{"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} for m in _newport_news_officials.get("school_board_at_large", [])]
             ),
         } if "newport news" in result.get("locality", "").lower() else None,
         "suffolk": {
