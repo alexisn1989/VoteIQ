@@ -750,7 +750,8 @@
         "district": "Newport News Sheriff",
         "email": "",
         "jurisdiction": "Newport News",
-        "party": "Democrat (nonpartisan)"
+        "party": "Democrat (nonpartisan)",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
     },
     {
         "name": "Shannon M. Jones",
@@ -758,21 +759,23 @@
         "email": "",
         "jurisdiction": "Newport News",
         "party": "Democrat (nonpartisan)",
-        "url": "https://www.nnva.gov/476/Commonwealths-Attorney"
+        "url": "https://www.nnva.gov/465/Elected-Officials"
     },
     {
         "name": "Tiffany Boyle",
         "district": "Newport News Commissioner of the Revenue",
         "email": "",
         "jurisdiction": "Newport News",
-        "party": "Democrat (nonpartisan)"
+        "party": "Democrat (nonpartisan)",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
     },
     {
         "name": "Sanu Dieng Cooper",
         "district": "Newport News City Treasurer",
         "email": "",
         "jurisdiction": "Newport News",
-        "party": "Democrat (nonpartisan)"
+        "party": "Democrat (nonpartisan)",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
     },
     {
         "name": "Angela Reason",
@@ -826,49 +829,56 @@
         "district": "Newport News School Board 3",
         "email": "Terri.Best@nn.k12.va.us",
         "jurisdiction": "Newport News",
-        "party": ""
+        "party": "",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
     },
     {
         "name": "Maritsa Alger",
         "district": "Newport News School Board 3",
         "email": "Maritsa.Alger@nn.k12.va.us",
         "jurisdiction": "Newport News",
-        "party": ""
+        "party": "",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
     },
     {
         "name": "Rebecca S. Aman",
         "district": "Newport News School Board 2",
         "email": "Rebecca.Aman@nn.k12.va.us",
         "jurisdiction": "Newport News",
-        "party": ""
+        "party": "",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
     },
     {
         "name": "Douglas C. Brown",
         "district": "Newport News School Board 1",
         "email": "Douglas.Brown@nn.k12.va.us",
         "jurisdiction": "Newport News",
-        "party": ""
+        "party": "",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
     },
     {
         "name": "Rasheena D. Harris",
         "district": "Newport News School Board 1",
         "email": "Rasheena.Harris@nn.k12.va.us",
         "jurisdiction": "Newport News",
-        "party": ""
+        "party": "",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
     },
     {
         "name": "Gary B. Hunter",
         "district": "Newport News School Board At-Large",
         "email": "Gary.Hunter@nn.k12.va.us",
         "jurisdiction": "Newport News",
-        "party": ""
+        "party": "",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
     },
     {
         "name": "Lisa R. Surles-Law",
         "district": "Newport News School Board 2",
         "email": "Lisa.SurlesLaw@nn.k12.va.us",
         "jurisdiction": "Newport News",
-        "party": ""
+        "party": "",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
     },
     {
         "name": "Michael D. Duman",
