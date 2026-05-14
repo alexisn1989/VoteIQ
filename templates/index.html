@@ -376,15 +376,15 @@
         (chesapeake ? officialCard('Clerk of the Circuit Court', chesapeake.clerk ? chesapeake.clerk.name : '', 'Chesapeake', chesapeake.clerk ? chesapeake.clerk.party : '', '', chesapeake.clerk ? chesapeake.clerk.url : '') : '') +
         (chesapeake && chesapeake.council ? chesapeake.council.map(m => officialCard('City Council · At-Large', m.name, 'Chesapeake', m.party, '', m.url)).join('') : '') +
         (chesapeake && chesapeake.school_board ? chesapeake.school_board.map(m => officialCard('School Board', m.name, 'Chesapeake', m.party, '', m.url)).join('') : '') +
-        (portsmouth ? officialCard('Mayor', portsmouth.mayor ? portsmouth.mayor.name : '', 'Portsmouth', portsmouth.mayor ? portsmouth.mayor.party : '') : '') +
-        (portsmouth ? officialCard('Vice Mayor', portsmouth.vice_mayor ? portsmouth.vice_mayor.name : '', 'Portsmouth', portsmouth.vice_mayor ? portsmouth.vice_mayor.party : '') : '') +
-        (portsmouth ? officialCard('Sheriff', portsmouth.sheriff ? portsmouth.sheriff.name : '', 'Portsmouth', portsmouth.sheriff ? portsmouth.sheriff.party : '') : '') +
+        (portsmouth ? officialCard('Mayor', portsmouth.mayor ? portsmouth.mayor.name : '', 'Portsmouth', portsmouth.mayor ? portsmouth.mayor.party : '', '', portsmouth.mayor ? portsmouth.mayor.url : '') : '') +
+        (portsmouth ? officialCard('Vice Mayor', portsmouth.vice_mayor ? portsmouth.vice_mayor.name : '', 'Portsmouth', portsmouth.vice_mayor ? portsmouth.vice_mayor.party : '', '', portsmouth.vice_mayor ? portsmouth.vice_mayor.url : '') : '') +
+        (portsmouth ? officialCard('Sheriff', portsmouth.sheriff ? portsmouth.sheriff.name : '', 'Portsmouth', portsmouth.sheriff ? portsmouth.sheriff.party : '', '', portsmouth.sheriff ? portsmouth.sheriff.url : '') : '') +
         (portsmouth ? officialCard("Commonwealth's Attorney", portsmouth.commonwealths_attorney ? portsmouth.commonwealths_attorney.name : '', 'Portsmouth', portsmouth.commonwealths_attorney ? portsmouth.commonwealths_attorney.party : '', '', portsmouth.commonwealths_attorney ? portsmouth.commonwealths_attorney.url : '') : '') +
-        (portsmouth ? officialCard('Commissioner of the Revenue', portsmouth.commissioner ? portsmouth.commissioner.name : '', 'Portsmouth', portsmouth.commissioner ? portsmouth.commissioner.party : '') : '') +
-        (portsmouth ? officialCard('City Treasurer', portsmouth.treasurer ? portsmouth.treasurer.name : '', 'Portsmouth', portsmouth.treasurer ? portsmouth.treasurer.party : '') : '') +
-        (portsmouth ? officialCard('Clerk of the Circuit Court', portsmouth.clerk ? portsmouth.clerk.name : '', 'Portsmouth', portsmouth.clerk ? portsmouth.clerk.party : '') : '') +
-        (portsmouth && portsmouth.council ? portsmouth.council.map(m => officialCard('City Council · At-Large', m.name, 'Portsmouth', m.party)).join('') : '') +
-        (portsmouth && portsmouth.school_board ? portsmouth.school_board.map(m => officialCard('School Board', m.name, 'Portsmouth', m.party)).join('') : '') +
+        (portsmouth ? officialCard('Commissioner of the Revenue', portsmouth.commissioner ? portsmouth.commissioner.name : '', 'Portsmouth', portsmouth.commissioner ? portsmouth.commissioner.party : '', '', portsmouth.commissioner ? portsmouth.commissioner.url : '') : '') +
+        (portsmouth ? officialCard('City Treasurer', portsmouth.treasurer ? portsmouth.treasurer.name : '', 'Portsmouth', portsmouth.treasurer ? portsmouth.treasurer.party : '', '', portsmouth.treasurer ? portsmouth.treasurer.url : '') : '') +
+        (portsmouth ? officialCard('Clerk of the Circuit Court', portsmouth.clerk ? portsmouth.clerk.name : '', 'Portsmouth', portsmouth.clerk ? portsmouth.clerk.party : '', '', portsmouth.clerk ? portsmouth.clerk.url : '') : '') +
+        (portsmouth && portsmouth.council ? portsmouth.council.map(m => officialCard('City Council · At-Large', m.name, 'Portsmouth', m.party, '', m.url)).join('') : '') +
+        (portsmouth && portsmouth.school_board ? portsmouth.school_board.map(m => officialCard('School Board', m.name, 'Portsmouth', m.party, '', m.url)).join('') : '') +
         (hampton ? officialCard('Mayor', hampton.mayor ? hampton.mayor.name : '', 'Hampton', hampton.mayor ? hampton.mayor.party : '') : '') +
         (hampton ? officialCard('Vice Mayor', hampton.vice_mayor ? hampton.vice_mayor.name : '', 'Hampton', hampton.vice_mayor ? hampton.vice_mayor.party : '') : '') +
         (hampton ? officialCard('Sheriff', hampton.sheriff ? hampton.sheriff.name : '', 'Hampton', hampton.sheriff ? hampton.sheriff.party : '') : '') +
