@@ -1090,19 +1090,21 @@ def lookup(address: str):
         result.get("vb_polling_place") or
         result.get("hampton_polling_place") or
         result.get("portsmouth_polling_place") or
-        result.get("suffolk_polling_place")
+        result.get("suffolk_polling_place") or
+        result.get("chesapeake_polling_place")
     )
     precinct_number = (
         result.get("hampton_precinct_number") or
         result.get("portsmouth_precinct_number") or
         result.get("suffolk_precinct_number") or
+        result.get("chesapeake_precinct_number") or
         (polling_place or {}).get("precinct_number")
     )
     precinct_name = result.get("precinct")
     precinct_info = {
         "name": precinct_name,
         "number": precinct_number,
-        "location": (polling_place or {}).get("location") or result.get("hampton_polling_location") or result.get("portsmouth_polling_location") or result.get("suffolk_polling_location"),
+        "location": (polling_place or {}).get("location") or result.get("hampton_polling_location") or result.get("portsmouth_polling_location") or result.get("suffolk_polling_location") or result.get("chesapeake_polling_location"),
         "address": (polling_place or {}).get("full_address"),
         "address_line_1": (polling_place or {}).get("address_line_1"),
         "address_line_2": (polling_place or {}).get("address_line_2"),
@@ -1142,6 +1144,11 @@ def lookup(address: str):
             "superward_sbm": result.get("norfolk_superward_sbm"),
         } if "norfolk" in result.get("locality", "").lower() else None,
         "chesapeake": {
+            "precinct": result.get("chesapeake_precinct") or result.get("precinct"),
+            "precinct_number": result.get("chesapeake_precinct_number"),
+            "polling_location": result.get("chesapeake_polling_location"),
+            "polling_address": (result.get("chesapeake_polling_place") or {}).get("full_address"),
+            "polling_room": (result.get("chesapeake_polling_place") or {}).get("room"),
             "mayor":                  (lambda m: {"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} if m else None)(_chesapeake_officials.get("mayor")),
             "vice_mayor":             (lambda m: {"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} if m else None)(_chesapeake_officials.get("vice_mayor")),
             "sheriff":                (lambda m: {"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} if m else None)(_chesapeake_officials.get("sheriff")),
@@ -3502,6 +3509,203 @@ def _build_election_summary(year: str) -> str:
     return f"{year} Virginia election results."
 
 
+def _candidate_list(race: dict) -> list[dict]:
+    return [
+        c for c in race.get("candidates", [])
+        if str(c.get("name", "")).strip().upper() != "WRITE IN VOTES"
+    ]
+
+
+def _race_label(group: str, key, race: dict) -> str:
+    if group == "statewide":
+        return race.get("race") or race.get("office") or "Statewide race"
+    if group == "locality":
+        return str(key)
+    if group == "congress":
+        dist = race.get("district") or key
+        return f"U.S. House District {dist}"
+    if group == "senate":
+        return f"State Senate District {key}"
+    if group == "hod":
+        return f"House District {key}"
+    return str(key)
+
+
+def _format_race_line(group: str, key, race: dict, prefix: str = "") -> str:
+    cands = _candidate_list(race)
+    if not cands:
+        return ""
+    winner = cands[0]
+    runner = cands[1] if len(cands) > 1 else None
+    label = _race_label(group, key, race)
+    total = race.get("total") or sum(int(c.get("votes") or 0) for c in cands)
+    line = (
+        f"{prefix}{label}: {winner.get('name', 'Unknown')} "
+        f"({winner.get('party', '')}) won with {int(winner.get('votes') or 0):,} votes "
+        f"({winner.get('pct', 0)}%)"
+    )
+    if runner:
+        margin_votes = int(winner.get("votes") or 0) - int(runner.get("votes") or 0)
+        margin_pct = round(float(winner.get("pct") or 0) - float(runner.get("pct") or 0), 1)
+        line += (
+            f" over {runner.get('name', 'Unknown')} ({runner.get('party', '')}), "
+            f"{int(runner.get('votes') or 0):,} votes ({runner.get('pct', 0)}%). "
+            f"Margin: {margin_votes:,} votes / {margin_pct} points"
+        )
+    else:
+        line += " in an uncontested or single-candidate listed race"
+    if total:
+        line += f". Total votes: {int(total):,}"
+    return line + "."
+
+
+def _sort_race_items(items):
+    def key_fn(item):
+        nums = re.findall(r"\d+", str(item[0]))
+        return (0, int(nums[0])) if nums else (1, str(item[0]))
+    return sorted(items, key=key_fn)
+
+
+def _party_counts(races: dict) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for race in races.values():
+        cands = _candidate_list(race)
+        if not cands:
+            continue
+        party = cands[0].get("party") or "Other"
+        counts[party] = counts.get(party, 0) + 1
+    return counts
+
+
+def _district_keys_by_group(question: str) -> dict[str, set[str]]:
+    groups = {"congress": set(), "senate": set(), "hod": set(), "all": set()}
+    pattern_groups = [
+        ("congress", r"\b(?:va|cd|congress(?:ional)?(?:\s+district)?)\s*-?\s*(\d{1,3})(?:st|nd|rd|th)?\b"),
+        ("hod", r"\b(?:hd|hod|house(?:\s+district)?)\s*-?\s*(\d{1,3})(?:st|nd|rd|th)?\b"),
+        ("senate", r"\b(?:sd|senate(?:\s+district)?)\s*-?\s*(\d{1,3})(?:st|nd|rd|th)?\b"),
+        ("all", r"\bdistrict\s+(\d{1,3})(?:st|nd|rd|th)?\b"),
+    ]
+    for group, pattern in pattern_groups:
+        for m in re.finditer(pattern, question, re.I):
+            groups[group].add(m.group(1))
+    return groups
+
+
+def _district_key_matches(key, targets: set[str]) -> bool:
+    nums = re.findall(r"\d+", str(key))
+    return bool(nums and nums[0] in targets)
+
+
+def _norm_text(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
+
+
+def _candidate_mentioned(candidate_name: str, question_norm: str) -> bool:
+    name_norm = _norm_text(candidate_name)
+    if not name_norm:
+        return False
+    if name_norm in question_norm:
+        return True
+    parts = [p for p in name_norm.split() if len(p) > 3]
+    return bool(parts and parts[-1] in question_norm)
+
+
+def _closest_races(data: dict, limit: int = 8) -> list[str]:
+    close = []
+    for group in ("congress", "senate", "hod"):
+        for key, race in data.get(group, {}).items():
+            cands = _candidate_list(race)
+            if len(cands) < 2:
+                continue
+            margin = abs(float(cands[0].get("pct") or 0) - float(cands[1].get("pct") or 0))
+            close.append((margin, group, key, race))
+    close.sort(key=lambda item: item[0])
+    return [_format_race_line(group, key, race) for _, group, key, race in close[:limit]]
+
+
+def _build_election_chat_context(year: str, question: str = "") -> str:
+    try:
+        data = _load_results_for_year(str(year))
+        if str(year) == "2025" and not data.get("locality_results"):
+            locality_results = {}
+            for office in ["Governor", "Lieutenant Governor", "Attorney General"]:
+                try:
+                    locality_results[office] = _load_2025_statewide_locality_results(office)
+                except Exception:
+                    locality_results[office] = {}
+            data = {**data, "locality_results": locality_results}
+        q_norm = _norm_text(question)
+        district_targets = _district_keys_by_group(question)
+        wants_close = any(word in q_norm.split() for word in ("close", "closest", "tight", "tightest", "margin"))
+        lines = [f"{year} Virginia election results from VoteIQ JSON data:"]
+
+        statewide = data.get("statewide", [])
+        if statewide:
+            lines.append("Statewide races:")
+            for race in statewide:
+                line = _format_race_line("statewide", race.get("race") or race.get("office"), race, "  ")
+                if line:
+                    lines.append(line)
+
+        for group, label in (("congress", "U.S. House"), ("senate", "State Senate"), ("hod", "House of Delegates")):
+            races = data.get(group, {})
+            if not races:
+                continue
+            counts = _party_counts(races)
+            count_text = ", ".join(f"{party}: {count}" for party, count in sorted(counts.items()))
+            lines.append(f"{label} races listed: {len(races)}. Winners by party: {count_text}.")
+
+        targeted = []
+        for group in ("congress", "senate", "hod"):
+            group_targets = district_targets[group] | district_targets["all"]
+            for key, race in _sort_race_items(data.get(group, {}).items()):
+                include = bool(group_targets and _district_key_matches(key, group_targets))
+                include = include or any(_candidate_mentioned(c.get("name", ""), q_norm) for c in _candidate_list(race))
+                if include:
+                    line = _format_race_line(group, key, race)
+                    if line:
+                        targeted.append(line)
+        if targeted:
+            lines.append("Question-matched district or candidate races:")
+            lines.extend(f"  {line}" for line in targeted[:20])
+
+        locality_hits = []
+        for office, localities in data.get("locality_results", {}).items():
+            for locality, race in localities.items():
+                loc_norm = _norm_text(locality)
+                short_loc = re.sub(r"\b(county|city)\b", "", loc_norm).strip()
+                if loc_norm and (loc_norm in q_norm or (len(short_loc) > 3 and short_loc in q_norm)):
+                    line = _format_race_line("locality", f"{locality} - {office}", race)
+                    if line:
+                        locality_hits.append(line)
+        if locality_hits:
+            lines.append("Question-matched locality results:")
+            lines.extend(f"  {line}" for line in locality_hits[:18])
+
+        if wants_close:
+            close_lines = _closest_races(data)
+            if close_lines:
+                lines.append("Closest district races:")
+                lines.extend(f"  {line}" for line in close_lines)
+
+        if not targeted and not locality_hits:
+            for group, label in (("congress", "U.S. House district winners"), ("senate", "State Senate district winners"), ("hod", "House of Delegates district winners")):
+                races = data.get(group, {})
+                if not races:
+                    continue
+                lines.append(f"{label}:")
+                for key, race in _sort_race_items(races.items())[:120]:
+                    cands = _candidate_list(race)
+                    if cands:
+                        w = cands[0]
+                        lines.append(f"  {_race_label(group, key, race)}: {w.get('name')} ({w.get('party')}) {w.get('pct')}%")
+
+        return "\n".join(lines)[:30000]
+    except Exception as e:
+        print(f"_build_election_chat_context: {e}")
+    return f"{year} Virginia election results."
+
+
 class ElectionChatRequest(BaseModel):
     year: str
     messages: list[ChatMessage]
@@ -3510,7 +3714,8 @@ class ElectionChatRequest(BaseModel):
 @app.post("/api/election-chat", response_model=ChatResponse)
 @limiter.limit("10/minute")
 async def election_chat(request: Request, req: ElectionChatRequest):
-    summary = _build_election_summary(req.year)
+    user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
+    summary = _build_election_chat_context(req.year, user_query)
     system_prompt = f"""You are a friendly Virginia election results assistant on the VoteIQ platform.
 
 Here are the official {req.year} Virginia election results:

@@ -19,6 +19,7 @@ nn_council_gdf = None  # Newport News city council district boundaries
 hampton_precinct_gdf = None  # Hampton voting precinct boundaries
 portsmouth_precinct_gdf = None  # Portsmouth voting precinct boundaries
 suffolk_precinct_gdf = None  # Suffolk voting precinct boundaries
+chesapeake_precinct_gdf = None  # Chesapeake voting precinct boundaries
 _loaded  = False
 
 # VB council lookup: district number (int) -> {name, email}
@@ -196,16 +197,20 @@ def _polling_place_for(locality, precinct_number=None, precinct_name=None):
     locality_key = _norm_text(locality)
     if not locality_key:
         return None
+    # Try both "chesapeake" and "chesapeake city" since geocoder omits " city"
+    locality_keys = {locality_key, locality_key + " city"}
     number = _precinct_number(precinct_number)
     if number:
-        found = _polling_places_by_number.get((locality_key, number))
-        if found:
-            return found
-    for name_key in {_norm_text(precinct_name), _precinct_name_alias(precinct_name)}:
-        if name_key:
-            found = _polling_places_by_name.get((locality_key, name_key))
+        for lk in locality_keys:
+            found = _polling_places_by_number.get((lk, number))
             if found:
                 return found
+    for name_key in {_norm_text(precinct_name), _precinct_name_alias(precinct_name)}:
+        if name_key:
+            for lk in locality_keys:
+                found = _polling_places_by_name.get((lk, name_key))
+                if found:
+                    return found
     return None
 
 
@@ -256,7 +261,7 @@ def _match_precinct(gdf, point):
 
 
 def _load_shapefiles():
-    global va_cd, vb_local, va_hod, va_sd, vb_council_gdf, norfolk_combined_gdf, nn_council_gdf, hampton_precinct_gdf, portsmouth_precinct_gdf, suffolk_precinct_gdf, _loaded
+    global va_cd, vb_local, va_hod, va_sd, vb_council_gdf, norfolk_combined_gdf, nn_council_gdf, hampton_precinct_gdf, portsmouth_precinct_gdf, suffolk_precinct_gdf, chesapeake_precinct_gdf, _loaded
     if _loaded:
         return
     _loaded = True
@@ -320,6 +325,11 @@ def _load_shapefiles():
         suffolk_precinct_gdf = _load_city_precincts(("SUFFOLK", "Suffolk"))
     except Exception as e:
         print(f"address_lookup: could not load suffolk_precinct_gdf: {e}")
+
+    try:
+        chesapeake_precinct_gdf = _load_city_precincts(("CHESAPEAKE", "Chesapeake"))
+    except Exception as e:
+        print(f"address_lookup: could not load chesapeake_precinct_gdf: {e}")
 
     try:
         import geopandas as _gpd
@@ -495,6 +505,16 @@ def find_district(address):
             if suffolk_precinct and not precinct:
                 precinct = suffolk_precinct
 
+        chesapeake_precinct = None
+        chesapeake_precinct_number = None
+        chesapeake_polling_location = None
+        chesapeake_polling_place = None
+        if "chesapeake" in (locality or "").lower() and chesapeake_precinct_gdf is not None:
+            chesapeake_precinct, chesapeake_precinct_number, chesapeake_polling_location = _match_precinct(chesapeake_precinct_gdf, point)
+            chesapeake_polling_place = _polling_place_for(locality, chesapeake_precinct_number, chesapeake_precinct)
+            if chesapeake_precinct and not precinct:
+                precinct = chesapeake_precinct
+
         return {
             "locality": locality or "Virginia",
             "district": district or "Not found",
@@ -523,6 +543,10 @@ def find_district(address):
             "suffolk_precinct_number": suffolk_precinct_number,
             "suffolk_polling_location": (suffolk_polling_place or {}).get("location") or suffolk_polling_location,
             "suffolk_polling_place": suffolk_polling_place,
+            "chesapeake_precinct": chesapeake_precinct,
+            "chesapeake_precinct_number": chesapeake_precinct_number,
+            "chesapeake_polling_location": (chesapeake_polling_place or {}).get("location") or chesapeake_polling_location,
+            "chesapeake_polling_place": chesapeake_polling_place,
             "precinct": precinct or "Not found",
             "lat": lat,
             "lng": lng
