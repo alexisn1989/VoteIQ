@@ -1133,6 +1133,26 @@ def lookup(address: str):
         key = re.sub(r"[^a-z0-9]+", " ", str(name or "").lower()).strip()
         return norfolk_council_urls.get(key, "")
 
+    norfolk_school_board_urls = {
+        "dr adale m martin": "https://www.npsk12.com/our-division/school-board/school-board-members/dr-adale-m-martin-member",
+        "adale m martin": "https://www.npsk12.com/our-division/school-board/school-board-members/dr-adale-m-martin-member",
+        "tanya k bhasin": "https://www.npsk12.com/our-division/school-board/school-board-members/ms-tanya-k-bhasin-member",
+        "tiffany moore buffaloe": "https://www.npsk12.com/our-division/school-board/school-board-members/mrs-tiffany-moore-buffaloe-member",
+        "ken d paulson": "https://www.npsk12.com/our-division/school-board/school-board-members/mr-kenneth-paulson-member",
+        "kenneth d paulson": "https://www.npsk12.com/our-division/school-board/school-board-members/mr-kenneth-paulson-member",
+        "kenneth paulson": "https://www.npsk12.com/our-division/school-board/school-board-members/mr-kenneth-paulson-member",
+        "jason inge": "https://www.npsk12.com/our-division/school-board/school-board-members/mr-jason-inge-member",
+        "jodi m slaughter": "https://www.npsk12.com/our-division/school-board/school-board-members/mr-jason-inge-member",
+        "sarah e dicalogero": "https://www.npsk12.com/our-division/school-board/school-board-members/ms-sarah-e-dicalogero-chair",
+        "alfreda a thomas": "https://www.npsk12.com/our-division/school-board/school-board-members/ms-alfreda-a-thomas-vice-chair",
+        "alfreda thomas": "https://www.npsk12.com/our-division/school-board/school-board-members/ms-alfreda-a-thomas-vice-chair",
+        "carlos j clanton": "https://www.norfolk.gov/6428/Carlos-J-Clanton",
+    }
+
+    def _norfolk_school_board_url(name):
+        key = re.sub(r"[^a-z0-9]+", " ", str(name or "").lower()).strip()
+        return norfolk_school_board_urls.get(key, "")
+
     return {
         "district": result,
         "precinct_info": precinct_info,
@@ -1161,12 +1181,14 @@ def lookup(address: str):
             "commissioner": (lambda m: {"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} if m else None)(_norfolk_officials.get("commissioner")),
             "ward": result.get("norfolk_ward"),
             "ward_rep": result.get("norfolk_ward_rep"),
-            "ward_rep_url": _norfolk_council_url(result.get("norfolk_ward_rep")),
+            "ward_rep_url": result.get("norfolk_ward_rep_url") or _norfolk_council_url(result.get("norfolk_ward_rep")),
             "ward_sbm": result.get("norfolk_ward_sbm"),
+            "ward_sbm_url": result.get("norfolk_ward_sbm_url") or _norfolk_school_board_url(result.get("norfolk_ward_sbm")),
             "superward": result.get("norfolk_superward"),
             "superward_rep": result.get("norfolk_superward_rep"),
-            "superward_rep_url": _norfolk_council_url(result.get("norfolk_superward_rep")),
+            "superward_rep_url": result.get("norfolk_superward_rep_url") or _norfolk_council_url(result.get("norfolk_superward_rep")),
             "superward_sbm": result.get("norfolk_superward_sbm"),
+            "superward_sbm_url": result.get("norfolk_superward_sbm_url") or _norfolk_school_board_url(result.get("norfolk_superward_sbm")),
         } if "norfolk" in result.get("locality", "").lower() else None,
         "chesapeake": {
             "precinct": result.get("chesapeake_precinct") or result.get("precinct"),

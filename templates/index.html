@@ -364,9 +364,9 @@
         (norfolk && norfolk.treasurer              ? officialCard('City Treasurer',              norfolk.treasurer.name,    'Norfolk', norfolk.treasurer.party, '', norfolk.treasurer.url)              : '') +
         (norfolk && norfolk.commissioner           ? officialCard('Commissioner of the Revenue', norfolk.commissioner.name, 'Norfolk', norfolk.commissioner.party, '', norfolk.commissioner.url)           : '') +
         (norfolk && norfolk.ward_rep ? officialCard('City Council · Ward ' + norfolk.ward, norfolk.ward_rep, 'Norfolk', '', '', norfolk.ward_rep_url) : '') +
-        (norfolk && norfolk.ward_sbm ? officialCard('School Board · Ward ' + norfolk.ward, norfolk.ward_sbm, 'Norfolk', '') : '') +
+        (norfolk && norfolk.ward_sbm ? officialCard('School Board · Ward ' + norfolk.ward, norfolk.ward_sbm, 'Norfolk', '', '', norfolk.ward_sbm_url) : '') +
         (norfolk && norfolk.superward_rep ? officialCard('City Council · Superward ' + norfolk.superward, norfolk.superward_rep, 'Norfolk', '', '', norfolk.superward_rep_url) : '') +
-        (norfolk && norfolk.superward_sbm ? officialCard('School Board · Superward ' + norfolk.superward, norfolk.superward_sbm, 'Norfolk', '') : '') +
+        (norfolk && norfolk.superward_sbm ? officialCard('School Board · Superward ' + norfolk.superward, norfolk.superward_sbm, 'Norfolk', '', '', norfolk.superward_sbm_url) : '') +
         (chesapeake ? officialCard('Mayor', chesapeake.mayor ? chesapeake.mayor.name : '', 'Chesapeake', chesapeake.mayor ? chesapeake.mayor.party : '', '', chesapeake.mayor ? chesapeake.mayor.url : '') : '') +
         (chesapeake ? officialCard('Vice Mayor', chesapeake.vice_mayor ? chesapeake.vice_mayor.name : '', 'Chesapeake', chesapeake.vice_mayor ? chesapeake.vice_mayor.party : '', '', chesapeake.vice_mayor ? chesapeake.vice_mayor.url : '') : '') +
         (chesapeake ? officialCard('Sheriff', chesapeake.sheriff ? chesapeake.sheriff.name : '', 'Chesapeake', chesapeake.sheriff ? chesapeake.sheriff.party : '', '', chesapeake.sheriff ? chesapeake.sheriff.url : '') : '') +

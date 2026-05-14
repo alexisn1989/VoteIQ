@@ -348,7 +348,9 @@ def _load_shapefiles():
                 if not inter.is_empty:
                     rows.append({
                         "WARD": int(wr["WARD"]), "WARD_REP": wr["WARD_REP"], "WARD_SBM": wr["WARD_SBM"],
+                        "WARD_URL": wr.get("WEBSITE", ""), "WARD_SBM_URL": wr.get("WEBSITE_SB", ""),
                         "SUPWARD": int(sr["SUPWARD"]), "SWARD_REP": sr["SWARD_REP"], "SWARD_SBM": sr["SWARD_SBM"],
+                        "SWARD_URL": sr.get("WEBSITE", ""), "SWARD_SBM_URL": sr.get("WEBSITE_SBM", ""),
                         "geometry": inter,
                     })
         norfolk_combined_gdf = _gpd.GeoDataFrame(rows, crs="EPSG:4326")
@@ -457,19 +459,27 @@ def find_district(address):
         # Norfolk ward + superward from single combined GDF
         norfolk_ward = None
         norfolk_ward_rep = None
+        norfolk_ward_rep_url = None
         norfolk_ward_sbm = None
+        norfolk_ward_sbm_url = None
         norfolk_superward = None
         norfolk_superward_rep = None
+        norfolk_superward_rep_url = None
         norfolk_superward_sbm = None
+        norfolk_superward_sbm_url = None
         if "norfolk" in (locality or "").lower() and norfolk_combined_gdf is not None:
             for _, row in norfolk_combined_gdf.iterrows():
                 if row['geometry'].contains(point):
                     norfolk_ward = row['WARD']
                     norfolk_ward_rep = row['WARD_REP']
+                    norfolk_ward_rep_url = row.get('WARD_URL', '')
                     norfolk_ward_sbm = row['WARD_SBM']
+                    norfolk_ward_sbm_url = row.get('WARD_SBM_URL', '')
                     norfolk_superward = row['SUPWARD']
                     norfolk_superward_rep = row['SWARD_REP']
+                    norfolk_superward_rep_url = row.get('SWARD_URL', '')
                     norfolk_superward_sbm = row['SWARD_SBM']
+                    norfolk_superward_sbm_url = row.get('SWARD_SBM_URL', '')
                     break
 
         nn_council_district = None
@@ -541,10 +551,14 @@ def find_district(address):
             "vb_polling_place": vb_polling_place,
             "norfolk_ward": norfolk_ward,
             "norfolk_ward_rep": norfolk_ward_rep,
+            "norfolk_ward_rep_url": norfolk_ward_rep_url,
             "norfolk_ward_sbm": norfolk_ward_sbm,
+            "norfolk_ward_sbm_url": norfolk_ward_sbm_url,
             "norfolk_superward": norfolk_superward,
             "norfolk_superward_rep": norfolk_superward_rep,
+            "norfolk_superward_rep_url": norfolk_superward_rep_url,
             "norfolk_superward_sbm": norfolk_superward_sbm,
+            "norfolk_superward_sbm_url": norfolk_superward_sbm_url,
             "nn_council_district": nn_council_district,
             "nn_council_district_name": nn_council_district_name,
             "hampton_precinct": hampton_precinct,
