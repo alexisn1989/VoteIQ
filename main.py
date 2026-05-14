@@ -1100,14 +1100,15 @@ def lookup(address: str):
         result.get("suffolk_precinct_number") or
         result.get("chesapeake_precinct_number") or
         result.get("norfolk_precinct_number") or
+        result.get("newport_news_precinct_number") or
         (polling_place or {}).get("precinct_number")
     )
     precinct_name = result.get("precinct")
     precinct_info = {
         "name": precinct_name,
         "number": precinct_number,
-        "location": (polling_place or {}).get("location") or result.get("hampton_polling_location") or result.get("portsmouth_polling_location") or result.get("suffolk_polling_location") or result.get("chesapeake_polling_location") or result.get("norfolk_polling_location"),
-        "address": (polling_place or {}).get("full_address"),
+        "location": (polling_place or {}).get("location") or result.get("hampton_polling_location") or result.get("portsmouth_polling_location") or result.get("suffolk_polling_location") or result.get("chesapeake_polling_location") or result.get("norfolk_polling_location") or result.get("newport_news_polling_location"),
+        "address": (polling_place or {}).get("full_address") or result.get("newport_news_polling_address"),
         "address_line_1": (polling_place or {}).get("address_line_1"),
         "address_line_2": (polling_place or {}).get("address_line_2"),
         "city": (polling_place or {}).get("city"),
@@ -1239,6 +1240,10 @@ def lookup(address: str):
             "school_board": [{"name": m["name"], "party": m.get("party", "")} for m in _hampton_officials.get("school_board", [])],
         } if "hampton" in result.get("locality", "").lower() else None,
         "newport_news": {
+            "precinct": result.get("newport_news_precinct") or result.get("precinct"),
+            "precinct_number": result.get("newport_news_precinct_number"),
+            "polling_location": result.get("newport_news_polling_location"),
+            "polling_address": result.get("newport_news_polling_address"),
             "mayor":                  (lambda m: {"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} if m else None)(_newport_news_officials.get("mayor")),
             "vice_mayor":             (lambda m: {"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} if m else None)(_newport_news_officials.get("vice_mayor")),
             "sheriff":                (lambda m: {"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} if m else None)(_newport_news_officials.get("sheriff")),

@@ -488,7 +488,7 @@ async function lookup() {
     const del = data.state_delegate;
     const sen = data.state_senator;
     const precinctInfo = data.precinct_info;
-    const cityPrecinct = precinctInfo || data.portsmouth || data.hampton || data.suffolk;
+    const cityPrecinct = precinctInfo || data.portsmouth || data.hampton || data.newport_news || data.suffolk;
     const precinctAddress = cityPrecinct
       ? (cityPrecinct.address || cityPrecinct.polling_address || cityPrecinct.polling_location || cityPrecinct.location || '')
       : '';

@@ -22,6 +22,7 @@ portsmouth_precinct_gdf = None  # Portsmouth voting precinct boundaries
 suffolk_precinct_gdf = None  # Suffolk voting precinct boundaries
 chesapeake_precinct_gdf = None  # Chesapeake voting precinct boundaries
 norfolk_precinct_gdf = None     # Norfolk voting precinct boundaries
+newport_news_precinct_gdf = None  # Newport News voting precinct boundaries
 _loaded  = False
 
 # VB council lookup: district number (int) -> {name, email}
@@ -255,15 +256,24 @@ def _match_precinct(gdf, point):
         return None, None, None
     for _, row in gdf.iterrows():
         if row['geometry'].contains(point):
-            precinct_name = row.get('PrecinctNa') or row.get('Precinct_1') or row.get('PrecinctDi')
-            precinct_number = row.get('PrecinctNu') or row.get('PrecinctFI')
-            polling_location = row.get('PollingLoc')
+            precinct_name = row.get('PrecinctNa') or row.get('Precinct_1') or row.get('PrecinctDi') or row.get('PrecinctName')
+            precinct_number = row.get('PrecinctNu') or row.get('PrecinctFI') or row.get('Num')
+            polling_location = row.get('PollingLoc') or row.get('POLLINGLOC')
             return precinct_name, precinct_number, polling_location
     return None, None, None
 
 
+def _match_newport_news_precinct(gdf, point):
+    if gdf is None:
+        return None, None, None, None
+    for _, row in gdf.iterrows():
+        if row['geometry'].contains(point):
+            return row.get('PrecinctName'), row.get('Num'), row.get('POLLINGLOC'), row.get('ADDRESS')
+    return None, None, None, None
+
+
 def _load_shapefiles():
-    global va_cd, vb_local, va_hod, va_sd, vb_council_gdf, norfolk_combined_gdf, nn_council_gdf, hampton_precinct_gdf, portsmouth_precinct_gdf, suffolk_precinct_gdf, chesapeake_precinct_gdf, norfolk_precinct_gdf, _loaded
+    global va_cd, vb_local, va_hod, va_sd, vb_council_gdf, norfolk_combined_gdf, nn_council_gdf, hampton_precinct_gdf, portsmouth_precinct_gdf, suffolk_precinct_gdf, chesapeake_precinct_gdf, norfolk_precinct_gdf, newport_news_precinct_gdf, _loaded
     if _loaded:
         return
     _loaded = True
@@ -337,6 +347,12 @@ def _load_shapefiles():
         norfolk_precinct_gdf = _load_city_precincts(("NORFOLK", "Norfolk"))
     except Exception as e:
         print(f"address_lookup: could not load norfolk_precinct_gdf: {e}")
+
+    try:
+        newport_news_precinct_gdf = gpd.read_file(os.path.join(BASE_DIR, "newport_news_precincts.geojson")).to_crs(epsg=4326)
+        print("address_lookup: newport_news_precinct_gdf loaded")
+    except Exception as e:
+        print(f"address_lookup: could not load newport_news_precinct_gdf: {e}")
 
     try:
         import geopandas as _gpd
@@ -538,6 +554,15 @@ def find_district(address):
             if norfolk_precinct and not precinct:
                 precinct = norfolk_precinct
 
+        newport_news_precinct = None
+        newport_news_precinct_number = None
+        newport_news_polling_location = None
+        newport_news_polling_address = None
+        if "newport news" in (locality or "").lower() and newport_news_precinct_gdf is not None:
+            newport_news_precinct, newport_news_precinct_number, newport_news_polling_location, newport_news_polling_address = _match_newport_news_precinct(newport_news_precinct_gdf, point)
+            if newport_news_precinct and not precinct:
+                precinct = newport_news_precinct
+
         chesapeake_precinct = None
         chesapeake_precinct_number = None
         chesapeake_polling_location = None
@@ -588,6 +613,10 @@ def find_district(address):
             "norfolk_precinct_number": norfolk_precinct_number,
             "norfolk_polling_location": norfolk_polling_location,
             "norfolk_polling_place": norfolk_polling_place,
+            "newport_news_precinct": newport_news_precinct,
+            "newport_news_precinct_number": newport_news_precinct_number,
+            "newport_news_polling_location": newport_news_polling_location,
+            "newport_news_polling_address": newport_news_polling_address,
             "precinct": precinct or "Not found",
             "lat": lat,
             "lng": lng
