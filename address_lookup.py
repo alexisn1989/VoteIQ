@@ -20,6 +20,7 @@ hampton_precinct_gdf = None  # Hampton voting precinct boundaries
 portsmouth_precinct_gdf = None  # Portsmouth voting precinct boundaries
 suffolk_precinct_gdf = None  # Suffolk voting precinct boundaries
 chesapeake_precinct_gdf = None  # Chesapeake voting precinct boundaries
+norfolk_precinct_gdf = None     # Norfolk voting precinct boundaries
 _loaded  = False
 
 # VB council lookup: district number (int) -> {name, email}
@@ -261,7 +262,7 @@ def _match_precinct(gdf, point):
 
 
 def _load_shapefiles():
-    global va_cd, vb_local, va_hod, va_sd, vb_council_gdf, norfolk_combined_gdf, nn_council_gdf, hampton_precinct_gdf, portsmouth_precinct_gdf, suffolk_precinct_gdf, chesapeake_precinct_gdf, _loaded
+    global va_cd, vb_local, va_hod, va_sd, vb_council_gdf, norfolk_combined_gdf, nn_council_gdf, hampton_precinct_gdf, portsmouth_precinct_gdf, suffolk_precinct_gdf, chesapeake_precinct_gdf, norfolk_precinct_gdf, _loaded
     if _loaded:
         return
     _loaded = True
@@ -330,6 +331,11 @@ def _load_shapefiles():
         chesapeake_precinct_gdf = _load_city_precincts(("CHESAPEAKE", "Chesapeake"))
     except Exception as e:
         print(f"address_lookup: could not load chesapeake_precinct_gdf: {e}")
+
+    try:
+        norfolk_precinct_gdf = _load_city_precincts(("NORFOLK", "Norfolk"))
+    except Exception as e:
+        print(f"address_lookup: could not load norfolk_precinct_gdf: {e}")
 
     try:
         import geopandas as _gpd
@@ -505,6 +511,16 @@ def find_district(address):
             if suffolk_precinct and not precinct:
                 precinct = suffolk_precinct
 
+        norfolk_precinct = None
+        norfolk_precinct_number = None
+        norfolk_polling_location = None
+        norfolk_polling_place = None
+        if "norfolk" in (locality or "").lower() and norfolk_precinct_gdf is not None:
+            norfolk_precinct, norfolk_precinct_number, norfolk_polling_location = _match_precinct(norfolk_precinct_gdf, point)
+            norfolk_polling_place = _polling_place_for(locality, norfolk_precinct_number, norfolk_precinct)
+            if norfolk_precinct and not precinct:
+                precinct = norfolk_precinct
+
         chesapeake_precinct = None
         chesapeake_precinct_number = None
         chesapeake_polling_location = None
@@ -547,6 +563,10 @@ def find_district(address):
             "chesapeake_precinct_number": chesapeake_precinct_number,
             "chesapeake_polling_location": (chesapeake_polling_place or {}).get("location") or chesapeake_polling_location,
             "chesapeake_polling_place": chesapeake_polling_place,
+            "norfolk_precinct": norfolk_precinct,
+            "norfolk_precinct_number": norfolk_precinct_number,
+            "norfolk_polling_location": norfolk_polling_location,
+            "norfolk_polling_place": norfolk_polling_place,
             "precinct": precinct or "Not found",
             "lat": lat,
             "lng": lng

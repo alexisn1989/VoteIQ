@@ -1091,20 +1091,22 @@ def lookup(address: str):
         result.get("hampton_polling_place") or
         result.get("portsmouth_polling_place") or
         result.get("suffolk_polling_place") or
-        result.get("chesapeake_polling_place")
+        result.get("chesapeake_polling_place") or
+        result.get("norfolk_polling_place")
     )
     precinct_number = (
         result.get("hampton_precinct_number") or
         result.get("portsmouth_precinct_number") or
         result.get("suffolk_precinct_number") or
         result.get("chesapeake_precinct_number") or
+        result.get("norfolk_precinct_number") or
         (polling_place or {}).get("precinct_number")
     )
     precinct_name = result.get("precinct")
     precinct_info = {
         "name": precinct_name,
         "number": precinct_number,
-        "location": (polling_place or {}).get("location") or result.get("hampton_polling_location") or result.get("portsmouth_polling_location") or result.get("suffolk_polling_location") or result.get("chesapeake_polling_location"),
+        "location": (polling_place or {}).get("location") or result.get("hampton_polling_location") or result.get("portsmouth_polling_location") or result.get("suffolk_polling_location") or result.get("chesapeake_polling_location") or result.get("norfolk_polling_location"),
         "address": (polling_place or {}).get("full_address"),
         "address_line_1": (polling_place or {}).get("address_line_1"),
         "address_line_2": (polling_place or {}).get("address_line_2"),
@@ -1113,6 +1115,23 @@ def lookup(address: str):
         "zip_code": (polling_place or {}).get("zip_code"),
         "room": (polling_place or {}).get("room"),
     } if precinct_name and precinct_name != "Not found" else None
+
+    norfolk_council_urls = {
+        "martin a thomas jr": "https://www.norfolk.gov/542/Vice-Mayor-Martin-A-Thomas-Jr",
+        "courtney doyle": "https://www.norfolk.gov/4111/Courtney-R-Doyle",
+        "courtney r doyle": "https://www.norfolk.gov/4111/Courtney-R-Doyle",
+        "mamie johnson": "https://www.norfolk.gov/2932/Mamie-B-Johnson",
+        "mamie b johnson": "https://www.norfolk.gov/2932/Mamie-B-Johnson",
+        "john e jp paige": "https://www.norfolk.gov/538/John-E-JP-Paige",
+        "tommy r smigiel jr": "https://www.norfolk.gov/539/Thomas-R-Smigiel-Jr",
+        "thomas r smigiel jr": "https://www.norfolk.gov/539/Thomas-R-Smigiel-Jr",
+        "jeremy d mcgee": "https://www.norfolk.gov/6429/Jeremy-D-McGee",
+        "carlos j clanton": "https://www.norfolk.gov/6428/Carlos-J-Clanton",
+    }
+
+    def _norfolk_council_url(name):
+        key = re.sub(r"[^a-z0-9]+", " ", str(name or "").lower()).strip()
+        return norfolk_council_urls.get(key, "")
 
     return {
         "district": result,
@@ -1131,6 +1150,10 @@ def lookup(address: str):
             "clerk": _officer("Clerk of the Circuit Court"),
         } if vb_info else None,
         "norfolk": {
+            "precinct": result.get("norfolk_precinct") or result.get("precinct"),
+            "precinct_number": result.get("norfolk_precinct_number"),
+            "polling_location": result.get("norfolk_polling_location"),
+            "polling_address": (result.get("norfolk_polling_place") or {}).get("full_address"),
             "mayor": (lambda m: {"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} if m else None)(_norfolk_officials.get("mayor")),
             "sheriff": (lambda m: {"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} if m else None)(_norfolk_officials.get("sheriff")),
             "commonwealths_attorney": (lambda m: {"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} if m else None)(_norfolk_officials.get("commonwealths_attorney")),
@@ -1138,9 +1161,11 @@ def lookup(address: str):
             "commissioner": (lambda m: {"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} if m else None)(_norfolk_officials.get("commissioner")),
             "ward": result.get("norfolk_ward"),
             "ward_rep": result.get("norfolk_ward_rep"),
+            "ward_rep_url": _norfolk_council_url(result.get("norfolk_ward_rep")),
             "ward_sbm": result.get("norfolk_ward_sbm"),
             "superward": result.get("norfolk_superward"),
             "superward_rep": result.get("norfolk_superward_rep"),
+            "superward_rep_url": _norfolk_council_url(result.get("norfolk_superward_rep")),
             "superward_sbm": result.get("norfolk_superward_sbm"),
         } if "norfolk" in result.get("locality", "").lower() else None,
         "chesapeake": {

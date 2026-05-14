@@ -293,7 +293,7 @@
       const newportNews = data.newport_news;
       const suffolk = data.suffolk;
       const precinctInfo = data.precinct_info;
-      const cityPrecinct = precinctInfo || chesapeake || portsmouth || hampton || suffolk;
+      const cityPrecinct = precinctInfo || norfolk || chesapeake || portsmouth || hampton || suffolk;
       const schoolBoard = data.vb_school_board;
       const vaStatewide = data.va_statewide || [];
       const president = data.us_president;
@@ -358,14 +358,14 @@
         (del ? repBlock('House of Delegates', del.district_number, del.delegate, del.party, del.locality, del.url) : '') +
         (sen ? repBlock('State Senate', sen.district_number, sen.senator, sen.party, sen.region, sen.url) : '') +
         councilBlock +
-        (norfolk && norfolk.mayor                  ? officialCard('Mayor',                       norfolk.mayor.name,                  'Norfolk', norfolk.mayor.party)                  : '') +
-        (norfolk && norfolk.sheriff                ? officialCard('Sheriff',                     norfolk.sheriff.name,                'Norfolk', norfolk.sheriff.party)                : '') +
+        (norfolk && norfolk.mayor                  ? officialCard('Mayor',                       norfolk.mayor.name,                  'Norfolk', norfolk.mayor.party, '', norfolk.mayor.url)                  : '') +
+        (norfolk && norfolk.sheriff                ? officialCard('Sheriff',                     norfolk.sheriff.name,                'Norfolk', norfolk.sheriff.party, '', norfolk.sheriff.url)                : '') +
         (norfolk && norfolk.commonwealths_attorney ? officialCard("Commonwealth's Attorney",     norfolk.commonwealths_attorney.name, 'Norfolk', norfolk.commonwealths_attorney.party, '', norfolk.commonwealths_attorney.url) : '') +
-        (norfolk && norfolk.treasurer              ? officialCard('City Treasurer',              norfolk.treasurer.name,    'Norfolk', norfolk.treasurer.party)              : '') +
-        (norfolk && norfolk.commissioner           ? officialCard('Commissioner of the Revenue', norfolk.commissioner.name, 'Norfolk', norfolk.commissioner.party)           : '') +
-        (norfolk && norfolk.ward_rep ? officialCard('City Council · Ward ' + norfolk.ward, norfolk.ward_rep, 'Norfolk', '') : '') +
+        (norfolk && norfolk.treasurer              ? officialCard('City Treasurer',              norfolk.treasurer.name,    'Norfolk', norfolk.treasurer.party, '', norfolk.treasurer.url)              : '') +
+        (norfolk && norfolk.commissioner           ? officialCard('Commissioner of the Revenue', norfolk.commissioner.name, 'Norfolk', norfolk.commissioner.party, '', norfolk.commissioner.url)           : '') +
+        (norfolk && norfolk.ward_rep ? officialCard('City Council · Ward ' + norfolk.ward, norfolk.ward_rep, 'Norfolk', '', '', norfolk.ward_rep_url) : '') +
         (norfolk && norfolk.ward_sbm ? officialCard('School Board · Ward ' + norfolk.ward, norfolk.ward_sbm, 'Norfolk', '') : '') +
-        (norfolk && norfolk.superward_rep ? officialCard('City Council · Superward ' + norfolk.superward, norfolk.superward_rep, 'Norfolk', '') : '') +
+        (norfolk && norfolk.superward_rep ? officialCard('City Council · Superward ' + norfolk.superward, norfolk.superward_rep, 'Norfolk', '', '', norfolk.superward_rep_url) : '') +
         (norfolk && norfolk.superward_sbm ? officialCard('School Board · Superward ' + norfolk.superward, norfolk.superward_sbm, 'Norfolk', '') : '') +
         (chesapeake ? officialCard('Mayor', chesapeake.mayor ? chesapeake.mayor.name : '', 'Chesapeake', chesapeake.mayor ? chesapeake.mayor.party : '', '', chesapeake.mayor ? chesapeake.mayor.url : '') : '') +
         (chesapeake ? officialCard('Vice Mayor', chesapeake.vice_mayor ? chesapeake.vice_mayor.name : '', 'Chesapeake', chesapeake.vice_mayor ? chesapeake.vice_mayor.party : '', '', chesapeake.vice_mayor ? chesapeake.vice_mayor.url : '') : '') +
