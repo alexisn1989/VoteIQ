@@ -2,6 +2,7 @@ from geopy.geocoders import Nominatim
 import geopandas as gpd
 from shapely.geometry import Point
 import os
+import re
 import time
 import json
 import requests as _requests
