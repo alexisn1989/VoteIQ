@@ -3957,9 +3957,125 @@ def _fetch_bills_by_session(session_year: str, limit: int = 80) -> list[tuple[st
 
 _BILL_NUMBER_RE = re.compile(r"\b(HB|SB|HJ|SJ|HR|SR)\s*(\d+)\b", re.IGNORECASE)
 _SESSION_YEAR_RE = re.compile(r"\b(19|20)\d{2}\b")
+_LEGISLATOR_NAME_RE = re.compile(r"\b(delegate|senator|legislator|delegate|rep\.?|sen\.?)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)", re.IGNORECASE)
+_EDUCATION_KEYWORDS = ("education", "school", "teacher", "student", "curriculum", "tuition",
+                       "higher education", "community college", "university", "literacy", "library")
 
-def _extract_bill_numbers(text: str) -> list[str]:
-    return [f"{m.group(1).upper()}{m.group(2)}" for m in _BILL_NUMBER_RE.finditer(text)]
+_VA_LEGIS_DB = os.path.join(BASE_DIR, "virginia_legislature.db")
+
+
+def _sqlite_bill_lookup(bill_numbers: list[str]) -> str:
+    """Return a formatted context block for the given bill numbers from the local SQLite DB."""
+    if not bill_numbers or not os.path.exists(_VA_LEGIS_DB):
+        return ""
+    import sqlite3 as _sq
+    try:
+        conn = _sq.connect(_VA_LEGIS_DB)
+        cur = conn.cursor()
+        lines = []
+        for bid in bill_numbers:
+            row = cur.execute(
+                "SELECT Bill_id, Bill_description, Patron_name, Passed, Failed, Approved, Vetoed, "
+                "Last_governor_action, Last_house_action, Last_senate_action "
+                "FROM bills WHERE Bill_id = ?", (bid,)
+            ).fetchone()
+            if not row:
+                continue
+            bill_id, desc, patron, passed, failed, approved, vetoed, gov_action, house_action, senate_action = row
+            if approved == "Y":
+                status = "Signed into law"
+            elif vetoed == "Y":
+                status = "Vetoed by Governor"
+            elif passed == "Y":
+                status = "Passed both chambers"
+            elif failed == "Y":
+                status = "Failed"
+            else:
+                status = "Did not pass / continued"
+            lines.append(
+                f"[SQLite — {bill_id} 2026 Virginia Session]\n"
+                f"Bill {bill_id}: {desc}\n"
+                f"Primary patron: {patron}\n"
+                f"Status: {status}"
+                + (f"\nLast House action: {house_action}" if house_action else "")
+                + (f"\nLast Senate action: {senate_action}" if senate_action else "")
+                + (f"\nGovernor action: {gov_action}" if gov_action else "")
+            )
+        conn.close()
+        return "\n\n".join(lines)
+    except Exception:
+        return ""
+
+
+def _sqlite_legislator_votes(name: str) -> str:
+    """Return voting summary and education bill info for a legislator by last name."""
+    if not os.path.exists(_VA_LEGIS_DB):
+        return ""
+    import sqlite3 as _sq
+    try:
+        conn = _sq.connect(_VA_LEGIS_DB)
+        cur = conn.cursor()
+        # Find member_id by last name (partial match)
+        name_clean = name.strip().split()[-1]  # use last word as last name
+        member = cur.execute(
+            "SELECT member_id, member_name FROM members WHERE member_name LIKE ?",
+            (f"%{name_clean}%",)
+        ).fetchone()
+        if not member:
+            conn.close()
+            return ""
+        member_id, member_name = member
+        # Overall vote counts
+        counts = cur.execute(
+            "SELECT vote, COUNT(*) FROM votes WHERE patron_id = ? GROUP BY vote",
+            (member_id,)
+        ).fetchall()
+        vote_map = {r[0]: r[1] for r in counts}
+        total = sum(vote_map.values())
+        y, n = vote_map.get("Y", 0), vote_map.get("N", 0)
+        # Education bills they sponsored
+        edu_filter = " OR ".join(["LOWER(Bill_description) LIKE ?" for _ in _EDUCATION_KEYWORDS])
+        edu_params = [f"%{k}%" for k in _EDUCATION_KEYWORDS] + [member_id]
+        edu_bills = cur.execute(
+            f"SELECT Bill_id, Bill_description, Passed, Approved, Vetoed FROM bills "
+            f"WHERE ({edu_filter}) AND Patron_id = ? ORDER BY Bill_id",
+            edu_params
+        ).fetchall()
+        conn.close()
+        lines = [
+            f"[SQLite — Legislator: {member_name} ({member_id})]",
+            f"Overall voting record across {total} roll calls: {y} Yes, {n} No, "
+            f"{vote_map.get('X', 0)} Not voting, {vote_map.get('P', 0)} Present",
+            f"Yes rate: {round(y/total*100, 1) if total else 0}%",
+        ]
+        if edu_bills:
+            lines.append(f"\nEducation bills sponsored by {member_name}:")
+            for bill_id, desc, passed, approved, vetoed in edu_bills:
+                outcome = "✓ Signed" if approved == "Y" else ("✗ Vetoed" if vetoed == "Y" else ("Passed" if passed == "Y" else "Did not pass"))
+                lines.append(f"  {bill_id}: {desc} — {outcome}")
+        else:
+            lines.append(f"\n{member_name} did not sponsor any education-related bills in this session.")
+        return "\n".join(lines)
+    except Exception:
+        return ""
+
+
+def _extract_legislator_name(text: str) -> str | None:
+    """Extract a legislator name from a query like 'how did McNamara vote on education'."""
+    # Check for title + name pattern
+    m = _LEGISLATOR_NAME_RE.search(text)
+    if m:
+        return m.group(2)
+    # Check for "how did X vote" pattern
+    m2 = re.search(r"how\s+did\s+([A-Z][a-zA-Z\s,\.]+?)\s+vote", text, re.IGNORECASE)
+    if m2:
+        return m2.group(1).strip()
+    # Check for "[name] voting" or "[name] vote"
+    m3 = re.search(r"([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)\s+vot(?:e|ing|ed)", text, re.IGNORECASE)
+    if m3:
+        return m3.group(1).strip()
+    return None
+
 
 def _extract_session_year(text: str) -> str | None:
     m = _SESSION_YEAR_RE.search(text)
@@ -4033,9 +4149,26 @@ async def bills_chat(request: Request, req: BillsChatRequest):
         context_blocks = []
         seen_docs: set[str] = set()
 
-        # Exact bill-number lookup — always runs when query names a specific bill
+        # SQLite bill lookup — supplements ChromaDB with local 2026 bill data
         mentioned = _extract_bill_numbers(user_query)
         session_year = _extract_session_year(user_query)
+        if mentioned:
+            sqlite_bill = _sqlite_bill_lookup(mentioned)
+            if sqlite_bill:
+                for block in sqlite_bill.split("\n\n"):
+                    if block and block not in seen_docs:
+                        seen_docs.add(block)
+                        context_blocks.insert(0, block)
+
+        # SQLite legislator vote lookup
+        leg_name = _extract_legislator_name(user_query)
+        if leg_name:
+            sqlite_leg = _sqlite_legislator_votes(leg_name)
+            if sqlite_leg and sqlite_leg not in seen_docs:
+                seen_docs.add(sqlite_leg)
+                context_blocks.insert(0, sqlite_leg)
+
+        # Exact bill-number lookup — always runs when query names a specific bill
         if mentioned:
             exact_docs = _fetch_bills_by_id(mentioned, session_year)
             if session_year:
@@ -4116,12 +4249,15 @@ async def bills_chat(request: Request, req: BillsChatRequest):
         district_note = f"\nUSER'S DISTRICT CONTEXT: {', '.join(parts)}\n"
 
     system_prompt = f"""You are VoteIQ, a nonpartisan Virginia civic assistant. Today is May 2026. \
-You have access only to the retrieved excerpts below, which may include Virginia General Assembly bills and Virginia election results. \
-Do not claim complete coverage of any session unless the excerpts themselves establish it. \
+You have access to the retrieved excerpts below, which may include Virginia General Assembly bills, \
+election results, and legislator voting records from the local 2026 session database. \
 Answer the user's question using ONLY the excerpts below — do not rely on your training data. \
-Be concise (2-4 sentences), factual, and cite bill numbers and session years when relevant.{district_note}
-If the user asks for a specific bill and session, answer for that exact session only. If excerpts only show a different session for the same bill number, make that distinction clearly.
-If the excerpts don't contain enough information to answer, say so briefly and suggest what topics you can help with.{exact_lookup_note}
+Be concise (2-4 sentences), factual, and cite bill numbers when relevant.{district_note}
+If excerpts include a [SQLite] block, treat it as authoritative 2026 session data.
+If a legislator voting record is shown, summarize their education bill sponsorships and overall voting lean.
+If the user asks for a specific bill, give its title, patron, and status. \
+If bill-specific vote breakdowns (who voted yes/no) are not available, say they will be added once the full roll call data is loaded.
+If the excerpts don't contain enough information, say so briefly.{exact_lookup_note}
 
 EXCERPTS:
 {context}"""
