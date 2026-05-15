@@ -3964,6 +3964,10 @@ _EDUCATION_KEYWORDS = ("education", "school", "teacher", "student", "curriculum"
 _VA_LEGIS_DB = os.path.join(BASE_DIR, "virginia_legislature.db")
 
 
+def _extract_bill_numbers(text: str) -> list[str]:
+    return [f"{m.group(1).upper()}{m.group(2)}" for m in _BILL_NUMBER_RE.finditer(text)]
+
+
 def _sqlite_bill_lookup(bill_numbers: list[str]) -> str:
     """Return a formatted context block for the given bill numbers from the local SQLite DB."""
     if not bill_numbers or not os.path.exists(_VA_LEGIS_DB):
