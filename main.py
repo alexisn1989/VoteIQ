@@ -4138,15 +4138,20 @@ async def bills_chat(request: Request, req: BillsChatRequest):
         (m.content for m in reversed(req.messages) if m.role == "user"), ""
     )
 
+    query_vec = None
+    results = {"documents": [[]], "metadatas": [[]]}
+    chroma_error = None
+
     try:
         query_vec = _get_voyage_client().embed([user_query], model=_BILLS_MODEL, input_type="query").embeddings[0]
     except Exception as e:
-        return ChatResponse(reply=f"[VoteIQ error — Voyage AI: {e}]")
+        chroma_error = f"Voyage AI unavailable: {e}"
 
-    try:
-        results = _query_chroma(query_vec, n_results=10)
-    except Exception as e:
-        return ChatResponse(reply=f"[VoteIQ error — ChromaDB: {e}]")
+    if query_vec is not None:
+        try:
+            results = _query_chroma(query_vec, n_results=10)
+        except Exception as e:
+            chroma_error = f"ChromaDB unavailable: {e}"
 
     exact_lookup_note = ""
     try:
@@ -4239,7 +4244,26 @@ async def bills_chat(request: Request, req: BillsChatRequest):
 
         context = "\n\n---\n\n".join(context_blocks)
     except Exception as e:
-        return ChatResponse(reply=f"[VoteIQ error — parsing results: {e}]")
+        # Even if parsing fails, try to answer from SQLite alone
+        context = ""
+        chroma_error = f"Result parsing error: {e}"
+
+    # If AI stack failed but SQLite has something useful, still answer
+    if not context and chroma_error:
+        sqlite_fallback = ""
+        try:
+            mentioned = _extract_bill_numbers(user_query)
+            leg_name = _extract_legislator_name(user_query)
+            if mentioned:
+                sqlite_fallback = _sqlite_bill_lookup(mentioned)
+            elif leg_name:
+                sqlite_fallback = _sqlite_legislator_votes(leg_name)
+        except Exception:
+            pass
+        if sqlite_fallback:
+            context = sqlite_fallback
+        else:
+            return ChatResponse(reply="I'm having trouble connecting to the knowledge base right now. Try asking about a specific bill number (e.g. HB9) or a legislator's name and I'll look it up from local data.")
 
     district_note = ""
     if req.district:
@@ -4252,11 +4276,13 @@ async def bills_chat(request: Request, req: BillsChatRequest):
             parts.append(f"Senate district: {req.sd_district}")
         district_note = f"\nUSER'S DISTRICT CONTEXT: {', '.join(parts)}\n"
 
+    chroma_note = f"\nNOTE: AI knowledge base unavailable ({chroma_error}). Answering from local database only.\n" if chroma_error else ""
+
     system_prompt = f"""You are VoteIQ, a nonpartisan Virginia civic assistant. Today is May 2026. \
 You have access to the retrieved excerpts below, which may include Virginia General Assembly bills, \
 election results, and legislator voting records from the local 2026 session database. \
 Answer the user's question using ONLY the excerpts below — do not rely on your training data. \
-Be concise (2-4 sentences), factual, and cite bill numbers when relevant.{district_note}
+Be concise (2-4 sentences), factual, and cite bill numbers when relevant.{district_note}{chroma_note}
 If excerpts include a [SQLite] block, treat it as authoritative 2026 session data.
 If a legislator voting record is shown, summarize their education bill sponsorships and overall voting lean.
 If the user asks for a specific bill, give its title, patron, and status. \
