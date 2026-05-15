@@ -13,6 +13,7 @@ import geopandas as gpd
 import os
 import json
 import re
+import time
 from html import escape
 import requests
 import anthropic
@@ -724,6 +725,47 @@ def _get_va_cd():
     return _va_cd_gdf
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+_CLAUDE_TEMPORARY_MESSAGE = (
+    "VoteIQ is getting a lot of AI traffic right now. Please try your question again in a moment."
+)
+
+
+def _is_retryable_claude_error(error):
+    status_code = getattr(error, "status_code", None)
+    text = str(error).lower()
+    return (
+        status_code in {429, 500, 502, 503, 504, 529}
+        or "overloaded" in text
+        or "rate_limit" in text
+        or "temporarily unavailable" in text
+    )
+
+
+def _friendly_claude_error(error):
+    if _is_retryable_claude_error(error):
+        return _CLAUDE_TEMPORARY_MESSAGE
+    return "VoteIQ's AI assistant is temporarily unavailable. Please try again shortly."
+
+
+def _claude_reply(system_prompt, messages, max_tokens):
+    last_error = None
+    for attempt in range(3):
+        try:
+            response = client.messages.create(
+                model="claude-sonnet-4-6",
+                max_tokens=max_tokens,
+                system=system_prompt,
+                messages=[{"role": m.role, "content": m.content} for m in messages],
+            )
+            return response.content[0].text
+        except Exception as error:
+            last_error = error
+            if not _is_retryable_claude_error(error) or attempt == 2:
+                raise
+            time.sleep(0.75 * (attempt + 1))
+    raise last_error
+
 
 DISTRICT_CONTEXT = {
     "VA-00": {"rep": None, "party": None, "region": "Statewide — Virginia", "url": None},
@@ -3078,13 +3120,10 @@ Your job is to help voters understand who represents them and what those officia
 - Voter registration and civic participation
 
 Keep answers 2-4 sentences. Be factual and nonpartisan. For official contact info direct users to house.gov, senate.gov, or virginiageneralassembly.gov. Never express opinions on representatives or tell people how to vote."""
-    response = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=1000,
-        system=system_prompt,
-        messages=[{"role": m.role, "content": m.content} for m in req.messages],
-    )
-    return ChatResponse(reply=response.content[0].text)
+    try:
+        return ChatResponse(reply=_claude_reply(system_prompt, req.messages, max_tokens=1000))
+    except Exception as e:
+        return ChatResponse(reply=_friendly_claude_error(e))
 
 @app.get("/past-elections", response_class=HTMLResponse)
 def election_results_page():
@@ -3775,13 +3814,10 @@ Here are the official {req.year} Virginia election results:
 {summary}
 
 Answer questions about these results clearly and concisely (2-4 sentences). Be factual and nonpartisan. Give specific numbers when asked about candidates, margins, or localities. If you don't have the data, say so honestly. Never express opinions on candidates or tell users how to vote."""
-    response = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=400,
-        system=system_prompt,
-        messages=[{"role": m.role, "content": m.content} for m in req.messages],
-    )
-    return ChatResponse(reply=response.content[0].text)
+    try:
+        return ChatResponse(reply=_claude_reply(system_prompt, req.messages, max_tokens=400))
+    except Exception as e:
+        return ChatResponse(reply=_friendly_claude_error(e))
 
 
 # ── Bills RAG chat ────────────────────────────────────────────────────────────
@@ -4091,15 +4127,9 @@ EXCERPTS:
 {context}"""
 
     try:
-        response = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=500,
-            system=system_prompt,
-            messages=[{"role": m.role, "content": m.content} for m in req.messages],
-        )
-        return ChatResponse(reply=response.content[0].text)
+        return ChatResponse(reply=_claude_reply(system_prompt, req.messages, max_tokens=500))
     except Exception as e:
-        return ChatResponse(reply=f"[VoteIQ error — Claude: {e}]")
+        return ChatResponse(reply=_friendly_claude_error(e))
 
 
 _va_counties_geojson_cache = None
