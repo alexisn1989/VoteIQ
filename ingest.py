@@ -327,7 +327,16 @@ def ingest_jsonl(filepath: str, reset: bool = False):
         metadatas.append(_normalize_metadata(meta))
 
     collection = get_collection(reset=reset)
-    collection.upsert(ids=ids, documents=documents, metadatas=metadatas)
+    batch_size = 200
+    for i in range(0, len(ids), batch_size):
+        collection.upsert(
+            ids=ids[i:i+batch_size],
+            documents=documents[i:i+batch_size],
+            metadatas=metadatas[i:i+batch_size],
+        )
+        print(f"[ingest] Upserted {min(i+batch_size, len(ids))}/{len(ids)}")
+        if i + batch_size < len(ids):
+            time.sleep(1)
 
     print(f"[ingest] OK Upserted {len(rows)} chunks into '{COLLECTION_NAME}'")
     print(f"[ingest] Collection now has {collection.count()} total documents")

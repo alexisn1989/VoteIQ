@@ -3962,10 +3962,94 @@ _EDUCATION_KEYWORDS = ("education", "school", "teacher", "student", "curriculum"
                        "higher education", "community college", "university", "literacy", "library")
 
 _VA_LEGIS_DB = os.path.join(BASE_DIR, "virginia_legislature.db")
+_OPENSTATES_DB = os.path.join(BASE_DIR, "openstates_va.db")
+_REP_PROFILES_JSONL = os.path.join(BASE_DIR, "va_rep_profiles.jsonl")
+_rep_profiles_cache = None
 
 
 def _extract_bill_numbers(text: str) -> list[str]:
     return [f"{m.group(1).upper()}{m.group(2)}" for m in _BILL_NUMBER_RE.finditer(text)]
+
+
+def _normalize_person_name(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", str(name or "").lower()).strip()
+
+
+def _load_rep_profiles() -> list[dict]:
+    global _rep_profiles_cache
+    if _rep_profiles_cache is not None:
+        return _rep_profiles_cache
+    profiles = []
+    if os.path.exists(_REP_PROFILES_JSONL):
+        try:
+            with open(_REP_PROFILES_JSONL, encoding="utf-8") as f:
+                for line in f:
+                    if line.strip():
+                        profiles.append(json.loads(line))
+        except Exception as e:
+            print(f"main: could not load rep profiles: {e}")
+    _rep_profiles_cache = profiles
+    return profiles
+
+
+def _rep_profile_by_name(name: str, session: str = "2026") -> str:
+    target = _normalize_person_name(name)
+    if not target:
+        return ""
+    target_parts = set(target.split())
+    best = None
+    for profile in _load_rep_profiles():
+        meta = profile.get("metadata") or {}
+        if str(meta.get("session") or profile.get("session_id") or "") != session:
+            continue
+        profile_name = _normalize_person_name(meta.get("name"))
+        if profile_name == target:
+            best = profile
+            break
+        if target_parts and target_parts.issubset(set(profile_name.split())):
+            best = profile
+    if not best:
+        return ""
+    meta = best.get("metadata") or {}
+    return f"[Representative Profile — {meta.get('name', name)} {session}]\n{best.get('text', '')}"
+
+
+def _profile_question(text: str) -> bool:
+    text = str(text or "").lower()
+    return any(
+        phrase in text
+        for phrase in (
+            "my rep", "my representative", "my delegate", "my senator",
+            "what has", "what did", "what does", "what do",
+            "sponsored", "voting record", "vote record",
+            "priorities", "accomplished", "fought for", "working on",
+            "tell me about", "who is", "about my", "profile",
+            "bills", "committee", "support", "oppose", "position",
+            "failed", "passed", "stance", "record",
+        )
+    )
+
+
+def _request_rep_profiles(req, user_query: str) -> str:
+    blocks = []
+    leg_name = _extract_legislator_name(user_query)
+    if leg_name:
+        profile = _rep_profile_by_name(leg_name)
+        if profile:
+            blocks.append(profile)
+
+    # Always include the user's own reps when district context is available
+    hod_info = HOD_CONTEXT.get(req.hod_district) if req.hod_district else None
+    sd_info  = SD_CONTEXT.get(req.sd_district)  if req.sd_district  else None
+    if hod_info:
+        profile = _rep_profile_by_name(hod_info.get("delegate"))
+        if profile and profile not in blocks:
+            blocks.append(profile)
+    if sd_info:
+        profile = _rep_profile_by_name(sd_info.get("senator"))
+        if profile and profile not in blocks:
+            blocks.append(profile)
+    return "\n\n".join(blocks)
 
 
 def _sqlite_bill_lookup(bill_numbers: list[str]) -> str:
@@ -4081,6 +4165,122 @@ def _extract_legislator_name(text: str) -> str | None:
     return None
 
 
+def _openstates_vote_lookup(bill_numbers: list[str], session: str | None = None) -> str:
+    """Return named vote breakdown for bills from openstates_va.db."""
+    if not bill_numbers or not os.path.exists(_OPENSTATES_DB):
+        return ""
+    import sqlite3 as _sq
+    try:
+        conn = _sq.connect(_OPENSTATES_DB)
+        cur = conn.cursor()
+        lines = []
+        for bid in bill_numbers:
+            # Determine which sessions to search
+            if session:
+                sessions_to_try = [session]
+            else:
+                sessions_to_try = cur.execute(
+                    "SELECT DISTINCT session FROM bills WHERE bill_id = ? ORDER BY session DESC",
+                    (bid,)
+                ).fetchall()
+                sessions_to_try = [r[0] for r in sessions_to_try] or ["2026"]
+
+            for sess in sessions_to_try:
+                bill_row = cur.execute(
+                    "SELECT title, sponsors, latest_action, result, openstates_url FROM bills WHERE bill_id=? AND session=?",
+                    (bid, sess)
+                ).fetchone()
+                if not bill_row:
+                    continue
+                title, sponsors, latest_action, result, url = bill_row
+
+                # Aggregate yes/no/abstain counts and collect names
+                vote_rows = cur.execute(
+                    "SELECT option, voter_name, party FROM votes WHERE bill_id=? AND session=? ORDER BY option, voter_name",
+                    (bid, sess)
+                ).fetchall()
+                if not vote_rows:
+                    continue
+
+                yes_voters = [f"{r[1]} ({r[2]})" for r in vote_rows if r[0] == "yes"]
+                no_voters  = [f"{r[1]} ({r[2]})" for r in vote_rows if r[0] == "no"]
+                abs_voters = [f"{r[1]} ({r[2]})" for r in vote_rows if r[0] not in ("yes", "no")]
+
+                block = [f"[OpenStates — {bid} {sess} Virginia]"]
+                if title:
+                    block.append(f"Title: {title}")
+                if sponsors:
+                    block.append(f"Sponsors: {sponsors}")
+                if latest_action:
+                    block.append(f"Latest action: {latest_action}")
+                if result:
+                    block.append(f"Overall result: {result}")
+                if yes_voters:
+                    block.append(f"YES ({len(yes_voters)}): {', '.join(yes_voters[:30])}"
+                                 + (" …" if len(yes_voters) > 30 else ""))
+                if no_voters:
+                    block.append(f"NO ({len(no_voters)}): {', '.join(no_voters[:30])}"
+                                 + (" …" if len(no_voters) > 30 else ""))
+                if abs_voters:
+                    block.append(f"ABSTAIN/OTHER ({len(abs_voters)}): {', '.join(abs_voters[:20])}")
+                if url:
+                    block.append(f"Source: {url}")
+                lines.append("\n".join(block))
+
+        conn.close()
+        return "\n\n".join(lines)
+    except Exception:
+        return ""
+
+
+def _openstates_legislator_lookup(name: str) -> str:
+    """Return bills and vote positions for a legislator from openstates_va.db."""
+    if not os.path.exists(_OPENSTATES_DB):
+        return ""
+    import sqlite3 as _sq
+    try:
+        conn = _sq.connect(_OPENSTATES_DB)
+        cur = conn.cursor()
+        last = name.strip().split()[-1]
+        rows = cur.execute(
+            "SELECT DISTINCT voter_name, party, district FROM votes WHERE voter_name LIKE ? LIMIT 5",
+            (f"%{last}%",)
+        ).fetchall()
+        if not rows:
+            conn.close()
+            return ""
+        voter_name, party, district = rows[0]
+        # Vote counts per option
+        counts = cur.execute(
+            "SELECT option, COUNT(*) FROM votes WHERE voter_name=? GROUP BY option",
+            (voter_name,)
+        ).fetchall()
+        count_map = {r[0]: r[1] for r in counts}
+        total = sum(count_map.values())
+        yes_n = count_map.get("yes", 0)
+        no_n  = count_map.get("no", 0)
+        # Bills they voted no on (interesting for questions like "how did X vote on education")
+        no_bills = cur.execute(
+            "SELECT v.bill_id, v.session, b.title FROM votes v "
+            "LEFT JOIN bills b ON b.bill_id=v.bill_id AND b.session=v.session "
+            "WHERE v.voter_name=? AND v.option='no' ORDER BY v.session DESC LIMIT 10",
+            (voter_name,)
+        ).fetchall()
+        lines = [
+            f"[OpenStates — Legislator: {voter_name} ({party}, District {district})]",
+            f"Votes across all tracked sessions: {yes_n} YES, {no_n} NO, {total - yes_n - no_n} other",
+            f"Yes rate: {round(yes_n/total*100,1) if total else 0}%",
+        ]
+        if no_bills:
+            lines.append("Recent NO votes:")
+            for bill_id, sess, title in no_bills:
+                lines.append(f"  {bill_id} ({sess}): {title or '—'}")
+        conn.close()
+        return "\n".join(lines)
+    except Exception:
+        return ""
+
+
 def _extract_session_year(text: str) -> str | None:
     m = _SESSION_YEAR_RE.search(text)
     return m.group(0) if m else None
@@ -4169,6 +4369,15 @@ async def bills_chat(request: Request, req: BillsChatRequest):
                         seen_docs.add(block)
                         context_blocks.insert(0, block)
 
+        # OpenStates vote lookup — named votes (who voted yes/no) per bill
+        if mentioned:
+            os_votes = _openstates_vote_lookup(mentioned, session_year)
+            if os_votes:
+                for block in os_votes.split("\n\n"):
+                    if block and block not in seen_docs:
+                        seen_docs.add(block)
+                        context_blocks.insert(0, block)
+
         # SQLite legislator vote lookup
         leg_name = _extract_legislator_name(user_query)
         if leg_name:
@@ -4176,6 +4385,23 @@ async def bills_chat(request: Request, req: BillsChatRequest):
             if sqlite_leg and sqlite_leg not in seen_docs:
                 seen_docs.add(sqlite_leg)
                 context_blocks.insert(0, sqlite_leg)
+            # Also check OpenStates for named vote history
+            os_leg = _openstates_legislator_lookup(leg_name)
+            if os_leg and os_leg not in seen_docs:
+                seen_docs.add(os_leg)
+                context_blocks.insert(0, os_leg)
+
+        # Representative profile chunks — powers "what has my rep done?" prompts
+        rep_profiles = _request_rep_profiles(req, user_query)
+        if rep_profiles:
+            for block in rep_profiles.split("\n\n[Representative Profile"):
+                if block.startswith("[Representative Profile"):
+                    profile_block = block
+                else:
+                    profile_block = "[Representative Profile" + block if block.strip() else ""
+                if profile_block and profile_block not in seen_docs:
+                    seen_docs.add(profile_block)
+                    context_blocks.insert(0, profile_block)
 
         # Exact bill-number lookup — always runs when query names a specific bill
         if mentioned:
@@ -4256,8 +4482,17 @@ async def bills_chat(request: Request, req: BillsChatRequest):
             leg_name = _extract_legislator_name(user_query)
             if mentioned:
                 sqlite_fallback = _sqlite_bill_lookup(mentioned)
+                os_fb = _openstates_vote_lookup(mentioned)
+                if os_fb:
+                    sqlite_fallback = (sqlite_fallback + "\n\n" + os_fb).strip()
             elif leg_name:
                 sqlite_fallback = _sqlite_legislator_votes(leg_name)
+                os_fb = _openstates_legislator_lookup(leg_name)
+                if os_fb:
+                    sqlite_fallback = (sqlite_fallback + "\n\n" + os_fb).strip()
+            profiles_fb = _request_rep_profiles(req, user_query)
+            if profiles_fb:
+                sqlite_fallback = (sqlite_fallback + "\n\n" + profiles_fb).strip()
         except Exception:
             pass
         if sqlite_fallback:
@@ -4280,10 +4515,11 @@ async def bills_chat(request: Request, req: BillsChatRequest):
 
     system_prompt = f"""You are VoteIQ, a nonpartisan Virginia civic assistant. Today is May 2026. \
 You have access to the retrieved excerpts below, which may include Virginia General Assembly bills, \
-election results, and legislator voting records from the local 2026 session database. \
+election results, legislator voting records, and representative profile summaries from the local 2026 session database. \
 Answer the user's question using ONLY the excerpts below — do not rely on your training data. \
 Be concise (2-4 sentences), factual, and cite bill numbers when relevant.{district_note}{chroma_note}
 If excerpts include a [SQLite] block, treat it as authoritative 2026 session data.
+If a [Representative Profile] block is shown, use it to answer questions about what the user's delegate or senator sponsored, prioritized, passed, or voted against.
 If a legislator voting record is shown, summarize their education bill sponsorships and overall voting lean.
 If the user asks for a specific bill, give its title, patron, and status. \
 If bill-specific vote breakdowns (who voted yes/no) are not available, say they will be added once the full roll call data is loaded.
