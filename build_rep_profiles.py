@@ -188,6 +188,10 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
         # Build party majority lookup: (bill_id, motion, party) -> Counter of options
         party_vote_counts: dict[tuple, Counter] = defaultdict(Counter)
 
+        # Track bills that have at least one non-committee floor vote recorded as 'pass'
+        # Used to flag bills where bills.result='pass' but no passing floor vote is on record
+        bills_with_passing_floor_vote: set[str] = set()
+
         for voter_name, option, bill_id, vote_result, party, district, motion in vote_rows:
             if not voter_name:
                 continue
@@ -203,6 +207,9 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
                 # Accumulate party vote counts for alignment calculation
                 if party and option in ("yes", "no"):
                     party_vote_counts[(bill_id, (motion or "").strip(), party)][option] += 1
+                # Track bills that have a confirmed passing floor vote on record
+                if vote_result == "pass":
+                    bills_with_passing_floor_vote.add(bill_id)
             if party:
                 d["party"] = party
             if district:
@@ -359,13 +366,21 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
 
             # Floor: voted NO on bills that ultimately passed (went against majority)
             # Use bills.result (final outcome), not votes.result (which reflects the NO side losing)
+            # Also track bills where bills.result='pass' but no passing floor vote is on record
+            # (likely failed floor vote or OpenStates data inconsistency)
             seen_no_bills = set()
             notable_no = []
+            failed_floor_no = []  # bills.result='pass' but floor vote on record shows fail
             for v in floor_no:
                 bid = v["bill_id"]
-                if bid not in seen_no_bills and bill_final_result.get(bid) == "pass":
+                if bid in seen_no_bills:
+                    continue
+                if bill_final_result.get(bid) == "pass":
                     seen_no_bills.add(bid)
-                    notable_no.append(v)
+                    if bid in bills_with_passing_floor_vote:
+                        notable_no.append(v)
+                    else:
+                        failed_floor_no.append(v)
 
             # Committee: voted NO and bill ultimately failed
             comm_killed = [v for v in comm_no if bill_final_result.get(v["bill_id"]) == "fail"][:5]
@@ -565,6 +580,24 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
                         lines.append(
                             f"\n  [INFERRED from vote pattern] NO votes concentrated in {', '.join(top_names)}."
                         )
+
+            # Bills where bills.result='pass' but floor vote on record shows fail
+            # (data inconsistency — likely amendment vote or incomplete dataset)
+            if failed_floor_no:
+                lookup_failed = [v["bill_id"] for v in failed_floor_no
+                                 if v["bill_id"] not in bill_title_map]
+                if lookup_failed:
+                    extra = conn.execute(
+                        f"SELECT bill_id, title FROM bills WHERE session=? AND bill_id IN ({','.join('?'*len(lookup_failed))})",
+                        [session] + lookup_failed
+                    ).fetchall()
+                    bill_title_map.update({r[0]: r[1] for r in extra})
+                lines.append(f"\n  [CONFIRMED NO vote — failed floor vote] Voted NO on {len(failed_floor_no)} bill(s) marked 'pass' in OpenStates but with no confirmed passing floor vote on record (may reflect amendment vote or data gap):")
+                for v in failed_floor_no[:5]:
+                    bid = v["bill_id"]
+                    title = bill_title_map.get(bid, "")
+                    link = _bill_link(bid, bill_url_map.get(bid, ""), title)
+                    lines.append(f"    {link}{_motion_note(v['motion'])}")
 
             # Committee voting record
             if committee_votes:
