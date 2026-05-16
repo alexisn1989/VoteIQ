@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from dotenv import load_dotenv
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -1020,6 +1020,13 @@ class ChatRequest(BaseModel):
     locality: str = ""
     hod_district: int | None = None
     sd_district: int | None = None
+
+    @field_validator('hod_district', 'sd_district', mode='before')
+    @classmethod
+    def empty_str_to_none(cls, v):
+        if v == '' or v is None:
+            return None
+        return int(v)
 
 class ChatResponse(BaseModel):
     reply: str
@@ -4307,6 +4314,13 @@ class BillsChatRequest(BaseModel):
     hod_district: int | None = None
     sd_district: int | None = None
 
+    @field_validator('hod_district', 'sd_district', mode='before')
+    @classmethod
+    def empty_str_to_none(cls, v):
+        if v == '' or v is None:
+            return None
+        return int(v)
+
 
 @app.get("/api/bills-debug")
 async def bills_debug():
@@ -4581,7 +4595,7 @@ Pattern: [INFERRED] [one sentence. Always end with: "Dataset does not include st
 - [CONFIRMED — OpenStates]: [use the full markdown link from the excerpt, e.g. [HB774 — Elections; absentee...](https://openstates.org/va/bills/2026/HB774/)]
 
 IMPORTANT: Always copy bill links exactly as they appear in the excerpts — format is [BILLID — title](url). Never shorten or reformat them. List ALL sponsored bills found in the excerpt, do not truncate the list.
-When a bill excerpt contains a "Companion bill(s)" line, always render those as clickable markdown links in your response. If a companion bill ID is mentioned in text but has no URL in the excerpt, construct its link as [BILLID — title](https://openstates.org/va/bills/{year}/{bill_id}/) using the session year from the excerpt.
+When a bill excerpt contains a "Companion bill(s)" line, always render those as clickable markdown links in your response. If a companion bill ID is mentioned in text but has no URL in the excerpt, construct its link as [BILLID — title](https://openstates.org/va/bills/{{year}}/{{bill_id}}/) using the session year from the excerpt.
 
 **Methodology note** (always include when answering about caucus labels or party alignment):
 Caucus read is plain-language shorthand derived from OpenStates roll-call data (confirmed votes only). Split-vote threshold: 15–85% of party voting YES, minimum 5 members voting. "Breaks from party" means actual recorded NO votes against the party YES majority. Issue-area tags are keyword-based, not official legislative categories.
