@@ -72,8 +72,35 @@ def _motion_note(motion: str) -> str:
     return ""
 
 
+def _load_member_urls() -> dict[str, str]:
+    """Return name -> OpenStates profile URL from va_members_2026.json."""
+    members_path = Path(__file__).parent / "va_members_2026.json"
+    if not members_path.exists():
+        return {}
+    with members_path.open(encoding="utf-8") as f:
+        members = json.load(f)
+    urls = {}
+    for m in members:
+        name = (m.get("name") or "").strip()
+        url  = (m.get("url") or "").strip()
+        ocd  = (m.get("id") or "").strip()
+        if not url and ocd:
+            url = f"https://openstates.org/person/{ocd}/"
+        if name and url:
+            urls[name] = url
+    return urls
+
+
+def _bill_link(bill_id: str, url: str) -> str:
+    """Return markdown link if URL available, otherwise plain bill_id."""
+    if url:
+        return f"[{bill_id}]({url})"
+    return bill_id
+
+
 def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
     chunks = []
+    member_urls = _load_member_urls()
 
     for session in sessions:
         # All bills this session
@@ -88,6 +115,9 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
         # Map: bill_id -> final bill result ("pass"/"fail") from the bills table
         bill_final_result: dict[str, str] = {}
 
+        # Map: bill_id -> OpenStates URL
+        bill_url_map: dict[str, str] = {}
+
         # Map: sponsor_name -> list of bills
         sponsor_bills: dict[str, list[dict]] = defaultdict(list)
         for bill_id, title, subjects, sponsors_str, result, url in bill_rows:
@@ -100,6 +130,7 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
                 "url":     url or "",
             }
             bill_final_result[bill_id] = (result or "").strip()
+            bill_url_map[bill_id] = url or f"https://openstates.org/va/bills/{session}/{bill_id}/"
             for name in (sponsors_str or "").split(","):
                 name = name.strip()
                 if name:
@@ -229,10 +260,12 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
             party_str = f" ({party})" if party else ""
             dist_str  = f", District {district}" if district else ""
 
-            built_date = date.today().strftime("%B %d, %Y")
+            built_date  = date.today().strftime("%B %d, %Y")
+            leg_url     = member_urls.get(name, "")
+            name_linked = f"[{name}]({leg_url})" if leg_url else name
             lines = [
-                f"Representative Profile: {name}{party_str} — Virginia {chamber_str}{dist_str} ({session} session)",
-                f"Source: OpenStates Virginia (openstates.org/va) | LIS (lis.virginia.gov)",
+                f"Representative Profile: {name_linked}{party_str} — Virginia {chamber_str}{dist_str} ({session} session)",
+                f"Source: [OpenStates](https://openstates.org/va/) | [LIS](https://lis.virginia.gov)",
                 f"Last updated: {built_date} | Data coverage: {session} Regular Session (vote data may be partial pending full DB build)",
             ]
 
@@ -253,12 +286,14 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
                     lines.append(f"\n[CONFIRMED — failed bills {name} sponsored; reason for failure not in dataset]:")
                     for b in failed[:8]:
                         topic_tag = f" [{', '.join(b['topics'][:2])}]" if b["topics"] else ""
-                        lines.append(f"  {b['bill_id']}: {b['title'][:120]}{topic_tag}")
+                        link = _bill_link(b['bill_id'], bill_url_map.get(b['bill_id'], ''))
+                        lines.append(f"  {link}: {b['title'][:120]}{topic_tag}")
 
                 if passed:
                     lines.append(f"\n[CONFIRMED — bills {name} sponsored that passed]:")
                     for b in passed[:5]:
-                        lines.append(f"  {b['bill_id']}: {b['title'][:120]}")
+                        link = _bill_link(b['bill_id'], bill_url_map.get(b['bill_id'], ''))
+                        lines.append(f"  {link}: {b['title'][:120]}")
 
             # Floor voting record
             if total_v:
@@ -275,7 +310,8 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
                     bill_entries = []
                     for bid, _ in bills_in_area[:4]:
                         motion = next((v["motion"] for v in notable_no if v["bill_id"] == bid), "")
-                        bill_entries.append(f"{bid}{_motion_note(motion)}")
+                        link = _bill_link(bid, bill_url_map.get(bid, ''))
+                        bill_entries.append(f"{link}{_motion_note(motion)}")
                     bill_list = ", ".join(bill_entries)
                     sample_title = bills_in_area[0][1][:80] if bills_in_area[0][1] else ""
                     if count >= 3:
@@ -292,7 +328,8 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
                 for bid, title in untagged_no[:3]:
                     motion = next((v["motion"] for v in notable_no if v["bill_id"] == bid), "")
                     motion_note = _motion_note(motion)
-                    lines.append(f"  [CONFIRMED NO vote, topic unclassified] {bid}{motion_note}: {title[:90]}" if title else f"  {bid}{motion_note}")
+                    link = _bill_link(bid, bill_url_map.get(bid, ''))
+                    lines.append(f"  [CONFIRMED NO vote, topic unclassified] {link}{motion_note}: {title[:90]}" if title else f"  {link}{motion_note}")
 
                 # Pattern note — labeled as INFERRED
                 if no_by_area:
