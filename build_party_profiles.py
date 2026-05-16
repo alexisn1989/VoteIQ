@@ -261,42 +261,57 @@ def build_party_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[
                 pct_yes = round(party_yes / party_total * 100, 1)
                 lines.append(f"\n[CONFIRMED — OpenStates floor votes] {party} caucus cast {party_total} floor votes: {party_yes} YES ({pct_yes}%), {party_no} NO")
 
-            # ── Caucus / faction breakdown ────────────────────────────────
+            # ── Caucus ranking ────────────────────────────────────────────
             if member_alignment and split_bill_ids:
-                lines.append(f"\n[CONFIRMED — calculated from {len(split_bill_ids)} internally split votes] Caucus faction breakdown:")
+                all_ranked = sorted(member_alignment.items(), key=lambda x: -x[1]["alignment"])
+                lines.append(
+                    f"\n[CONFIRMED — split-vote caucus ranking, {len(split_bill_ids)} contested votes] "
+                    f"{party} caucus ranked by party loyalty ({len(all_ranked)} members with 5+ split votes):"
+                )
 
+                # Full ranked list: rank | name | alignment% | top dissent topic
+                lines.append(f"  Rank | Name | Split-vote alignment | Top dissent area")
+                for rank, (member, d) in enumerate(all_ranked, 1):
+                    top_t = next(iter(d["dissent_topics"]), "") if d["dissent_topics"] else "—"
+                    faction = "loyalist" if d["alignment"] >= 95 else ("moderate" if d["alignment"] >= 75 else "maverick")
+                    lines.append(
+                        f"  #{rank:>3}. {member} — {d['alignment']}% [{faction}]"
+                        + (f" | dissents on: {top_t}" if top_t != "—" else "")
+                    )
+
+                # Summary by faction
+                lines.append(f"\n  Faction summary:")
                 if loyalists:
-                    names = ", ".join(n for n, _ in sorted(loyalists, key=lambda x: -x[1]["alignment"])[:8])
-                    lines.append(f"  Party loyalists (≥95% alignment on split votes, {len(loyalists)} members): {names}")
-
+                    lines.append(f"  Party loyalists (≥95%, {len(loyalists)} members): "
+                                 + ", ".join(n for n, _ in sorted(loyalists, key=lambda x: -x[1]["alignment"])[:6]))
                 if moderates:
                     mod_topics = top_dissent_topics(moderates)
-                    names = ", ".join(n for n, _ in sorted(moderates, key=lambda x: x[1]["alignment"])[:8])
-                    topic_str = f" — breaks most often on: {', '.join(mod_topics)}" if mod_topics else ""
-                    lines.append(f"  Moderate/swing faction ({len(moderates)} members, 75–94% alignment){topic_str}: {names}")
-
+                    topic_str = f" — breaks on: {', '.join(mod_topics)}" if mod_topics else ""
+                    lines.append(f"  Moderate/swing (75–94%, {len(moderates)} members){topic_str}: "
+                                 + ", ".join(n for n, _ in sorted(moderates, key=lambda x: x[1]["alignment"])[:6]))
                 if mavericks:
                     mav_topics = top_dissent_topics(mavericks)
-                    names = ", ".join(
-                        f"{n} ({d['alignment']}%)"
-                        for n, d in sorted(mavericks, key=lambda x: x[1]["alignment"])[:6]
-                    )
-                    topic_str = f" — dissents most on: {', '.join(mav_topics)}" if mav_topics else ""
-                    lines.append(f"  Independent/dissenting faction ({len(mavericks)} members, <75% alignment){topic_str}: {names}")
+                    topic_str = f" — dissents on: {', '.join(mav_topics)}" if mav_topics else ""
+                    lines.append(f"  Mavericks (<75%, {len(mavericks)} members){topic_str}: "
+                                 + ", ".join(f"{n} ({d['alignment']}%)"
+                                             for n, d in sorted(mavericks, key=lambda x: x[1]["alignment"])[:6]))
 
-                # Most divisive bills within party
+                # Most divisive bills
                 most_divisive = sorted(
                     [(bid, bill_party_votes[(bid, party)]) for bid in split_bill_ids],
                     key=lambda x: abs(x[1]["yes"] - x[1]["no"])
                 )[:5]
                 if most_divisive:
-                    lines.append(f"  Most divisive bills within {party} caucus:")
+                    lines.append(f"\n  Most divisive bills within {party} caucus:")
                     for bid, pv in most_divisive:
                         binfo = bill_info[bid]
                         total_p = pv["yes"] + pv["no"]
                         yes_pct = round(pv["yes"] / total_p * 100)
                         topic_tag = f" [{binfo['topics'][0]}]" if binfo["topics"] else ""
-                        lines.append(f"    [{bid}]({binfo['url']}) — {binfo['title'][:80]}{topic_tag} ({yes_pct}% of caucus YES)")
+                        lines.append(
+                            f"    [{bid}]({binfo['url']}) — {binfo['title'][:80]}{topic_tag} "
+                            f"({yes_pct}% of caucus YES, {pv['yes']}-{pv['no']} split)"
+                        )
 
             # Unanimous bloc votes
             if unanimous_yes_bills:
