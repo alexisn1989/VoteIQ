@@ -520,7 +520,7 @@
       viqAddMsg('assistant', greeting);
     };
     document.addEventListener('DOMContentLoaded', () => initViqChat('VA-00'));
-    // Configure marked: open all links in a new tab safely
+    // Configure marked: all links open in new tab by default
     if (typeof marked !== 'undefined') {
       const _renderer = new marked.Renderer();
       _renderer.link = function(href, title, text) {
@@ -532,6 +532,27 @@
     function viqRenderMarkdown(text) {
       if (typeof marked === 'undefined') return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
       return marked.parse(text);
+    }
+    // Bill URL pattern: openstates.org/va/bills/YEAR/BILLID/
+    const _billUrlRe = /openstates\.org\/va\/bills\/\d+\/([A-Z]+\d+)\/?/;
+    function viqAttachLinkBehavior(bubble) {
+      bubble.querySelectorAll('a').forEach(function(a) {
+        const href = a.getAttribute('href') || '';
+        const m = href.match(_billUrlRe);
+        if (m) {
+          // Bill link → ask VoteIQ
+          const billId = m[1];
+          a.removeAttribute('target');
+          a.removeAttribute('rel');
+          a.title = 'Ask VoteIQ about ' + billId;
+          a.style.cursor = 'pointer';
+          a.addEventListener('click', function(e) {
+            e.preventDefault();
+            viqSendMessage('Tell me more about ' + billId);
+          });
+        }
+        // Non-bill links (OpenStates home, LIS, legislator pages) keep target="_blank"
+      });
     }
     function viqAddMsg(role, text, isTyping) {
       const list = document.getElementById('viqMsgList');
@@ -548,6 +569,7 @@
       } else {
         if (role === 'assistant') {
           bubble.innerHTML = viqRenderMarkdown(text);
+          viqAttachLinkBehavior(bubble);
           viqMsgs.push({ role: 'assistant', content: text });
         } else {
           bubble.textContent = text;
