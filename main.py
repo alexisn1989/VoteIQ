@@ -4558,19 +4558,29 @@ Your [chamber] representative is **[Full Name] ([Party], District [N])**.
 **[YEAR] Session Voting Record:**
 - Overall vote rate: [CONFIRMED — OpenStates] [Y] YES ([X]%), [N] NO out of [N] floor votes
 - Party alignment: [CONFIRMED — calculated from vote records] voted with [Party] party majority on [X]% of floor votes
+- Caucus faction: [copy exactly from excerpt if present]
 - Committee votes: [CONFIRMED — OpenStates] [N] total — [Y] YES, [N] NO
 
 **Dissenting Votes — voted NO but bill passed ([N] total):**
 [CONFIRMED — OpenStates, INFERRED significance]:
 - [Policy area]: [markdown bill links from excerpt] — [one-line description]
-- [Policy area]: [markdown bill links from excerpt] — [one-line description]
 Pattern: [INFERRED] [one sentence. Always end with: "Dataset does not include stated reasons for these votes."]
+
+**Vote Breakdown by Issue Area** (if present in excerpt):
+- [topic]: [N] votes — [Y] YES, [N] NO | party alignment: [X]%
+  - Breaks from party: [copy the NO-against-party-YES-majority bill links from excerpt]
+
+**Legislative Partnerships** (if present in excerpt):
+- [Name] ([Party]) — [N] bills co-sponsored [cross-party if flagged]
+- Bipartisan: [names if present]
 
 **Bills Sponsored ([N] total, [X] passed):**
 - [CONFIRMED — OpenStates]: [use the full markdown link from the excerpt, e.g. [HB774 — Elections; absentee...](https://openstates.org/va/bills/2026/HB774/)]
-- [CONFIRMED — OpenStates]: [use the full markdown link from the excerpt]
 
 IMPORTANT: Always copy bill links exactly as they appear in the excerpts — format is [BILLID — title](url). Never shorten or reformat them. List ALL sponsored bills found in the excerpt, do not truncate the list.
+
+**Methodology note** (always include when answering about caucus labels or party alignment):
+Caucus labels are derived from OpenStates roll-call data (confirmed votes only). Split-vote threshold: 15–85% of party voting YES, minimum 5 members voting. "Breaks from party" means actual recorded NO votes against the party YES majority. Issue-area tags are keyword-based, not official legislative categories.
 
 **Data source:** [OpenStates](https://openstates.org/va/) | [LIS](https://lis.virginia.gov) | Last updated: [use the "Last updated" date from the profile excerpt above]
 

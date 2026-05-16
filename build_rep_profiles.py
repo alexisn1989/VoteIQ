@@ -99,6 +99,22 @@ def _bill_link(bill_id: str, url: str, title: str = "") -> str:
     return label
 
 
+def _parse_sponsor_names(sponsors: str) -> list[str]:
+    """Split OpenStates sponsor strings without turning suffixes into fake names."""
+    suffixes = {"jr.", "sr.", "jr", "sr", "ii", "iii", "iv", "v"}
+    names: list[str] = []
+    for part in (sponsors or "").split(","):
+        item = part.strip()
+        if not item:
+            continue
+        if names and item.lower() in suffixes:
+            names[-1] = f"{names[-1]}, {item}"
+            continue
+        if len(item) > 3:
+            names.append(item)
+    return names
+
+
 def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
     chunks = []
     member_urls = _load_member_urls()
@@ -119,6 +135,13 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
         # Map: bill_id -> OpenStates URL
         bill_url_map: dict[str, str] = {}
 
+        # Fast lookup maps for per-vote topic/title resolution (avoids per-vote DB queries)
+        bill_topic_map_full: dict[str, list[str]] = {}
+        bill_title_map_full: dict[str, str] = {}
+
+        # Co-sponsorship pairs: (nameA, nameB) -> count of shared bills
+        cosponsor_counts: dict[tuple, int] = defaultdict(int)
+
         # Map: sponsor_name -> list of bills
         sponsor_bills: dict[str, list[dict]] = defaultdict(list)
         for bill_id, title, subjects, sponsors_str, result, url in bill_rows:
@@ -132,10 +155,14 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
             }
             bill_final_result[bill_id] = (result or "").strip()
             bill_url_map[bill_id] = url or f"https://openstates.org/va/bills/{session}/{bill_id}/"
-            for name in (sponsors_str or "").split(","):
-                name = name.strip()
-                if name:
-                    sponsor_bills[name].append(bill)
+            bill_topic_map_full[bill_id] = topics
+            bill_title_map_full[bill_id] = (title or "").strip()
+            sp_list = _parse_sponsor_names(sponsors_str or "")
+            for i, sa in enumerate(sp_list):
+                for sb in sp_list[i + 1:]:
+                    cosponsor_counts[tuple(sorted([sa, sb]))] += 1
+            for sp_name in sp_list:
+                sponsor_bills[sp_name].append(bill)
 
         # All votes this session: voter_name -> list of {bill_id, option, bill_result}
         vote_rows = conn.execute(
@@ -201,6 +228,15 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
             yes_pct = yes_n / total
             if 0.15 <= yes_pct <= 0.85:
                 party_split_bills[p].add((bill_id, motion))
+
+        # Party lookup by legislator name (from voter records)
+        name_to_party: dict[str, str] = {n: d["party"] for n, d in voter_data.items() if d["party"]}
+
+        # Inverted co-sponsor index: name -> {other_name: count} for O(1) per-legislator lookup
+        name_to_cosponsors: dict[str, dict[str, int]] = defaultdict(dict)
+        for (sa, sb), cnt in cosponsor_counts.items():
+            name_to_cosponsors[sa][sb] = cnt
+            name_to_cosponsors[sb][sa] = cnt
 
         # All known names = sponsors + voters
         all_names = set(sponsor_bills.keys()) | set(voter_data.keys())
@@ -275,6 +311,36 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
                         caucus_label = f"Moderate/swing faction (split-vote alignment: {split_alignment}%)"
                     else:
                         caucus_label = f"Independent/dissenting voice (split-vote alignment: {split_alignment}%)"
+
+            # Issue-area vote breakdown: per-topic YES/NO + party alignment + dissenting bills
+            topic_vote_detail: dict[str, dict] = defaultdict(lambda: {
+                "yes": 0, "no": 0, "pa_match": 0, "pa_total": 0, "dissent_votes": []
+            })
+            for v in floor_votes:
+                if v["option"] not in ("yes", "no"):
+                    continue
+                for t in bill_topic_map_full.get(v["bill_id"], [])[:2]:
+                    topic_vote_detail[t][v["option"]] += 1
+                    if party:
+                        maj = party_majority_option(v["bill_id"], v["motion"], party)
+                        if maj:
+                            topic_vote_detail[t]["pa_total"] += 1
+                            if v["option"] == maj:
+                                topic_vote_detail[t]["pa_match"] += 1
+                            elif v["option"] == "no" and maj == "yes":
+                                key = (v["bill_id"], v["motion"])
+                                existing = {
+                                    (dv["bill_id"], dv["motion"]) for dv in topic_vote_detail[t]["dissent_votes"]
+                                }
+                                if key not in existing:
+                                    topic_vote_detail[t]["dissent_votes"].append(v)
+
+            # Co-sponsorship network: top legislative partners this session
+            top_cosponsors = sorted(name_to_cosponsors.get(name, {}).items(), key=lambda x: -x[1])[:5]
+            cross_party_partners = [
+                (other, cnt) for other, cnt in top_cosponsors
+                if party and name_to_party.get(other) and name_to_party.get(other) != party
+            ]
 
             # Committee vote stats
             comm_yes = [v for v in committee_votes if v["option"] == "yes"]
@@ -451,6 +517,48 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
                 for bid in list(flip_bills)[:3]:
                     title = bill_title_map.get(bid, "")
                     lines.append(f"    {bid}: {title[:90]}" if title else f"    {bid}")
+
+            # Issue-area vote breakdown
+            active_topics = [(t, d) for t, d in topic_vote_detail.items() if d["yes"] + d["no"] >= 3]
+            active_topics.sort(key=lambda x: -(x[1]["yes"] + x[1]["no"]))
+            if active_topics and total_v >= 10:
+                lines.append(f"\n[CONFIRMED — OpenStates vote records] Vote breakdown by issue area ({session} session):")
+                for t, d in active_topics[:8]:
+                    t_total = d["yes"] + d["no"]
+                    pa_str = ""
+                    if d["pa_total"] >= 3 and party:
+                        pa_pct = round(d["pa_match"] / d["pa_total"] * 100, 1)
+                        pa_str = f" | party alignment: {pa_pct}%"
+                    lines.append(f"  {t}: {t_total} votes — {d['yes']} YES, {d['no']} NO{pa_str}")
+                    if d["dissent_votes"]:
+                        dissent_links = []
+                        for dv in d["dissent_votes"][:3]:
+                            bid = dv["bill_id"]
+                            btitle = bill_title_map_full.get(bid, "")
+                            dissent_links.append(f"{_bill_link(bid, bill_url_map.get(bid, ''), btitle)}{_motion_note(dv['motion'])}")
+                        lines.append(f"    Breaks from party: NO against party YES majority on {', '.join(dissent_links)}")
+
+            # Co-sponsorship network
+            if top_cosponsors:
+                lines.append(f"\n[CONFIRMED — OpenStates sponsorship records] Legislative partnerships ({session} session):")
+                for other, cnt in top_cosponsors:
+                    other_p = name_to_party.get(other, "")
+                    party_tag = f" ({other_p})" if other_p else ""
+                    cross_tag = " [cross-party]" if other_p and party and other_p != party else ""
+                    bill_word = "bill" if cnt == 1 else "bills"
+                    lines.append(f"  {other}{party_tag}{cross_tag} — {cnt} {bill_word} co-sponsored together")
+                if cross_party_partners:
+                    names_str = ", ".join(o for o, _ in cross_party_partners)
+                    lines.append(f"  [CONFIRMED] Bipartisan co-sponsorships with: {names_str}")
+
+            # Methodology note
+            lines.append(f"\n[METHODOLOGY — how these metrics are derived]")
+            lines.append(f"  Caucus labels derived from OpenStates roll-call data (confirmed votes only). Split-vote threshold: 15–85% of party voting YES, minimum 5 members voting.")
+            lines.append(f"  Party alignment %: share of floor votes matching party majority option. Source: OpenStates voter records.")
+            lines.append(f"  Breaks from party: actual recorded NO votes against the party YES majority.")
+            lines.append(f"  Issue-area breakdown: keyword tagging of bill titles/subjects — not official legislative categories.")
+            lines.append(f"  Co-sponsorship: bills listing multiple sponsors on OpenStates. Primary patron vs. co-patron role not distinguished.")
+            lines.append(f"  Vote data coverage: see 'Data coverage' line above for completeness status.")
 
             text = "\n".join(lines)
 
