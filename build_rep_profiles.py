@@ -70,6 +70,9 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
         if not bill_rows:
             continue
 
+        # Map: bill_id -> final bill result ("pass"/"fail") from the bills table
+        bill_final_result: dict[str, str] = {}
+
         # Map: sponsor_name -> list of bills
         sponsor_bills: dict[str, list[dict]] = defaultdict(list)
         for bill_id, title, subjects, sponsors_str, result, url in bill_rows:
@@ -81,6 +84,7 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
                 "topics":  topics,
                 "url":     url or "",
             }
+            bill_final_result[bill_id] = (result or "").strip()
             for name in (sponsors_str or "").split(","):
                 name = name.strip()
                 if name:
@@ -157,25 +161,51 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
                     topic_counter[t] += 1
 
             # Floor: voted NO on bills that ultimately passed (went against majority)
-            notable_no = [v for v in floor_no if v["bill_result"] == "pass"][:5]
+            # Use bills.result (final outcome), not votes.result (which reflects the NO side losing)
+            seen_no_bills = set()
+            notable_no = []
+            for v in floor_no:
+                bid = v["bill_id"]
+                if bid not in seen_no_bills and bill_final_result.get(bid) == "pass":
+                    seen_no_bills.add(bid)
+                    notable_no.append(v)
 
-            # Committee: voted NO (killed or blocked in committee)
-            comm_killed = [v for v in comm_no if v["bill_result"] == "fail"][:5]
+            # Committee: voted NO and bill ultimately failed
+            comm_killed = [v for v in comm_no if bill_final_result.get(v["bill_id"]) == "fail"][:5]
 
             # Hypocrisy signal: voted NO in committee but YES on floor (or vice versa)
             floor_yes_ids = {v["bill_id"] for v in floor_yes}
             comm_no_ids   = {v["bill_id"] for v in comm_no}
             flip_bills    = floor_yes_ids & comm_no_ids  # blocked in committee, yes on floor
 
-            # Fetch titles for bills we want to display
+            # Fetch titles for ALL notable_no + comm_killed + flip bills
             lookup_ids = list({v["bill_id"] for v in notable_no + comm_killed} | flip_bills)
             bill_title_map = {}
+            bill_subject_map = {}
             if lookup_ids:
                 rows = conn.execute(
-                    f"SELECT bill_id, title FROM bills WHERE session=? AND bill_id IN ({','.join('?'*len(lookup_ids))})",
+                    f"SELECT bill_id, title, subjects FROM bills WHERE session=? AND bill_id IN ({','.join('?'*len(lookup_ids))})",
                     [session] + lookup_ids
                 ).fetchall()
-                bill_title_map = {r[0]: r[1] for r in rows}
+                bill_title_map   = {r[0]: r[1] for r in rows}
+                bill_subject_map = {r[0]: r[2] for r in rows}
+
+            def _no_vote_topics(bill_id: str, title: str) -> list[str]:
+                """Tag a NO vote with policy areas using title + subjects."""
+                combined = (title or "") + " " + (bill_subject_map.get(bill_id) or "")
+                return tag_topics(combined)
+
+            # Group notable_no by policy area
+            no_by_area: dict[str, list] = {}
+            untagged_no = []
+            for v in notable_no:
+                title  = bill_title_map.get(v["bill_id"], "")
+                topics = _no_vote_topics(v["bill_id"], title)
+                if topics:
+                    for t in topics[:1]:  # primary topic only
+                        no_by_area.setdefault(t, []).append((v["bill_id"], title))
+                else:
+                    untagged_no.append((v["bill_id"], title))
 
             # Build narrative
             chamber_str = "Senate" if any(
@@ -186,58 +216,92 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
 
             lines = [
                 f"Representative Profile: {name}{party_str} — Virginia {chamber_str}{dist_str} ({session} session)",
+                f"Source: OpenStates Virginia legislative database (openstates.org/va) | LIS (lis.virginia.gov)",
+                f"Data coverage: {session} Regular Session (vote data may be partial pending full DB build)",
             ]
 
             if party:
-                lines.append(f"Party: {party}")
+                lines.append(f"Party: {party} [CONFIRMED via OpenStates voter record]")
             if committees:
-                lines.append(f"Committee assignments: {', '.join(committees)}")
+                lines.append(f"Committee assignments (derived from vote motions, openstates.org): {', '.join(committees)}")
 
             # Sponsored bills summary
             if bills:
-                lines.append(f"\nSponsored {len(bills)} bill(s) in {session}:")
+                lines.append(f"\n[CONFIRMED — OpenStates sponsorship record] {name} is listed as sponsor on {len(bills)} bill(s) in {session}:")
                 lines.append(f"  Passed: {len(passed)}  |  Failed: {len(failed)}  |  Other/pending: {len(other)}")
                 if topic_counter:
                     top_topics = [f"{t} ({n})" for t, n in topic_counter.most_common(4)]
-                    lines.append(f"  Top issue areas: {', '.join(top_topics)}")
+                    lines.append(f"  Subject areas of sponsored bills: {', '.join(top_topics)}")
 
                 if failed:
-                    lines.append(f"\nFailed bills (what {name.split()[0]} fought for but couldn't pass):")
+                    lines.append(f"\n[CONFIRMED — failed bills {name} sponsored; reason for failure not in dataset]:")
                     for b in failed[:8]:
                         topic_tag = f" [{', '.join(b['topics'][:2])}]" if b["topics"] else ""
                         lines.append(f"  {b['bill_id']}: {b['title'][:120]}{topic_tag}")
 
                 if passed:
-                    lines.append(f"\nPassed bills:")
+                    lines.append(f"\n[CONFIRMED — bills {name} sponsored that passed]:")
                     for b in passed[:5]:
                         lines.append(f"  {b['bill_id']}: {b['title'][:120]}")
 
             # Floor voting record
             if total_v:
-                lines.append(f"\nFloor voting record ({session}):")
-                lines.append(f"  {total_v} floor votes — {len(floor_yes)} YES ({yes_rate}%), {len(floor_no)} NO")
+                lines.append(f"\n[CONFIRMED — OpenStates floor vote records, {session} session]")
+                lines.append(f"  {total_v} floor votes recorded — {len(floor_yes)} YES ({yes_rate}%), {len(floor_no)} NO")
 
             if notable_no:
-                lines.append(f"  Voted NO on floor but bill still passed:")
-                for v in notable_no:
-                    title = bill_title_map.get(v["bill_id"], "")
-                    lines.append(f"    {v['bill_id']}: {title[:100]}" if title else f"    {v['bill_id']}")
+                lines.append(f"\n  [CONFIRMED — OpenStates vote records] Voted NO on {len(notable_no)} bill(s) that still passed (minority dissent):")
+
+                # Policy-area groups first
+                for area, bills_in_area in sorted(no_by_area.items(), key=lambda x: -len(x[1])):
+                    count = len(bills_in_area)
+                    bill_list = ", ".join(bid for bid, _ in bills_in_area[:4])
+                    sample_title = bills_in_area[0][1][:80] if bills_in_area[0][1] else ""
+                    if count >= 3:
+                        pattern = f"voted NO on {count} {area} bills that passed"
+                    elif count == 2:
+                        pattern = f"voted NO on 2 {area} bills that passed"
+                    else:
+                        pattern = f"voted NO on 1 {area} bill that passed"
+                    lines.append(f"  [{area.upper()}] {pattern} — {bill_list}")
+                    if sample_title:
+                        lines.append(f"    e.g. {sample_title}")
+
+                # Untagged (no topic match)
+                for bid, title in untagged_no[:3]:
+                    lines.append(f"  [CONFIRMED NO vote, topic unclassified] {bid}: {title[:100]}" if title else f"  {bid}")
+
+                # Pattern note — labeled as INFERRED
+                if no_by_area:
+                    top_areas = sorted(no_by_area.items(), key=lambda x: -len(x[1]))
+                    top_names = [a for a, _ in top_areas[:3]]
+                    total_no  = len(notable_no)
+                    if total_no >= 5:
+                        lines.append(
+                            f"\n  [INFERRED from vote pattern — not a stated position] "
+                            f"NO votes concentrated in {', '.join(top_names)}. "
+                            f"Dataset does not include stated reasons for these votes."
+                        )
+                    elif total_no >= 2:
+                        lines.append(
+                            f"\n  [INFERRED from vote pattern] NO votes concentrated in {', '.join(top_names)}."
+                        )
 
             # Committee voting record
             if committee_votes:
                 comm_total = len(comm_yes) + len(comm_no)
-                lines.append(f"\nCommittee voting record ({session}):")
+                lines.append(f"\n[CONFIRMED — OpenStates committee vote records, {session} session]")
                 lines.append(f"  {comm_total} committee votes — {len(comm_yes)} YES, {len(comm_no)} NO")
 
             if comm_killed:
-                lines.append(f"  Voted to kill in committee (bill later failed):")
+                lines.append(f"  [CONFIRMED] Voted NO in committee on bills that ultimately failed:")
                 for v in comm_killed:
                     title = bill_title_map.get(v["bill_id"], "")
                     motion = v["motion"].replace("Reported from ", "").split(" with")[0]
                     lines.append(f"    {v['bill_id']} [{motion}]: {title[:90]}" if title else f"    {v['bill_id']} [{motion}]")
 
             if flip_bills:
-                lines.append(f"  Blocked in committee but voted YES on floor ({len(flip_bills)} bills) — possible position shift or party pressure")
+                lines.append(f"  [CONFIRMED vote records, INFERRED significance] Voted NO in committee but YES on floor ({len(flip_bills)} bills) — dataset does not explain the change:")
                 for bid in list(flip_bills)[:3]:
                     title = bill_title_map.get(bid, "")
                     lines.append(f"    {bid}: {title[:90]}" if title else f"    {bid}")

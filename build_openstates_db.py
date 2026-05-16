@@ -42,6 +42,11 @@ def get(path, params=None, _retries=8):
             print(f"  [rate limit attempt {attempt+1}/{_retries}] waiting {wait}s …")
             time.sleep(wait)
             continue
+        if r.status_code in (502, 503, 504) and attempt < _retries - 1:
+            wait = 10 * (attempt + 1)
+            print(f"  [server error {r.status_code} attempt {attempt+1}/{_retries}] waiting {wait}s …")
+            time.sleep(wait)
+            continue
         r.raise_for_status()
         return r.json()
     raise RuntimeError(f"Failed after {_retries} retries on {path}")

@@ -4517,19 +4517,58 @@ async def bills_chat(request: Request, req: BillsChatRequest):
 You have access to the retrieved excerpts below, which may include Virginia General Assembly bills, \
 election results, legislator voting records, and representative profile summaries from the local 2026 session database. \
 Answer the user's question using ONLY the excerpts below — do not rely on your training data. \
-Be concise (2-4 sentences), factual, and cite bill numbers when relevant.{district_note}{chroma_note}
-If excerpts include a [SQLite] block, treat it as authoritative 2026 session data.
-If a [Representative Profile] block is shown, use it to answer questions about what the user's delegate or senator sponsored, prioritized, passed, or voted against.
-If a legislator voting record is shown, summarize their education bill sponsorships and overall voting lean.
-If the user asks for a specific bill, give its title, patron, and status. \
-If bill-specific vote breakdowns (who voted yes/no) are not available, say they will be added once the full roll call data is loaded.
-If the excerpts don't contain enough information, say so briefly.{exact_lookup_note}
+Be concise (3-5 sentences), factual, and cite bill numbers when relevant.{district_note}{chroma_note}
+
+HALLUCINATION PREVENTION — follow these rules strictly:
+1. Never say a legislator "prioritized", "championed", "focused on", or "made X a priority" unless the excerpt explicitly states it. Sponsoring a bill does not imply it was a priority.
+2. Never infer a legislator's role beyond what the data shows. If they are listed as sponsor, say "sponsored". If their exact role is unclear, say "co-sponsored or listed as patron — exact role unclear."
+3. Always distinguish:
+   - CONFIRMED: data directly states it — cite bill ID and source ("According to OpenStates, Rouse sponsored SB3")
+   - INFERRED: your interpretation of a pattern — label it ("Based on vote pattern, though not a stated position...")
+   - UNCERTAIN: data not available — say so ("I don't have vote data for this bill" / "Primary patron unclear")
+4. Never fill data gaps with assumptions. If you don't have it, say so.
+5. Always cite source inline: "According to OpenStates (openstates.org)" for votes/sponsorships, "According to LIS" for bill text/status.
+
+WHEN TO SAY "I DON'T KNOW":
+- Vote data missing → "I don't have vote data for this bill in the current dataset"
+- Bill text not in DB → "I don't have the full bill text — check lis.virginia.gov"
+- Patron unclear → "Primary patron unclear from available data; listed as co-sponsor"
+- DB build incomplete → "Based on partial 2026 session data — full dataset loads tomorrow"
+
+CITATION FORMAT — always include:
+- Bill ID + short title
+- Vote count if available (e.g. "passed 32-8 according to OpenStates")
+- Source database (LIS or OpenStates)
+- Date if relevant
+
+RESPONSE FORMAT — use this exact structure for legislator questions:
+
+Your [chamber] representative is **[Full Name] ([Party], District [N])**.
+
+**[YEAR] Session Voting Record:**
+- Floor votes: [CONFIRMED — OpenStates] [N] total — [Y] YES ([X]%), [N] NO
+- Committee votes: [CONFIRMED — OpenStates] [N] total — [Y] YES, [N] NO
+- Party alignment: [INFERRED from vote pattern] [one sentence]
+
+**Dissenting Votes — voted NO but bill passed ([N] total):**
+[CONFIRMED — OpenStates, INFERRED significance]:
+- [Policy area]: [bill IDs] — [one-line description]
+- [Policy area]: [bill IDs] — [one-line description]
+Pattern: [INFERRED] [one sentence. Always end with: "Dataset does not include stated reasons for these votes."]
+
+**Bills Sponsored ([N] total, [X] passed):**
+- [Bill ID] [CONFIRMED — OpenStates]: [short title]
+- [Bill ID] [CONFIRMED — OpenStates]: [short title]
+
+**Data source:** OpenStates.org/va | lis.virginia.gov | 2026 session (partial data — full roll call loads daily)
+
+If any section has no data, write: "No [section] data available in current dataset."{exact_lookup_note}
 
 EXCERPTS:
 {context}"""
 
     try:
-        return ChatResponse(reply=_claude_reply(system_prompt, req.messages, max_tokens=500))
+        return ChatResponse(reply=_claude_reply(system_prompt, req.messages, max_tokens=600))
     except Exception as e:
         return ChatResponse(reply=_friendly_claude_error(e))
 

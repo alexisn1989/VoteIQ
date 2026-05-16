@@ -23,13 +23,36 @@ vo = voyageai.Client(api_key=os.getenv("VOYAGE_API_KEY"))
 
 # ── Voyage AI embedding function ──────────────────────────────────────────────
 
+VOYAGE_MAX_TOKENS = 75_000  # conservative; hard limit is 120k; ~0.45 chars/token for legal text
+
+def _voyage_token_estimate(text: str) -> int:
+    return max(1, int(len(text) * 0.45))
+
 class VoyageEmbeddingFunction(EmbeddingFunction):
     def name(self) -> str:
         return "voyageai"
 
     def __call__(self, input: Documents) -> Embeddings:
-        result = vo.embed(list(input), model=EMBED_MODEL, input_type="document")
-        return result.embeddings
+        docs = list(input)
+        # Sub-batch to stay under Voyage token limit
+        batches, current, cur_tokens = [], [], 0
+        for doc in docs:
+            tok = _voyage_token_estimate(doc)
+            if cur_tokens + tok > VOYAGE_MAX_TOKENS and current:
+                batches.append(current)
+                current, cur_tokens = [], 0
+            current.append(doc)
+            cur_tokens += tok
+        if current:
+            batches.append(current)
+
+        all_embeddings = []
+        for batch in batches:
+            result = vo.embed(batch, model=EMBED_MODEL, input_type="document")
+            all_embeddings.extend(result.embeddings)
+            if len(batches) > 1:
+                time.sleep(1)
+        return all_embeddings
 
 # ── ChromaDB setup ────────────────────────────────────────────────────────────
 
