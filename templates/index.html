@@ -104,7 +104,19 @@
   .viq-chat-send:disabled { opacity: 0.4; cursor: default; }
   .viq-chat-footer { font-size: 11px; color: #8892a4; text-align: center; padding: 6px 16px 10px; background: #fff; font-family: 'Barlow', sans-serif; }
   .map-btn-hidden { display: none !important; }
+  .viq-chat-bubble a { color: #0d6efd; text-decoration: underline; }
+  .viq-chat-bubble a:hover { color: #c8102e; }
+  .viq-chat-msg.bot .viq-chat-bubble p { margin: 0 0 6px; }
+  .viq-chat-msg.bot .viq-chat-bubble p:last-child { margin-bottom: 0; }
+  .viq-chat-msg.bot .viq-chat-bubble strong { font-weight: 700; }
+  .viq-chat-msg.bot .viq-chat-bubble ul, .viq-chat-msg.bot .viq-chat-bubble ol { margin: 4px 0 6px 18px; padding: 0; }
+  .viq-chat-msg.bot .viq-chat-bubble li { margin-bottom: 3px; }
+  .viq-chat-msg.bot .viq-chat-bubble h1,
+  .viq-chat-msg.bot .viq-chat-bubble h2,
+  .viq-chat-msg.bot .viq-chat-bubble h3 { font-size: 14px; font-weight: 700; margin: 8px 0 4px; }
+  .viq-chat-msg.bot .viq-chat-bubble hr { border: none; border-top: 1px solid #dde3f0; margin: 8px 0; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
 </head>
 <body>
 
@@ -508,6 +520,19 @@
       viqAddMsg('assistant', greeting);
     };
     document.addEventListener('DOMContentLoaded', () => initViqChat('VA-00'));
+    // Configure marked: open all links in a new tab safely
+    if (typeof marked !== 'undefined') {
+      const _renderer = new marked.Renderer();
+      _renderer.link = function(href, title, text) {
+        const t = title ? ` title="${title}"` : '';
+        return `<a href="${href}"${t} target="_blank" rel="noopener noreferrer">${text}</a>`;
+      };
+      marked.setOptions({ renderer: _renderer, breaks: true });
+    }
+    function viqRenderMarkdown(text) {
+      if (typeof marked === 'undefined') return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      return marked.parse(text);
+    }
     function viqAddMsg(role, text, isTyping) {
       const list = document.getElementById('viqMsgList');
       const wrap = document.createElement('div');
@@ -521,8 +546,12 @@
       if (isTyping) {
         bubble.innerHTML = '<div class="viq-chat-typing"><div class="viq-chat-dot"></div><div class="viq-chat-dot"></div><div class="viq-chat-dot"></div></div>';
       } else {
-        bubble.textContent = text;
-        if (role === 'assistant') viqMsgs.push({ role: 'assistant', content: text });
+        if (role === 'assistant') {
+          bubble.innerHTML = viqRenderMarkdown(text);
+          viqMsgs.push({ role: 'assistant', content: text });
+        } else {
+          bubble.textContent = text;
+        }
       }
       wrap.appendChild(av);
       wrap.appendChild(bubble);
