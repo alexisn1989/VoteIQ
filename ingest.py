@@ -24,6 +24,7 @@ vo = voyageai.Client(api_key=os.getenv("VOYAGE_API_KEY"))
 # ── Voyage AI embedding function ──────────────────────────────────────────────
 
 VOYAGE_MAX_TOKENS = 75_000  # conservative; hard limit is 120k; ~0.45 chars/token for legal text
+CHROMA_MAX_DOC_BYTES = 14_000  # leave headroom under TryChroma's 16 KB document limit
 
 def _voyage_token_estimate(text: str) -> int:
     return max(1, int(len(text) * 0.45))
@@ -116,6 +117,24 @@ def _split_text(text: str, base_id: str, base_meta: dict) -> list[dict]:
             "metadata": {**base_meta, "chunk_index": idx},
         })
     return result or [{"id": f"{base_id}_0", "text": text, "metadata": {**base_meta, "chunk_index": 0}}]
+
+
+def _split_oversized_jsonl_rows(rows: list[dict]) -> list[dict]:
+    """Split JSONL rows that would exceed Chroma's per-document size quota."""
+    expanded = []
+    for row in rows:
+        text = row.get("text", "")
+        if len(text.encode("utf-8")) <= CHROMA_MAX_DOC_BYTES:
+            expanded.append(row)
+            continue
+        parts = _split_text(text, row["chunk_id"], {})
+        for part in parts:
+            child = dict(row)
+            child["chunk_id"] = part["id"]
+            child["text"] = part["text"]
+            child["chunk_index"] = part["metadata"].get("chunk_index", 0)
+            expanded.append(child)
+    return expanded
 
 # ── Chunking ──────────────────────────────────────────────────────────────────
 
@@ -328,7 +347,12 @@ def ingest_jsonl(filepath: str, reset: bool = False):
         print(f"[error] No JSONL rows with chunk_id/text found in {filepath}")
         return
 
+    original_count = len(rows)
+    rows = _split_oversized_jsonl_rows(rows)
+
     print(f"[ingest] Processing JSONL {filepath}...")
+    if len(rows) != original_count:
+        print(f"[ingest] Split oversized JSONL rows: {original_count} source rows -> {len(rows)} Chroma chunks")
     sizes = [_count_tokens(r["text"]) for r in rows]
     print(f"[ingest] Built {len(rows)} chunks  "
           f"(min {min(sizes)} / avg {sum(sizes)//len(sizes)} / max {max(sizes)} tokens)")

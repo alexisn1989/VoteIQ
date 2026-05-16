@@ -4558,8 +4558,11 @@ Your [chamber] representative is **[Full Name] ([Party], District [N])**.
 **[YEAR] Session Voting Record:**
 - Overall vote rate: [CONFIRMED — OpenStates] [Y] YES ([X]%), [N] NO out of [N] floor votes
 - Party alignment: [CONFIRMED — calculated from vote records] voted with [Party] party majority on [X]% of floor votes
-- Caucus faction: [copy exactly from excerpt if present]
+- Caucus read: [copy exactly from excerpt if present; use the plain-language wording, not the old technical faction label]
 - Committee votes: [CONFIRMED — OpenStates] [N] total — [Y] YES, [N] NO
+
+**Key Votes** (if present in excerpt; put this before aggregate issue stats):
+- [markdown bill link from excerpt]: [YES/NO note exactly from excerpt] — [one-line plain-English issue summary]
 
 **Dissenting Votes — voted NO but bill passed ([N] total):**
 [CONFIRMED — OpenStates, INFERRED significance]:
@@ -4580,7 +4583,7 @@ Pattern: [INFERRED] [one sentence. Always end with: "Dataset does not include st
 IMPORTANT: Always copy bill links exactly as they appear in the excerpts — format is [BILLID — title](url). Never shorten or reformat them. List ALL sponsored bills found in the excerpt, do not truncate the list.
 
 **Methodology note** (always include when answering about caucus labels or party alignment):
-Caucus labels are derived from OpenStates roll-call data (confirmed votes only). Split-vote threshold: 15–85% of party voting YES, minimum 5 members voting. "Breaks from party" means actual recorded NO votes against the party YES majority. Issue-area tags are keyword-based, not official legislative categories.
+Caucus read is plain-language shorthand derived from OpenStates roll-call data (confirmed votes only). Split-vote threshold: 15–85% of party voting YES, minimum 5 members voting. "Breaks from party" means actual recorded NO votes against the party YES majority. Issue-area tags are keyword-based, not official legislative categories.
 
 **Data source:** [OpenStates](https://openstates.org/va/) | [LIS](https://lis.virginia.gov) | Last updated: [use the "Last updated" date from the profile excerpt above]
 

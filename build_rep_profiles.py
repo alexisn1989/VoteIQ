@@ -279,6 +279,8 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
             # Split-vote alignment: alignment on only the contested (split) votes
             # Used to assign caucus faction label
             caucus_label = None
+            caucus_read = None
+            split_alignment = None
             split_dissent_topics: Counter = Counter()
             if party and party_split_bills.get(party):
                 sp_match = sp_total = 0
@@ -307,10 +309,13 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
                     split_alignment = round(sp_match / sp_total * 100, 1)
                     if split_alignment >= 95:
                         caucus_label = f"Party loyalist (split-vote alignment: {split_alignment}%)"
+                        caucus_read = "Strong party-line voter"
                     elif split_alignment >= 75:
                         caucus_label = f"Moderate/swing faction (split-vote alignment: {split_alignment}%)"
+                        caucus_read = "Moderate voice within party"
                     else:
                         caucus_label = f"Independent/dissenting voice (split-vote alignment: {split_alignment}%)"
+                        caucus_read = "Independent voice within party"
 
             # Issue-area vote breakdown: per-topic YES/NO + party alignment + dissenting bills
             topic_vote_detail: dict[str, dict] = defaultdict(lambda: {
@@ -399,6 +404,54 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
                 else:
                     untagged_no.append((v["bill_id"], title))
 
+            # Key votes: concrete examples for user-facing profile summaries.
+            key_votes = []
+            seen_key_votes = set()
+            if party:
+                for v in floor_votes:
+                    if v["option"] != "no":
+                        continue
+                    maj = party_majority_option(v["bill_id"], v["motion"], party)
+                    if maj != "yes":
+                        continue
+                    key = (v["bill_id"], v["motion"])
+                    if key in seen_key_votes:
+                        continue
+                    seen_key_votes.add(key)
+                    key_votes.append({
+                        "bill_id": v["bill_id"],
+                        "motion": v["motion"],
+                        "title": bill_title_map_full.get(v["bill_id"], ""),
+                        "topics": bill_topic_map_full.get(v["bill_id"], []),
+                        "note": "NO, breaks from party YES majority",
+                    })
+                    if len(key_votes) >= 6:
+                        break
+            if len(key_votes) < 6:
+                for v in notable_no:
+                    key = (v["bill_id"], v["motion"])
+                    if key in seen_key_votes:
+                        continue
+                    seen_key_votes.add(key)
+                    key_votes.append({
+                        "bill_id": v["bill_id"],
+                        "motion": v["motion"],
+                        "title": bill_title_map_full.get(v["bill_id"], "") or bill_title_map.get(v["bill_id"], ""),
+                        "topics": bill_topic_map_full.get(v["bill_id"], []),
+                        "note": "NO on bill that passed",
+                    })
+                    if len(key_votes) >= 6:
+                        break
+            if not key_votes:
+                for b in passed[:5]:
+                    key_votes.append({
+                        "bill_id": b["bill_id"],
+                        "motion": "",
+                        "title": b["title"],
+                        "topics": b["topics"],
+                        "note": "Sponsored bill that passed",
+                    })
+
             # Build narrative
             chamber_str = "Senate" if any(
                 b["bill_id"].startswith("S") for b in bills
@@ -417,12 +470,18 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
 
             if party:
                 lines.append(f"Party: {party} [CONFIRMED via OpenStates voter record]")
-            if caucus_label:
+            if caucus_read:
                 dissent_str = ""
                 if split_dissent_topics:
                     top_d = [t for t, _ in split_dissent_topics.most_common(3)]
-                    dissent_str = f" | Breaks from party most on: {', '.join(top_d)}"
-                lines.append(f"Caucus faction [CONFIRMED — split-vote analysis]: {caucus_label}{dissent_str}")
+                    dissent_str = f" Breaks most often on: {', '.join(top_d)}."
+                align_bits = []
+                if party_alignment is not None and party:
+                    align_bits.append(f"votes with {party} majority {party_alignment}% overall")
+                if split_alignment is not None:
+                    align_bits.append(f"aligns {split_alignment}% on contested party-split votes")
+                align_str = f" — {'; '.join(align_bits)}." if align_bits else "."
+                lines.append(f"Caucus read [CONFIRMED — split-vote analysis]: {caucus_read}{align_str}{dissent_str}")
             if committees:
                 lines.append(f"Committee assignments (derived from vote motions, openstates.org): {', '.join(committees)}")
 
@@ -446,6 +505,14 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
                     for b in passed[:5]:
                         link = _bill_link(b['bill_id'], bill_url_map.get(b['bill_id'], ''), b['title'])
                         lines.append(f"  {link}")
+
+            if key_votes:
+                lines.append(f"\n[CONFIRMED — OpenStates vote records] Key votes ({session} session):")
+                for kv in key_votes:
+                    topic_tag = f" [{', '.join(kv['topics'][:2])}]" if kv["topics"] else ""
+                    motion_note = _motion_note(kv["motion"])
+                    link = _bill_link(kv["bill_id"], bill_url_map.get(kv["bill_id"], ""), kv["title"])
+                    lines.append(f"  {link}{topic_tag}: {kv['note']}{motion_note}")
 
             # Floor voting record
             if total_v:
@@ -553,7 +620,7 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
 
             # Methodology note
             lines.append(f"\n[METHODOLOGY — how these metrics are derived]")
-            lines.append(f"  Caucus labels derived from OpenStates roll-call data (confirmed votes only). Split-vote threshold: 15–85% of party voting YES, minimum 5 members voting.")
+            lines.append(f"  Caucus read is plain-language shorthand derived from OpenStates roll-call data (confirmed votes only). Split-vote threshold: 15–85% of party voting YES, minimum 5 members voting.")
             lines.append(f"  Party alignment %: share of floor votes matching party majority option. Source: OpenStates voter records.")
             lines.append(f"  Breaks from party: actual recorded NO votes against the party YES majority.")
             lines.append(f"  Issue-area breakdown: keyword tagging of bill titles/subjects — not official legislative categories.")
