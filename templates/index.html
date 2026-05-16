@@ -520,7 +520,7 @@
       viqAddMsg('assistant', greeting);
     };
     document.addEventListener('DOMContentLoaded', () => initViqChat('VA-00'));
-    // Configure marked: all links open in new tab by default
+    // Configure marked: all links open in new tab by default (overridden per-link below)
     if (typeof marked !== 'undefined') {
       const _renderer = new marked.Renderer();
       _renderer.link = function(href, title, text) {
@@ -533,25 +533,39 @@
       if (typeof marked === 'undefined') return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
       return marked.parse(text);
     }
-    // Bill URL pattern: openstates.org/va/bills/YEAR/BILLID/
-    const _billUrlRe = /openstates\.org\/va\/bills\/\d+\/([A-Z]+\d+)\/?/;
+    const _billUrlRe     = /openstates\.org\/va\/bills\/\d+\/([A-Z]+\d+)\/?/i;
+    const _personUrlRe   = /openstates\.org\/person\//i;
     function viqAttachLinkBehavior(bubble) {
       bubble.querySelectorAll('a').forEach(function(a) {
         const href = a.getAttribute('href') || '';
-        const m = href.match(_billUrlRe);
-        if (m) {
-          // Bill link → ask VoteIQ
-          const billId = m[1];
+        const billMatch = href.match(_billUrlRe);
+        const isPerson  = _personUrlRe.test(href);
+
+        if (billMatch) {
+          // Bill link → ask VoteIQ about that bill
+          const billId = billMatch[1].toUpperCase();
           a.removeAttribute('target');
           a.removeAttribute('rel');
           a.title = 'Ask VoteIQ about ' + billId;
-          a.style.cursor = 'pointer';
           a.addEventListener('click', function(e) {
             e.preventDefault();
             viqSendMessage('Tell me more about ' + billId);
           });
+
+        } else if (isPerson) {
+          // Legislator profile link → ask VoteIQ using the link text as the name
+          const legName = a.textContent.trim();
+          a.removeAttribute('target');
+          a.removeAttribute('rel');
+          a.title = 'Ask VoteIQ about ' + legName;
+          a.addEventListener('click', function(e) {
+            e.preventDefault();
+            viqSendMessage('Tell me more about ' + legName);
+          });
+
         }
-        // Non-bill links (OpenStates home, LIS, legislator pages) keep target="_blank"
+        // Source links (openstates.org home, lis.virginia.gov, whitehouse.gov, etc.)
+        // keep their target="_blank" — they open the actual source page
       });
     }
     function viqAddMsg(role, text, isTyping) {
