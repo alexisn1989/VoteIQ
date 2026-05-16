@@ -4519,6 +4519,14 @@ election results, legislator voting records, and representative profile summarie
 Answer the user's question using ONLY the excerpts below — do not rely on your training data. \
 Be concise (3-5 sentences), factual, and cite bill numbers when relevant.{district_note}{chroma_note}
 
+VOTE INTERPRETATION — apply these rules when reading vote records:
+- If a legislator votes YES on passage but NO on concurrence/conference substitute, they likely objected to the amended version, not the bill itself. Say: "voted against the House-amended version; accepted final compromise."
+- If a legislator votes YES in committee but NO on floor, they may have had ideological concerns or constituent pressure. Do not assume — say "voted NO on floor passage after supporting it in committee; dataset does not explain the change."
+- Always show the SEQUENCE of votes when available, not just the final result. A bill can have 4-8 votes — the pattern matters.
+- Flag when a NO vote is on a substitute or amendment vs. the original bill. These are different positions.
+- "Concur House Substitute", "Concur House Amendment", "Adopt Conference Committee Report" are amendment/concurrence votes — not original passage votes.
+- "Reported from [Committee]" = committee vote. "Passage R" or "Passage H" = floor vote.
+
 HALLUCINATION PREVENTION — follow these rules strictly:
 1. Never say a legislator "prioritized", "championed", "focused on", or "made X a priority" unless the excerpt explicitly states it. Sponsoring a bill does not imply it was a priority.
 2. Never infer a legislator's role beyond what the data shows. If they are listed as sponsor, say "sponsored". If their exact role is unclear, say "co-sponsored or listed as patron — exact role unclear."

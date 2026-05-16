@@ -58,6 +58,20 @@ def tag_topics(text: str) -> list[str]:
             if any(kw in text_lower for kw in keywords)]
 
 
+def _motion_note(motion: str) -> str:
+    """Return a short clarifying tag for the type of vote motion."""
+    m = (motion or "").lower()
+    if "concur house substitute" in m or "concur house amendment" in m:
+        return " [NO on House-amended version]"
+    if "conference committee report" in m or "adopt conference" in m:
+        return " [NO on conference report]"
+    if "passage" in m:
+        return " [NO on floor passage]"
+    if "reported from" in m or "subcommittee" in m:
+        return " [NO in committee]"
+    return ""
+
+
 def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
     chunks = []
 
@@ -257,7 +271,12 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
                 # Policy-area groups first
                 for area, bills_in_area in sorted(no_by_area.items(), key=lambda x: -len(x[1])):
                     count = len(bills_in_area)
-                    bill_list = ", ".join(bid for bid, _ in bills_in_area[:4])
+                    # Build bill list with motion notes
+                    bill_entries = []
+                    for bid, _ in bills_in_area[:4]:
+                        motion = next((v["motion"] for v in notable_no if v["bill_id"] == bid), "")
+                        bill_entries.append(f"{bid}{_motion_note(motion)}")
+                    bill_list = ", ".join(bill_entries)
                     sample_title = bills_in_area[0][1][:80] if bills_in_area[0][1] else ""
                     if count >= 3:
                         pattern = f"voted NO on {count} {area} bills that passed"
@@ -271,7 +290,9 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
 
                 # Untagged (no topic match)
                 for bid, title in untagged_no[:3]:
-                    lines.append(f"  [CONFIRMED NO vote, topic unclassified] {bid}: {title[:100]}" if title else f"  {bid}")
+                    motion = next((v["motion"] for v in notable_no if v["bill_id"] == bid), "")
+                    motion_note = _motion_note(motion)
+                    lines.append(f"  [CONFIRMED NO vote, topic unclassified] {bid}{motion_note}: {title[:90]}" if title else f"  {bid}{motion_note}")
 
                 # Pattern note — labeled as INFERRED
                 if no_by_area:
