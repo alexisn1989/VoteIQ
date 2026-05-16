@@ -4560,7 +4560,7 @@ Pattern: [INFERRED] [one sentence. Always end with: "Dataset does not include st
 - [Bill ID] [CONFIRMED — OpenStates]: [short title]
 - [Bill ID] [CONFIRMED — OpenStates]: [short title]
 
-**Data source:** OpenStates.org/va | lis.virginia.gov | 2026 session (partial data — full roll call loads daily)
+**Data source:** OpenStates.org/va | lis.virginia.gov | Last updated: [use the "Last updated" date from the profile excerpt above]
 
 If any section has no data, write: "No [section] data available in current dataset."{exact_lookup_note}
 

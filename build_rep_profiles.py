@@ -19,6 +19,7 @@ import json
 import re
 import sqlite3
 from collections import Counter, defaultdict
+from datetime import date
 from pathlib import Path
 
 DB_PATH = Path(__file__).parent / "openstates_va.db"
@@ -214,10 +215,11 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
             party_str = f" ({party})" if party else ""
             dist_str  = f", District {district}" if district else ""
 
+            built_date = date.today().strftime("%B %d, %Y")
             lines = [
                 f"Representative Profile: {name}{party_str} — Virginia {chamber_str}{dist_str} ({session} session)",
-                f"Source: OpenStates Virginia legislative database (openstates.org/va) | LIS (lis.virginia.gov)",
-                f"Data coverage: {session} Regular Session (vote data may be partial pending full DB build)",
+                f"Source: OpenStates Virginia (openstates.org/va) | LIS (lis.virginia.gov)",
+                f"Last updated: {built_date} | Data coverage: {session} Regular Session (vote data may be partial pending full DB build)",
             ]
 
             if party:
