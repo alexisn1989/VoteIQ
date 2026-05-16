@@ -47,6 +47,18 @@ def build_bill_chunks(conn: sqlite3.Connection, sessions: list[str], bill_filter
     if not bill_rows:
         return chunks
 
+    # Build companion-bill lookup from ALL bills in the relevant sessions (not filtered by bill_id)
+    # Bills with the same title in the same session are companion/identical bills
+    relevant_sessions = list({row[1] for row in bill_rows})
+    all_session_bills = conn.execute(
+        f"SELECT bill_id, session, title, openstates_url FROM bills WHERE session IN ({','.join('?'*len(relevant_sessions))})",
+        relevant_sessions
+    ).fetchall()
+    _title_map: dict[tuple, list] = {}
+    for bid, sess, ttl, burl in all_session_bills:
+        key = (sess, (ttl or "").strip().lower())
+        _title_map.setdefault(key, []).append((bid, burl or f"https://openstates.org/va/bills/{sess}/{bid}/"))
+
     for bill_id, session, title, subjects, sponsors, result, url in bill_rows:
         vote_rows = conn.execute(
             "SELECT voter_name, option, motion, chamber, vote_date "
@@ -91,6 +103,17 @@ def build_bill_chunks(conn: sqlite3.Connection, sessions: list[str], bill_filter
             lines.append(f"Sponsors: {sponsors}")
         if url:
             lines.append(f"OpenStates: {url}")
+
+        # Companion / identical bills (same title, same session, different bill_id)
+        companions = [
+            (bid, burl) for bid, burl in _title_map.get((session, (title or "").strip().lower()), [])
+            if bid != bill_id
+        ]
+        if companions:
+            companion_links = ", ".join(
+                f"[{bid} — {(title or '').strip()[:80]}]({burl})" for bid, burl in companions
+            )
+            lines.append(f"Companion bill(s) [CONFIRMED — identical title, same session]: {companion_links}")
 
         # Emit each round of voting with chamber label
         senate_rounds = [(k, v) for k, v in motion_votes.items() if k[0] == "Senate"]

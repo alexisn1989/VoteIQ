@@ -4581,6 +4581,7 @@ Pattern: [INFERRED] [one sentence. Always end with: "Dataset does not include st
 - [CONFIRMED — OpenStates]: [use the full markdown link from the excerpt, e.g. [HB774 — Elections; absentee...](https://openstates.org/va/bills/2026/HB774/)]
 
 IMPORTANT: Always copy bill links exactly as they appear in the excerpts — format is [BILLID — title](url). Never shorten or reformat them. List ALL sponsored bills found in the excerpt, do not truncate the list.
+When a bill excerpt contains a "Companion bill(s)" line, always render those as clickable markdown links in your response. If a companion bill ID is mentioned in text but has no URL in the excerpt, construct its link as [BILLID — title](https://openstates.org/va/bills/{year}/{bill_id}/) using the session year from the excerpt.
 
 **Methodology note** (always include when answering about caucus labels or party alignment):
 Caucus read is plain-language shorthand derived from OpenStates roll-call data (confirmed votes only). Split-vote threshold: 15–85% of party voting YES, minimum 5 members voting. "Breaks from party" means actual recorded NO votes against the party YES majority. Issue-area tags are keyword-based, not official legislative categories.
