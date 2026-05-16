@@ -300,6 +300,7 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
             if total_v:
                 lines.append(f"\n[CONFIRMED — OpenStates floor vote records, {session} session]")
                 lines.append(f"  {total_v} floor votes recorded — {len(floor_yes)} YES ({yes_rate}%), {len(floor_no)} NO")
+                lines.append(f"  Note: Vote totals reflect all recorded votes across both chambers and all vote types (passage, amendments, conference reports). Individual chamber breakdowns available on request.")
 
             if notable_no:
                 lines.append(f"\n  [CONFIRMED — OpenStates vote records] Voted NO on {len(notable_no)} bill(s) that still passed (minority dissent):")
