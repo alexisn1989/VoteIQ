@@ -19,6 +19,7 @@ import argparse
 import json
 import re
 import sqlite3
+from collections import OrderedDict
 from pathlib import Path
 
 DB_PATH = Path(__file__).parent / "openstates_va.db"
@@ -48,35 +49,35 @@ def build_bill_chunks(conn: sqlite3.Connection, sessions: list[str], bill_filter
 
     for bill_id, session, title, subjects, sponsors, result, url in bill_rows:
         vote_rows = conn.execute(
-            "SELECT voter_name, option, motion, chamber, party "
+            "SELECT voter_name, option, motion, chamber, vote_date "
             "FROM votes "
             "WHERE bill_id=? AND session=? AND voter_name != '' "
-            "ORDER BY motion",
+            "ORDER BY vote_date, chamber, motion",
             (bill_id, session)
         ).fetchall()
 
-        # Separate floor vs committee votes
-        floor_yes, floor_no = [], []
-        comm_yes,  comm_no  = [], []
-        committees_seen = set()
-
-        for voter_name, option, motion, chamber, party in vote_rows:
-            if is_committee_motion(motion):
-                if option == "yes":
-                    comm_yes.append(voter_name)
-                elif option == "no":
-                    comm_no.append(voter_name)
-                # extract committee name
-                cname = re.sub(r"\s+with\s+.*$", "", motion or "", flags=re.IGNORECASE)
-                cname = re.sub(r"^reported from\s+", "", cname, flags=re.IGNORECASE)
-                cname = cname.strip().title()
-                if cname and "Subcommittee" not in cname:
-                    committees_seen.add(cname)
-            else:
-                if option == "yes":
-                    floor_yes.append(voter_name)
-                elif option == "no":
-                    floor_no.append(voter_name)
+        # Group votes by (chamber, motion) preserving order; deduplicate per voter
+        motion_votes: dict[tuple, dict] = OrderedDict()
+        seen_voter_per_motion: dict[tuple, set] = {}
+        for voter_name, option, motion, chamber, vote_date in vote_rows:
+            key = (chamber or "Unknown", (motion or "").strip())
+            if key not in motion_votes:
+                motion_votes[key] = {"yes": 0, "no": 0, "not voting": 0, "abstain": 0,
+                                     "yes_names": [], "no_names": [],
+                                     "is_committee": is_committee_motion(motion),
+                                     "vote_date": vote_date or ""}
+                seen_voter_per_motion[key] = set()
+            if voter_name in seen_voter_per_motion[key]:
+                continue
+            seen_voter_per_motion[key].add(voter_name)
+            d = motion_votes[key]
+            opt = (option or "").lower()
+            if opt in d:
+                d[opt] += 1
+            if opt == "yes" and len(d["yes_names"]) < 40:
+                d["yes_names"].append(voter_name)
+            if opt == "no" and len(d["no_names"]) < 40:
+                d["no_names"].append(voter_name)
 
         result_label = {"pass": "PASSED", "fail": "FAILED"}.get(result or "", result or "pending").upper()
 
@@ -91,28 +92,36 @@ def build_bill_chunks(conn: sqlite3.Connection, sessions: list[str], bill_filter
         if url:
             lines.append(f"OpenStates: {url}")
 
-        # Floor votes
-        if floor_yes or floor_no:
-            total = len(floor_yes) + len(floor_no)
-            lines.append(
-                f"\nFloor vote: {len(floor_yes)}-Y  {len(floor_no)}-N  (total {total})"
-            )
-            if floor_yes:
-                lines.append(f"Floor YES ({len(floor_yes)}): {', '.join(floor_yes[:40])}")
-            if floor_no:
-                lines.append(f"Floor NO  ({len(floor_no)}): {', '.join(floor_no[:40])}")
+        # Emit each round of voting with chamber label
+        senate_rounds = [(k, v) for k, v in motion_votes.items() if k[0] == "Senate"]
+        house_rounds  = [(k, v) for k, v in motion_votes.items() if k[0] == "House"]
 
-        # Committee votes
-        if comm_yes or comm_no:
-            comm_total = len(comm_yes) + len(comm_no)
-            committee_str = f" [{', '.join(sorted(committees_seen))}]" if committees_seen else ""
-            lines.append(
-                f"\nCommittee vote{committee_str}: {len(comm_yes)}-Y  {len(comm_no)}-N  (total {comm_total})"
-            )
-            if comm_yes:
-                lines.append(f"Committee YES ({len(comm_yes)}): {', '.join(comm_yes[:40])}")
-            if comm_no:
-                lines.append(f"Committee NO  ({len(comm_no)}): {', '.join(comm_no[:40])}")
+        def _emit_rounds(rounds: list, chamber_label: str):
+            if not rounds:
+                return
+            lines.append(f"\n── {chamber_label} ──")
+            for (chamber, motion), d in rounds:
+                vote_type = "Committee" if d["is_committee"] else "Floor"
+                motion_clean = re.sub(r"\s+with\s+.*$", "", motion, flags=re.IGNORECASE).strip()
+                motion_clean = re.sub(r"^(Reported from|Subcommittee recommends reporting)\s*", "", motion_clean, flags=re.IGNORECASE).strip()
+                date_str = f" ({d['vote_date']})" if d["vote_date"] else ""
+                total = d["yes"] + d["no"]
+                lines.append(
+                    f"  [{vote_type}] {motion_clean}{date_str}: "
+                    f"{d['yes']}-Y  {d['no']}-N"
+                    + (f"  {d['not voting']}-NV" if d["not voting"] else "")
+                )
+                if d["no_names"]:
+                    lines.append(f"    NO votes: {', '.join(d['no_names'])}")
+
+        _emit_rounds(senate_rounds, "State Senate")
+        _emit_rounds(house_rounds,  "House of Delegates")
+
+        lines.append(
+            "\nNote: Vote totals reflect all recorded votes across both chambers "
+            "and all vote types (passage, amendments, conference reports). "
+            "Individual chamber breakdowns available on request."
+        )
 
         text = "\n".join(lines)
 
@@ -135,8 +144,6 @@ def build_bill_chunks(conn: sqlite3.Connection, sessions: list[str], bill_filter
                 "result":    result or "",
                 "sponsors":  (sponsors or "")[:200],
                 "subjects":  (subjects or "")[:200],
-                "floor_yes_count": str(len(floor_yes)),
-                "floor_no_count":  str(len(floor_no)),
             },
         })
 
