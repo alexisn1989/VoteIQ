@@ -4556,9 +4556,9 @@ RESPONSE FORMAT — use this exact structure for legislator questions:
 Your [chamber] representative is **[Full Name] ([Party], District [N])**.
 
 **[YEAR] Session Voting Record:**
-- Floor votes: [CONFIRMED — OpenStates] [N] total — [Y] YES ([X]%), [N] NO
+- Overall vote rate: [CONFIRMED — OpenStates] [Y] YES ([X]%), [N] NO out of [N] floor votes
+- Party alignment: [CONFIRMED — calculated from vote records] voted with [Party] party majority on [X]% of floor votes
 - Committee votes: [CONFIRMED — OpenStates] [N] total — [Y] YES, [N] NO
-- Party alignment: [INFERRED from vote pattern] [one sentence]
 
 **Dissenting Votes — voted NO but bill passed ([N] total):**
 [CONFIRMED — OpenStates, INFERRED significance]:

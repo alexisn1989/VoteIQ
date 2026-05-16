@@ -158,6 +158,9 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
         voter_data: dict[str, dict] = defaultdict(lambda: {
             "votes": [], "committee_votes": [], "committees": set(), "party": "", "district": ""
         })
+        # Build party majority lookup: (bill_id, motion, party) -> Counter of options
+        party_vote_counts: dict[tuple, Counter] = defaultdict(Counter)
+
         for voter_name, option, bill_id, vote_result, party, district, motion in vote_rows:
             if not voter_name:
                 continue
@@ -170,10 +173,21 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
                     d["committees"].add(cname)
             else:
                 d["votes"].append(entry)
+                # Accumulate party vote counts for alignment calculation
+                if party and option in ("yes", "no"):
+                    party_vote_counts[(bill_id, (motion or "").strip(), party)][option] += 1
             if party:
                 d["party"] = party
             if district:
                 d["district"] = district
+
+        def party_majority_option(bill_id: str, motion: str, party: str) -> str | None:
+            """Return the majority option ('yes'/'no') for this party on this vote, or None."""
+            c = party_vote_counts.get((bill_id, motion.strip(), party))
+            if not c:
+                return None
+            top = c.most_common(1)[0]
+            return top[0] if top[1] > 0 else None
 
         # All known names = sponsors + voters
         all_names = set(sponsor_bills.keys()) | set(voter_data.keys())
@@ -196,6 +210,22 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
             floor_no  = [v for v in floor_votes if v["option"] == "no"]
             total_v   = len(floor_yes) + len(floor_no)
             yes_rate  = round(len(floor_yes) / total_v * 100, 1) if total_v else None
+
+            # Party alignment: % of floor votes matching party majority on each bill/motion
+            if party and total_v:
+                pa_match = sum(
+                    1 for v in floor_votes
+                    if v["option"] in ("yes", "no")
+                    and party_majority_option(v["bill_id"], v["motion"], party) == v["option"]
+                )
+                pa_total = sum(
+                    1 for v in floor_votes
+                    if v["option"] in ("yes", "no")
+                    and party_majority_option(v["bill_id"], v["motion"], party) is not None
+                )
+                party_alignment = round(pa_match / pa_total * 100, 1) if pa_total else None
+            else:
+                party_alignment = None
 
             # Committee vote stats
             comm_yes = [v for v in committee_votes if v["option"] == "yes"]
@@ -299,7 +329,9 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
             # Floor voting record
             if total_v:
                 lines.append(f"\n[CONFIRMED — OpenStates floor vote records, {session} session]")
-                lines.append(f"  {total_v} floor votes recorded — {len(floor_yes)} YES ({yes_rate}%), {len(floor_no)} NO")
+                lines.append(f"  Overall vote rate: {len(floor_yes)} YES ({yes_rate}%), {len(floor_no)} NO out of {total_v} floor votes")
+                if party_alignment is not None:
+                    lines.append(f"  Party alignment [CONFIRMED — calculated from vote records]: voted with {party} party majority on {party_alignment}% of floor votes")
                 lines.append(f"  Note: Vote totals reflect all recorded votes across both chambers and all vote types (passage, amendments, conference reports). Individual chamber breakdowns available on request.")
 
             if notable_no:
