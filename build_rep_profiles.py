@@ -189,6 +189,19 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
             top = c.most_common(1)[0]
             return top[0] if top[1] > 0 else None
 
+        # Build split-bill set per party: bills where 15-85% of party voted YES
+        # Used to determine caucus faction label per legislator
+        party_split_bills: dict[str, set] = defaultdict(set)
+        for (bill_id, motion, p), counter in party_vote_counts.items():
+            yes_n = counter.get("yes", 0)
+            no_n  = counter.get("no",  0)
+            total = yes_n + no_n
+            if total < 5:
+                continue
+            yes_pct = yes_n / total
+            if 0.15 <= yes_pct <= 0.85:
+                party_split_bills[p].add((bill_id, motion))
+
         # All known names = sponsors + voters
         all_names = set(sponsor_bills.keys()) | set(voter_data.keys())
 
@@ -211,7 +224,7 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
             total_v   = len(floor_yes) + len(floor_no)
             yes_rate  = round(len(floor_yes) / total_v * 100, 1) if total_v else None
 
-            # Party alignment: % of floor votes matching party majority on each bill/motion
+            # Party alignment: % of ALL floor votes matching party majority
             if party and total_v:
                 pa_match = sum(
                     1 for v in floor_votes
@@ -226,6 +239,42 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
                 party_alignment = round(pa_match / pa_total * 100, 1) if pa_total else None
             else:
                 party_alignment = None
+
+            # Split-vote alignment: alignment on only the contested (split) votes
+            # Used to assign caucus faction label
+            caucus_label = None
+            split_dissent_topics: Counter = Counter()
+            if party and party_split_bills.get(party):
+                sp_match = sp_total = 0
+                for v in floor_votes:
+                    if v["option"] not in ("yes", "no"):
+                        continue
+                    key = (v["bill_id"], v["motion"].strip())
+                    if key not in party_split_bills[party]:
+                        continue
+                    maj = party_majority_option(v["bill_id"], v["motion"], party)
+                    if maj is None:
+                        continue
+                    sp_total += 1
+                    if v["option"] == maj:
+                        sp_match += 1
+                    else:
+                        # tag the dissenting vote's policy area from the bills table
+                        br = conn.execute(
+                            "SELECT title, subjects FROM bills WHERE bill_id=? AND session=?",
+                            (v["bill_id"], session)
+                        ).fetchone()
+                        if br:
+                            for t in tag_topics((br[0] or "") + " " + (br[1] or "")):
+                                split_dissent_topics[t] += 1
+                if sp_total >= 5:
+                    split_alignment = round(sp_match / sp_total * 100, 1)
+                    if split_alignment >= 95:
+                        caucus_label = f"Party loyalist (split-vote alignment: {split_alignment}%)"
+                    elif split_alignment >= 75:
+                        caucus_label = f"Moderate/swing faction (split-vote alignment: {split_alignment}%)"
+                    else:
+                        caucus_label = f"Independent/dissenting voice (split-vote alignment: {split_alignment}%)"
 
             # Committee vote stats
             comm_yes = [v for v in committee_votes if v["option"] == "yes"]
@@ -302,6 +351,12 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
 
             if party:
                 lines.append(f"Party: {party} [CONFIRMED via OpenStates voter record]")
+            if caucus_label:
+                dissent_str = ""
+                if split_dissent_topics:
+                    top_d = [t for t, _ in split_dissent_topics.most_common(3)]
+                    dissent_str = f" | Breaks from party most on: {', '.join(top_d)}"
+                lines.append(f"Caucus faction [CONFIRMED — split-vote analysis]: {caucus_label}{dissent_str}")
             if committees:
                 lines.append(f"Committee assignments (derived from vote motions, openstates.org): {', '.join(committees)}")
 

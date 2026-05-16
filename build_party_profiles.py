@@ -93,13 +93,13 @@ def build_party_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[
             (session,)
         ).fetchall()
 
-        # Per-bill, per-party vote counts  →  (bill_id, party): {yes: N, no: N, voters: set}
-        bill_party_votes: dict[tuple, dict] = defaultdict(lambda: {"yes": 0, "no": 0, "voters": set()})
+        # Per-bill, per-party vote counts  →  (bill_id, party): {yes: N, no: N}
+        bill_party_votes: dict[tuple, dict] = defaultdict(lambda: {"yes": 0, "no": 0})
+        # Per-member, per-bill vote record  →  member -> {bill_id: option}
+        member_bill_votes: dict[str, dict] = defaultdict(dict)
         # Per-party sponsor sets
-        party_sponsors: dict[str, Counter] = defaultdict(Counter)  # party -> topic counter
+        party_sponsors: dict[str, Counter] = defaultdict(Counter)
         party_sponsored_bills: dict[str, list] = defaultdict(list)
-        # Per-party member alignment totals
-        member_votes: dict[str, dict] = defaultdict(lambda: {"party": "", "yes": 0, "no": 0})
 
         legislator_party: dict[str, str] = {}
 
@@ -110,11 +110,8 @@ def build_party_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[
             if opt not in ("yes", "no"):
                 continue
             legislator_party[voter_name] = party
-            key = (bill_id, party)
-            bill_party_votes[key][opt] += 1
-            bill_party_votes[key]["voters"].add(voter_name)
-            member_votes[voter_name]["party"] = party
-            member_votes[voter_name][opt] += 1
+            bill_party_votes[(bill_id, party)][opt] += 1
+            member_bill_votes[voter_name][bill_id] = opt
 
         # Map sponsors to party via legislator_party
         for bill_id, binfo in bill_info.items():
@@ -137,25 +134,63 @@ def build_party_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[
             if member_count < 3:
                 continue
 
-            # Avg party alignment (members who voted same as party majority)
-            alignment_scores = []
-            for voter, vd in member_votes.items():
-                if vd["party"] != party:
+            # ── Caucus / faction detection ────────────────────────────────
+            # Step 1: find bills where this party was internally split (20-80% yes)
+            split_bill_ids = []
+            for bid in bill_info:
+                pv = bill_party_votes.get((bid, party))
+                if not pv:
                     continue
-                total = vd["yes"] + vd["no"]
-                if total < 10:
+                total_p = pv["yes"] + pv["no"]
+                if total_p < 5:
                     continue
-                # Calculate how many of their votes matched party majority
-                match = 0
-                for bid, binfo in bill_info.items():
-                    key = (bid, party)
-                    pv = bill_party_votes.get(key)
-                    if not pv:
+                yes_pct = pv["yes"] / total_p
+                if 0.15 <= yes_pct <= 0.85:
+                    split_bill_ids.append(bid)
+
+            # Step 2: per-member alignment on split votes only
+            member_alignment: dict[str, dict] = {}
+            for member in members:
+                if member not in member_bill_votes:
+                    continue
+                mvotes = member_bill_votes[member]
+                match = dissent = 0
+                dissent_topics: Counter = Counter()
+                for bid in split_bill_ids:
+                    opt = mvotes.get(bid)
+                    if not opt:
                         continue
+                    pv = bill_party_votes[(bid, party)]
                     party_maj = "yes" if pv["yes"] >= pv["no"] else "no"
-                    # Find this voter's vote on this bill (approximate via party total)
-                alignment_scores.append(0)  # placeholder — full calc in rep profiles
-            # Use simpler proxy: avg member yes-rate within party
+                    if opt == party_maj:
+                        match += 1
+                    else:
+                        dissent += 1
+                        for t in bill_info[bid]["topics"]:
+                            dissent_topics[t] += 1
+                total_split = match + dissent
+                if total_split < 5:
+                    continue
+                alignment_pct = round(match / total_split * 100, 1)
+                member_alignment[member] = {
+                    "alignment": alignment_pct,
+                    "dissent_count": dissent,
+                    "dissent_topics": dissent_topics,
+                }
+
+            # Step 3: bucket members into factions by split-vote alignment
+            loyalists  = [(n, d) for n, d in member_alignment.items() if d["alignment"] >= 95]
+            moderates  = [(n, d) for n, d in member_alignment.items() if 75 <= d["alignment"] < 95]
+            mavericks  = [(n, d) for n, d in member_alignment.items() if d["alignment"] < 75]
+
+            # Top dissent topics per faction
+            def top_dissent_topics(faction):
+                combined: Counter = Counter()
+                for _, d in faction:
+                    combined.update(d["dissent_topics"])
+                return [t for t, _ in combined.most_common(3)]
+
+            # Overall party floor vote totals
             party_yes = sum(bill_party_votes[(bid, party)]["yes"] for bid in bill_info)
             party_no  = sum(bill_party_votes[(bid, party)]["no"]  for bid in bill_info)
             party_total = party_yes + party_no
@@ -225,6 +260,43 @@ def build_party_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[
             if party_total:
                 pct_yes = round(party_yes / party_total * 100, 1)
                 lines.append(f"\n[CONFIRMED — OpenStates floor votes] {party} caucus cast {party_total} floor votes: {party_yes} YES ({pct_yes}%), {party_no} NO")
+
+            # ── Caucus / faction breakdown ────────────────────────────────
+            if member_alignment and split_bill_ids:
+                lines.append(f"\n[CONFIRMED — calculated from {len(split_bill_ids)} internally split votes] Caucus faction breakdown:")
+
+                if loyalists:
+                    names = ", ".join(n for n, _ in sorted(loyalists, key=lambda x: -x[1]["alignment"])[:8])
+                    lines.append(f"  Party loyalists (≥95% alignment on split votes, {len(loyalists)} members): {names}")
+
+                if moderates:
+                    mod_topics = top_dissent_topics(moderates)
+                    names = ", ".join(n for n, _ in sorted(moderates, key=lambda x: x[1]["alignment"])[:8])
+                    topic_str = f" — breaks most often on: {', '.join(mod_topics)}" if mod_topics else ""
+                    lines.append(f"  Moderate/swing faction ({len(moderates)} members, 75–94% alignment){topic_str}: {names}")
+
+                if mavericks:
+                    mav_topics = top_dissent_topics(mavericks)
+                    names = ", ".join(
+                        f"{n} ({d['alignment']}%)"
+                        for n, d in sorted(mavericks, key=lambda x: x[1]["alignment"])[:6]
+                    )
+                    topic_str = f" — dissents most on: {', '.join(mav_topics)}" if mav_topics else ""
+                    lines.append(f"  Independent/dissenting faction ({len(mavericks)} members, <75% alignment){topic_str}: {names}")
+
+                # Most divisive bills within party
+                most_divisive = sorted(
+                    [(bid, bill_party_votes[(bid, party)]) for bid in split_bill_ids],
+                    key=lambda x: abs(x[1]["yes"] - x[1]["no"])
+                )[:5]
+                if most_divisive:
+                    lines.append(f"  Most divisive bills within {party} caucus:")
+                    for bid, pv in most_divisive:
+                        binfo = bill_info[bid]
+                        total_p = pv["yes"] + pv["no"]
+                        yes_pct = round(pv["yes"] / total_p * 100)
+                        topic_tag = f" [{binfo['topics'][0]}]" if binfo["topics"] else ""
+                        lines.append(f"    [{bid}]({binfo['url']}) — {binfo['title'][:80]}{topic_tag} ({yes_pct}% of caucus YES)")
 
             # Unanimous bloc votes
             if unanimous_yes_bills:
