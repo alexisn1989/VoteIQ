@@ -97,8 +97,15 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
             m = (motion or "").lower()
             return m.startswith("reported from") or m.startswith("subcommittee")
 
+        def extract_committee_name(motion: str) -> str:
+            """Pull committee name from 'Reported from Education and Health with substitute'."""
+            m = re.sub(r"\s+with\s+.*$", "", motion or "", flags=re.IGNORECASE)
+            m = re.sub(r"^reported from\s+", "", m, flags=re.IGNORECASE)
+            m = re.sub(r"^subcommittee recommends reporting.*", "Subcommittee", m, flags=re.IGNORECASE)
+            return m.strip().title()
+
         voter_data: dict[str, dict] = defaultdict(lambda: {
-            "votes": [], "committee_votes": [], "party": "", "district": ""
+            "votes": [], "committee_votes": [], "committees": set(), "party": "", "district": ""
         })
         for voter_name, option, bill_id, vote_result, party, district, motion in vote_rows:
             if not voter_name:
@@ -107,6 +114,9 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
             entry = {"bill_id": bill_id, "option": option, "bill_result": vote_result, "motion": motion or ""}
             if is_committee(motion):
                 d["committee_votes"].append(entry)
+                cname = extract_committee_name(motion)
+                if cname and cname != "Subcommittee":
+                    d["committees"].add(cname)
             else:
                 d["votes"].append(entry)
             if party:
@@ -119,11 +129,12 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
 
         for name in sorted(all_names):
             bills      = sponsor_bills.get(name, [])
-            vdata           = voter_data.get(name, {"votes": [], "committee_votes": [], "party": "", "district": ""})
+            vdata           = voter_data.get(name, {"votes": [], "committee_votes": [], "committees": set(), "party": "", "district": ""})
             party           = vdata["party"]
             district        = vdata["district"]
             floor_votes     = vdata["votes"]
             committee_votes = vdata["committee_votes"]
+            committees      = sorted(vdata["committees"])
 
             passed  = [b for b in bills if b["result"] == "pass"]
             failed  = [b for b in bills if b["result"] == "fail"]
@@ -179,6 +190,8 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
 
             if party:
                 lines.append(f"Party: {party}")
+            if committees:
+                lines.append(f"Committee assignments: {', '.join(committees)}")
 
             # Sponsored bills summary
             if bills:
