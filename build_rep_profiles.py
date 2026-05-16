@@ -610,13 +610,14 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
                 for v in comm_killed:
                     title = bill_title_map.get(v["bill_id"], "")
                     motion = v["motion"].replace("Reported from ", "").split(" with")[0]
-                    lines.append(f"    {v['bill_id']} [{motion}]: {title[:90]}" if title else f"    {v['bill_id']} [{motion}]")
+                    link = _bill_link(v["bill_id"], bill_url_map.get(v["bill_id"], ""), title)
+                    lines.append(f"    {link} [{motion}]")
 
             if flip_bills:
                 lines.append(f"  [CONFIRMED vote records, INFERRED significance] Voted NO in committee but YES on floor ({len(flip_bills)} bills) — dataset does not explain the change:")
                 for bid in list(flip_bills)[:3]:
                     title = bill_title_map.get(bid, "")
-                    lines.append(f"    {bid}: {title[:90]}" if title else f"    {bid}")
+                    lines.append(f"    {_bill_link(bid, bill_url_map.get(bid, ''), title)}")
 
             # Issue-area vote breakdown
             active_topics = [(t, d) for t, d in topic_vote_detail.items() if d["yes"] + d["no"] >= 3]
