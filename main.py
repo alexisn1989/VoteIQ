@@ -4562,15 +4562,17 @@ Your [chamber] representative is **[Full Name] ([Party], District [N])**.
 
 **Dissenting Votes — voted NO but bill passed ([N] total):**
 [CONFIRMED — OpenStates, INFERRED significance]:
-- [Policy area]: [bill IDs] — [one-line description]
-- [Policy area]: [bill IDs] — [one-line description]
+- [Policy area]: [markdown bill links from excerpt] — [one-line description]
+- [Policy area]: [markdown bill links from excerpt] — [one-line description]
 Pattern: [INFERRED] [one sentence. Always end with: "Dataset does not include stated reasons for these votes."]
 
 **Bills Sponsored ([N] total, [X] passed):**
-- [Bill ID] [CONFIRMED — OpenStates]: [short title]
-- [Bill ID] [CONFIRMED — OpenStates]: [short title]
+- [CONFIRMED — OpenStates]: [use the full markdown link from the excerpt, e.g. [HB774 — Elections; absentee...](https://openstates.org/va/bills/2026/HB774/)]
+- [CONFIRMED — OpenStates]: [use the full markdown link from the excerpt]
 
-**Data source:** OpenStates.org/va | lis.virginia.gov | Last updated: [use the "Last updated" date from the profile excerpt above]
+IMPORTANT: Always copy bill links exactly as they appear in the excerpts — format is [BILLID — title](url). Never shorten or reformat them. List ALL sponsored bills found in the excerpt, do not truncate the list.
+
+**Data source:** [OpenStates](https://openstates.org/va/) | [LIS](https://lis.virginia.gov) | Last updated: [use the "Last updated" date from the profile excerpt above]
 
 If any section has no data, write: "No [section] data available in current dataset."{exact_lookup_note}
 
@@ -4578,7 +4580,7 @@ EXCERPTS:
 {context}"""
 
     try:
-        return ChatResponse(reply=_claude_reply(system_prompt, req.messages, max_tokens=600))
+        return ChatResponse(reply=_claude_reply(system_prompt, req.messages, max_tokens=1000))
     except Exception as e:
         return ChatResponse(reply=_friendly_claude_error(e))
 
