@@ -205,6 +205,7 @@ INDUSTRY_MAP: list[tuple[str, str]] = [
     ("deloitte",                    "Finance"),
     ("prudential",                  "Finance"),
     ("s&p global",                  "Finance"),
+    ("amalgamated bank",            "Finance"),
     ("kpmg",                        "Finance"),
     ("ernst & young",               "Finance"),
     ("price waterhouse",            "Finance"),
@@ -262,6 +263,10 @@ INDUSTRY_MAP: list[tuple[str, str]] = [
     ("iron workers",                "Labor"),
     ("amalgamated transit",         "Labor"),
     ("united association",          "Labor"),   # plumbers & pipefitters
+    ("plasterers",                  "Labor"),
+    ("cement masons",               "Labor"),
+    ("postal supervisors",          "Labor"),
+    ("machinists non-partisan",     "Labor"),
     ("letter carrier",              "Labor"),
     ("firefighter",                 "Labor"),
     ("fire fighters",               "Labor"),
@@ -463,6 +468,39 @@ _INTERNAL_PATTERNS = [
     "public opinion strategies",
     "cecchi, giuseppe",
     "automotive free international trade",  # trade policy PAC, not automotive industry
+    # Joint fundraising committees (party money bundles, not industry PACs)
+    "va victory",
+    "virginia victory",
+    "senate victory",
+    "senate impact",
+    "justice 2024",
+    "blue senate",
+    "dem senate",
+    "house majority",
+    "majority forward",
+    "blue america",
+    "unitemized",
+    # Leadership PACs
+    "ameripac",
+    "commonwealth pac",
+    "fair shot pac",
+    "blue hen",
+    "jeff pac",
+    "jobs, education",
+    "fight the right",
+    "democracy defense",
+    "common good usa",
+    # Vendors / digital fundraising firms
+    "rising tide interactive",
+    "targeted victory",
+    "bully pulpit",
+    "new blue interactive",
+    # Community/ideological PACs (not classifiable by industry)
+    "hindu american",
+    "hindus of",
+    "indian american impact",
+    "americans4hindus",
+    "democratic asian",
 ]
 
 
