@@ -4766,6 +4766,40 @@ def poll_articles(limit: int = 25):
         return {"count": 0, "results": [], "source": "poll_articles_error", "error": str(exc)}
 
 
+@app.get("/api/polls-debug")
+def polls_debug():
+    """Diagnostic: DB path, file existence, row counts, last ingest time."""
+    db_path = _OPENSTATES_DB
+    info: dict = {"db_path": db_path, "db_exists": os.path.exists(db_path)}
+    if info["db_exists"]:
+        info["db_size_bytes"] = os.path.getsize(db_path)
+    try:
+        conn = sqlite3.connect(db_path)
+        tables = [r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()]
+        info["tables"] = tables
+        for tbl in ("polls", "poll_results", "poll_articles", "poll_ingest_runs"):
+            if tbl in tables:
+                info[f"{tbl}_count"] = conn.execute(f"SELECT COUNT(*) FROM {tbl}").fetchone()[0]
+                if tbl == "polls":
+                    row = conn.execute(
+                        "SELECT state, COUNT(*) FROM polls GROUP BY state ORDER BY COUNT(*) DESC LIMIT 5"
+                    ).fetchall()
+                    info["polls_by_state"] = [{"state": r[0], "count": r[1]} for r in row]
+                    last = conn.execute("SELECT MAX(fetched_at) FROM polls").fetchone()[0]
+                    info["polls_last_fetched"] = last
+                if tbl == "poll_ingest_runs":
+                    runs = conn.execute(
+                        "SELECT source, status, rows_written, started_at FROM poll_ingest_runs ORDER BY id DESC LIMIT 10"
+                    ).fetchall()
+                    info["recent_ingest_runs"] = [dict(zip(["source","status","rows_written","started_at"], r)) for r in runs]
+        conn.close()
+    except Exception as exc:
+        info["db_error"] = str(exc)
+    return info
+
+
 @app.get("/api/polls-feed")
 def polls_feed(
     office: str | None = None,
