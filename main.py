@@ -655,14 +655,20 @@ def _load_pac_cache() -> None:
         if not tbl:
             conn.close()
             return
+        # Load the most-recent cycle per member×industry to avoid duplicates across reruns
+        fresh: dict[str, list[dict]] = {}
         for row in conn.execute(
-            "SELECT bioguide_id, member_name, cycle, industry, total_amount, contributor_count, top_donors "
-            "FROM fec_industry_totals ORDER BY total_amount DESC"
+            """SELECT bioguide_id, member_name, industry,
+                      total_amount, contributor_count, top_donors,
+                      MAX(cycle) AS cycle
+               FROM fec_industry_totals
+               GROUP BY bioguide_id, industry
+               ORDER BY total_amount DESC"""
         ):
             bgid = row["bioguide_id"]
-            if bgid not in _PAC_CACHE:
-                _PAC_CACHE[bgid] = []
-            _PAC_CACHE[bgid].append({
+            if bgid not in fresh:
+                fresh[bgid] = []
+            fresh[bgid].append({
                 "industry":    row["industry"],
                 "total":       row["total_amount"],
                 "count":       row["contributor_count"],
@@ -671,6 +677,7 @@ def _load_pac_cache() -> None:
                 "cycle":       row["cycle"],
             })
         conn.close()
+        _PAC_CACHE = fresh
         total_rows = sum(len(v) for v in _PAC_CACHE.values())
         print(f"PAC cache ready: {total_rows} industry rows across {len(_PAC_CACHE)} members.")
     except Exception as exc:
@@ -3771,7 +3778,7 @@ def _fetch_finance_context(bioguide_ids: list[str], question: str) -> str:
 
     if not lines:
         return ""
-    return "CAMPAIGN FINANCE & INDUSTRY CORRELATION (FEC data):\n" + "\n".join(lines)
+    return "CAMPAIGN FINANCE & INDUSTRY CORRELATION (source: FEC.gov, fec.gov/data):\n" + "\n".join(lines)
 
 
 try:
@@ -4124,7 +4131,7 @@ Format citations as: [Outlet — Author](URL) at the end of the relevant sentenc
 If no relevant news is listed above, answer from your training knowledge.
 ''' if news_context else ''}
 
-Keep answers 2-4 sentences. Be factual and nonpartisan. When citing a vote, include the bill name and Yea/Nay. When citing donors, note the industry and total amount from FEC records. For official contact info direct users to house.gov, senate.gov, or virginiageneralassembly.gov. Never express opinions on representatives or tell people how to vote."""
+Keep answers 2-4 sentences. Be factual and nonpartisan. When citing a vote, include the bill name and Yea/Nay. When citing donors or industry contributions, state the dollar amount and add "(FEC data, fec.gov)" so users know the source. For official contact info direct users to house.gov, senate.gov, or virginiageneralassembly.gov. Never express opinions on representatives or tell people how to vote."""
     try:
         return ChatResponse(reply=_claude_reply(system_prompt, req.messages, max_tokens=1000))
     except Exception as e:
