@@ -126,6 +126,18 @@
   .donors-cycle-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
   .donors-cycle-tab { font-family: 'Barlow Condensed', sans-serif; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--mid); background: white; color: var(--muted); cursor: pointer; transition: all 0.15s; }
   .donors-cycle-tab.active { background: var(--navy); color: white; border-color: var(--navy); }
+  /* Chart view toggle */
+  .chart-view-toggle { display: flex; gap: 4px; margin-left: auto; }
+  .chart-view-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 0.58rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 7px; border: 1px solid var(--mid); background: white; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .chart-view-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
+  /* Pie chart */
+  .pie-wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  .pie-legend { flex: 1; min-width: 140px; }
+  .pie-legend-row { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.63rem; }
+  .pie-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .pie-legend-label { color: var(--navy); font-weight: 700; letter-spacing: 0.04em; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pie-legend-pct { color: var(--muted); width: 36px; text-align: right; flex-shrink: 0; }
+  .pie-legend-amt { color: var(--muted); width: 52px; text-align: right; flex-shrink: 0; font-size: 0.58rem; }
 
   /* State officials compact grid */
   .state-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
@@ -528,73 +540,131 @@ function fmtMoney(n) {
   return `$${Math.round(n)}`;
 }
 
-function renderDonorChart(data, activeCycle) {
+const _chartViewState = {}; // bioguide_id -> 'bar' | 'pie'
+
+function buildRows(data, displayCycle) {
   const industries = data.industries || [];
-  const cycles = data.cycles || [];
-  if (!industries.length) return '<div class="donor-no-data">No PAC contribution data yet.</div>';
-
-  // Pick which cycle to display
-  const displayCycle = activeCycle || cycles[cycles.length - 1] || '';
-
-  // Sort: named industries by selected-cycle total, Other last
   const named = industries.filter(r => r.industry !== 'Other').map(r => ({
     ...r, displayTotal: r.by_cycle ? (r.by_cycle[displayCycle] || 0) : r.total
   })).sort((a, b) => b.displayTotal - a.displayTotal);
   const other = industries.find(r => r.industry === 'Other');
   const otherDisplay = other ? {...other, displayTotal: other.by_cycle ? (other.by_cycle[displayCycle] || 0) : other.total} : null;
-  const rows = otherDisplay ? [...named, otherDisplay] : named;
+  return otherDisplay ? [...named, otherDisplay] : named;
+}
 
+function renderPieChart(rows) {
+  const total = rows.reduce((s, r) => s + (r.displayTotal || 0), 0);
+  if (!total) return '<div class="donor-no-data">No data.</div>';
+
+  const R = 70, r = 38, cx = 80, cy = 80;
+  let angle = -Math.PI / 2; // start at top
+  let paths = '';
+
+  const slices = rows.filter(r => r.displayTotal > 0).map(row => {
+    const frac = row.displayTotal / total;
+    const sweep = frac * 2 * Math.PI;
+    const color = INDUSTRY_COLORS[row.industry] || '#adb5bd';
+    const x1 = cx + R * Math.cos(angle);
+    const y1 = cy + R * Math.sin(angle);
+    const x2 = cx + R * Math.cos(angle + sweep);
+    const y2 = cy + R * Math.sin(angle + sweep);
+    const ix1 = cx + r * Math.cos(angle);
+    const iy1 = cy + r * Math.sin(angle);
+    const ix2 = cx + r * Math.cos(angle + sweep);
+    const iy2 = cy + r * Math.sin(angle + sweep);
+    const large = sweep > Math.PI ? 1 : 0;
+    const pct = Math.round(frac * 100);
+    const path = `M${x1.toFixed(2)},${y1.toFixed(2)} A${R},${R} 0 ${large} 1 ${x2.toFixed(2)},${y2.toFixed(2)} L${ix2.toFixed(2)},${iy2.toFixed(2)} A${r},${r} 0 ${large} 0 ${ix1.toFixed(2)},${iy1.toFixed(2)} Z`;
+    paths += `<path d="${path}" fill="${color}" stroke="#f8f6f1" stroke-width="1.5"><title>${row.industry}: ${fmtMoney(row.displayTotal)} (${pct}%)</title></path>`;
+    angle += sweep;
+    return { row, frac, pct, color };
+  });
+
+  const legendHtml = slices.map(s => `
+    <div class="pie-legend-row">
+      <div class="pie-legend-dot" style="background:${s.color}"></div>
+      <div class="pie-legend-label">${s.row.industry}</div>
+      <div class="pie-legend-pct">${s.pct}%</div>
+      <div class="pie-legend-amt">${fmtMoney(s.row.displayTotal)}</div>
+    </div>`).join('');
+
+  return `<div class="pie-wrap">
+    <svg width="160" height="160" viewBox="0 0 160 160" style="flex-shrink:0;">
+      ${paths}
+      <circle cx="${cx}" cy="${cy}" r="${r - 2}" fill="#f8f6f1"/>
+    </svg>
+    <div class="pie-legend">${legendHtml}</div>
+  </div>`;
+}
+
+function renderBarChart(rows, data, displayCycle) {
+  const cycles = data.cycles || [];
   const max = Math.max(...rows.map(r => r.displayTotal), 1);
-
-  // Cycle selector tabs
-  let tabsHtml = '';
-  if (cycles.length > 1) {
-    tabsHtml = `<div class="donors-cycle-tabs">` +
-      cycles.map(c => `<button class="donors-cycle-tab${c === displayCycle ? ' active' : ''}" onclick="switchDonorCycle(this,'${data.bioguide_id}','${c}')">${c}</button>`).join('') +
-      `</div>`;
-  }
-
-  const barsHtml = rows.map(r => {
+  return rows.map(r => {
     if (!r.displayTotal) return '';
     const pct = Math.max(2, Math.round((r.displayTotal / max) * 100));
     const color = INDUSTRY_COLORS[r.industry] || '#adb5bd';
     const top = r.top_donors && r.top_donors.length
       ? r.top_donors.slice(0,2).map(d => d.name.replace(/political action committee.*/i,'PAC').trim()).join(', ')
       : '';
-
-    // Trend badge
     let trendHtml = '';
-    if (r.trend_label && displayCycle === displayCycle /* always show vs base */ ) {
-      const cls = r.trend_label.startsWith('+') ? 'up'
-                : r.trend_label.startsWith('-') ? 'down'
-                : r.trend_label === 'NEW' ? 'new' : 'flat';
+    if (r.trend_label) {
+      const cls = r.trend_label.startsWith('+') ? 'up' : r.trend_label.startsWith('-') ? 'down' : r.trend_label === 'NEW' ? 'new' : 'flat';
       trendHtml = `<div class="donor-trend ${cls}">${r.trend_label}</div>`;
     }
-
-    // Sparkline — mini bars for each cycle
     let sparkHtml = '';
     if (r.by_cycle && cycles.length > 1) {
       const vals = cycles.map(c => r.by_cycle[c] || 0);
       const smax = Math.max(...vals, 1);
       const sparks = vals.map((v, i) => {
         const h = Math.max(2, Math.round((v / smax) * 14));
-        const active = cycles[i] === displayCycle ? color : '#ccc';
-        return `<div class="spark-bar" style="height:${h}px;background:${active}"></div>`;
+        return `<div class="spark-bar" style="height:${h}px;background:${cycles[i] === displayCycle ? color : '#ccc'}"></div>`;
       }).join('');
-      sparkHtml = `<div class="donor-sparkline" title="${cycles.map((c,i) => c+': '+fmtMoney(vals[i])).join(' / ')}">${sparks}</div>`;
+      sparkHtml = `<div class="donor-sparkline" title="${cycles.map((c,i)=>c+': '+fmtMoney(vals[i])).join(' / ')}">${sparks}</div>`;
     }
-
-    return `
-      <div class="donor-bar-row" title="${top || r.industry}">
-        <div class="donor-industry">${r.industry}</div>
-        <div class="donor-bar-wrap"><div class="donor-bar" style="width:${pct}%;background:${color}"></div></div>
-        ${sparkHtml}
-        ${trendHtml}
-        <div class="donor-amount">${fmtMoney(r.displayTotal)}</div>
-      </div>`;
+    return `<div class="donor-bar-row" title="${top || r.industry}">
+      <div class="donor-industry">${r.industry}</div>
+      <div class="donor-bar-wrap"><div class="donor-bar" style="width:${pct}%;background:${color}"></div></div>
+      ${sparkHtml}${trendHtml}
+      <div class="donor-amount">${fmtMoney(r.displayTotal)}</div>
+    </div>`;
   }).join('');
+}
 
-  return tabsHtml + barsHtml;
+function switchChartView(bid, view) {
+  _chartViewState[bid] = view;
+  const data = donorsCache[bid];
+  if (data) {
+    const cycle = data.latest_cycle;
+    document.getElementById(`donors-chart-${bid}`).innerHTML = renderDonorChart(data, cycle);
+  }
+}
+
+function renderDonorChart(data, activeCycle) {
+  const industries = data.industries || [];
+  const cycles = data.cycles || [];
+  if (!industries.length) return '<div class="donor-no-data">No PAC contribution data yet.</div>';
+
+  const displayCycle = activeCycle || cycles[cycles.length - 1] || '';
+  const rows = buildRows(data, displayCycle);
+  const bid = data.bioguide_id;
+  const view = _chartViewState[bid] || 'bar';
+
+  // Cycle selector tabs + view toggle
+  let tabsHtml = '<div style="display:flex;align-items:center;margin-bottom:12px;gap:6px;flex-wrap:wrap;">';
+  if (cycles.length > 1) {
+    tabsHtml += cycles.map(c =>
+      `<button class="donors-cycle-tab${c === displayCycle ? ' active' : ''}" onclick="switchDonorCycle(this,'${bid}','${c}')">${c}</button>`
+    ).join('');
+  }
+  tabsHtml += `<div class="chart-view-toggle" style="margin-left:auto;">
+    <button class="chart-view-btn${view === 'bar' ? ' active' : ''}" onclick="switchChartView('${bid}','bar')" title="Bar chart">▬</button>
+    <button class="chart-view-btn${view === 'pie' ? ' active' : ''}" onclick="switchChartView('${bid}','pie')" title="Pie chart">◉</button>
+  </div>`;
+  tabsHtml += '</div>';
+
+  const chartHtml = view === 'pie' ? renderPieChart(rows) : renderBarChart(rows, data, displayCycle);
+  return tabsHtml + chartHtml;
 }
 
 function switchDonorCycle(btn, bid, cycle) {

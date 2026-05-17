@@ -77,6 +77,7 @@ INDUSTRY_MAP: list[tuple[str, str]] = [
     ("mantech",                     "Defense"),
     ("caci ",                       "Defense"),
     ("dxc tech",                    "Defense"),
+    ("dyncorp",                     "Defense"),
     ("kratos defense",              "Defense"),
     ("leonardo drs",                "Defense"),
     ("am general",                  "Defense"),
@@ -128,6 +129,9 @@ INDUSTRY_MAP: list[tuple[str, str]] = [
     ("pharma",                      "Healthcare"),
     ("biotech",                     "Healthcare"),
     ("medical association",         "Healthcare"),
+    ("nutrition and dietetics",     "Healthcare"),
+    ("select medical",              "Healthcare"),
+    ("argentum",                    "Healthcare"),   # senior living industry
     ("orthodontist",                "Healthcare"),
     ("orthodontics",                "Healthcare"),
     ("urology",                     "Healthcare"),
@@ -167,6 +171,7 @@ INDUSTRY_MAP: list[tuple[str, str]] = [
     ("oil & gas",                   "Energy"),
     ("oil and gas",                 "Energy"),
     ("dominion energy",             "Energy"),
+    ("dominion resources",          "Energy"),
     ("duke energy",                 "Energy"),
     ("nuclear energy",              "Energy"),
     ("american gas",                "Energy"),
@@ -198,6 +203,8 @@ INDUSTRY_MAP: list[tuple[str, str]] = [
     ("credit union",                "Finance"),
     ("culac",                       "Finance"),
     ("deloitte",                    "Finance"),
+    ("prudential",                  "Finance"),
+    ("s&p global",                  "Finance"),
     ("kpmg",                        "Finance"),
     ("ernst & young",               "Finance"),
     ("price waterhouse",            "Finance"),
@@ -252,6 +259,9 @@ INDUSTRY_MAP: list[tuple[str, str]] = [
     ("united food",                 "Labor"),
     ("transport workers",           "Labor"),
     ("nurses",                      "Labor"),
+    ("iron workers",                "Labor"),
+    ("amalgamated transit",         "Labor"),
+    ("united association",          "Labor"),   # plumbers & pipefitters
     ("letter carrier",              "Labor"),
     ("firefighter",                 "Labor"),
     ("fire fighters",               "Labor"),
@@ -284,6 +294,10 @@ INDUSTRY_MAP: list[tuple[str, str]] = [
     ("national farmers",            "Agriculture"),
     ("food solutions",              "Agriculture"),
     ("pork producers",              "Agriculture"),
+    ("deere & company",             "Agriculture"),
+    ("john deere",                  "Agriculture"),
+    ("forest & paper",              "Manufacturing"),
+    ("american forest",             "Manufacturing"),
     # ── Real Estate / Construction ────────────────────────────────────────────
     ("real estate",                 "Real Estate"),
     ("national association of realtors","Real Estate"),
@@ -445,6 +459,10 @@ _INTERNAL_PATTERNS = [
     "good, john p.",
     "subramanyam, suhas",
     "one virginia pac",
+    "warner action fund",
+    "public opinion strategies",
+    "cecchi, giuseppe",
+    "automotive free international trade",  # trade policy PAC, not automotive industry
 ]
 
 
