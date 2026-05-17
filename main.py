@@ -37,8 +37,11 @@ app.add_middleware(SlowAPIMiddleware)
 
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 
-_OPENSTATES_DB = os.path.join(BASE_DIR, "openstates_va.db")
-_POLLS_DB = os.path.join(BASE_DIR, "polls.db")
+# DATA_DIR: set to Render persistent disk mount path (e.g. /var/data) in production.
+# Falls back to the project directory for local development.
+_DATA_DIR = os.getenv("DATA_DIR", BASE_DIR)
+_OPENSTATES_DB = os.path.join(_DATA_DIR, "openstates_va.db")
+_POLLS_DB = os.path.join(_DATA_DIR, "polls.db")
 _FEC_DB = os.path.join(BASE_DIR, "fec_va.db")
 
 
@@ -1403,7 +1406,7 @@ _CACHE_TTL_SECONDS = 86400  # 24 hours for ad-hoc chat replies
 
 
 def _init_query_cache():
-    db = os.path.join(BASE_DIR, "openstates_va.db")
+    db = _OPENSTATES_DB
     if not os.path.exists(db):
         return
     conn = sqlite3.connect(db)
@@ -1425,7 +1428,7 @@ def _cache_key(query: str, district_note: str) -> str:
 
 
 def _get_cached_reply(key: str, fallback_key: str | None = None) -> str | None:
-    db = os.path.join(BASE_DIR, "openstates_va.db")
+    db = _OPENSTATES_DB
     if not os.path.exists(db):
         return None
     try:
@@ -1445,7 +1448,7 @@ def _get_cached_reply(key: str, fallback_key: str | None = None) -> str | None:
 
 
 def _set_cached_reply(key: str, reply: str, cache_type: str = "ad_hoc"):
-    db = os.path.join(BASE_DIR, "openstates_va.db")
+    db = _OPENSTATES_DB
     if not os.path.exists(db):
         return
     try:
@@ -1461,7 +1464,7 @@ def _set_cached_reply(key: str, reply: str, cache_type: str = "ad_hoc"):
 
 
 def _init_rerank_cache():
-    db = os.path.join(BASE_DIR, "openstates_va.db")
+    db = _OPENSTATES_DB
     if not os.path.exists(db):
         return
     conn = sqlite3.connect(db)
@@ -1481,7 +1484,7 @@ def _rerank_cache_key(question: str, candidates: list[dict]) -> str:
 
 
 def _get_cached_rerank(key: str) -> list[int] | None:
-    db = os.path.join(BASE_DIR, "openstates_va.db")
+    db = _OPENSTATES_DB
     if not os.path.exists(db):
         return None
     try:
@@ -1499,7 +1502,7 @@ def _get_cached_rerank(key: str) -> list[int] | None:
 
 
 def _set_cached_rerank(key: str, top_indexes: list[int]):
-    db = os.path.join(BASE_DIR, "openstates_va.db")
+    db = _OPENSTATES_DB
     if not os.path.exists(db):
         return
     try:
@@ -1515,7 +1518,7 @@ def _set_cached_rerank(key: str, top_indexes: list[int]):
 
 
 def _init_feedback_table():
-    db = os.path.join(BASE_DIR, "openstates_va.db")
+    db = _OPENSTATES_DB
     if not os.path.exists(db):
         return
     conn = sqlite3.connect(db)
@@ -5836,7 +5839,7 @@ class FeedbackRequest(BaseModel):
 async def submit_feedback(request: Request, data: FeedbackRequest):
     if data.rating not in ("up", "down"):
         raise HTTPException(status_code=400, detail="rating must be 'up' or 'down'")
-    db = os.path.join(BASE_DIR, "openstates_va.db")
+    db = _OPENSTATES_DB
     try:
         conn = sqlite3.connect(db)
         conn.execute(

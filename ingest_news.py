@@ -13,7 +13,8 @@ import sqlite3
 import time
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent / "openstates_va.db"
+import os as _os
+DB_PATH = Path(_os.getenv("DATA_DIR", str(Path(__file__).parent))) / "openstates_va.db"
 
 CONFIDENCE_THRESHOLD = 0.7
 
