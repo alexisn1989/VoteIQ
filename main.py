@@ -4840,11 +4840,6 @@ When a bill excerpt contains a "Companion bill(s)" line, always render those as 
 **Methodology note** (always include when answering about caucus labels or party alignment):
 Caucus read is plain-language shorthand derived from OpenStates roll-call data (confirmed votes only). Split-vote threshold: 15–85% of party voting YES, minimum 5 members voting. "Breaks from party" means actual recorded NO votes against the party YES majority. Issue-area tags are keyword-based, not official legislative categories.
 
-**Data source:** [OpenStates](https://openstates.org/va/) | [LIS](https://lis.virginia.gov) | Last updated: [use the "Last updated" date from the profile excerpt above]
-
----
-*Vote sequence data from [OpenStates](https://openstates.org/va/). Bill text and status from [LIS](https://lis.virginia.gov). We present voting records as-is without editorial interpretation — we show the votes and context, not assumptions about motivation. Data is current through May 16, 2026. Some recent bills may not be reflected. Vote reasons/statements are not available in public datasets.*
-
 CALL TO ACTION — always end every legislator response with this section:
 **Want to dig deeper?** Ask me how [Name] voted on [topic1 from their actual top areas], [topic2], or [topic3]. Or ask about a specific bill by number.
 
@@ -4853,8 +4848,18 @@ If any section has no data, write: "No [section] data available in current datas
 EXCERPTS:
 {context}"""
 
+    _SOURCE_LINE = (
+        "\n\n---\n"
+        "*Sources: [OpenStates](https://openstates.org/va/) · "
+        "[LIS](https://lis.virginia.gov) · "
+        "Data current through May 16, 2026. "
+        "Vote reasons/statements are not available in public datasets.*"
+    )
+
     try:
         reply = _claude_reply(system_prompt, req.messages, max_tokens=1800)
+        if not reply.rstrip().endswith("public datasets.*"):
+            reply = reply.rstrip() + _SOURCE_LINE
         if _ck:
             _set_cached_reply(_ck, reply)
         return ChatResponse(reply=reply)
