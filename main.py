@@ -213,15 +213,18 @@ def admin_ingest_news(limit: int = 50):
 
 @app.get("/api/admin/ingest-congress")
 def admin_ingest_congress(congress: int = 119, house_limit: int = 300):
-    """Populate polls.db congress_members, congress_bills, congress_votes tables."""
+    """Populate polls.db congress_members, congress_bills, congress_votes tables.
+    ingest_congress.py requires CONGRESS_API_KEY; ingest_congress_votes.py runs always.
+    """
     api_key = os.getenv("CONGRESS_API_KEY", "")
-    if not api_key:
-        return {"ok": False, "error": "CONGRESS_API_KEY not set"}
     results = {}
-    for script_name, extra in [
-        ("ingest_congress.py", ["--congress", str(congress)]),
-        ("ingest_congress_votes.py", ["--house-limit", str(house_limit)]),
-    ]:
+    scripts = []
+    if api_key:
+        scripts.append(("ingest_congress.py", ["--congress", str(congress)]))
+    else:
+        results["ingest_congress.py"] = {"ok": False, "skipped": "CONGRESS_API_KEY not set — members/bills not refreshed"}
+    scripts.append(("ingest_congress_votes.py", ["--house-limit", str(house_limit)]))
+    for script_name, extra in scripts:
         script = os.path.join(BASE_DIR, script_name)
         if not os.path.exists(script):
             results[script_name] = {"ok": False, "error": "script not found"}
