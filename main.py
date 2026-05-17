@@ -5580,10 +5580,10 @@ async def pdf_chat(
 ):
     """
     Accept a PDF upload and answer the user's question grounded strictly in
-    the document text.  Using pypdf for deterministic text extraction keeps
-    hallucination near-zero — the model can only cite what was actually parsed.
+    the document text. pdfplumber extracts text deterministically so the model
+    can only cite what was actually parsed — keeping hallucination near-zero.
     """
-    import pypdf, io
+    import pdfplumber, io
 
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
@@ -5595,12 +5595,13 @@ async def pdf_chat(
         raise HTTPException(status_code=413, detail="PDF too large (20 MB max)")
 
     try:
-        reader = pypdf.PdfReader(io.BytesIO(pdf_bytes))
         pages_text = []
-        for page in reader.pages[:40]:  # cap at 40 pages
-            text = page.extract_text() or ""
-            if text.strip():
-                pages_text.append(text)
+        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+            total_pages = len(pdf.pages)
+            for page in pdf.pages[:40]:  # cap at 40 pages
+                text = page.extract_text() or ""
+                if text.strip():
+                    pages_text.append(text)
         doc_text = "\n\n".join(pages_text).strip()
     except Exception as exc:
         raise HTTPException(status_code=422, detail=f"Could not read PDF: {exc}")
@@ -5618,7 +5619,7 @@ async def pdf_chat(
 
     # Trim to ~14 000 chars to stay well within context while leaving room for reply
     grounded_prompt = (
-        f"DOCUMENT ({len(reader.pages)} pages, filename: {file.filename}):\n\n"
+        f"DOCUMENT ({total_pages} pages, filename: {file.filename}):\n\n"
         f"{doc_text[:14000]}\n\n"
         f"---\nQUESTION: {question.strip()}"
     )
@@ -5639,7 +5640,7 @@ async def pdf_chat(
     return {
         "answer": answer,
         "pages_read": len(pages_text),
-        "total_pages": len(reader.pages),
+        "total_pages": total_pages,
         "chars_used": min(len(doc_text), 14000),
     }
 
