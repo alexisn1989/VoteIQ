@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoteIQ — News Review Queue</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      margin: 0;
+      padding: 24px;
+    }
+    h1 { font-size: 1.4rem; font-weight: 600; margin: 0 0 8px; }
+    .stats {
+      display: flex; gap: 16px; flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .stat {
+      background: #1e2330;
+      border: 1px solid #2d3748;
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-size: 0.85rem;
+      color: #a0aec0;
+    }
+    .stat strong { color: #e2e8f0; font-size: 1.2rem; display: block; }
+    .filters {
+      display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .filters button {
+      background: #1e2330; border: 1px solid #2d3748; color: #a0aec0;
+      padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;
+    }
+    .filters button.active { background: #2b6cb0; border-color: #3182ce; color: #fff; }
+    #queue { display: flex; flex-direction: column; gap: 16px; }
+    .card {
+      background: #1a1f2e;
+      border: 1px solid #2d3748;
+      border-radius: 10px;
+      padding: 18px 20px;
+    }
+    .card.flagged { border-left: 4px solid #f6ad55; }
+    .card-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 12px; flex-wrap: wrap;
+    }
+    .headline { font-weight: 600; font-size: 1rem; margin: 0; line-height: 1.4; }
+    .meta { font-size: 0.78rem; color: #718096; margin-top: 4px; }
+    .meta a { color: #63b3ed; text-decoration: none; }
+    .badge {
+      font-size: 0.72rem; padding: 2px 8px; border-radius: 999px;
+      white-space: nowrap; font-weight: 600;
+    }
+    .badge.pending  { background: #744210; color: #fbd38d; }
+    .badge.auto_approved { background: #1c4532; color: #9ae6b4; }
+    .badge.approved { background: #1c4532; color: #9ae6b4; }
+    .badge.rejected { background: #4a0000; color: #feb2b2; }
+    .reasons {
+      margin: 10px 0;
+      display: flex; gap: 6px; flex-wrap: wrap;
+    }
+    .reason {
+      background: #2d3748; color: #fbd38d;
+      font-size: 0.72rem; padding: 2px 8px; border-radius: 4px;
+    }
+    details { margin-top: 10px; }
+    summary {
+      cursor: pointer; font-size: 0.82rem; color: #63b3ed;
+      user-select: none; outline: none;
+    }
+    pre {
+      background: #0d1117; border: 1px solid #2d3748; border-radius: 6px;
+      padding: 12px; font-size: 0.75rem; overflow-x: auto;
+      margin: 8px 0 0; white-space: pre-wrap; word-break: break-all;
+      color: #a0aec0;
+    }
+    .actions { display: flex; gap: 8px; margin-top: 14px; }
+    .btn {
+      padding: 7px 18px; border: none; border-radius: 6px;
+      cursor: pointer; font-size: 0.85rem; font-weight: 600;
+      transition: opacity 0.15s;
+    }
+    .btn:disabled { opacity: 0.4; cursor: default; }
+    .btn-approve { background: #276749; color: #f0fff4; }
+    .btn-reject  { background: #742a2a; color: #fff5f5; }
+    .btn-approve:hover:not(:disabled) { background: #2f855a; }
+    .btn-reject:hover:not(:disabled)  { background: #9b2c2c; }
+    .empty { color: #4a5568; text-align: center; padding: 48px; font-size: 0.95rem; }
+    .loading { color: #4a5568; padding: 24px; }
+  </style>
+</head>
+<body>
+
+<h1>VoteIQ — News Review Queue</h1>
+<div class="stats" id="stats">Loading…</div>
+
+<div class="filters">
+  <button class="active" data-status="pending" onclick="loadQueue('pending', this)">Pending</button>
+  <button data-status="auto_approved" onclick="loadQueue('auto_approved', this)">Auto-Approved</button>
+  <button data-status="approved" onclick="loadQueue('approved', this)">Approved</button>
+  <button data-status="rejected" onclick="loadQueue('rejected', this)">Rejected</button>
+</div>
+
+<div id="queue"><p class="loading">Loading…</p></div>
+
+<script>
+let currentStatus = 'pending';
+
+async function loadQueue(status, btn) {
+  currentStatus = status;
+  document.querySelectorAll('.filters button').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  const queueEl = document.getElementById('queue');
+  queueEl.innerHTML = '<p class="loading">Loading…</p>';
+
+  const res = await fetch(`/api/admin/review-queue?status=${status}&limit=50`);
+  const data = await res.json();
+
+  renderStats(data.stats || {});
+
+  if (!data.items || data.items.length === 0) {
+    queueEl.innerHTML = `<p class="empty">No ${status} articles.</p>`;
+    return;
+  }
+
+  queueEl.innerHTML = data.items.map(item => cardHtml(item)).join('');
+}
+
+function renderStats(stats) {
+  const order = ['pending', 'auto_approved', 'approved', 'rejected'];
+  const labels = { pending: 'Pending', auto_approved: 'Auto-Approved', approved: 'Approved', rejected: 'Rejected' };
+  const el = document.getElementById('stats');
+  el.innerHTML = order.map(k =>
+    `<div class="stat"><strong>${stats[k] ?? 0}</strong>${labels[k]}</div>`
+  ).join('');
+}
+
+function cardHtml(item) {
+  const reasons = (item.flag_reasons || []).map(r =>
+    `<span class="reason">${escHtml(r)}</span>`
+  ).join('');
+
+  const extracted = item.extracted || {};
+  const politicians = (extracted.politicians || []).map(p => p.name || p).join(', ') || '—';
+  const topics = (extracted.topics || []).join(', ') || '—';
+  const sentiment = extracted.sentiment || '—';
+
+  const urlLink = item.url
+    ? `<a href="${escHtml(item.url)}" target="_blank" rel="noopener">source ↗</a> · `
+    : '';
+
+  const showActions = item.review_status === 'pending';
+
+  return `
+  <div class="card flagged" id="card-${escHtml(item.article_id)}">
+    <div class="card-header">
+      <div>
+        <p class="headline">${escHtml(item.headline || '(no headline)')}</p>
+        <p class="meta">${urlLink}${escHtml(item.source || '')} · ${escHtml(item.published_at || '')} · ID: ${escHtml(item.article_id)}</p>
+        <p class="meta">Politicians: <strong>${escHtml(politicians)}</strong> &nbsp;|&nbsp; Topics: ${escHtml(topics)} &nbsp;|&nbsp; Sentiment: ${escHtml(sentiment)}</p>
+      </div>
+      <span class="badge ${escHtml(item.review_status)}">${escHtml(item.review_status)}</span>
+    </div>
+    ${reasons ? `<div class="reasons">${reasons}</div>` : ''}
+    <details>
+      <summary>View full extraction JSON</summary>
+      <pre>${escHtml(JSON.stringify(extracted, null, 2))}</pre>
+    </details>
+    ${showActions ? `
+    <div class="actions">
+      <button class="btn btn-approve" onclick="decide('${escHtml(item.article_id)}', 'approve', this)">✔ Approve</button>
+      <button class="btn btn-reject"  onclick="decide('${escHtml(item.article_id)}', 'reject', this)">✘ Reject</button>
+    </div>` : ''}
+  </div>`;
+}
+
+async function decide(articleId, action, btn) {
+  btn.disabled = true;
+  btn.closest('.actions').querySelectorAll('.btn').forEach(b => b.disabled = true);
+
+  const res = await fetch(`/api/admin/review/${articleId}/${action}`, { method: 'POST' });
+  if (res.ok) {
+    const card = document.getElementById(`card-${articleId}`);
+    const badge = card.querySelector('.badge');
+    const newStatus = action === 'approve' ? 'approved' : 'rejected';
+    badge.textContent = newStatus;
+    badge.className = `badge ${newStatus}`;
+    card.querySelector('.actions').remove();
+    // refresh stats silently
+    fetch(`/api/admin/review-queue?status=${currentStatus}&limit=1`)
+      .then(r => r.json()).then(d => renderStats(d.stats || {}));
+  } else {
+    btn.disabled = false;
+    btn.closest('.actions').querySelectorAll('.btn').forEach(b => b.disabled = false);
+    alert('Action failed — check server logs.');
+  }
+}
+
+function escHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+loadQueue('pending', null);
+</script>
+</body>
+</html>
