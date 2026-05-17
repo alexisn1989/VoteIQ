@@ -1,4 +1,4 @@
-google-generativeai==0.8.6
+google-genai
 annotated-doc==0.0.4
 voyageai==0.2.4
 annotated-types==0.7.0

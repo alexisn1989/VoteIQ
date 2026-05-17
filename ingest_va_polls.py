@@ -38,7 +38,7 @@ import requests
 from bs4 import BeautifulSoup
 
 try:
-    import google.generativeai as genai
+    from google import genai as _genai
     _GENAI_AVAILABLE = True
 except ImportError:
     _GENAI_AVAILABLE = False
@@ -164,7 +164,7 @@ def extract_poll_numbers(text: str) -> dict:
 
 VOTEHUB_POLLS_URL = "https://api.votehub.com/polls"
 
-_GEMINI_MODEL = "gemini-1.5-flash"
+_GEMINI_MODEL = "gemini-2.0-flash"
 _GEMINI_PROMPT = """You are a political data analyst. Extract structured polling data from this Virginia election news article.
 
 Return ONLY valid JSON with these fields (omit any field not found in the article):
@@ -214,20 +214,35 @@ def fetch_article_text(url: str, timeout: int = 15) -> str:
         return ""
 
 
+def _parse_gemini_json(raw: str) -> dict:
+    raw = raw.strip()
+    raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.M)
+    raw = re.sub(r"\s*```\s*$", "", raw, flags=re.M)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        pass
+    m = re.search(r"\{[\s\S]+\}", raw)
+    if m:
+        try:
+            return json.loads(m.group(0))
+        except json.JSONDecodeError:
+            pass
+    raise ValueError(f"No JSON in response: {raw[:200]}")
+
+
 def gemini_extract(url: str, article_text: str, api_key: str) -> dict:
     """Call Gemini Flash to extract structured poll data from article text."""
     if not _GENAI_AVAILABLE or not api_key or not article_text:
         return {}
     try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(_GEMINI_MODEL)
-        prompt = _GEMINI_PROMPT.format(url=url, text=article_text[:4500])
-        response = model.generate_content(prompt)
-        raw = response.text.strip()
-        # Strip markdown code fences if present
-        raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.M)
-        raw = re.sub(r"\s*```$", "", raw, flags=re.M)
-        result = json.loads(raw)
+        client = _genai.Client(api_key=api_key)
+        prompt = _GEMINI_PROMPT.replace("{url}", url).replace("{text}", article_text[:4500])
+        response = client.models.generate_content(
+            model=_GEMINI_MODEL,
+            contents=prompt,
+        )
+        result = _parse_gemini_json(response.text)
         result["_source"] = "gemini"
         return result
     except Exception as exc:
