@@ -59,176 +59,285 @@ VA_MEMBERS = {
     "K000384": ("Tim Kaine",             "S", "S2VA00142"),
 }
 
-# contributor_name substring -> industry (checked lowercase, longest match wins)
+# contributor_name substring -> industry (checked lowercase, first match wins)
 INDUSTRY_MAP: list[tuple[str, str]] = [
-    # Defense
-    ("raytheon",          "Defense"),
-    ("lockheed",          "Defense"),
-    ("boeing",            "Defense"),
-    ("northrop",          "Defense"),
-    ("general dynamics",  "Defense"),
-    ("l3harris",          "Defense"),
-    ("l3 tech",           "Defense"),
-    ("bae systems",       "Defense"),
-    ("saic ",             "Defense"),
-    ("leidos",            "Defense"),
-    ("huntington ingalls","Defense"),
-    ("booz allen",        "Defense"),
-    ("mantech",           "Defense"),
-    ("caci ",             "Defense"),
-    ("dxc tech",          "Defense"),
-    ("kratos defense",    "Defense"),
-    ("leonardo drs",      "Defense"),
-    ("am general",        "Defense"),
-    ("textron",           "Defense"),
-    ("vigor pac",         "Defense"),
+    # ── Defense & Aerospace ───────────────────────────────────────────────────
+    ("raytheon",                    "Defense"),
+    ("lockheed",                    "Defense"),
+    ("boeing",                      "Defense"),
+    ("northrop",                    "Defense"),
+    ("general dynamics",            "Defense"),
+    ("l3harris",                    "Defense"),
+    ("l3 tech",                     "Defense"),
+    ("bae systems",                 "Defense"),
+    ("saic ",                       "Defense"),
+    ("leidos",                      "Defense"),
+    ("huntington ingalls",          "Defense"),
+    ("booz allen",                  "Defense"),
+    ("mantech",                     "Defense"),
+    ("caci ",                       "Defense"),
+    ("dxc tech",                    "Defense"),
+    ("kratos defense",              "Defense"),
+    ("leonardo drs",                "Defense"),
+    ("am general",                  "Defense"),
+    ("textron",                     "Defense"),
+    ("vigor pac",                   "Defense"),
     ("engineering and software systems", "Defense"),
     ("advanced concepts and technologies", "Defense"),
-    ("space exploration", "Defense"),
-    ("spacex",            "Defense"),
-    ("palantir",          "Defense"),
-    # Healthcare
-    ("ama pac",           "Healthcare"),
-    ("american medical",  "Healthcare"),
-    ("pfizer",            "Healthcare"),
-    ("merck",             "Healthcare"),
-    ("amgen",             "Healthcare"),
-    ("aetna",             "Healthcare"),
-    ("cigna",             "Healthcare"),
-    ("humana",            "Healthcare"),
-    ("unitedhealth",      "Healthcare"),
-    ("united health",     "Healthcare"),
-    ("cvs health",        "Healthcare"),
-    ("abbott lab",        "Healthcare"),
-    ("johnson & johnson", "Healthcare"),
-    ("medtronic",         "Healthcare"),
-    ("hospital",          "Healthcare"),
-    ("health pac",        "Healthcare"),
-    ("pharma",            "Healthcare"),
-    # Energy / Fossil fuels
-    ("koch",              "Energy"),
-    ("kochpac",           "Energy"),
-    ("southern company",  "Energy"),
-    ("exxon",             "Energy"),
-    ("chevron",           "Energy"),
-    ("conocophillips",    "Energy"),
-    ("halliburton",       "Energy"),
-    ("schlumberger",      "Energy"),
-    ("marathon oil",      "Energy"),
-    ("devon energy",      "Energy"),
-    ("pioneer natural",   "Energy"),
-    ("american petroleum","Energy"),
-    ("coal",              "Energy"),
-    ("pipeline",          "Energy"),
-    ("oil & gas",         "Energy"),
-    ("oil and gas",       "Energy"),
-    ("dominion energy",   "Energy"),
-    ("duke energy",       "Energy"),
-    ("southern company",  "Energy"),
-    ("nuclear energy",    "Energy"),
-    # Finance / Banking
-    ("goldman sachs",     "Finance"),
-    ("jpmorgan",          "Finance"),
-    ("jp morgan",         "Finance"),
-    ("morgan stanley",    "Finance"),
-    ("wells fargo",       "Finance"),
-    ("bank of america",   "Finance"),
-    ("citigroup",         "Finance"),
-    ("blackrock",         "Finance"),
-    ("fidelity",          "Finance"),
-    ("charles schwab",    "Finance"),
-    ("american express",  "Finance"),
-    ("visa inc",          "Finance"),
-    ("mastercard",        "Finance"),
-    ("financial services","Finance"),
-    ("investment bankers","Finance"),
-    ("securities",        "Finance"),
-    ("insurance",         "Finance"),
-    # Technology
-    ("google",            "Technology"),
-    ("alphabet",          "Technology"),
-    ("amazon",            "Technology"),
-    ("microsoft",         "Technology"),
-    ("apple inc",         "Technology"),
-    ("meta platform",     "Technology"),
-    ("facebook",          "Technology"),
-    ("intel corp",        "Technology"),
-    ("ibm corp",          "Technology"),
-    ("oracle",            "Technology"),
-    ("salesforce",        "Technology"),
-    ("semiconductor",     "Technology"),
-    ("tech pac",          "Technology"),
-    # Guns / NRA
-    ("nra",               "Guns/NRA"),
-    ("national rifle",    "Guns/NRA"),
-    ("gun owners",        "Guns/NRA"),
-    ("safari club",       "Guns/NRA"),
-    ("sci-pac",           "Guns/NRA"),
-    # Labor / Unions
-    ("afl-cio",           "Labor"),
-    ("seiu",              "Labor"),
-    ("teamster",          "Labor"),
-    ("united auto",       "Labor"),
-    ("united steel",      "Labor"),
-    ("communications workers","Labor"),
-    ("ibew",              "Labor"),
-    ("afscme",            "Labor"),
-    ("machinists",        "Labor"),
-    ("teachers",          "Labor"),
-    # Agriculture
-    ("farm bureau",       "Agriculture"),
-    ("agri",              "Agriculture"),
-    ("cattle",            "Agriculture"),
-    ("poultry",           "Agriculture"),
-    ("tobacco",           "Agriculture"),
-    ("grain ",            "Agriculture"),
-    ("cotton",            "Agriculture"),
-    ("dairy",             "Agriculture"),
-    # Real Estate / Construction
-    ("real estate",       "Real Estate"),
-    ("national assoc of realtors","Real Estate"),
-    ("realtors pac",      "Real Estate"),
-    ("homebuilders",      "Real Estate"),
-    ("home builders",     "Real Estate"),
-    # Transportation / Logistics
-    ("airline",           "Transportation"),
-    ("delta air",         "Transportation"),
-    ("american airlines", "Transportation"),
-    ("united airlines",   "Transportation"),
-    ("southwest air",     "Transportation"),
-    ("fedex",             "Transportation"),
-    ("ups ",              "Transportation"),
-    ("railroad",          "Transportation"),
-    ("trucking",          "Transportation"),
-    # Telecom
-    ("comcast",           "Telecom"),
-    ("at&t",              "Telecom"),
-    ("verizon",           "Telecom"),
-    ("t-mobile",          "Telecom"),
-    ("charter comm",      "Telecom"),
-    # Alcohol / Tobacco
-    ("beer",              "Alcohol/Tobacco"),
-    ("wine",              "Alcohol/Tobacco"),
-    ("spirits",           "Alcohol/Tobacco"),
-    ("altria",            "Alcohol/Tobacco"),
-    ("philip morris",     "Alcohol/Tobacco"),
-    # Small business / Chamber
-    ("chamber of commerce","Small Business"),
-    ("small business",    "Small Business"),
-    ("nfib",              "Small Business"),
-    # Legal
-    ("law firm",          "Legal"),
-    ("attorneys",         "Legal"),
-    ("trial lawyers",     "Legal"),
-    ("american assoc of justice","Legal"),
+    ("space exploration",           "Defense"),
+    ("spacex",                      "Defense"),
+    ("palantir",                    "Defense"),
+    ("general atomics",             "Defense"),
+    ("amentum",                     "Defense"),
+    ("perspecta",                   "Defense"),
+    ("titan aerospace",             "Defense"),
+    ("orbital sciences",            "Defense"),
+    # ── Healthcare & Pharma ───────────────────────────────────────────────────
+    ("ama pac",                     "Healthcare"),
+    ("american medical",            "Healthcare"),
+    ("american dental",             "Healthcare"),
+    ("american academy",            "Healthcare"),
+    ("american college of physician","Healthcare"),
+    ("american society of anesthesiol","Healthcare"),
+    ("ophthalmology",               "Healthcare"),
+    ("ophthpac",                    "Healthcare"),
+    ("neurology",                   "Healthcare"),
+    ("brainpac",                    "Healthcare"),
+    ("dermatology",                 "Healthcare"),
+    ("skinpac",                     "Healthcare"),
+    ("oncology",                    "Healthcare"),
+    ("pfizer",                      "Healthcare"),
+    ("merck",                       "Healthcare"),
+    ("amgen",                       "Healthcare"),
+    ("aetna",                       "Healthcare"),
+    ("cigna",                       "Healthcare"),
+    ("humana",                      "Healthcare"),
+    ("unitedhealth",                "Healthcare"),
+    ("united health",               "Healthcare"),
+    ("cvs health",                  "Healthcare"),
+    ("abbott lab",                  "Healthcare"),
+    ("johnson & johnson",           "Healthcare"),
+    ("medtronic",                   "Healthcare"),
+    ("thermo fisher",               "Healthcare"),
+    ("owens & minor",               "Healthcare"),
+    ("us oncology",                 "Healthcare"),
+    ("american healthcare",         "Healthcare"),
+    ("acp services",                "Healthcare"),
+    ("hospital",                    "Healthcare"),
+    ("health pac",                  "Healthcare"),
+    ("pharma",                      "Healthcare"),
+    ("biotech",                     "Healthcare"),
+    ("medical association",         "Healthcare"),
+    # ── Energy / Fossil Fuels / Utilities ─────────────────────────────────────
+    ("koch",                        "Energy"),
+    ("kochpac",                     "Energy"),
+    ("southern company",            "Energy"),
+    ("exxon",                       "Energy"),
+    ("chevron",                     "Energy"),
+    ("conocophillips",              "Energy"),
+    ("halliburton",                 "Energy"),
+    ("schlumberger",                "Energy"),
+    ("marathon oil",                "Energy"),
+    ("devon energy",                "Energy"),
+    ("pioneer natural",             "Energy"),
+    ("american petroleum",          "Energy"),
+    ("valero",                      "Energy"),
+    ("phillips 66",                 "Energy"),
+    ("bp america",                  "Energy"),
+    ("shell oil",                   "Energy"),
+    ("coal",                        "Energy"),
+    ("pipeline",                    "Energy"),
+    ("oil & gas",                   "Energy"),
+    ("oil and gas",                 "Energy"),
+    ("dominion energy",             "Energy"),
+    ("duke energy",                 "Energy"),
+    ("nuclear energy",              "Energy"),
+    ("american gas",                "Energy"),
+    ("natural gas",                 "Energy"),
+    ("electric utilities",          "Energy"),
+    # ── Finance / Banking / Insurance ─────────────────────────────────────────
+    ("goldman sachs",               "Finance"),
+    ("jpmorgan",                    "Finance"),
+    ("jp morgan",                   "Finance"),
+    ("morgan stanley",              "Finance"),
+    ("wells fargo",                 "Finance"),
+    ("bank of america",             "Finance"),
+    ("citigroup",                   "Finance"),
+    ("blackrock",                   "Finance"),
+    ("fidelity",                    "Finance"),
+    ("charles schwab",              "Finance"),
+    ("american express",            "Finance"),
+    ("visa inc",                    "Finance"),
+    ("mastercard",                  "Finance"),
+    ("financial services",          "Finance"),
+    ("investment bankers",          "Finance"),
+    ("securities",                  "Finance"),
+    ("insurance",                   "Finance"),
+    ("credit union",                "Finance"),
+    ("culac",                       "Finance"),
+    ("deloitte",                    "Finance"),
+    ("kpmg",                        "Finance"),
+    ("ernst & young",               "Finance"),
+    ("price waterhouse",            "Finance"),
+    ("farm credit",                 "Finance"),
+    ("american financial services", "Finance"),
+    ("american bankers",            "Finance"),
+    # ── Technology ────────────────────────────────────────────────────────────
+    ("google",                      "Technology"),
+    ("alphabet",                    "Technology"),
+    ("amazon",                      "Technology"),
+    ("microsoft",                   "Technology"),
+    ("apple inc",                   "Technology"),
+    ("meta platform",               "Technology"),
+    ("facebook",                    "Technology"),
+    ("intel corp",                  "Technology"),
+    ("ibm corp",                    "Technology"),
+    ("oracle",                      "Technology"),
+    ("salesforce",                  "Technology"),
+    ("semiconductor",               "Technology"),
+    ("tech pac",                    "Technology"),
+    ("innovation political action", "Technology"),
+    ("cyber",                       "Technology"),
+    # ── Guns / NRA ────────────────────────────────────────────────────────────
+    ("nra",                         "Guns/NRA"),
+    ("national rifle",              "Guns/NRA"),
+    ("gun owners",                  "Guns/NRA"),
+    ("safari club",                 "Guns/NRA"),
+    ("sci-pac",                     "Guns/NRA"),
+    # ── Labor / Unions ────────────────────────────────────────────────────────
+    ("afl-cio",                     "Labor"),
+    ("seiu",                        "Labor"),
+    ("teamster",                    "Labor"),
+    ("united auto",                 "Labor"),
+    ("united steel",                "Labor"),
+    ("communications workers",      "Labor"),
+    ("ibew",                        "Labor"),
+    ("electrical workers",          "Labor"),
+    ("afscme",                      "Labor"),
+    ("machinists",                  "Labor"),
+    ("teachers",                    "Labor"),
+    ("liuna",                       "Labor"),
+    ("laborers' international",     "Labor"),
+    ("boilermakers",                "Labor"),
+    ("sheet metal",                 "Labor"),
+    ("operating engineers",         "Labor"),
+    ("plumbers",                    "Labor"),
+    ("carpenters",                  "Labor"),
+    ("painters union",              "Labor"),
+    ("bricklayers",                 "Labor"),
+    ("service employees",           "Labor"),
+    ("ufcw",                        "Labor"),
+    ("united food",                 "Labor"),
+    ("transport workers",           "Labor"),
+    ("nurses",                      "Labor"),
+    # ── Agriculture ───────────────────────────────────────────────────────────
+    ("farm bureau",                 "Agriculture"),
+    ("agri",                        "Agriculture"),
+    ("cattle",                      "Agriculture"),
+    ("poultry",                     "Agriculture"),
+    ("tobacco",                     "Agriculture"),
+    ("grain ",                      "Agriculture"),
+    ("cotton",                      "Agriculture"),
+    ("dairy",                       "Agriculture"),
+    ("american crystal sugar",      "Agriculture"),
+    ("sugar",                       "Agriculture"),
+    ("soybean",                     "Agriculture"),
+    ("corn growers",                "Agriculture"),
+    ("national farmers",            "Agriculture"),
+    ("food solutions",              "Agriculture"),
+    # ── Real Estate / Construction ────────────────────────────────────────────
+    ("real estate",                 "Real Estate"),
+    ("national association of realtors","Real Estate"),
+    ("realtors pac",                "Real Estate"),
+    ("homebuilders",                "Real Estate"),
+    ("home builders",               "Real Estate"),
+    ("multifamily housing",         "Real Estate"),
+    ("national multifamily",        "Real Estate"),
+    ("home depot",                  "Real Estate"),
+    ("associated builders",         "Real Estate"),
+    ("abc pac",                     "Real Estate"),
+    # ── Transportation / Logistics ────────────────────────────────────────────
+    ("airline",                     "Transportation"),
+    ("delta air",                   "Transportation"),
+    ("american airlines",           "Transportation"),
+    ("united airlines",             "Transportation"),
+    ("southwest air",               "Transportation"),
+    ("fedex",                       "Transportation"),
+    ("ups ",                        "Transportation"),
+    ("railroad",                    "Transportation"),
+    ("trucking",                    "Transportation"),
+    ("matson",                      "Transportation"),
+    ("shipping",                    "Transportation"),
+    ("maritime",                    "Transportation"),
+    ("air transport",               "Transportation"),
+    ("smart pac",                   "Transportation"),  # Sheet Metal, Air, Rail, Transportation
+    # ── Telecom / Cable / Media ───────────────────────────────────────────────
+    ("comcast",                     "Telecom"),
+    ("at&t",                        "Telecom"),
+    ("verizon",                     "Telecom"),
+    ("t-mobile",                    "Telecom"),
+    ("charter comm",                "Telecom"),
+    ("national cable",              "Telecom"),
+    ("ncta",                        "Telecom"),
+    ("cox enterprises",             "Telecom"),
+    ("coxpac",                      "Telecom"),
+    ("directv",                     "Telecom"),
+    ("dish network",                "Telecom"),
+    ("telecom",                     "Telecom"),
+    # ── Alcohol / Tobacco ─────────────────────────────────────────────────────
+    ("beer",                        "Alcohol/Tobacco"),
+    ("wine",                        "Alcohol/Tobacco"),
+    ("spirits",                     "Alcohol/Tobacco"),
+    ("altria",                      "Alcohol/Tobacco"),
+    ("philip morris",               "Alcohol/Tobacco"),
+    ("reynolds american",           "Alcohol/Tobacco"),
+    ("rai pac",                     "Alcohol/Tobacco"),
+    ("distilled spirits",           "Alcohol/Tobacco"),
+    ("national beer",               "Alcohol/Tobacco"),
+    ("anheuser",                    "Alcohol/Tobacco"),
+    # ── Automotive ────────────────────────────────────────────────────────────
+    ("automobile dealers",          "Automotive"),
+    ("auto dealers",                "Automotive"),
+    ("nada ",                       "Automotive"),
+    ("auto care",                   "Automotive"),
+    ("ford motor",                  "Automotive"),
+    ("general motors",              "Automotive"),
+    ("toyota",                      "Automotive"),
+    ("honda",                       "Automotive"),
+    # ── Legal ─────────────────────────────────────────────────────────────────
+    ("law firm",                    "Legal"),
+    ("attorneys",                   "Legal"),
+    ("trial lawyers",               "Legal"),
+    ("american association for justice","Legal"),
+    ("aaj pac",                     "Legal"),
+    ("holland & knight",            "Legal"),
+    ("covington",                   "Legal"),
+    ("kirkland",                    "Legal"),
+    ("sidley",                      "Legal"),
+    # ── Small Business / Chamber ──────────────────────────────────────────────
+    ("chamber of commerce",         "Small Business"),
+    ("small business",              "Small Business"),
+    ("nfib",                        "Small Business"),
+    # ── Hospitality / Retail ─────────────────────────────────────────────────
+    ("hotel",                       "Hospitality"),
+    ("restaurant",                  "Hospitality"),
+    ("aahoa",                       "Hospitality"),
+    ("asian american hotel",        "Hospitality"),
+    ("national restaurant",         "Hospitality"),
+    ("walmart",                     "Retail"),
+    ("target corp",                 "Retail"),
+    ("convenience stores",          "Retail"),
+    ("retail",                      "Retail"),
 ]
 
-# Patterns that indicate internal committee transfers — skip these
+# Patterns that indicate internal/party transfers — skip entirely
 _INTERNAL_PATTERNS = [
     "victory committee",
+    "victory fund",
     "grow the majority",
     "joint fundraising",
     "majority committee",
+    "majority pac",
     "reclaim america",
     "fund for america",
     "nrcc",
@@ -243,6 +352,24 @@ _INTERNAL_PATTERNS = [
     "leadership fund",
     "senate leadership",
     "house leadership",
+    "house freedom fund",
+    "freedom fund",
+    "forward together",
+    "pac to the future",
+    "common ground pac",
+    "electing majority",
+    "elect democratic",
+    "elect republican",
+    "american revival pac",
+    "congressional black caucus",
+    "friends of ",
+    "one virginia fund",
+    "democratic party of",
+    "republican party of",
+    "state party",
+    "waging peace",
+    "impact pac",
+    " victory\n",
 ]
 
 
@@ -436,11 +563,16 @@ def store_industry_totals(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Ingest FEC PAC/industry contributions for VA delegation")
-    parser.add_argument("--cycle",    type=int, default=2026, help="FEC two-year election cycle")
+    parser.add_argument("--cycle",    type=int, default=None,
+                        help="Single FEC two-year election cycle (e.g. 2024). Omit to use --cycles.")
+    parser.add_argument("--cycles",   type=int, nargs="+", default=[2020, 2022, 2024],
+                        help="One or more cycles to ingest (default: 2020 2022 2024)")
     parser.add_argument("--dry-run",  action="store_true")
     parser.add_argument("--member",   help="Limit to a single bioguide_id")
-    parser.add_argument("--max-pages",type=int, default=15, help="Schedule_a pages per member")
+    parser.add_argument("--max-pages",type=int, default=15, help="Schedule_a pages per member per cycle")
     args = parser.parse_args(argv)
+
+    cycles = [args.cycle] if args.cycle else args.cycles
 
     api_key = os.getenv("FEC_API_KEY", "DEMO_KEY")
     if api_key == "DEMO_KEY":
@@ -452,36 +584,49 @@ def main(argv: list[str] | None = None) -> int:
     members = {k: v for k, v in VA_MEMBERS.items() if not args.member or k == args.member}
     total_industries = 0
 
-    for bioguide_id, (name, office, fec_cand_id) in members.items():
-        print(f"\n{'='*60}")
-        print(f"{name} ({bioguide_id}, {office}), cycle={args.cycle}")
+    for cycle in cycles:
+        print(f"\n{'#'*60}")
+        print(f"CYCLE {cycle}")
+        print(f"{'#'*60}")
 
-        cand_id = fec_cand_id or get_fec_candidate_id(bioguide_id, office, api_key)
-        if not cand_id:
-            print(f"  No FEC candidate record found — skipping")
-            continue
-        print(f"  Candidate ID: {cand_id}")
-        time.sleep(0.3)
+        # Cache committee IDs within a cycle to avoid redundant lookups
+        committee_cache: dict[str, str] = {}
 
-        cmte_id = get_principal_committee(cand_id, api_key, args.cycle)
-        if not cmte_id:
-            print(f"  No principal committee found — skipping")
-            continue
-        print(f"  Committee ID: {cmte_id}")
-        time.sleep(0.5)
+        for bioguide_id, (name, office, fec_cand_id) in members.items():
+            print(f"\n{'='*60}")
+            print(f"{name} ({bioguide_id}, {office}), cycle={cycle}")
 
-        contributions = fetch_contributions(cmte_id, api_key, args.cycle, max_pages=args.max_pages)
-        print(f"  Fetched {len(contributions)} contribution records")
+            cand_id = fec_cand_id or get_fec_candidate_id(bioguide_id, office, api_key)
+            if not cand_id:
+                print(f"  No FEC candidate record found — skipping")
+                continue
+            print(f"  Candidate ID: {cand_id}")
+            time.sleep(0.3)
 
-        industry_totals = aggregate_by_industry(contributions)
-        print(f"  Industry breakdown ({len(industry_totals)} categories):")
-        stored = store_industry_totals(conn, bioguide_id, name, args.cycle, industry_totals, dry_run=args.dry_run)
-        total_industries += stored
-        time.sleep(1.0)
+            if cand_id in committee_cache:
+                cmte_id = committee_cache[cand_id]
+            else:
+                cmte_id = get_principal_committee(cand_id, api_key, cycle)
+                if cmte_id:
+                    committee_cache[cand_id] = cmte_id
+            if not cmte_id:
+                print(f"  No principal committee found — skipping")
+                continue
+            print(f"  Committee ID: {cmte_id}")
+            time.sleep(0.5)
+
+            contributions = fetch_contributions(cmte_id, api_key, cycle, max_pages=args.max_pages)
+            print(f"  Fetched {len(contributions)} contribution records")
+
+            industry_totals = aggregate_by_industry(contributions)
+            print(f"  Industry breakdown ({len(industry_totals)} categories):")
+            stored = store_industry_totals(conn, bioguide_id, name, cycle, industry_totals, dry_run=args.dry_run)
+            total_industries += stored
+            time.sleep(1.0)
 
     conn.close()
     verb = "would store" if args.dry_run else "stored/updated"
-    print(f"\nDone. {verb} {total_industries} industry rows across {len(members)} members.")
+    print(f"\nDone. {verb} {total_industries} industry rows across {len(members)} members × {len(cycles)} cycles.")
     return 0
 
 

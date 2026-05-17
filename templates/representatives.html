@@ -102,6 +102,21 @@
 
   .senate-section { margin-bottom: 40px; }
 
+  /* Donors panel */
+  .donors-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--navy); background: none; border: 1px solid var(--mid); padding: 5px 12px; cursor: pointer; transition: all 0.18s; }
+  .donors-btn:hover { background: #1a52c8; color: white; border-color: #1a52c8; }
+  .donors-panel { display: none; border-top: 2px solid #1a52c8; background: #f8f6f1; padding: 18px; }
+  .donors-panel.open { display: block; }
+  .donors-title { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .donors-source { font-family: 'Barlow Condensed', sans-serif; font-size: 0.6rem; color: var(--muted); margin-bottom: 14px; }
+  .donors-source a { color: #1a52c8; text-decoration: none; }
+  .donor-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+  .donor-industry { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.06em; color: var(--navy); width: 110px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .donor-bar-wrap { flex: 1; background: var(--mid); height: 8px; border-radius: 2px; overflow: hidden; }
+  .donor-bar { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+  .donor-amount { font-family: 'Barlow Condensed', sans-serif; font-size: 0.62rem; color: var(--muted); width: 68px; text-align: right; flex-shrink: 0; }
+  .donor-no-data { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; color: var(--muted); text-align: center; padding: 14px 0; }
+
   /* State officials compact grid */
   .state-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
   .state-card { background: white; border: 1px solid var(--mid); border-left: 4px solid; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
@@ -331,7 +346,10 @@ function renderCard(m, bills) {
       </div>
 
       <div class="member-footer">
-        <button class="more-bills-btn" onclick="togglePanel('${m.bioguide_id}', this)">More Bills</button>
+        <div style="display:flex;gap:8px;">
+          <button class="more-bills-btn" onclick="togglePanel('${m.bioguide_id}', this)">More Bills</button>
+          <button class="donors-btn" onclick="toggleDonors('${m.bioguide_id}', this)">Donors</button>
+        </div>
         ${m.website ? `<a class="website-link" href="${m.website}" target="_blank" rel="noopener">Official Site &rarr;</a>` : ''}
       </div>
 
@@ -341,6 +359,12 @@ function renderCard(m, bills) {
           <button class="panel-role-tab" onclick="switchPanelRole('${m.bioguide_id}', 'cosponsored', this)">Cosponsored</button>
         </div>
         <div class="bills-panel-grid"></div>
+      </div>
+
+      <div class="donors-panel" id="donors-${m.bioguide_id}">
+        <div class="donors-title">Industry Campaign Contributions</div>
+        <div class="donors-source">Source: <a href="https://www.fec.gov/data/candidate/${FEC_CANDIDATE_IDS[m.bioguide_id] || ''}/" target="_blank" rel="noopener">FEC.gov</a> &bull; 2024 election cycle &bull; PAC &amp; org contributions only</div>
+        <div id="donors-chart-${m.bioguide_id}"><div class="donor-no-data">Loading...</div></div>
       </div>
     </div>`;
 }
@@ -451,6 +475,92 @@ async function initStateOfficials() {
   }
 
   container.innerHTML = html;
+}
+
+// ── Industry donor chart ───────────────────────────────────────────────────
+const FEC_CANDIDATE_IDS = {
+  'W000804': 'H8VA01147', 'K000399': 'H2VA02064', 'S000185': 'H6VA01117',
+  'M001227': 'H4VA04066', 'M001239': 'H0VA07133', 'C001118': 'H8VA06104',
+  'V000138': 'H4VA07234', 'B001292': 'H4VA08224', 'G000568': 'H0VA09055',
+  'S001230': 'H4VA10279', 'W000831': 'H6VA11066',
+  'W000805': 'S6VA00093', 'K000384': 'S2VA00142',
+};
+
+const INDUSTRY_COLORS = {
+  'Defense':        '#3d405b',
+  'Healthcare':     '#2d7dd2',
+  'Energy':         '#f18f01',
+  'Finance':        '#1a936f',
+  'Technology':     '#8338ec',
+  'Guns/NRA':       '#c8102e',
+  'Labor':          '#e9c46a',
+  'Agriculture':    '#5fa03a',
+  'Real Estate':    '#8d6748',
+  'Transportation': '#219ebc',
+  'Telecom':        '#6a0572',
+  'Alcohol/Tobacco':'#c77dff',
+  'Automotive':     '#e76f51',
+  'Legal':          '#457b9d',
+  'Small Business': '#2a9d8f',
+  'Hospitality':    '#e9c46a',
+  'Retail':         '#fb8500',
+  'Other':          '#adb5bd',
+};
+
+const donorsCache = {};
+
+function fmtMoney(n) {
+  if (n >= 1e6) return `$${(n/1e6).toFixed(1)}M`;
+  if (n >= 1e3) return `$${Math.round(n/1e3)}K`;
+  return `$${Math.round(n)}`;
+}
+
+function renderDonorChart(industries) {
+  // Filter out "Other", show last; sort rest by total desc
+  const named = industries.filter(r => r.industry !== 'Other').sort((a,b) => b.total - a.total);
+  const other = industries.find(r => r.industry === 'Other');
+  const rows = other ? [...named, other] : named;
+  if (!rows.length) return '<div class="donor-no-data">No PAC contribution data yet.</div>';
+
+  const max = Math.max(...rows.map(r => r.total));
+  return rows.map(r => {
+    const pct = max > 0 ? Math.max(2, Math.round((r.total / max) * 100)) : 2;
+    const color = INDUSTRY_COLORS[r.industry] || '#adb5bd';
+    const top = r.top_donors && r.top_donors.length
+      ? r.top_donors.slice(0,2).map(d => d.name.replace(/political action committee.*/i,'PAC').trim()).join(', ')
+      : '';
+    return `
+      <div class="donor-bar-row" title="${top ? top : r.industry}">
+        <div class="donor-industry">${r.industry}</div>
+        <div class="donor-bar-wrap"><div class="donor-bar" style="width:${pct}%;background:${color}"></div></div>
+        <div class="donor-amount">${fmtMoney(r.total)}</div>
+      </div>`;
+  }).join('');
+}
+
+async function toggleDonors(bid, btn) {
+  const panel = document.getElementById(`donors-${bid}`);
+  const isOpen = panel.classList.contains('open');
+  if (isOpen) {
+    panel.classList.remove('open');
+    btn.textContent = 'Donors';
+    return;
+  }
+  panel.classList.add('open');
+  btn.textContent = 'Hide Donors';
+
+  if (donorsCache[bid]) {
+    document.getElementById(`donors-chart-${bid}`).innerHTML = renderDonorChart(donorsCache[bid]);
+    return;
+  }
+  try {
+    const resp = await fetch(`/api/congress/pac-summary/${bid}`);
+    const data = await resp.json();
+    donorsCache[bid] = data.industries || [];
+    document.getElementById(`donors-chart-${bid}`).innerHTML = renderDonorChart(donorsCache[bid]);
+  } catch(e) {
+    document.getElementById(`donors-chart-${bid}`).innerHTML = '<div class="donor-no-data">Could not load donor data.</div>';
+  }
 }
 
 async function init() {
