@@ -5359,6 +5359,12 @@ def representatives_page():
         return f.read()
 
 
+@app.get("/news", response_class=HTMLResponse)
+def news_page():
+    with open(os.path.join(BASE_DIR, "templates", "news.html"), "r", encoding="utf-8") as f:
+        return f.read()
+
+
 @app.get("/polls", response_class=HTMLResponse)
 def polls_page():
     with open(os.path.join(BASE_DIR, "templates", "polls.html"), "r", encoding="utf-8") as f:
