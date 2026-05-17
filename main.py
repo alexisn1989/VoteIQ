@@ -289,7 +289,6 @@ except Exception as e:
     _results = None
     print(f"Warning: could not load election results: {e}")
 
-_init_query_cache()
 
 
 # ── 2025 General Election results — loaded once on first request ──────────────
@@ -824,6 +823,9 @@ def _set_cached_reply(key: str, reply: str):
         conn.close()
     except Exception:
         pass
+
+
+_init_query_cache()
 
 
 DISTRICT_CONTEXT = {
@@ -4122,9 +4124,8 @@ def _sqlite_bill_lookup(bill_numbers: list[str]) -> str:
     """Return a formatted context block for the given bill numbers from the local SQLite DB."""
     if not bill_numbers or not os.path.exists(_VA_LEGIS_DB):
         return ""
-    import sqlite3 as _sq
     try:
-        conn = _sq.connect(_VA_LEGIS_DB)
+        conn = sqlite3.connect(_VA_LEGIS_DB)
         cur = conn.cursor()
         lines = []
         for bid in bill_numbers:
@@ -4165,29 +4166,27 @@ def _cached_bill_description_lookup(bill_numbers: list[str], session: str | None
     """Return cached bill descriptions from openstates_va.db with no external API calls."""
     if not bill_numbers or not os.path.exists(_OPENSTATES_DB):
         return ""
-    import sqlite3 as _sq
     try:
-        conn = _sq.connect(_OPENSTATES_DB)
+        conn = sqlite3.connect(_OPENSTATES_DB)
         cur = conn.cursor()
         lines = []
         for bid in bill_numbers:
             if session:
                 rows = cur.execute(
-                    "SELECT bill_id, session, title, description, source_url, generated_at "
+                    "SELECT bill_id, session, title, description, source_url "
                     "FROM bill_descriptions WHERE bill_id=? AND session=?",
                     (bid, session),
                 ).fetchall()
             else:
                 rows = cur.execute(
-                    "SELECT bill_id, session, title, description, source_url, generated_at "
+                    "SELECT bill_id, session, title, description, source_url "
                     "FROM bill_descriptions WHERE bill_id=? ORDER BY session DESC",
                     (bid,),
                 ).fetchall()
-            for bill_id, sess, title, desc, url, generated_at in rows:
+            for bill_id, sess, title, desc, url in rows:
                 lines.append(
                     f"[Cached Bill Description — {bill_id} {sess}]\n"
                     f"{desc}"
-                    + (f"\nCached at: {generated_at}" if generated_at else "")
                     + (f"\nSource: {url}" if url and url not in desc else "")
                 )
         conn.close()
@@ -4200,7 +4199,6 @@ def _cached_bill_description_search(query: str, session: str | None = None, limi
     """Search cached bill descriptions locally. Uses FTS5 when available, LIKE fallback otherwise."""
     if not query or not os.path.exists(_OPENSTATES_DB):
         return ""
-    import sqlite3 as _sq
 
     terms = [
         t for t in re.findall(r"[A-Za-z0-9]+", query.lower())
@@ -4209,49 +4207,42 @@ def _cached_bill_description_search(query: str, session: str | None = None, limi
     if not terms:
         return ""
 
+    def _fts_rows(cur, match_q, sess, lim):
+        base = """
+            SELECT bd.bill_id, bd.session, bd.title, bd.description, bd.source_url
+            FROM bill_descriptions_fts f
+            JOIN bill_descriptions bd ON bd.bill_id=f.bill_id AND bd.session=f.session
+            WHERE bill_descriptions_fts MATCH ?
+        """
+        if sess:
+            return cur.execute(base + " AND bd.session=? LIMIT ?", (match_q, sess, lim)).fetchall()
+        return cur.execute(base + " LIMIT ?", (match_q, lim)).fetchall()
+
     try:
-        conn = _sq.connect(_OPENSTATES_DB)
+        conn = sqlite3.connect(_OPENSTATES_DB)
         cur = conn.cursor()
         rows = []
         try:
-            match_query = " ".join(terms)
-            if session:
-                rows = cur.execute(
-                    """
-                    SELECT bd.bill_id, bd.session, bd.title, bd.description, bd.source_url
-                    FROM bill_descriptions_fts f
-                    JOIN bill_descriptions bd
-                      ON bd.bill_id=f.bill_id AND bd.session=f.session
-                    WHERE bill_descriptions_fts MATCH ? AND bd.session=?
-                    LIMIT ?
-                    """,
-                    (match_query, session, limit),
-                ).fetchall()
-            else:
-                rows = cur.execute(
-                    """
-                    SELECT bd.bill_id, bd.session, bd.title, bd.description, bd.source_url
-                    FROM bill_descriptions_fts f
-                    JOIN bill_descriptions bd
-                      ON bd.bill_id=f.bill_id AND bd.session=f.session
-                    WHERE bill_descriptions_fts MATCH ?
-                    LIMIT ?
-                    """,
-                    (match_query, limit),
-                ).fetchall()
+            # Try AND first (precise), fall back to OR if nothing found
+            and_query = " AND ".join(terms)
+            rows = _fts_rows(cur, and_query, session, limit)
+            if not rows and len(terms) > 1:
+                rows = _fts_rows(cur, " OR ".join(terms), session, limit)
         except Exception:
-            like = f"%{'%'.join(terms[:4])}%"
+            # FTS5 not available — LIKE fallback with individual terms ANDed via WHERE clauses
+            where_parts = " AND ".join("search_text LIKE ?" for _ in terms[:4])
+            like_args = [f"%{t}%" for t in terms[:4]]
             if session:
                 rows = cur.execute(
-                    "SELECT bill_id, session, title, description, source_url FROM bill_descriptions "
-                    "WHERE session=? AND search_text LIKE ? LIMIT ?",
-                    (session, like, limit),
+                    f"SELECT bill_id, session, title, description, source_url FROM bill_descriptions "
+                    f"WHERE session=? AND {where_parts} LIMIT ?",
+                    [session] + like_args + [limit],
                 ).fetchall()
             else:
                 rows = cur.execute(
-                    "SELECT bill_id, session, title, description, source_url FROM bill_descriptions "
-                    "WHERE search_text LIKE ? LIMIT ?",
-                    (like, limit),
+                    f"SELECT bill_id, session, title, description, source_url FROM bill_descriptions "
+                    f"WHERE {where_parts} LIMIT ?",
+                    like_args + [limit],
                 ).fetchall()
         conn.close()
         if not rows:
@@ -4272,9 +4263,8 @@ def _sqlite_legislator_votes(name: str) -> str:
     """Return voting summary and education bill info for a legislator by last name."""
     if not os.path.exists(_VA_LEGIS_DB):
         return ""
-    import sqlite3 as _sq
     try:
-        conn = _sq.connect(_VA_LEGIS_DB)
+        conn = sqlite3.connect(_VA_LEGIS_DB)
         cur = conn.cursor()
         # Find member_id by last name (partial match)
         name_clean = name.strip().split()[-1]  # use last word as last name
@@ -4342,9 +4332,8 @@ def _openstates_vote_lookup(bill_numbers: list[str], session: str | None = None)
     """Return named vote breakdown for bills from openstates_va.db."""
     if not bill_numbers or not os.path.exists(_OPENSTATES_DB):
         return ""
-    import sqlite3 as _sq
     try:
-        conn = _sq.connect(_OPENSTATES_DB)
+        conn = sqlite3.connect(_OPENSTATES_DB)
         cur = conn.cursor()
         lines = []
         for bid in bill_numbers:
@@ -4367,10 +4356,20 @@ def _openstates_vote_lookup(bill_numbers: list[str], session: str | None = None)
                     continue
                 title, sponsors, latest_action, result, url = bill_row
 
-                # Aggregate yes/no/abstain counts and collect names
+                # Use each voter's most recent recorded option to avoid duplicates across vote events
                 vote_rows = cur.execute(
-                    "SELECT option, voter_name, party FROM votes WHERE bill_id=? AND session=? ORDER BY option, voter_name",
-                    (bid, sess)
+                    """
+                    SELECT option, voter_name, party
+                    FROM votes
+                    WHERE bill_id=? AND session=?
+                      AND (voter_name, vote_date) IN (
+                          SELECT voter_name, MAX(vote_date)
+                          FROM votes WHERE bill_id=? AND session=?
+                          GROUP BY voter_name
+                      )
+                    ORDER BY option, voter_name
+                    """,
+                    (bid, sess, bid, sess)
                 ).fetchall()
                 if not vote_rows:
                     continue
@@ -4410,9 +4409,8 @@ def _openstates_legislator_lookup(name: str) -> str:
     """Return bills and vote positions for a legislator from openstates_va.db."""
     if not os.path.exists(_OPENSTATES_DB):
         return ""
-    import sqlite3 as _sq
     try:
-        conn = _sq.connect(_OPENSTATES_DB)
+        conn = sqlite3.connect(_OPENSTATES_DB)
         cur = conn.cursor()
         last = name.strip().split()[-1]
         rows = cur.execute(
@@ -4423,6 +4421,11 @@ def _openstates_legislator_lookup(name: str) -> str:
             conn.close()
             return ""
         voter_name, party, district = rows[0]
+        ambiguous_note = (
+            f" [Note: '{last}' matched {len(rows)} legislators; showing {voter_name}. "
+            f"Others: {', '.join(r[0] for r in rows[1:])}]"
+            if len(rows) > 1 else ""
+        )
         # Vote counts per option
         counts = cur.execute(
             "SELECT option, COUNT(*) FROM votes WHERE voter_name=? GROUP BY option",
@@ -4440,7 +4443,7 @@ def _openstates_legislator_lookup(name: str) -> str:
             (voter_name,)
         ).fetchall()
         lines = [
-            f"[OpenStates — Legislator: {voter_name} ({party}, District {district})]",
+            f"[OpenStates — Legislator: {voter_name} ({party}, District {district}){ambiguous_note}]",
             f"Votes across all tracked sessions: {yes_n} YES, {no_n} NO, {total - yes_n - no_n} other",
             f"Yes rate: {round(yes_n/total*100,1) if total else 0}%",
         ]
@@ -4516,7 +4519,6 @@ def bill_descriptions_search(q: str, session: str | None = None, limit: int = 8)
     """Instant local bill-description search. No AI, embedding, Chroma, or OpenStates calls."""
     if not os.path.exists(_OPENSTATES_DB):
         return {"count": 0, "results": [], "source": "missing_openstates_db"}
-    import sqlite3 as _sq
 
     bill_numbers = _extract_bill_numbers(q)
     blocks = (
@@ -4537,7 +4539,7 @@ def bill_descriptions_search(q: str, session: str | None = None, limit: int = 8)
         })
 
     try:
-        conn = _sq.connect(_OPENSTATES_DB)
+        conn = sqlite3.connect(_OPENSTATES_DB)
         cache_count = conn.execute("SELECT COUNT(*) FROM bill_descriptions").fetchone()[0]
         conn.close()
     except Exception:
