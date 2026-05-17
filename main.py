@@ -188,6 +188,61 @@ def admin_reload_votes():
     return {"ok": True, "total_votes": total, "members": len(_VOTES_CACHE)}
 
 
+@app.get("/api/admin/reload-pacs")
+def admin_reload_pacs():
+    """Reload the in-memory PAC/industry cache from polls.db (run after ingest_fec_pacs.py)."""
+    _load_pac_cache()
+    total = sum(len(v) for v in _PAC_CACHE.values())
+    return {"ok": True, "total_industry_rows": total, "members": len(_PAC_CACHE)}
+
+
+@app.get("/api/admin/ingest-fec-pacs")
+def admin_ingest_fec_pacs(cycle: int = 2026):
+    """Trigger FEC PAC/industry ingestion for VA delegation in a background subprocess."""
+    api_key = os.getenv("FEC_API_KEY", "DEMO_KEY")
+    script = os.path.join(BASE_DIR, "ingest_fec_pacs.py")
+    if not os.path.exists(script):
+        return {"ok": False, "error": "ingest_fec_pacs.py not found"}
+    cmd = [sys.executable, script, "--cycle", str(cycle)]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        if result.returncode == 0:
+            _load_pac_cache()
+        return {
+            "ok": result.returncode == 0,
+            "returncode": result.returncode,
+            "stdout": result.stdout[-3000:],
+            "stderr": result.stderr[-500:],
+        }
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "timed out after 300s"}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+
+
+@app.get("/api/congress/pac-summary/{bioguide_id}")
+def pac_summary(bioguide_id: str):
+    """Return FEC industry donation totals for a VA member."""
+    rows = _PAC_CACHE.get(bioguide_id)
+    if not rows:
+        return {"bioguide_id": bioguide_id, "industries": [], "note": "no data — run ingest_fec_pacs.py"}
+    sorted_rows = sorted(rows, key=lambda r: r["total"], reverse=True)
+    return {
+        "bioguide_id":  bioguide_id,
+        "member_name":  sorted_rows[0].get("member_name"),
+        "cycle":        sorted_rows[0].get("cycle"),
+        "industries":   [
+            {
+                "industry":    r["industry"],
+                "total":       r["total"],
+                "count":       r["count"],
+                "top_donors":  r["top_donors"],
+            }
+            for r in sorted_rows
+        ],
+    }
+
+
 @app.get("/api/admin/ingest-fec")
 def admin_ingest_fec(cycle: str = "2026"):
     """Trigger FEC campaign finance ingestion for Virginia candidates."""
@@ -584,6 +639,44 @@ def _load_votes_cache() -> None:
 _load_votes_cache()
 
 
+# ── FEC industry PAC cache — loaded once at startup ───────────────────────────
+_PAC_CACHE: dict[str, list[dict]] = {}  # bioguide_id -> [{industry, total_amount, top_donors}]
+
+def _load_pac_cache() -> None:
+    global _PAC_CACHE
+    if not os.path.exists(_POLLS_DB):
+        return
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+        tbl = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='fec_industry_totals'"
+        ).fetchone()
+        if not tbl:
+            conn.close()
+            return
+        for row in conn.execute(
+            "SELECT bioguide_id, member_name, cycle, industry, total_amount, contributor_count, top_donors "
+            "FROM fec_industry_totals ORDER BY total_amount DESC"
+        ):
+            bgid = row["bioguide_id"]
+            if bgid not in _PAC_CACHE:
+                _PAC_CACHE[bgid] = []
+            _PAC_CACHE[bgid].append({
+                "industry":    row["industry"],
+                "total":       row["total_amount"],
+                "count":       row["contributor_count"],
+                "top_donors":  json.loads(row["top_donors"] or "[]"),
+                "member_name": row["member_name"],
+                "cycle":       row["cycle"],
+            })
+        conn.close()
+        total_rows = sum(len(v) for v in _PAC_CACHE.values())
+        print(f"PAC cache ready: {total_rows} industry rows across {len(_PAC_CACHE)} members.")
+    except Exception as exc:
+        print(f"PAC cache skipped: {exc}")
+
+_load_pac_cache()
 
 
 # ── 2025 General Election results — loaded once on first request ──────────────
@@ -3595,6 +3688,92 @@ def _fetch_vote_context(question: str, bioguide_ids: list[str], limit: int = 8) 
     return "VOTING RECORD (official roll-call data from congress.gov):\n" + "\n".join(lines)
 
 
+# Industry keyword → topic keywords that suggest the user is asking about money in that area
+_INDUSTRY_TOPIC_HINTS: dict[str, list[str]] = {
+    "Defense":       ["defense", "military", "ndaa", "weapon", "pentagon", "war"],
+    "Healthcare":    ["health", "medicaid", "medicare", "aca", "obamacare", "pharma", "drug"],
+    "Energy":        ["energy", "oil", "gas", "coal", "climate", "fossil", "epa", "pipeline"],
+    "Finance":       ["bank", "wall street", "financial", "investment", "securities", "credit"],
+    "Technology":    ["tech", "cyber", "data", "privacy", "ai ", "internet", "broadband"],
+    "Guns/NRA":      ["gun", "nra", "firearm", "weapon", "second amendment", "rifle"],
+    "Labor":         ["union", "labor", "worker", "wage", "collective bargaining"],
+    "Agriculture":   ["farm", "agri", "food", "crop", "usda"],
+    "Real Estate":   ["real estate", "housing", "mortgage", "rent", "build"],
+    "Transportation":["airline", "transport", "highway", "rail", "shipping"],
+    "Telecom":       ["telecom", "cable", "internet", "spectrum", "broadband"],
+}
+
+
+def _fetch_finance_context(bioguide_ids: list[str], question: str) -> str:
+    """Return a formatted PAC/industry donation block correlated with voting patterns."""
+    if not _PAC_CACHE or not bioguide_ids:
+        return ""
+
+    q_lower = question.lower()
+    money_keywords = ["fund", "donor", "pac", "money", "contribut", "financ", "pay", "sponsor", "lobbying"]
+    is_money_question = any(kw in q_lower for kw in money_keywords)
+
+    # Determine which industries the question touches
+    relevant_industries: set[str] = set()
+    for industry, hints in _INDUSTRY_TOPIC_HINTS.items():
+        if any(h in q_lower for h in hints):
+            relevant_industries.add(industry)
+
+    lines: list[str] = []
+    for bgid in bioguide_ids:
+        pac_rows = _PAC_CACHE.get(bgid, [])
+        if not pac_rows:
+            continue
+        member_name = pac_rows[0].get("member_name", bgid)
+        cycle       = pac_rows[0].get("cycle", "")
+
+        # Filter to relevant industries, or show top 5 if it's a money question
+        if relevant_industries:
+            filtered = [r for r in pac_rows if r["industry"] in relevant_industries]
+        elif is_money_question:
+            filtered = sorted(pac_rows, key=lambda r: r["total"], reverse=True)[:5]
+        else:
+            continue  # no finance question, no industry match — skip
+
+        if not filtered:
+            if is_money_question:
+                filtered = sorted(pac_rows, key=lambda r: r["total"], reverse=True)[:5]
+            else:
+                continue
+
+        lines.append(f"\n{member_name} campaign contributions ({cycle} cycle):")
+        for r in filtered:
+            donors = ", ".join(d["name"] for d in r["top_donors"][:3]) if r["top_donors"] else ""
+            donor_str = f"  (top: {donors})" if donors else ""
+            lines.append(f"  {r['industry']:20s}: ${r['total']:>10,.0f}{donor_str}")
+
+        # Cross-reference: does voting record align with top donor industries?
+        votes = _VOTES_CACHE.get(bgid, [])
+        if votes and relevant_industries:
+            corr_lines: list[str] = []
+            for industry in relevant_industries:
+                if not any(r["industry"] == industry for r in filtered):
+                    continue
+                hints = _INDUSTRY_TOPIC_HINTS.get(industry, [])
+                related_votes = [
+                    v for v in votes
+                    if any(h in (v.get("question") or "").lower() for h in hints)
+                ][:6]
+                if related_votes:
+                    yeas = sum(1 for v in related_votes if "yea" in (v.get("member_vote") or "").lower())
+                    nays = len(related_votes) - yeas
+                    corr_lines.append(
+                        f"  {industry} votes: {yeas} Yea / {nays} Nay on {len(related_votes)} related bills"
+                    )
+            if corr_lines:
+                lines.append(f"  Voting alignment:")
+                lines.extend(corr_lines)
+
+    if not lines:
+        return ""
+    return "CAMPAIGN FINANCE & INDUSTRY CORRELATION (FEC data):\n" + "\n".join(lines)
+
+
 try:
     import cohere as _cohere
     _COHERE_CLIENT = _cohere.ClientV2(api_key=os.getenv("COHERE_API_KEY", ""))
@@ -3916,8 +4095,9 @@ async def chat(request: Request, req: ChatRequest):
         if any(pol.lower() in mname or mname in pol.lower() for pol in pol_names if pol):
             bioguide_ids.append(bgid)
 
-    news_context = _fetch_relevant_news(last_question, pol_names)
-    vote_context = _fetch_vote_context(last_question, bioguide_ids)
+    news_context    = _fetch_relevant_news(last_question, pol_names)
+    vote_context    = _fetch_vote_context(last_question, bioguide_ids)
+    finance_context = _fetch_finance_context(bioguide_ids, last_question)
 
     system_prompt = f"""You are VoteIQ, a nonpartisan civic assistant helping Virginia voters learn about their elected representatives.
 
@@ -3928,10 +4108,13 @@ Your job is to help voters understand who represents them and what those officia
 - How to contact or reach the representative
 - Recent legislation they have sponsored or voted on
 - How they voted on specific bills or issues
+- Campaign donors and which industries fund their campaigns
 - General information about the office (U.S. House, state legislature, etc.)
 - Voter registration and civic participation
 
 {vote_context if vote_context else ""}
+
+{finance_context if finance_context else ""}
 
 {f'''
 {news_context}
@@ -3941,7 +4124,7 @@ Format citations as: [Outlet — Author](URL) at the end of the relevant sentenc
 If no relevant news is listed above, answer from your training knowledge.
 ''' if news_context else ''}
 
-Keep answers 2-4 sentences. Be factual and nonpartisan. When citing a vote, include the bill name and Yea/Nay. For official contact info direct users to house.gov, senate.gov, or virginiageneralassembly.gov. Never express opinions on representatives or tell people how to vote."""
+Keep answers 2-4 sentences. Be factual and nonpartisan. When citing a vote, include the bill name and Yea/Nay. When citing donors, note the industry and total amount from FEC records. For official contact info direct users to house.gov, senate.gov, or virginiageneralassembly.gov. Never express opinions on representatives or tell people how to vote."""
     try:
         return ChatResponse(reply=_claude_reply(system_prompt, req.messages, max_tokens=1000))
     except Exception as e:
