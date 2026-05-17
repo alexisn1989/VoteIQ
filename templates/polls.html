@@ -91,6 +91,10 @@
   .no-polls { text-align: center; padding: 60px 20px; }
   .no-polls p { font-family: 'Barlow Condensed', sans-serif; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
 
+  .year-group { margin-bottom: 40px; }
+  .year-heading { font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 900; color: var(--navy); padding: 10px 0 12px; border-bottom: 3px double var(--navy); margin-bottom: 20px; display: flex; align-items: baseline; gap: 14px; }
+  .year-heading-count { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+
   /* News articles */
   .articles-list { display: flex; flex-direction: column; gap: 12px; }
   .article-card { background: white; border: 1px solid var(--mid); border-left: 4px solid var(--red); padding: 14px 18px; display: flex; flex-direction: column; gap: 5px; }
@@ -340,6 +344,13 @@ function renderArticle(a) {
 let allPolls = [];
 let currentOffice = '';
 
+function pollYear(poll) {
+  if (poll.cycle && /^\d{4}$/.test(String(poll.cycle))) return String(poll.cycle);
+  const d = poll.end_date || poll.start_date || '';
+  const m = String(d).match(/\b(20\d\d)\b/);
+  return m ? m[1] : 'Other';
+}
+
 function filterAndRender() {
   const filtered = currentOffice
     ? allPolls.filter(p => (p.office_type || '').toLowerCase().includes(currentOffice.toLowerCase()))
@@ -350,7 +361,28 @@ function filterAndRender() {
     container.innerHTML = '<div class="no-polls"><p>No polls found for this filter.</p></div>';
     return;
   }
-  container.innerHTML = `<div class="polls-grid">${filtered.map(renderPoll).join('')}</div>`;
+
+  // Group by year, sorted newest first
+  const groups = {};
+  for (const poll of filtered) {
+    const yr = pollYear(poll);
+    (groups[yr] = groups[yr] || []).push(poll);
+  }
+  const years = Object.keys(groups).sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+
+  const html = years.map(yr => {
+    const polls = groups[yr];
+    return `
+      <div class="year-group">
+        <div class="year-heading">
+          ${escHtml(yr)}
+          <span class="year-heading-count">${polls.length} poll${polls.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="polls-grid">${polls.map(renderPoll).join('')}</div>
+      </div>`;
+  }).join('');
+
+  container.innerHTML = html;
 }
 
 async function loadPolls() {
