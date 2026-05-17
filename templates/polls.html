@@ -329,15 +329,56 @@ function renderPoll(poll) {
 }
 
 function renderArticle(a) {
-  const terms = (a.matched_terms || '').split(',').map(t => t.trim()).filter(Boolean);
-  const termsHtml = terms.map(t => `<span class="term-chip">${escHtml(t)}</span>`).join('');
   const dateStr = a.published_at ? new Date(a.published_at).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) : '';
+
+  let numbersHtml = '';
+  if (a.extracted_numbers) {
+    try {
+      const ex = typeof a.extracted_numbers === 'string' ? JSON.parse(a.extracted_numbers) : a.extracted_numbers;
+      const parts = [];
+
+      if (ex.candidates && ex.candidates.length) {
+        const bars = ex.candidates.map(c => {
+          const color = /span|dem|d\b/i.test(c.name) ? '#1a52c8' : /young|rep|r\b/i.test(c.name) ? '#c8102e' : '#555';
+          return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;width:90px;flex-shrink:0;color:var(--navy);">${escHtml(c.name)}</span>
+            <div style="flex:1;height:14px;background:var(--mid);border-radius:2px;overflow:hidden;">
+              <div style="width:${c.pct}%;height:100%;background:${color};border-radius:2px;"></div>
+            </div>
+            <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.78rem;font-weight:700;width:38px;text-align:right;color:var(--navy);">${c.pct}%</span>
+          </div>`;
+        }).join('');
+        parts.push(`<div style="margin-top:10px;">${bars}</div>`);
+      } else if (ex.percentages && ex.percentages.length) {
+        const chips = ex.percentages.map(p =>
+          `<span style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;background:var(--mid);padding:2px 8px;border-radius:2px;color:var(--navy);">${escHtml(p.pct_raw)}</span>`
+        ).join(' ');
+        parts.push(`<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px;">${chips}</div>`);
+      }
+
+      if (ex.leads && ex.leads.length) {
+        const leadTxt = ex.leads.map(l => `${escHtml(l.name)} +${l.lead_pts}pts`).join(' · ');
+        parts.push(`<div style="font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;font-weight:700;letter-spacing:0.08em;color:var(--muted);margin-top:6px;">${leadTxt}</div>`);
+      }
+
+      const meta = [];
+      if (ex.pollster) meta.push(`Pollster: ${escHtml(ex.pollster)}`);
+      if (ex.methodology && ex.methodology.length) meta.push(`Method: ${ex.methodology.map(escHtml).join(', ')}`);
+      if (ex.sample_size) meta.push(`n=${escHtml(ex.sample_size)}`);
+      if (meta.length) {
+        parts.push(`<div style="font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-top:6px;">${meta.join(' · ')}</div>`);
+      }
+
+      if (parts.length) numbersHtml = `<div style="border-top:1px solid var(--mid);margin-top:8px;padding-top:8px;">${parts.join('')}</div>`;
+    } catch (e) {}
+  }
+
   return `
     <div class="article-card">
       <div class="article-source">${escHtml(a.source || '')}</div>
       <a class="article-title" href="${escHtml(a.url || '#')}" target="_blank" rel="noopener">${escHtml(a.title || 'Untitled')}</a>
       <div class="article-meta">${escHtml(dateStr)}</div>
-      ${termsHtml ? `<div class="article-terms">${termsHtml}</div>` : ''}
+      ${numbersHtml}
     </div>`;
 }
 

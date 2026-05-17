@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, field_validator
@@ -98,8 +98,11 @@ async def startup_poll_ingest() -> None:
 
 
 @app.get("/api/admin/ingest-polls")
-def admin_ingest_polls(sources: str = "fivethirtyeight,votehub,news"):
+def admin_ingest_polls(sources: str = "fivethirtyeight,votehub,news", token: str = ""):
     """Manually trigger poll ingestion. Hit this URL after deploy to populate data."""
+    expected = os.getenv("POLL_INGEST_ADMIN_TOKEN", "")
+    if expected and token != expected:
+        raise HTTPException(status_code=403, detail="Invalid poll ingest token")
     source_list = [s.strip() for s in sources.split(",") if s.strip()]
     result = _run_ingest_subprocess(source_list)
     return result
@@ -4779,7 +4782,7 @@ def poll_articles(limit: int = 25):
             return {"count": 0, "results": [], "source": "poll_articles_table_not_initialized"}
         rows = conn.execute(
             """
-            SELECT source, title, summary, published_at, url, matched_terms, fetched_at
+            SELECT source, title, summary, published_at, url, matched_terms, extracted_numbers, fetched_at
             FROM poll_articles
             ORDER BY COALESCE(published_at, fetched_at) DESC
             LIMIT ?

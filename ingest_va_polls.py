@@ -64,7 +64,97 @@ DEFAULT_NEWS_FEEDS = [
     "https://www.whro.org/rss.xml",
 ]
 
-POLL_TERMS = re.compile(r"\b(poll|polling|survey|favorability|approval|horserace|margin)\b", re.I)
+# Requires substantive poll language — bare "approval" or "polling places" won't match
+POLL_TERMS = re.compile(
+    r"\b(new poll|poll shows|poll finds|poll says|polled|survey shows|survey finds|"
+    r"surveyors?|favorability|approval rating|disapproval|horserace|ballot test|"
+    r"polling average|polling data|lead(?:s|ing)? in (?:the )?poll|"
+    r"percentage points?|points? (?:ahead|behind|lead|up|down))\b",
+    re.I,
+)
+
+# Extracts raw percentages and leads from article text
+_PCT_RE = re.compile(
+    r"(?P<name>[A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s+(?:leads?|at|gets?|earns?|receives?|with)\s+"
+    r"(?P<pct>\d{1,3})(?:\.\d)?%",
+    re.I,
+)
+_LEAD_RE = re.compile(
+    r"(?P<name>[A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s+(?:leads?|is ahead)\s+"
+    r"(?:by\s+)?(?P<pts>\d{1,2})(?:\.\d)?\s*(?:percentage\s+)?points?",
+    re.I,
+)
+_ANY_PCT_RE = re.compile(r"(\d{1,3})(?:\.\d)?%")
+_SAMPLE_RE = re.compile(
+    r"(?:sample(?:\s+size)?|surveyed|interviewed|respondents?|registered voters?|likely voters?)"
+    r"\s+(?:of\s+)?(?P<n>\d[\d,]+)",
+    re.I,
+)
+_METHODOLOGY_RE = re.compile(
+    r"\b(?P<method>online|telephone|phone|live.?caller?|IVR|robopoll|text|mail|"
+    r"mixed.?mode|panel|automated)\b",
+    re.I,
+)
+_POLLSTER_RE = re.compile(
+    r"(?:poll(?:ed|ing)?\s+by|conducted by|commissioned by|according to)\s+"
+    r"(?P<pollster>[A-Z][A-Za-z &/]+?)(?:\s+(?:and|for|,|\.|poll|found|shows))",
+    re.I,
+)
+
+
+def extract_poll_numbers(text: str) -> dict:
+    """Pull candidate percentages, leads, sample size, methodology, and pollster from text."""
+    out: dict = {}
+
+    # Candidate percentages
+    candidates = []
+    seen: set[str] = set()
+    for m in _PCT_RE.finditer(text):
+        key = f"{m.group('name').lower()}:{m.group('pct')}"
+        if key not in seen:
+            seen.add(key)
+            candidates.append({"name": m.group("name"), "pct": float(m.group("pct"))})
+    if not candidates:
+        fallback = []
+        for m in _ANY_PCT_RE.finditer(text):
+            start = max(0, m.start() - 40)
+            snippet = text[start: m.end() + 20].strip()
+            fallback.append({"pct_raw": m.group(0), "context": snippet})
+            if len(fallback) >= 4:
+                break
+        if fallback:
+            out["percentages"] = fallback
+    else:
+        out["candidates"] = candidates[:6]
+
+    # Point leads
+    leads = [
+        {"name": m.group("name"), "lead_pts": float(m.group("pts"))}
+        for m in _LEAD_RE.finditer(text)
+    ]
+    if leads:
+        out["leads"] = leads[:2]
+
+    # Sample size
+    sm = _SAMPLE_RE.search(text)
+    if sm:
+        out["sample_size"] = sm.group("n").replace(",", "")
+
+    # Methodology
+    methods = list(dict.fromkeys(
+        m.group("method").lower() for m in _METHODOLOGY_RE.finditer(text)
+    ))
+    if methods:
+        out["methodology"] = methods
+
+    # Pollster name
+    pm = _POLLSTER_RE.search(text)
+    if pm:
+        out["pollster"] = pm.group("pollster").strip()
+
+    return out
+
+
 VOTEHUB_POLLS_URL = "https://api.votehub.com/polls"
 
 
@@ -212,6 +302,7 @@ def setup_db(conn: sqlite3.Connection) -> None:
             published_at     TEXT,
             url              TEXT,
             matched_terms    TEXT,
+            extracted_numbers TEXT,
             raw_json         TEXT,
             fetched_at       TEXT NOT NULL
         );
@@ -233,6 +324,11 @@ def setup_db(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_poll_articles_published ON poll_articles(published_at);
         """
     )
+    # migrate: add extracted_numbers column if upgrading an existing DB
+    try:
+        conn.execute("ALTER TABLE poll_articles ADD COLUMN extracted_numbers TEXT")
+    except Exception:
+        pass
     conn.commit()
 
 
@@ -692,6 +788,7 @@ def ingest_news_feeds(
             rows_seen += 1
             article_id = "news:" + stable_id(source, item.get("url"), item.get("title"))
             terms = sorted(set(m.group(0).lower() for m in POLL_TERMS.finditer(combined)))
+            numbers = extract_poll_numbers(combined)
             if dry_run:
                 rows_written += 1
                 continue
@@ -699,15 +796,16 @@ def ingest_news_feeds(
                 """
                 INSERT INTO poll_articles (
                     source, article_id, title, summary, published_at, url,
-                    matched_terms, raw_json, fetched_at
+                    matched_terms, extracted_numbers, raw_json, fetched_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(article_id) DO UPDATE SET
                     title=excluded.title,
                     summary=excluded.summary,
                     published_at=excluded.published_at,
                     url=excluded.url,
                     matched_terms=excluded.matched_terms,
+                    extracted_numbers=excluded.extracted_numbers,
                     raw_json=excluded.raw_json,
                     fetched_at=excluded.fetched_at
                 """,
@@ -719,6 +817,7 @@ def ingest_news_feeds(
                     item.get("published_at", ""),
                     item.get("url", ""),
                     ", ".join(terms),
+                    json.dumps(numbers, ensure_ascii=False) if numbers else None,
                     json.dumps(item, ensure_ascii=False, sort_keys=True),
                     now_iso(),
                 ),
