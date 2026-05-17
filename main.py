@@ -4623,7 +4623,7 @@ EXCERPTS:
 {context}"""
 
     try:
-        return ChatResponse(reply=_claude_reply(system_prompt, req.messages, max_tokens=1000))
+        return ChatResponse(reply=_claude_reply(system_prompt, req.messages, max_tokens=1800))
     except Exception as e:
         return ChatResponse(reply=_friendly_claude_error(e))
 
