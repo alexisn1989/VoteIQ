@@ -5177,6 +5177,102 @@ def _request_rep_profiles(req, user_query: str) -> str:
     return "\n\n".join(blocks)
 
 
+# ── Federal (congressional) member context ────────────────────────────────────
+
+_federal_members_cache: list[dict] | None = None
+
+
+def _load_federal_members() -> list[dict]:
+    global _federal_members_cache
+    if _federal_members_cache is not None:
+        return _federal_members_cache
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        rows = conn.execute(
+            "SELECT bioguide_id, name, party, chamber, district FROM congress_members"
+        ).fetchall()
+        conn.close()
+        _federal_members_cache = [
+            {"bioguide_id": r[0], "name": r[1], "party": r[2], "chamber": r[3], "district": r[4]}
+            for r in rows
+        ]
+    except Exception:
+        _federal_members_cache = []
+    return _federal_members_cache
+
+
+def _federal_member_by_name(text: str) -> dict | None:
+    """Return the VA federal member whose name appears in text, or None."""
+    text_norm = _normalize_person_name(text)
+    for member in _load_federal_members():
+        # "Last, First M." → check last name and full normalized form
+        parts = member["name"].split(",")
+        last = _normalize_person_name(parts[0]) if parts else ""
+        if last and last in text_norm:
+            return member
+        full = _normalize_person_name(member["name"])
+        if full and full in text_norm:
+            return member
+    return None
+
+
+def _fetch_federal_context(member: dict) -> str:
+    """Build a plain-text context block for a VA federal member: votes + sponsored bills."""
+    bio = member["bioguide_id"]
+    name = member["name"]
+    party = member["party"]
+    district = member["district"]
+    chamber = member["chamber"]
+    seat = (
+        f"U.S. Senator from Virginia"
+        if district == "S"
+        else f"U.S. Representative, Virginia's {district}th Congressional District"
+    )
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        votes = conn.execute(
+            """SELECT vote_date, bill, question, member_vote, result
+               FROM congress_votes WHERE bioguide_id = ?
+               ORDER BY vote_date DESC LIMIT 40""",
+            (bio,),
+        ).fetchall()
+        bills = conn.execute(
+            """SELECT bill_type, bill_number, title, policy_area,
+                      latest_action, latest_action_date, role
+               FROM congress_bills WHERE sponsor_id = ?
+               ORDER BY latest_action_date DESC LIMIT 25""",
+            (bio,),
+        ).fetchall()
+        conn.close()
+    except Exception as exc:
+        return f"[Federal data unavailable: {exc}]"
+
+    lines = [
+        f"[Federal Member — {name} ({party})]",
+        f"Office: {seat} | Chamber: {chamber} | 119th Congress",
+        f"Source: congress.gov / clerk.house.gov",
+    ]
+    if votes:
+        lines.append(f"\nRoll-Call Votes (119th Congress, most recent first — {len(votes)} shown):")
+        for vote_date, bill, question, member_vote, result in votes:
+            lines.append(f"  {vote_date} | {bill} | {question} | Voted: {member_vote} | Result: {result}")
+    else:
+        lines.append("\nNo roll-call votes in dataset.")
+
+    if bills:
+        lines.append(f"\nSponsored / Co-Sponsored Bills ({len(bills)} shown):")
+        for bill_type, bill_number, title, policy_area, latest_action, latest_action_date, role in bills:
+            bid = f"{bill_type.upper()} {bill_number}"
+            area = f" [{policy_area}]" if policy_area else ""
+            lines.append(f"  {bid}: {title}{area} | {role} | Last action: {latest_action_date} — {latest_action}")
+    else:
+        lines.append("\nNo sponsored bills in dataset.")
+
+    return "\n".join(lines)
+
+
+# ── SQLite bill lookup ─────────────────────────────────────────────────────────
+
 def _sqlite_bill_lookup(bill_numbers: list[str]) -> str:
     """Return a formatted context block for the given bill numbers from the local SQLite DB."""
     if not bill_numbers or not os.path.exists(_VA_LEGIS_DB):
@@ -6516,9 +6612,11 @@ async def bills_chat(request: Request, req: BillsChatRequest):
 
     system_prompt = f"""You are VoteIQ, a nonpartisan Virginia civic assistant. Today is May 2026. \
 You have access to the retrieved excerpts below, which may include Virginia General Assembly bills, \
-election results, legislator voting records, and representative profile summaries from the local 2026 session database. \
+election results, legislator voting records, representative profile summaries from the local 2026 session database, \
+AND roll-call votes and sponsored bills for Virginia's 13 federal representatives (119th Congress) from congress.gov. \
 Answer the user's question using ONLY the excerpts below — do not rely on your training data. \
-Be factual and cite bill numbers when relevant.{district_note}{chroma_note}{model_note}
+Be factual and cite bill numbers when relevant. \
+For federal members (U.S. House/Senate), cite bill type and number (e.g. H.R. 23) and note the source as congress.gov.{district_note}{chroma_note}{model_note}
 
 VOTE INTERPRETATION — apply these rules when reading vote records:
 - If a legislator votes YES on passage but NO on concurrence/conference substitute, they likely objected to the amended version, not the bill itself. Say: "voted against the House-amended version; accepted final compromise."
@@ -6689,6 +6787,11 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
                 )
                 if pb and pb not in seen_docs:
                     seen_docs.add(pb); context_blocks.insert(0, pb)
+        fed_member = _federal_member_by_name(user_query)
+        if fed_member:
+            fed_ctx = _fetch_federal_context(fed_member)
+            if fed_ctx and fed_ctx not in seen_docs:
+                seen_docs.add(fed_ctx); context_blocks.insert(0, fed_ctx)
         if mentioned:
             exact_docs = _fetch_bills_by_id(mentioned, session_year)
             if session_year:
@@ -6754,9 +6857,11 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
     model_note = "\nMODEL ROUTING: Simple exact bill lookup using cached local bill context; answer briefly.\n" if use_haiku else ""
     system_prompt = f"""You are VoteIQ, a nonpartisan Virginia civic assistant. Today is May 2026. \
 You have access to the retrieved excerpts below, which may include Virginia General Assembly bills, \
-election results, legislator voting records, and representative profile summaries from the local 2026 session database. \
+election results, legislator voting records, representative profile summaries from the local 2026 session database, \
+AND roll-call votes and sponsored bills for Virginia's 13 federal representatives (119th Congress) from congress.gov. \
 Answer the user's question using ONLY the excerpts below — do not rely on your training data. \
-Be factual and cite bill numbers when relevant.{district_note}{chroma_note}{model_note}
+Be factual and cite bill numbers when relevant. \
+For federal members (U.S. House/Senate), cite bill type and number (e.g. H.R. 23) and note the source as congress.gov.{district_note}{chroma_note}{model_note}
 
 VOTE INTERPRETATION — apply these rules when reading vote records:
 - If a legislator votes YES on passage but NO on concurrence/conference substitute, they likely objected to the amended version, not the bill itself. Say: "voted against the House-amended version; accepted final compromise."
