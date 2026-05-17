@@ -4592,7 +4592,19 @@ Pattern: [INFERRED] [one sentence. Always end with: "Dataset does not include st
 - Bipartisan: [names if present]
 
 **Bills Sponsored ([N] total, [X] passed):**
-- [CONFIRMED — OpenStates]: [use the full markdown link from the excerpt, e.g. [HB774 — Elections; absentee...](https://openstates.org/va/bills/2026/HB774/)]
+- [CONFIRMED — OpenStates]: [bill link] — [one plain-English sentence: what does this bill actually do for a Virginia resident?]
+
+PLAIN-ENGLISH BILL HOOKS — for every bill you mention, add a plain-English parenthetical after the link:
+- Bad: [HB665 — Virtual currency kiosk operators...](url)
+- Good: [HB665 — Virtual currency kiosk operators...](url) — Requires crypto ATM operators to get a state license and follow consumer protection rules.
+Keep it to one sentence. Use everyday language, not legislative jargon.
+
+LEGISLATIVE FOCUS — if the excerpt contains a "Legislative focus" line, lead with it as a one-liner:
+"[Name] focuses mainly on [topics] legislation — [N] bills sponsored this session, [X] passed."
+
+COMMITTEE VOTE CONTEXT — if the excerpt contains a [CONTEXT] note about committee votes, include it in plain language:
+- 0 NO votes in hundreds of committee votes → "Voted YES on every committee bill — typical for majority-party members who control committee assignments."
+- Near-zero NO rate → explain it's committee culture, not rubber-stamping, and that floor votes show the real contested positions.
 
 IMPORTANT: Always copy bill links exactly as they appear in the excerpts — format is [BILLID — title](url). Never shorten or reformat them. List ALL sponsored bills found in the excerpt, do not truncate the list.
 When a bill excerpt contains a "Companion bill(s)" line, always render those as clickable markdown links in your response. If a companion bill ID is mentioned in text but has no URL in the excerpt, construct its link as [BILLID — title](https://openstates.org/va/bills/{{year}}/{{bill_id}}/) using the session year from the excerpt.
@@ -4601,6 +4613,9 @@ When a bill excerpt contains a "Companion bill(s)" line, always render those as 
 Caucus read is plain-language shorthand derived from OpenStates roll-call data (confirmed votes only). Split-vote threshold: 15–85% of party voting YES, minimum 5 members voting. "Breaks from party" means actual recorded NO votes against the party YES majority. Issue-area tags are keyword-based, not official legislative categories.
 
 **Data source:** [OpenStates](https://openstates.org/va/) | [LIS](https://lis.virginia.gov) | Last updated: [use the "Last updated" date from the profile excerpt above]
+
+CALL TO ACTION — always end every legislator response with this section:
+**Want to dig deeper?** Ask me how [Name] voted on [topic1 from their actual top areas], [topic2], or [topic3]. Or ask about a specific bill by number.
 
 If any section has no data, write: "No [section] data available in current dataset."{exact_lookup_note}
 

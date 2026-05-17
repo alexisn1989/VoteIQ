@@ -500,6 +500,17 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
             if committees:
                 lines.append(f"Committee assignments (derived from vote motions, openstates.org): {', '.join(committees)}")
 
+            # Legislative focus — plain-language summary of top sponsored bill topics
+            if topic_counter and bills:
+                top_focus = [t for t, _ in topic_counter.most_common(3)]
+                if len(top_focus) >= 3:
+                    focus_str = f"{top_focus[0]}, {top_focus[1]}, and {top_focus[2]}"
+                elif len(top_focus) == 2:
+                    focus_str = f"{top_focus[0]} and {top_focus[1]}"
+                else:
+                    focus_str = top_focus[0]
+                lines.append(f"Legislative focus [INFERRED from sponsorship pattern — not a stated priority]: primarily sponsors {focus_str} legislation ({len(bills)} bills this session, {len(passed)} passed)")
+
             # Sponsored bills summary
             if bills:
                 lines.append(f"\n[CONFIRMED — OpenStates sponsorship record] {name} is listed as sponsor on {len(bills)} bill(s) in {session}:")
@@ -604,6 +615,12 @@ def build_profiles(conn: sqlite3.Connection, sessions: list[str]) -> list[dict]:
                 comm_total = len(comm_yes) + len(comm_no)
                 lines.append(f"\n[CONFIRMED — OpenStates committee vote records, {session} session]")
                 lines.append(f"  {comm_total} committee votes — {len(comm_yes)} YES, {len(comm_no)} NO")
+                if comm_total >= 50:
+                    if len(comm_no) == 0:
+                        lines.append(f"  [CONTEXT] Zero NO votes in {comm_total} committee votes — committee votes are typically less contested than floor votes; majority-party members often vote YES in committees they chair or control. This reflects committee culture, not necessarily rubber-stamping.")
+                    elif len(comm_no) / comm_total < 0.01:
+                        no_pct = round(len(comm_no) / comm_total * 100, 1)
+                        lines.append(f"  [CONTEXT] {no_pct}% NO rate in committee — very low dissent is typical for majority-party members. Floor votes are more indicative of contested positions.")
 
             if comm_killed:
                 lines.append(f"  [CONFIRMED] Voted NO in committee on bills that ultimately failed:")
