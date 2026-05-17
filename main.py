@@ -4984,6 +4984,46 @@ def polls_feed(
         return {"count": 0, "results": [], "source": "polls_feed_error", "error": str(exc)}
 
 
+@app.get("/api/spanberger-approval")
+def spanberger_approval():
+    """Return Spanberger poll numbers over time for the approval tracker chart."""
+    if not os.path.exists(_POLLS_DB):
+        return {"count": 0, "data": []}
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            """
+            SELECT p.end_date, p.start_date, p.pollster, p.sample_size,
+                   p.population, p.source, p.url,
+                   pr.pct, pr.candidate_name, pr.candidate_party
+            FROM poll_results pr
+            JOIN polls p ON p.source_record_id = pr.source_record_id
+            WHERE LOWER(pr.candidate_name) LIKE '%spanberger%'
+              AND pr.pct >= 30
+              AND (p.cycle >= '2024' OR COALESCE(p.end_date, p.start_date, '') >= '2024')
+            ORDER BY COALESCE(p.end_date, p.start_date) ASC
+            """
+        ).fetchall()
+        conn.close()
+        data = [
+            {
+                "date": row["end_date"] or row["start_date"],
+                "pollster": row["pollster"],
+                "pct": row["pct"],
+                "candidate_name": row["candidate_name"],
+                "sample_size": row["sample_size"],
+                "population": row["population"],
+                "source": row["source"],
+                "url": row["url"],
+            }
+            for row in rows
+        ]
+        return {"count": len(data), "data": data}
+    except Exception as exc:
+        return {"count": 0, "data": [], "error": str(exc)}
+
+
 @app.get("/polls", response_class=HTMLResponse)
 def polls_page():
     with open(os.path.join(BASE_DIR, "templates", "polls.html"), "r", encoding="utf-8") as f:

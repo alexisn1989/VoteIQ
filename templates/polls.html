@@ -177,6 +177,22 @@
     </div>
   </div>
 
+  <!-- Spanberger Approval Tracker -->
+  <div class="section-label" style="margin-top:56px;"><span>◆</span> Gov. Spanberger — Poll Numbers Over Time</div>
+  <div id="approvalTracker" style="background:white;border:1px solid var(--mid);border-top:4px solid var(--dem);padding:24px 24px 20px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Governor of Virginia · D</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--navy);">Abigail Spanberger</div>
+      </div>
+      <div id="approvalLatest" style="text-align:right;"></div>
+    </div>
+    <div id="approvalChart" style="width:100%;height:220px;position:relative;overflow:hidden;">
+      <div class="loading-state" style="padding:40px 0;"><div class="spinner"></div><p>Loading…</p></div>
+    </div>
+    <div id="approvalLegend" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-family:'Barlow Condensed',sans-serif;font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);"></div>
+  </div>
+
   <div style="margin-top:24px;padding:16px 20px;background:white;border:1px solid var(--mid);border-left:4px solid var(--navy);">
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--navy);margin-bottom:8px;">Data Sources &amp; Attribution</div>
     <ul style="list-style:none;display:flex;flex-direction:column;gap:5px;">
@@ -466,6 +482,106 @@ document.getElementById('filterTabs').addEventListener('click', e => {
 
 loadPolls();
 loadArticles();
+loadApprovalTracker();
+
+async function loadApprovalTracker() {
+  try {
+    const r = await fetch('/api/spanberger-approval');
+    const json = await r.json();
+    const data = json.data || [];
+    if (!data.length) {
+      document.getElementById('approvalChart').innerHTML = '<p style="color:var(--muted);font-size:0.85rem;padding:20px 0;">No data available.</p>';
+      return;
+    }
+
+    // Parse dates and sort
+    function parseApprovalDate(s) {
+      if (!s) return null;
+      // Handle "Oct. 6, 2025 – Oct. 14, 2025" or "2025-10-14" style
+      const clean = s.replace(/–|—/g, '-').split('-').pop().trim();
+      const d = new Date(clean);
+      if (!isNaN(d)) return d;
+      // Try full string
+      const d2 = new Date(s.split('–')[0].trim());
+      return isNaN(d2) ? null : d2;
+    }
+
+    const points = data
+      .map(d => ({ ...d, _dt: parseApprovalDate(d.date) }))
+      .filter(d => d._dt && d.pct)
+      .sort((a, b) => a._dt - b._dt);
+
+    if (!points.length) {
+      document.getElementById('approvalChart').innerHTML = '<p style="color:var(--muted);font-size:0.85rem;padding:20px 0;">No parseable dates.</p>';
+      return;
+    }
+
+    const latest = points[points.length - 1];
+    document.getElementById('approvalLatest').innerHTML = `
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Latest Poll</div>
+      <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;color:var(--dem);line-height:1;">${latest.pct}%</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.68rem;color:var(--muted);margin-top:2px;">${latest.pollster || ''}</div>`;
+
+    // Build SVG chart
+    const W = document.getElementById('approvalChart').clientWidth || 700;
+    const H = 200;
+    const PAD = { top: 16, right: 20, bottom: 32, left: 40 };
+    const cW = W - PAD.left - PAD.right;
+    const cH = H - PAD.top - PAD.bottom;
+
+    const minPct = Math.max(0, Math.min(...points.map(p => p.pct)) - 5);
+    const maxPct = Math.min(100, Math.max(...points.map(p => p.pct)) + 5);
+    const minT = points[0]._dt.getTime();
+    const maxT = points[points.length - 1]._dt.getTime();
+
+    const xScale = t => PAD.left + (maxT === minT ? cW / 2 : ((t - minT) / (maxT - minT)) * cW);
+    const yScale = v => PAD.top + cH - ((v - minPct) / (maxPct - minPct)) * cH;
+
+    const polyline = points.map(p => `${xScale(p._dt.getTime())},${yScale(p.pct)}`).join(' ');
+    const area = `${xScale(points[0]._dt.getTime())},${PAD.top + cH} ` + polyline + ` ${xScale(points[points.length-1]._dt.getTime())},${PAD.top + cH}`;
+
+    // Y gridlines at 40,50,60
+    const gridLines = [40, 50, 60].filter(v => v >= minPct && v <= maxPct).map(v =>
+      `<line x1="${PAD.left}" y1="${yScale(v)}" x2="${PAD.left + cW}" y2="${yScale(v)}" stroke="#ddd8cc" stroke-dasharray="3,3"/>
+       <text x="${PAD.left - 4}" y="${yScale(v) + 4}" fill="#7a7468" font-size="10" text-anchor="end" font-family="Barlow Condensed,sans-serif">${v}%</text>`
+    ).join('');
+
+    // X axis labels: just first and last year
+    const xLabels = [points[0], points[points.length - 1]].map((p, i) =>
+      `<text x="${xScale(p._dt.getTime())}" y="${H - 6}" fill="#7a7468" font-size="10" text-anchor="${i === 0 ? 'start' : 'end'}" font-family="Barlow Condensed,sans-serif">${p._dt.toLocaleString('en-US', {month:'short', year:'numeric'})}</text>`
+    ).join('');
+
+    // Dot for each point
+    const dots = points.map(p =>
+      `<circle cx="${xScale(p._dt.getTime())}" cy="${yScale(p.pct)}" r="3" fill="#1a52c8" fill-opacity="0.6">
+        <title>${p.pollster}: ${p.pct}% (${p._dt.toLocaleDateString()})</title>
+       </circle>`
+    ).join('');
+
+    const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px;display:block;">
+      <defs>
+        <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#1a52c8" stop-opacity="0.18"/>
+          <stop offset="100%" stop-color="#1a52c8" stop-opacity="0.02"/>
+        </linearGradient>
+      </defs>
+      ${gridLines}
+      <polygon points="${area}" fill="url(#areaGrad)"/>
+      <polyline points="${polyline}" fill="none" stroke="#1a52c8" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+      ${dots}
+      ${xLabels}
+    </svg>`;
+
+    document.getElementById('approvalChart').innerHTML = svg;
+    document.getElementById('approvalLegend').innerHTML =
+      `<span>📊 ${points.length} polls</span>
+       <span>Range: ${Math.min(...points.map(p=>p.pct))}% – ${Math.max(...points.map(p=>p.pct))}%</span>
+       <span>Avg: ${(points.reduce((s,p)=>s+p.pct,0)/points.length).toFixed(1)}%</span>
+       <span style="color:var(--muted);">2025 Governor's Race polling data</span>`;
+  } catch (e) {
+    document.getElementById('approvalChart').innerHTML = '<p style="color:var(--muted);font-size:0.85rem;padding:20px 0;">Could not load data.</p>';
+  }
+}
 </script>
 </body>
 </html>
