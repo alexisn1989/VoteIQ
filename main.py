@@ -857,7 +857,27 @@ def _set_cached_reply(key: str, reply: str, cache_type: str = "ad_hoc"):
         pass
 
 
+def _init_feedback_table():
+    db = os.path.join(BASE_DIR, "openstates_va.db")
+    if not os.path.exists(db):
+        return
+    conn = sqlite3.connect(db)
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS feedback (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at INTEGER NOT NULL,
+            rating TEXT NOT NULL,
+            query TEXT,
+            reply_hash TEXT,
+            district TEXT
+        )"""
+    )
+    conn.commit()
+    conn.close()
+
+
 _init_query_cache()
+_init_feedback_table()
 
 
 DISTRICT_CONTEXT = {
@@ -4523,6 +4543,31 @@ class BillsChatRequest(BaseModel):
         return int(v)
 
 
+class FeedbackRequest(BaseModel):
+    rating: str
+    query: str = ""
+    reply_hash: str = ""
+    district: str = ""
+
+
+@app.post("/api/feedback")
+async def submit_feedback(request: Request, data: FeedbackRequest):
+    if data.rating not in ("up", "down"):
+        raise HTTPException(status_code=400, detail="rating must be 'up' or 'down'")
+    db = os.path.join(BASE_DIR, "openstates_va.db")
+    try:
+        conn = sqlite3.connect(db)
+        conn.execute(
+            "INSERT INTO feedback (created_at, rating, query, reply_hash, district) VALUES (?, ?, ?, ?, ?)",
+            (int(time.time()), data.rating, data.query[:500], data.reply_hash[:64], data.district[:100]),
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+    return {"ok": True}
+
+
 @app.get("/api/bills-debug")
 async def bills_debug():
     chroma_key = os.getenv("CHROMA_API_KEY", "")
@@ -4881,8 +4926,11 @@ When a bill excerpt contains a "Companion bill(s)" line, always render those as 
 **Methodology note** (always include when answering about caucus labels or party alignment):
 Caucus read is plain-language shorthand derived from OpenStates roll-call data (confirmed votes only). Split-vote threshold: 15–85% of party voting YES, minimum 5 members voting. "Breaks from party" means actual recorded NO votes against the party YES majority. Issue-area tags are keyword-based, not official legislative categories.
 
-CALL TO ACTION — always end every legislator response with this section:
-**Want to dig deeper?** Ask me how [Name] voted on [topic1 from their actual top areas], [topic2], or [topic3]. Or ask about a specific bill by number.
+CALL TO ACTION — always end every legislator response with this line. Each topic MUST be a markdown hyperlink. Here is the exact format — copy it and substitute the real legislator name and their top 3 issue areas:
+
+**Want to dig deeper?** Ask me how Jane Smith voted on [gun legislation](#ask:How did Jane Smith vote on gun legislation?), [education](#ask:How did Jane Smith vote on education?), or [housing](#ask:How did Jane Smith vote on housing?). Or ask about a specific bill by number.
+
+IMPORTANT: The three topic words must be markdown links exactly like [gun legislation](#ask:How did Jane Smith vote on gun legislation?) — replace "Jane Smith" with the real legislator name, and replace the three topics with the real top issue areas visible in the excerpt. Never write the topics as plain text.
 
 If any section has no data, write: "No [section] data available in current dataset."{exact_lookup_note}
 
@@ -4918,6 +4966,7 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
         if mentioned
         else _cached_bill_description_search(user_query, session_year)
     )
+    use_haiku = _simple_bill_lookup_question(user_query, mentioned, cached_bill_context)
 
     query_vec = None
     results = {"documents": [[]], "metadatas": [[]]}
@@ -5031,11 +5080,12 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
         f"\nNOTE: AI knowledge base unavailable ({chroma_error}). Answering from local database only.\n"
         if chroma_error else ""
     )
+    model_note = "\nMODEL ROUTING: Simple exact bill lookup using cached local bill context; answer briefly.\n" if use_haiku else ""
     system_prompt = f"""You are VoteIQ, a nonpartisan Virginia civic assistant. Today is May 2026. \
 You have access to the retrieved excerpts below, which may include Virginia General Assembly bills, \
 election results, legislator voting records, and representative profile summaries from the local 2026 session database. \
 Answer the user's question using ONLY the excerpts below — do not rely on your training data. \
-Be factual and cite bill numbers when relevant.{district_note}{chroma_note}
+Be factual and cite bill numbers when relevant.{district_note}{chroma_note}{model_note}
 
 VOTE INTERPRETATION — apply these rules when reading vote records:
 - If a legislator votes YES on passage but NO on concurrence/conference substitute, they likely objected to the amended version, not the bill itself. Say: "voted against the House-amended version; accepted final compromise."
@@ -5096,8 +5146,11 @@ IMPORTANT: Always copy bill links exactly. List ALL sponsored bills. Render Comp
 **Methodology note** (always include for caucus/party alignment questions):
 Caucus read is plain-language shorthand derived from OpenStates roll-call data. Split-vote threshold: 15–85% YES, minimum 5 members. "Breaks from party" = actual NO votes against party majority. Issue-area tags are keyword-based.
 
-CALL TO ACTION — always end legislator responses with:
-**Want to dig deeper?** Ask me how [Name] voted on [topic1], [topic2], or [topic3]. Or ask about a specific bill by number.
+CALL TO ACTION — always end legislator responses with this line. Each topic MUST be a markdown hyperlink. Here is the exact format — copy it and substitute the real legislator name and their top 3 issue areas:
+
+**Want to dig deeper?** Ask me how Jane Smith voted on [gun legislation](#ask:How did Jane Smith vote on gun legislation?), [education](#ask:How did Jane Smith vote on education?), or [housing](#ask:How did Jane Smith vote on housing?). Or ask about a specific bill by number.
+
+IMPORTANT: The three topic words must be markdown links exactly like [gun legislation](#ask:How did Jane Smith vote on gun legislation?) — replace "Jane Smith" with the real legislator name, and replace the three topics with the real top issue areas visible in the excerpt. Never write the topics as plain text.
 
 If any section has no data, write: "No [section] data available in current dataset."{exact_lookup_note}
 
@@ -5110,8 +5163,8 @@ EXCERPTS:
         full_reply = ""
         try:
             with client.messages.stream(
-                model="claude-sonnet-4-6",
-                max_tokens=1800,
+                model=_CLAUDE_HAIKU_MODEL if use_haiku else _CLAUDE_SONNET_MODEL,
+                max_tokens=700 if use_haiku else 1800,
                 system=system_prompt,
                 messages=msgs,
             ) as stream:

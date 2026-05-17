@@ -93,6 +93,26 @@
   .viq-chat-dot:nth-child(2) { animation-delay: 0.2s; }
   .viq-chat-dot:nth-child(3) { animation-delay: 0.4s; }
   @keyframes viqBounce { 0%,60%,100% { transform:translateY(0); } 30% { transform:translateY(-5px); } }
+  .viq-feedback { display: flex; gap: 5px; justify-content: flex-end; margin-top: 6px; }
+  .viq-feedback-btn { background: none; border: 1px solid #ddd; border-radius: 12px; padding: 2px 9px; font-size: 13px; cursor: pointer; color: #aaa; transition: all 0.15s; line-height: 1.5; }
+  .viq-feedback-btn:hover:not(:disabled) { border-color: #0d1b2a; color: #0d1b2a; }
+  .viq-feedback-btn.active.up { background: #e8f5e9; border-color: #4caf50; color: #2e7d32; }
+  .viq-feedback-btn.active.down { background: #fdecea; border-color: #e53935; color: #c62828; }
+  .viq-feedback-btn:disabled { cursor: default; }
+  .viq-copy-btn { min-width: 48px; font-size: 11px; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+  .viq-copy-btn.copied { border-color: #2e7d32; color: #2e7d32; background: #e8f5e9; }
+  .viq-vote-tally { display: block; margin: 5px 0 10px; }
+  .viq-vote-counts { display: flex; align-items: center; gap: 8px; font-size: 12px; font-family: 'Barlow', sans-serif; margin-bottom: 5px; }
+  .viq-vote-yes { color: #2e7d32; font-weight: 700; }
+  .viq-vote-no { color: #c62828; font-weight: 700; }
+  .viq-vote-sep { color: #bbb; }
+  .viq-vote-result { font-size: 10px; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.1em; text-transform: uppercase; padding: 1px 7px; border-radius: 2px; }
+  .viq-vote-result.pass { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+  .viq-vote-result.fail { background: #fdecea; color: #c62828; border: 1px solid #ef9a9a; }
+  .viq-vote-bar { position: relative; height: 10px; background: #fce4e4; border-radius: 4px; overflow: visible; }
+  .viq-vote-yes-fill { height: 100%; background: linear-gradient(90deg, #2e7d32, #66bb6a); border-radius: 4px 0 0 4px; min-width: 3px; }
+  .viq-vote-threshold { position: absolute; top: -5px; bottom: -5px; left: 50%; border-left: 2px dotted #888; pointer-events: none; }
+  .viq-vote-threshold::after { content: '50%'; position: absolute; top: calc(100% + 3px); left: 50%; transform: translateX(-50%); font-size: 9px; color: #999; font-family: 'Barlow', sans-serif; white-space: nowrap; }
   .viq-chat-chips { padding: 8px 16px; display: flex; flex-wrap: wrap; gap: 6px; background: #f8f9fc; border-top: 1px solid #eaecf4; }
   .viq-chat-chip { font-size: 12px; padding: 5px 12px; border: 1px solid #0d1b2a; border-radius: 20px; background: transparent; color: #0d1b2a; cursor: pointer; transition: background 0.15s; font-family: 'Barlow', sans-serif; }
   .viq-chat-chip:hover { background: #eef2fb; }
@@ -442,6 +462,15 @@
         sen ? sen.senator : null,
       ].filter(Boolean);
       initViqChat(districtCode, d.locality, del ? del.district_number : null, sen ? sen.district_number : null, repNames);
+      if (window.viqSaveDistrictContext) {
+        window.viqSaveDistrictContext({
+          districtCode: districtCode,
+          locality: d.locality || '',
+          hod: del ? del.district_number : null,
+          sd: sen ? sen.district_number : null,
+          repNames: repNames
+        });
+      }
       document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
       const mapEl = document.getElementById('map');
@@ -500,10 +529,63 @@
 
 
   (function () {
+    const VIQ_DISTRICT_STORAGE_KEY = 'voteiq.savedDistrictContext.v1';
     let viqDistrict = 'VA-00';
     let viqLocality = '';
     let viqHod = null, viqSd = null;
     const viqMsgs = [];
+    function viqEsc(value) {
+      return String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[ch]));
+    }
+    function viqLoadDistrictContext() {
+      try {
+        const raw = localStorage.getItem(VIQ_DISTRICT_STORAGE_KEY);
+        if (!raw) return null;
+        const saved = JSON.parse(raw);
+        if (!saved || (!saved.hod && !saved.sd && !saved.districtCode)) return null;
+        return saved;
+      } catch (e) {
+        localStorage.removeItem(VIQ_DISTRICT_STORAGE_KEY);
+        return null;
+      }
+    }
+    window.viqSaveDistrictContext = function (ctx) {
+      try {
+        localStorage.setItem(VIQ_DISTRICT_STORAGE_KEY, JSON.stringify({
+          districtCode: ctx.districtCode || 'VA-00',
+          locality: ctx.locality || '',
+          hod: ctx.hod || null,
+          sd: ctx.sd || null,
+          repNames: Array.isArray(ctx.repNames) ? ctx.repNames.slice(0, 4) : [],
+          savedAt: Date.now()
+        }));
+      } catch (e) {}
+    };
+    window.viqClearSavedDistrict = function () {
+      try { localStorage.removeItem(VIQ_DISTRICT_STORAGE_KEY); } catch (e) {}
+      location.reload();
+    };
+    function viqSavedDistrictNotice(ctx) {
+      const result = document.getElementById('result');
+      if (!result) return;
+      const reps = (ctx.repNames || []).length ? ctx.repNames.map(viqEsc).join(', ') : 'your saved representatives';
+      const districtBits = [
+        ctx.hod ? 'HOD ' + ctx.hod : '',
+        ctx.sd ? 'SD ' + ctx.sd : ''
+      ].filter(Boolean).join(' · ');
+      result.innerHTML =
+        '<div style="background:white;border:1px solid #ddd8cc;border-top:4px solid #0d1b2a;padding:16px 20px;margin-top:20px;">' +
+        '<div style="font-family:Barlow Condensed,sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:#7a7468;margin-bottom:6px;">Saved district loaded</div>' +
+        '<p style="font-size:0.9rem;line-height:1.55;margin-bottom:8px;"><strong>' + viqEsc(ctx.locality || ctx.districtCode || 'Virginia') + '</strong>' + (districtBits ? ' · ' + viqEsc(districtBits) : '') + '<br/>VoteIQ is ready with context for ' + reps + '.</p>' +
+        '<button type="button" onclick="viqClearSavedDistrict()" style="font-family:Barlow Condensed,sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;background:transparent;color:#c8102e;border:1px solid #c8102e;padding:7px 14px;cursor:pointer;">Use a different address</button>' +
+        '</div>';
+    }
     window.initViqChat = function (districtCode, locality, hod, sd, repNames) {
       viqDistrict = districtCode || 'VA-00';
       viqLocality = locality || '';
@@ -519,7 +601,17 @@
         : "Hi! I'm VoteIQ. Enter your address above to find your representatives, then ask me anything about them.";
       viqAddMsg('assistant', greeting);
     };
-    document.addEventListener('DOMContentLoaded', () => initViqChat('VA-00'));
+    document.addEventListener('DOMContentLoaded', () => {
+      const saved = viqLoadDistrictContext();
+      if (saved) {
+        initViqChat(saved.districtCode, saved.locality, saved.hod, saved.sd, saved.repNames || []);
+        viqSavedDistrictNotice(saved);
+        const panel = document.getElementById('viqChatPanel');
+        if (panel) setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+      } else {
+        initViqChat('VA-00');
+      }
+    });
     // Configure marked: all links open in new tab by default (overridden per-link below)
     if (typeof marked !== 'undefined') {
       const _renderer = new marked.Renderer();
@@ -541,7 +633,19 @@
         const billMatch = href.match(_billUrlRe);
         const isPerson  = _personUrlRe.test(href);
 
-        if (billMatch) {
+        if (href.startsWith('#ask:')) {
+          // Topic suggestion link → fire the embedded query
+          const query = decodeURIComponent(href.slice(5));
+          a.removeAttribute('target');
+          a.removeAttribute('rel');
+          a.title = query;
+          a.style.cursor = 'pointer';
+          a.addEventListener('click', function(e) {
+            e.preventDefault();
+            viqSendMessage(query);
+          });
+
+        } else if (billMatch) {
           // Bill link → ask VoteIQ about that bill
           const billId = billMatch[1].toUpperCase();
           a.removeAttribute('target');
@@ -568,6 +672,166 @@
         // keep their target="_blank" — they open the actual source page
       });
     }
+    const _defaultChips = [
+      'What has my representative done?',
+      'What bills has my delegate sponsored?',
+      'What is my senator\'s voting record?',
+    ];
+    function viqUpdateChips(bubble) {
+      const chipsEl = document.getElementById('viqChips');
+      const chips = [];
+      // Pull #ask: topic links from the CTA section
+      bubble.querySelectorAll('a[href^="#ask:"]').forEach(function(a) {
+        const query = decodeURIComponent(a.getAttribute('href').slice(5));
+        const text = a.textContent.trim();
+        if (!text || !query) return;
+        // Format chip label as "Name on topic" when possible
+        const m = query.match(/^how did (.+?) vote on (.+?)\??$/i);
+        const label = m ? m[1] + ' on ' + m[2] : text;
+        chips.push({ label, query });
+      });
+      // Add up to 2 bill chips from bill links in the response
+      let billCount = 0;
+      bubble.querySelectorAll('a').forEach(function(a) {
+        if (billCount >= 2) return;
+        const href = a.getAttribute('href') || '';
+        const m = href.match(_billUrlRe);
+        if (m) {
+          const billId = m[1].toUpperCase();
+          const label = 'Tell me about ' + billId;
+          if (!chips.some(function(c) { return c.label === label; })) {
+            chips.push({ label: label, query: 'Tell me more about ' + billId });
+            billCount++;
+          }
+        }
+      });
+      chipsEl.innerHTML = '';
+      const src = chips.length > 0 ? chips.slice(0, 4) : _defaultChips.map(function(t) { return { label: t, query: t }; });
+      src.forEach(function(chip) {
+        const btn = document.createElement('button');
+        btn.className = 'viq-chat-chip';
+        btn.textContent = chip.label;
+        btn.addEventListener('click', function() { viqSendMessage(chip.query); });
+        chipsEl.appendChild(btn);
+      });
+      chipsEl.style.display = 'flex';
+    }
+    function viqRenderVoteBars(bubble) {
+      const re = /(\d+)-Y,?\s*(\d+)-N(?:,?\s*result\s*(pass|fail))?/gi;
+      const walker = document.createTreeWalker(bubble, NodeFilter.SHOW_TEXT, null);
+      const nodes = [];
+      let node;
+      while ((node = walker.nextNode())) nodes.push(node);
+      nodes.forEach(function(textNode) {
+        re.lastIndex = 0;
+        if (!re.test(textNode.textContent)) return;
+        re.lastIndex = 0;
+        const text = textNode.textContent;
+        const frag = document.createDocumentFragment();
+        let last = 0, m;
+        while ((m = re.exec(text)) !== null) {
+          const yes = parseInt(m[1], 10);
+          const no = parseInt(m[2], 10);
+          const result = (m[3] || '').toLowerCase();
+          const total = yes + no;
+          const pct = total > 0 ? (yes / total * 100).toFixed(1) : 50;
+          if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+          const wrap = document.createElement('span');
+          wrap.className = 'viq-vote-tally';
+          const badge = result ? '<span class="viq-vote-result ' + result + '">' + result.toUpperCase() + '</span>' : '';
+          wrap.innerHTML =
+            '<span class="viq-vote-counts">' +
+              '<span class="viq-vote-yes">✅ ' + yes + ' Y</span>' +
+              '<span class="viq-vote-sep"> · </span>' +
+              '<span class="viq-vote-no">❌ ' + no + ' N</span>' +
+              badge +
+            '</span>' +
+            '<div class="viq-vote-bar">' +
+              '<div class="viq-vote-yes-fill" style="width:' + pct + '%"></div>' +
+              '<div class="viq-vote-threshold"></div>' +
+            '</div>';
+          frag.appendChild(wrap);
+          last = m.index + m[0].length;
+        }
+        if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+        textNode.parentNode.replaceChild(frag, textNode);
+      });
+    }
+    function viqAddFeedback(wrap, query) {
+      const row = viqEnsureActionRow(wrap);
+      const upBtn = document.createElement('button');
+      upBtn.className = 'viq-feedback-btn up';
+      upBtn.textContent = '👍';
+      upBtn.title = 'Helpful';
+      const downBtn = document.createElement('button');
+      downBtn.className = 'viq-feedback-btn down';
+      downBtn.textContent = '👎';
+      downBtn.title = 'Not helpful';
+      function sendFeedback(rating) {
+        upBtn.disabled = true;
+        downBtn.disabled = true;
+        (rating === 'up' ? upBtn : downBtn).classList.add('active');
+        const bubble = wrap.querySelector('.viq-chat-bubble');
+        const replyHash = bubble ? bubble.textContent.slice(0, 200) : '';
+        fetch('/api/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rating: rating, query: query, reply_hash: replyHash, district: viqDistrict || '' })
+        }).catch(function() {});
+      }
+      upBtn.addEventListener('click', function() { sendFeedback('up'); });
+      downBtn.addEventListener('click', function() { sendFeedback('down'); });
+      row.appendChild(upBtn);
+      row.appendChild(downBtn);
+    }
+    function viqEnsureActionRow(wrap) {
+      let row = wrap.querySelector('.viq-feedback');
+      if (!row) {
+        row = document.createElement('div');
+        row.className = 'viq-feedback';
+        wrap.appendChild(row);
+      }
+      return row;
+    }
+    async function viqCopyResponseText(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    function viqAddCopyButton(wrap, getText) {
+      const row = viqEnsureActionRow(wrap);
+      const btn = document.createElement('button');
+      btn.className = 'viq-feedback-btn viq-copy-btn';
+      btn.type = 'button';
+      btn.textContent = 'Copy';
+      btn.title = 'Copy response';
+      btn.addEventListener('click', async function () {
+        const original = btn.textContent;
+        try {
+          await viqCopyResponseText(getText() || '');
+          btn.textContent = 'Copied';
+          btn.classList.add('copied');
+          setTimeout(function () {
+            btn.textContent = original;
+            btn.classList.remove('copied');
+          }, 1400);
+        } catch (e) {
+          btn.textContent = 'Error';
+          setTimeout(function () { btn.textContent = original; }, 1400);
+        }
+      });
+      row.insertBefore(btn, row.firstChild);
+    }
     function viqAddMsg(role, text, isTyping) {
       const list = document.getElementById('viqMsgList');
       const wrap = document.createElement('div');
@@ -591,6 +855,9 @@
       }
       wrap.appendChild(av);
       wrap.appendChild(bubble);
+      if (!isTyping && role === 'assistant') {
+        viqAddCopyButton(wrap, function () { return text; });
+      }
       list.appendChild(wrap);
       list.scrollTop = list.scrollHeight;
       return bubble;
@@ -655,10 +922,19 @@
             } catch(e) {}
           }
         }
-        if (fullReply) viqMsgs.push({ role: 'assistant', content: fullReply });
+        if (fullReply) {
+          viqMsgs.push({ role: 'assistant', content: fullReply });
+          if (streamBubble) {
+            viqRenderVoteBars(streamBubble);
+            viqUpdateChips(streamBubble);
+            viqAddCopyButton(streamBubble.parentElement, function () { return fullReply; });
+            viqAddFeedback(streamBubble.parentElement, text);
+          }
+        }
       } catch (err) {
         viqRemoveTyping();
         if (!streamBubble) viqAddMsg('assistant', 'Something went wrong — please try again.');
+        viqUpdateChips(document.createElement('div')); // restore default chips on error
       }
       btn.disabled = false;
       input.focus();

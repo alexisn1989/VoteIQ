@@ -158,6 +158,13 @@ def _profile_reply(profile: dict) -> str:
             "OpenStates roll-call data. Issue-area tags are keyword-based, not official categories."
         )
     lines.append("\n**Data source:** OpenStates and LIS cached snapshot.")
+    lines.append(
+        f"\n**Want to dig deeper?** Ask me how {name} voted on "
+        f"[gun legislation](#ask:How did {name} vote on gun legislation?), "
+        f"[education](#ask:How did {name} vote on education?), "
+        f"or [housing](#ask:How did {name} vote on housing?). "
+        f"Or ask about a specific bill by number."
+    )
     return "\n".join(lines)
 
 
