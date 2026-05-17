@@ -150,6 +150,7 @@
   </div>
   <nav style="display:flex;gap:24px;align-items:center;">
     <a href="/past-elections" style="font-family:'Barlow Condensed',sans-serif;font-size:0.82rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy);text-decoration:none;border-bottom:2px solid transparent;padding-bottom:2px;transition:border-color 0.2s,color 0.2s;" onmouseover="this.style.color='var(--red)';this.style.borderBottomColor='var(--red)';" onmouseout="this.style.color='var(--navy)';this.style.borderBottomColor='transparent';">Past Elections</a>
+    <a href="/polls" style="font-family:'Barlow Condensed',sans-serif;font-size:0.82rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy);text-decoration:none;border-bottom:2px solid transparent;padding-bottom:2px;transition:border-color 0.2s,color 0.2s;" onmouseover="this.style.color='var(--red)';this.style.borderBottomColor='var(--red)';" onmouseout="this.style.color='var(--navy)';this.style.borderBottomColor='transparent';">Polls</a>
   </nav>
   <div>
     <div class="election-badge">⚡ Election Alert</div>
@@ -716,6 +717,57 @@
       });
       chipsEl.style.display = 'flex';
     }
+    function viqInjectCtaLinks(bubble) {
+      const walker = document.createTreeWalker(bubble, NodeFilter.SHOW_TEXT, null);
+      const nodes = [];
+      let node;
+      while ((node = walker.nextNode())) nodes.push(node);
+      // Pattern A: unrendered markdown [text](#ask:query) — marked skips URLs with spaces
+      const mdRe = /\[([^\]]+)\]\(#ask:([^)]+)\)/g;
+      // Pattern B: plain-text "voted on T1, T2, or T3" fallback
+      const ctaRe = /Ask me how (.+?) voted on ([^,\[]+),\s*([^,\[]+),\s*or\s*([^.!?\[\n]+)/g;
+      nodes.forEach(function(textNode) {
+        const text = textNode.textContent;
+        mdRe.lastIndex = 0; ctaRe.lastIndex = 0;
+        const hasMd = mdRe.test(text);
+        mdRe.lastIndex = 0; ctaRe.lastIndex = 0;
+        const hasCta = !hasMd && ctaRe.test(text);
+        ctaRe.lastIndex = 0;
+        if (!hasMd && !hasCta) return;
+        const frag = document.createDocumentFragment();
+        let last = 0, m;
+        if (hasMd) {
+          while ((m = mdRe.exec(text)) !== null) {
+            if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+            const a = document.createElement('a');
+            a.href = '#ask:' + m[2].trim();
+            a.textContent = m[1].trim();
+            frag.appendChild(a);
+            last = m.index + m[0].length;
+          }
+        } else {
+          while ((m = ctaRe.exec(text)) !== null) {
+            const name = m[1].trim();
+            const topics = [m[2].trim(), m[3].trim(), m[4].trim()];
+            if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+            const span = document.createElement('span');
+            span.appendChild(document.createTextNode('Ask me how ' + name + ' voted on '));
+            topics.forEach(function(topic, i) {
+              const a = document.createElement('a');
+              a.href = '#ask:How did ' + name + ' vote on ' + topic + '?';
+              a.textContent = topic;
+              span.appendChild(a);
+              if (i === 0) span.appendChild(document.createTextNode(', '));
+              if (i === 1) span.appendChild(document.createTextNode(', or '));
+            });
+            frag.appendChild(span);
+            last = m.index + m[0].length;
+          }
+        }
+        if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+        if (last > 0) textNode.parentNode.replaceChild(frag, textNode);
+      });
+    }
     function viqRenderVoteBars(bubble) {
       const re = /(\d+)-Y,?\s*(\d+)-N(?:,?\s*result\s*(pass|fail))?/gi;
       const walker = document.createTreeWalker(bubble, NodeFilter.SHOW_TEXT, null);
@@ -926,6 +978,8 @@
           viqMsgs.push({ role: 'assistant', content: fullReply });
           if (streamBubble) {
             viqRenderVoteBars(streamBubble);
+            viqInjectCtaLinks(streamBubble);
+            viqAttachLinkBehavior(streamBubble);
             viqUpdateChips(streamBubble);
             viqAddCopyButton(streamBubble.parentElement, function () { return fullReply; });
             viqAddFeedback(streamBubble.parentElement, text);

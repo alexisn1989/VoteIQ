@@ -4629,6 +4629,190 @@ def bill_descriptions_search(q: str, session: str | None = None, limit: int = 8)
     }
 
 
+@app.get("/api/polls")
+def polls_search(
+    office: str | None = None,
+    cycle: str | None = None,
+    race_id: str | None = None,
+    limit: int = 25,
+):
+    """Read Virginia poll rows ingested by ingest_va_polls.py."""
+    if not os.path.exists(_OPENSTATES_DB):
+        return {"count": 0, "results": [], "source": "missing_openstates_db"}
+    limit = max(1, min(int(limit or 25), 100))
+    where = ["LOWER(COALESCE(state, '')) = 'virginia'"]
+    params: list[object] = []
+    if office:
+        where.append("LOWER(COALESCE(office_type, '')) LIKE ?")
+        params.append(f"%{office.lower()}%")
+    if cycle:
+        where.append("cycle = ?")
+        params.append(cycle)
+    if race_id:
+        where.append("race_id = ?")
+        params.append(race_id)
+
+    try:
+        conn = sqlite3.connect(_OPENSTATES_DB)
+        conn.row_factory = sqlite3.Row
+        table_exists = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='polls'"
+        ).fetchone()
+        if not table_exists:
+            conn.close()
+            return {"count": 0, "results": [], "source": "polls_table_not_initialized"}
+        rows = conn.execute(
+            f"""
+            SELECT *
+            FROM polls
+            WHERE {' AND '.join(where)}
+            ORDER BY COALESCE(end_date, start_date, created_at, fetched_at) DESC
+            LIMIT ?
+            """,
+            (*params, limit),
+        ).fetchall()
+        records = []
+        for row in rows:
+            results = conn.execute(
+                """
+                SELECT answer, candidate_name, candidate_party, pct
+                FROM poll_results
+                WHERE source_record_id = ?
+                ORDER BY pct DESC
+                """,
+                (row["source_record_id"],),
+            ).fetchall()
+            item = dict(row)
+            item["results"] = [dict(r) for r in results]
+            item.pop("raw_json", None)
+            records.append(item)
+        conn.close()
+        return {"count": len(records), "source": "local_sqlite_polls", "results": records}
+    except Exception as exc:
+        return {"count": 0, "results": [], "source": "polls_error", "error": str(exc)}
+
+
+@app.get("/api/poll-articles")
+def poll_articles(limit: int = 25):
+    """Read poll-related news/RSS mentions ingested by ingest_va_polls.py."""
+    if not os.path.exists(_OPENSTATES_DB):
+        return {"count": 0, "results": [], "source": "missing_openstates_db"}
+    limit = max(1, min(int(limit or 25), 100))
+    try:
+        conn = sqlite3.connect(_OPENSTATES_DB)
+        conn.row_factory = sqlite3.Row
+        table_exists = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='poll_articles'"
+        ).fetchone()
+        if not table_exists:
+            conn.close()
+            return {"count": 0, "results": [], "source": "poll_articles_table_not_initialized"}
+        rows = conn.execute(
+            """
+            SELECT source, title, summary, published_at, url, matched_terms, fetched_at
+            FROM poll_articles
+            ORDER BY COALESCE(published_at, fetched_at) DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+        conn.close()
+        return {"count": len(rows), "source": "local_sqlite_poll_articles", "results": [dict(r) for r in rows]}
+    except Exception as exc:
+        return {"count": 0, "results": [], "source": "poll_articles_error", "error": str(exc)}
+
+
+@app.get("/api/polls-feed")
+def polls_feed(
+    office: str | None = None,
+    limit: int = 60,
+):
+    """Return Virginia polls with nested candidate results for the polls page."""
+    if not os.path.exists(_OPENSTATES_DB):
+        return {"count": 0, "results": [], "source": "missing_openstates_db"}
+    limit = max(1, min(int(limit or 60), 200))
+    where = ["state = 'Virginia'"]
+    params: list = []
+    if office:
+        where.append("LOWER(office_type) LIKE LOWER(?)")
+        params.append(f"%{office}%")
+    where_sql = " AND ".join(where)
+    try:
+        conn = sqlite3.connect(_OPENSTATES_DB)
+        conn.row_factory = sqlite3.Row
+        for tbl in ("polls", "poll_results"):
+            exists = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (tbl,)
+            ).fetchone()
+            if not exists:
+                conn.close()
+                return {"count": 0, "results": [], "source": f"{tbl}_not_initialized"}
+        rows = conn.execute(
+            f"""
+            SELECT p.source_record_id, p.source, p.cycle, p.office_type, p.seat_name,
+                   p.stage, p.pollster, p.sponsor, p.fte_grade, p.sample_size,
+                   p.population, p.methodology, p.start_date, p.end_date,
+                   p.election_date, p.url, p.notes, p.internal, p.partisan,
+                   pr.answer, pr.candidate_name, pr.candidate_party, pr.pct
+            FROM (
+                SELECT * FROM polls
+                WHERE {where_sql}
+                ORDER BY COALESCE(end_date, start_date, created_at, fetched_at) DESC
+                LIMIT ?
+            ) p
+            LEFT JOIN poll_results pr ON pr.source_record_id = p.source_record_id
+            ORDER BY COALESCE(p.end_date, p.start_date, p.created_at) DESC, p.source_record_id
+            """,
+            params + [limit],
+        ).fetchall()
+        conn.close()
+        polls: dict = {}
+        order: list = []
+        for row in rows:
+            rid = row["source_record_id"]
+            if rid not in polls:
+                order.append(rid)
+                polls[rid] = {
+                    "source_record_id": rid,
+                    "source": row["source"],
+                    "cycle": row["cycle"],
+                    "office_type": row["office_type"],
+                    "seat_name": row["seat_name"],
+                    "stage": row["stage"],
+                    "pollster": row["pollster"],
+                    "sponsor": row["sponsor"],
+                    "fte_grade": row["fte_grade"],
+                    "sample_size": row["sample_size"],
+                    "population": row["population"],
+                    "methodology": row["methodology"],
+                    "start_date": row["start_date"],
+                    "end_date": row["end_date"],
+                    "election_date": row["election_date"],
+                    "url": row["url"],
+                    "notes": row["notes"],
+                    "internal": row["internal"],
+                    "partisan": row["partisan"],
+                    "results": [],
+                }
+            if row["candidate_name"] or row["answer"]:
+                polls[rid]["results"].append({
+                    "answer": row["answer"],
+                    "candidate_name": row["candidate_name"],
+                    "candidate_party": row["candidate_party"],
+                    "pct": row["pct"],
+                })
+        result_list = [polls[rid] for rid in order]
+        return {"count": len(result_list), "source": "local_sqlite_polls_feed", "results": result_list}
+    except Exception as exc:
+        return {"count": 0, "results": [], "source": "polls_feed_error", "error": str(exc)}
+
+
+@app.get("/polls", response_class=HTMLResponse)
+def polls_page():
+    with open(os.path.join(BASE_DIR, "templates", "polls.html"), "r", encoding="utf-8") as f:
+        return f.read()
+
+
 @app.post("/api/bills-chat", response_model=ChatResponse)
 @limiter.limit("10/minute")
 async def bills_chat(request: Request, req: BillsChatRequest):
@@ -4926,11 +5110,9 @@ When a bill excerpt contains a "Companion bill(s)" line, always render those as 
 **Methodology note** (always include when answering about caucus labels or party alignment):
 Caucus read is plain-language shorthand derived from OpenStates roll-call data (confirmed votes only). Split-vote threshold: 15–85% of party voting YES, minimum 5 members voting. "Breaks from party" means actual recorded NO votes against the party YES majority. Issue-area tags are keyword-based, not official legislative categories.
 
-CALL TO ACTION — always end every legislator response with this line. Each topic MUST be a markdown hyperlink. Here is the exact format — copy it and substitute the real legislator name and their top 3 issue areas:
-
-**Want to dig deeper?** Ask me how Jane Smith voted on [gun legislation](#ask:How did Jane Smith vote on gun legislation?), [education](#ask:How did Jane Smith vote on education?), or [housing](#ask:How did Jane Smith vote on housing?). Or ask about a specific bill by number.
-
-IMPORTANT: The three topic words must be markdown links exactly like [gun legislation](#ask:How did Jane Smith vote on gun legislation?) — replace "Jane Smith" with the real legislator name, and replace the three topics with the real top issue areas visible in the excerpt. Never write the topics as plain text.
+CALL TO ACTION — always end every legislator response with:
+**Want to dig deeper?** Ask me how [Name] voted on [topic1], [topic2], or [topic3]. Or ask about a specific bill by number.
+Use the legislator's actual name and their real top 3 issue areas from the excerpt.
 
 If any section has no data, write: "No [section] data available in current dataset."{exact_lookup_note}
 
@@ -5146,11 +5328,9 @@ IMPORTANT: Always copy bill links exactly. List ALL sponsored bills. Render Comp
 **Methodology note** (always include for caucus/party alignment questions):
 Caucus read is plain-language shorthand derived from OpenStates roll-call data. Split-vote threshold: 15–85% YES, minimum 5 members. "Breaks from party" = actual NO votes against party majority. Issue-area tags are keyword-based.
 
-CALL TO ACTION — always end legislator responses with this line. Each topic MUST be a markdown hyperlink. Here is the exact format — copy it and substitute the real legislator name and their top 3 issue areas:
-
-**Want to dig deeper?** Ask me how Jane Smith voted on [gun legislation](#ask:How did Jane Smith vote on gun legislation?), [education](#ask:How did Jane Smith vote on education?), or [housing](#ask:How did Jane Smith vote on housing?). Or ask about a specific bill by number.
-
-IMPORTANT: The three topic words must be markdown links exactly like [gun legislation](#ask:How did Jane Smith vote on gun legislation?) — replace "Jane Smith" with the real legislator name, and replace the three topics with the real top issue areas visible in the excerpt. Never write the topics as plain text.
+CALL TO ACTION — always end legislator responses with:
+**Want to dig deeper?** Ask me how [Name] voted on [topic1], [topic2], or [topic3]. Or ask about a specific bill by number.
+Use the legislator's actual name and their real top 3 issue areas from the excerpt.
 
 If any section has no data, write: "No [section] data available in current dataset."{exact_lookup_note}
 

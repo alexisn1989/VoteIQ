@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Virginia Polls — VoteIQ</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root { --navy:#0d1b2a; --red:#c8102e; --light:#f4f1eb; --mid:#ddd8cc; --muted:#7a7468; --dem:#1a52c8; --rep:#c8102e; --grn:#1a6b1a; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--light); color: var(--navy); font-family: 'Barlow', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f4f1eb'/%3E%3Crect width='1' height='1' fill='%23e8e4dc' opacity='0.4'/%3E%3C/svg%3E"); pointer-events: none; z-index: 0; }
+
+  .topbar { background: var(--navy); color: var(--mid); font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; text-align: center; padding: 7px 16px; position: relative; z-index: 10; }
+  .topbar span { color: var(--red); margin: 0 6px; }
+
+  header { position: relative; z-index: 10; border-bottom: 3px double var(--navy); padding: 28px 48px 22px; display: flex; align-items: center; justify-content: space-between; background: var(--light); }
+  .logo-wrap { display: flex; align-items: center; gap: 16px; }
+  .header-nav { display: flex; gap: 24px; align-items: center; }
+  .header-nav a { font-family: 'Barlow Condensed', sans-serif; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--navy); text-decoration: none; border-bottom: 2px solid transparent; padding-bottom: 2px; transition: border-color 0.2s, color 0.2s; }
+  .header-nav a:hover, .header-nav a.active { color: var(--red); border-bottom-color: var(--red); }
+  .election-badge { display: inline-block; background: var(--red); color: white; font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; padding: 5px 12px; margin-bottom: 6px; }
+  .header-date { font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; text-align: right; }
+
+  .page-hero { position: relative; z-index: 10; max-width: 960px; margin: 0 auto; padding: 48px 32px 32px; text-align: center; }
+  .page-hero-eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--red); margin-bottom: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .page-hero-eyebrow::before, .page-hero-eyebrow::after { content: ''; flex: 1; max-width: 60px; height: 1px; background: var(--red); }
+  .page-hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 900; line-height: 1.1; color: var(--navy); margin-bottom: 14px; letter-spacing: -0.02em; }
+  .page-hero h1 em { font-style: italic; color: var(--red); }
+  .page-hero p { font-size: 1rem; color: var(--muted); max-width: 520px; margin: 0 auto; line-height: 1.6; }
+
+  .section-wrap { position: relative; z-index: 10; max-width: 960px; margin: 0 auto; padding: 0 32px 56px; }
+  .section-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--mid); }
+  .section-label span { color: var(--red); }
+
+  /* Filter tabs */
+  .filter-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px; }
+  .tab-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; padding: 8px 18px; border: 2px solid var(--mid); background: white; color: var(--muted); cursor: pointer; transition: all 0.18s; }
+  .tab-btn:hover { border-color: var(--navy); color: var(--navy); }
+  .tab-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
+
+  /* Spinner */
+  .loading-state { text-align: center; padding: 60px 20px; }
+  .spinner { display: inline-block; width: 36px; height: 36px; border: 3px solid var(--mid); border-top-color: var(--navy); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-state p { font-family: 'Barlow Condensed', sans-serif; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
+
+  /* Poll cards */
+  .polls-grid { display: flex; flex-direction: column; gap: 20px; }
+
+  .poll-card { background: white; border: 1px solid var(--mid); border-top: 4px solid var(--navy); padding: 0; overflow: hidden; }
+  .poll-card-head { padding: 18px 20px 14px; border-bottom: 1px solid var(--mid); display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .poll-meta-left { flex: 1; min-width: 0; }
+  .poll-office-line { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .poll-pollster { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; color: var(--navy); margin-bottom: 6px; line-height: 1.2; }
+  .poll-details { display: flex; flex-wrap: wrap; gap: 12px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .poll-detail-item { display: flex; align-items: center; gap: 4px; }
+  .poll-meta-right { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+
+  .fte-grade { display: inline-block; font-family: 'Barlow Condensed', sans-serif; font-size: 0.9rem; font-weight: 700; letter-spacing: 0.06em; padding: 4px 10px; border: 2px solid; }
+  .fte-grade.grade-a { color: #1a6b1a; border-color: #1a6b1a; }
+  .fte-grade.grade-b { color: #1a52c8; border-color: #1a52c8; }
+  .fte-grade.grade-c { color: #b35a00; border-color: #b35a00; }
+  .fte-grade.grade-d { color: var(--red); border-color: var(--red); }
+  .fte-grade.grade-nr { color: var(--muted); border-color: var(--mid); }
+
+  .flag-badge { display: inline-block; font-family: 'Barlow Condensed', sans-serif; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 7px; border-radius: 2px; }
+  .flag-internal { background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
+  .flag-partisan { background: #fce4e4; color: #c62828; border: 1px solid #ef9a9a; }
+
+  /* Candidate bars */
+  .poll-results { padding: 16px 20px 14px; }
+  .cand-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .cand-row:last-child { margin-bottom: 0; }
+  .cand-party-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .cand-name { font-size: 0.85rem; font-weight: 600; color: var(--navy); width: 160px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cand-bar-wrap { flex: 1; height: 18px; background: var(--mid); border-radius: 2px; overflow: hidden; position: relative; }
+  .cand-bar-fill { height: 100%; border-radius: 2px; min-width: 2px; transition: width 0.7s cubic-bezier(.4,0,.2,1); }
+  .cand-pct { font-family: 'Barlow Condensed', sans-serif; font-size: 0.88rem; font-weight: 700; color: var(--navy); width: 42px; text-align: right; flex-shrink: 0; }
+  .cand-party-tag { font-family: 'Barlow Condensed', sans-serif; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 1px 5px; border-radius: 2px; color: white; flex-shrink: 0; }
+  .cand-party-tag.dem { background: var(--dem); }
+  .cand-party-tag.rep { background: var(--rep); }
+  .cand-party-tag.ind { background: #555; }
+
+  .poll-card-foot { padding: 10px 20px; background: #faf8f3; border-top: 1px solid var(--mid); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .poll-source-link { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+  .poll-source-link:hover { color: var(--red); }
+  .poll-attribution { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mid); }
+
+  .no-polls { text-align: center; padding: 60px 20px; }
+  .no-polls p { font-family: 'Barlow Condensed', sans-serif; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
+
+  /* News articles */
+  .articles-list { display: flex; flex-direction: column; gap: 12px; }
+  .article-card { background: white; border: 1px solid var(--mid); border-left: 4px solid var(--red); padding: 14px 18px; display: flex; flex-direction: column; gap: 5px; }
+  .article-source { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--red); }
+  .article-title { font-size: 0.92rem; font-weight: 600; color: var(--navy); text-decoration: none; line-height: 1.4; }
+  .article-title:hover { color: var(--red); }
+  .article-meta { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .article-terms { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+  .term-chip { font-family: 'Barlow Condensed', sans-serif; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 7px; background: var(--mid); color: var(--muted); border-radius: 2px; }
+
+  footer { position: relative; z-index: 10; margin-top: 0; border-top: 3px double var(--navy); padding: 20px 48px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: var(--light); }
+  footer p { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  footer p span { color: var(--red); }
+  .footer-links { display: flex; gap: 20px; }
+  .footer-links a { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+  .footer-links a:hover { color: var(--red); }
+
+  @media (max-width: 640px) {
+    header { padding: 20px 20px 16px; flex-wrap: wrap; gap: 12px; }
+    .section-wrap { padding: 0 20px 40px; }
+    .page-hero { padding: 36px 20px 24px; }
+    .cand-name { width: 110px; }
+    footer { padding: 16px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  Virginia Statewide Special Election &nbsp;<span>◆</span>&nbsp; April 21, 2026 &nbsp;<span>◆</span>&nbsp; Free &amp; Nonpartisan
+</div>
+
+<header>
+  <div class="logo-wrap">
+    <a href="/"><img src="/static/logo.png" alt="VoteIQ Logo" style="width:120px;height:120px;object-fit:contain;" /></a>
+  </div>
+  <nav class="header-nav">
+    <a href="/">Home</a>
+    <a href="/past-elections">Past Elections</a>
+    <a href="/polls" class="active">Polls</a>
+  </nav>
+  <div>
+    <div class="election-badge">⚡ Election Alert</div>
+    <div class="header-date">Virginia &nbsp;·&nbsp; Polling Tracker</div>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="page-hero-eyebrow">Virginia Polling Tracker</div>
+  <h1>What do the polls say about<br/><em>Virginia races?</em></h1>
+  <p>Latest survey data from pollsters across governor, U.S. Senate, House, and statewide races. Pollster grades from FiveThirtyEight.</p>
+</section>
+
+<div class="section-wrap">
+
+  <!-- Filter tabs -->
+  <div class="filter-tabs" id="filterTabs">
+    <button class="tab-btn active" data-office="">All Races</button>
+    <button class="tab-btn" data-office="Governor">Governor</button>
+    <button class="tab-btn" data-office="Senate">U.S. Senate</button>
+    <button class="tab-btn" data-office="House">U.S. House</button>
+    <button class="tab-btn" data-office="President">President</button>
+  </div>
+
+  <!-- Poll cards -->
+  <div class="section-label"><span>◆</span> Recent Polls</div>
+  <div id="pollsContainer">
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading polls…</p>
+    </div>
+  </div>
+
+  <!-- News articles -->
+  <div class="section-label" id="articlesLabel" style="margin-top:48px;"><span>◆</span> Poll News &amp; Mentions</div>
+  <div id="articlesContainer">
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading articles…</p>
+    </div>
+  </div>
+
+  <p style="margin-top:20px;font-family:'Barlow Condensed',sans-serif;font-size:0.68rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">
+    Poll data: FiveThirtyEight / CC-BY 4.0 &nbsp;·&nbsp; Pollster grades: FiveThirtyEight &nbsp;·&nbsp; All data is for Virginia only
+  </p>
+</div>
+
+<footer>
+  <p>VoteIQ &nbsp;<span>◆</span>&nbsp; Virginia Civic Intelligence Platform</p>
+  <div class="footer-links">
+    <a href="/">Home</a>
+    <a href="/past-elections">Past Elections</a>
+    <a href="/polls">Polls</a>
+  </div>
+</footer>
+
+<script>
+const PARTY_COLORS = { DEM: '#1a52c8', REP: '#c8102e', IND: '#555555', LIB: '#f5a623', GRE: '#2e7d32' };
+const PARTY_LABELS = { DEM: 'D', REP: 'R', IND: 'I', LIB: 'L', GRE: 'G' };
+
+function partyClass(p) {
+  if (!p) return 'ind';
+  const u = p.toUpperCase();
+  if (u.startsWith('D')) return 'dem';
+  if (u.startsWith('R')) return 'rep';
+  return 'ind';
+}
+
+function partyColor(p) {
+  if (!p) return '#888';
+  const u = p.toUpperCase();
+  if (u.startsWith('D')) return PARTY_COLORS.DEM;
+  if (u.startsWith('R')) return PARTY_COLORS.REP;
+  return '#888';
+}
+
+function gradeClass(g) {
+  if (!g) return 'grade-nr';
+  const u = g.toUpperCase();
+  if (u.startsWith('A')) return 'grade-a';
+  if (u.startsWith('B')) return 'grade-b';
+  if (u.startsWith('C')) return 'grade-c';
+  if (u.startsWith('D') || u.startsWith('F')) return 'grade-d';
+  return 'grade-nr';
+}
+
+function fmtDate(d) {
+  if (!d) return '';
+  const parts = d.split('/');
+  if (parts.length === 3) {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const m = parseInt(parts[0], 10) - 1;
+    return `${months[m] || parts[0]} ${parts[1]}, ${parts[2]}`;
+  }
+  return d;
+}
+
+function popLabel(p) {
+  const m = { lv: 'Likely Voters', rv: 'Reg. Voters', a: 'Adults', v: 'Voters' };
+  return m[(p || '').toLowerCase()] || p || '';
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderPoll(poll) {
+  const results = (poll.results || []).filter(r => r.pct !== null && r.pct !== undefined);
+  const maxPct = results.length ? Math.max(...results.map(r => r.pct)) : 0;
+
+  const dateRange = poll.start_date && poll.end_date && poll.start_date !== poll.end_date
+    ? `${fmtDate(poll.start_date)} – ${fmtDate(poll.end_date)}`
+    : fmtDate(poll.end_date || poll.start_date);
+
+  const officeLine = [
+    poll.office_type,
+    poll.seat_name,
+    poll.stage ? (poll.stage.charAt(0).toUpperCase() + poll.stage.slice(1)) : '',
+    poll.cycle
+  ].filter(Boolean).join(' · ');
+
+  const detailItems = [
+    poll.sample_size ? `<span class="poll-detail-item">n=${escHtml(poll.sample_size)}</span>` : '',
+    poll.population ? `<span class="poll-detail-item">${escHtml(popLabel(poll.population))}</span>` : '',
+    poll.methodology ? `<span class="poll-detail-item">${escHtml(poll.methodology)}</span>` : '',
+    dateRange ? `<span class="poll-detail-item">${escHtml(dateRange)}</span>` : '',
+  ].filter(Boolean).join('');
+
+  const flags = [
+    poll.internal ? '<span class="flag-badge flag-internal">Internal</span>' : '',
+    poll.partisan ? `<span class="flag-badge flag-partisan">${escHtml(poll.partisan)} poll</span>` : '',
+  ].filter(Boolean).join(' ');
+
+  const barsHtml = results.map(r => {
+    const barW = maxPct > 0 ? Math.round((r.pct / maxPct) * 100) : 0;
+    const color = partyColor(r.candidate_party);
+    const pc = partyClass(r.candidate_party);
+    const partyTag = r.candidate_party
+      ? `<span class="cand-party-tag ${pc}">${escHtml(r.candidate_party.slice(0,3))}</span>` : '';
+    const name = r.candidate_name || r.answer || '—';
+    return `
+      <div class="cand-row">
+        <div class="cand-party-dot" style="background:${color};"></div>
+        <div class="cand-name" title="${escHtml(name)}">${escHtml(name)}</div>
+        ${partyTag}
+        <div class="cand-bar-wrap">
+          <div class="cand-bar-fill" style="width:${barW}%;background:${color};"></div>
+        </div>
+        <div class="cand-pct">${r.pct !== null ? r.pct.toFixed(1) + '%' : '—'}</div>
+      </div>`;
+  }).join('');
+
+  const footLink = poll.url
+    ? `<a class="poll-source-link" href="${escHtml(poll.url)}" target="_blank" rel="noopener">View Source →</a>`
+    : '<span class="poll-source-link">No source link</span>';
+
+  return `
+    <div class="poll-card">
+      <div class="poll-card-head">
+        <div class="poll-meta-left">
+          <div class="poll-office-line">${escHtml(officeLine)}</div>
+          <div class="poll-pollster">${escHtml(poll.pollster || poll.sponsor || 'Unknown Pollster')}</div>
+          <div class="poll-details">${detailItems}</div>
+          ${flags ? `<div style="margin-top:8px;">${flags}</div>` : ''}
+        </div>
+        <div class="poll-meta-right">
+          ${poll.fte_grade ? `<div class="fte-grade ${gradeClass(poll.fte_grade)}" title="FiveThirtyEight pollster grade">${escHtml(poll.fte_grade)}</div>` : ''}
+          ${poll.sponsor ? `<div style="font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);text-align:right;">Sponsored by<br>${escHtml(poll.sponsor)}</div>` : ''}
+        </div>
+      </div>
+      ${barsHtml ? `<div class="poll-results">${barsHtml}</div>` : '<div class="poll-results" style="color:var(--muted);font-size:0.85rem;font-style:italic;">No candidate results available</div>'}
+      <div class="poll-card-foot">
+        ${footLink}
+        <span class="poll-attribution">Source: ${escHtml(poll.source || 'FiveThirtyEight')}</span>
+      </div>
+    </div>`;
+}
+
+function renderArticle(a) {
+  const terms = (a.matched_terms || '').split(',').map(t => t.trim()).filter(Boolean);
+  const termsHtml = terms.map(t => `<span class="term-chip">${escHtml(t)}</span>`).join('');
+  const dateStr = a.published_at ? new Date(a.published_at).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) : '';
+  return `
+    <div class="article-card">
+      <div class="article-source">${escHtml(a.source || '')}</div>
+      <a class="article-title" href="${escHtml(a.url || '#')}" target="_blank" rel="noopener">${escHtml(a.title || 'Untitled')}</a>
+      <div class="article-meta">${escHtml(dateStr)}</div>
+      ${termsHtml ? `<div class="article-terms">${termsHtml}</div>` : ''}
+    </div>`;
+}
+
+let allPolls = [];
+let currentOffice = '';
+
+function filterAndRender() {
+  const filtered = currentOffice
+    ? allPolls.filter(p => (p.office_type || '').toLowerCase().includes(currentOffice.toLowerCase()))
+    : allPolls;
+
+  const container = document.getElementById('pollsContainer');
+  if (!filtered.length) {
+    container.innerHTML = '<div class="no-polls"><p>No polls found for this filter.</p></div>';
+    return;
+  }
+  container.innerHTML = `<div class="polls-grid">${filtered.map(renderPoll).join('')}</div>`;
+}
+
+async function loadPolls() {
+  try {
+    const res = await fetch('/api/polls-feed?limit=60');
+    const data = await res.json();
+    allPolls = data.results || [];
+    filterAndRender();
+  } catch (e) {
+    document.getElementById('pollsContainer').innerHTML =
+      '<div class="no-polls"><p>Could not load polls. Try refreshing.</p></div>';
+  }
+}
+
+async function loadArticles() {
+  try {
+    const res = await fetch('/api/poll-articles?limit=20');
+    const data = await res.json();
+    const articles = data.results || [];
+    const container = document.getElementById('articlesContainer');
+    if (!articles.length) {
+      container.innerHTML = '<div class="no-polls"><p>No recent poll news found.</p></div>';
+      return;
+    }
+    container.innerHTML = `<div class="articles-list">${articles.map(renderArticle).join('')}</div>`;
+  } catch (e) {
+    document.getElementById('articlesContainer').innerHTML =
+      '<div class="no-polls"><p>Could not load articles.</p></div>';
+  }
+}
+
+document.getElementById('filterTabs').addEventListener('click', e => {
+  const btn = e.target.closest('.tab-btn');
+  if (!btn) return;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentOffice = btn.dataset.office;
+  filterAndRender();
+});
+
+loadPolls();
+loadArticles();
+</script>
+</body>
+</html>
