@@ -45,16 +45,38 @@ USER_AGENT = "VoteIQ/1.0 Virginia news ingester (voteiq.io)"
 GEMINI_MODEL = "gemini-2.5-flash"
 
 NEWS_FEEDS = [
+    # Statewide / political (best quality, full article text)
+    "https://www.virginiamercury.com/feed/",
+    "https://cardinalnews.org/feed/",         # Southwest VA — excellent journalism
+    "https://bluevirginia.us/feed",            # VA political blog, very active
+    "https://www.vpm.org/news.rss",            # Virginia Public Media
+
+    # Richmond area
+    "https://www.wric.com/feed/",
+
+    # Hampton Roads
+    "https://www.wavy.com/feed/",
+    "https://www.13newsnow.com/feeds/syndication/rss/news/",
+
+    # Northern Virginia / Shenandoah
+    "https://www.loudountimes.com/search/?f=rss",
+
+    # Fredericksburg / Central VA
+    "https://www.fredericksburg.com/search/?f=rss&t=article&c=news&l=50&s=start_time&sd=desc",
+
+    # Google News targeted searches (headlines only — supplement)
     "https://news.google.com/rss/search?q=" + quote_plus("Virginia politics governor legislature"),
     "https://news.google.com/rss/search?q=" + quote_plus("Virginia Spanberger election 2025 2026"),
     "https://news.google.com/rss/search?q=" + quote_plus("Virginia Senate House delegates budget"),
-    "https://www.virginiamercury.com/feed/",
+    "https://news.google.com/rss/search?q=" + quote_plus("Virginia General Assembly 2026"),
 ]
 
 VIRGINIA_TERMS = re.compile(
     r"\b(virginia|richmond|norfolk|hampton roads|nova|northern virginia|"
     r"spanberger|youngkin|warner|kaine|virginia beach|fairfax|arlington|"
-    r"general assembly|house of delegates|virginia senate)\b",
+    r"chesapeake|portsmouth|suffolk|newport news|hampton|williamsburg|"
+    r"roanoke|charlottesville|lynchburg|fredericksburg|loudoun|prince william|"
+    r"general assembly|house of delegates|virginia senate|va\. senate|va\. house)\b",
     re.I,
 )
 
