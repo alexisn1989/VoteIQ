@@ -128,6 +128,23 @@ INDUSTRY_MAP: list[tuple[str, str]] = [
     ("pharma",                      "Healthcare"),
     ("biotech",                     "Healthcare"),
     ("medical association",         "Healthcare"),
+    ("orthodontist",                "Healthcare"),
+    ("orthodontics",                "Healthcare"),
+    ("urology",                     "Healthcare"),
+    ("psychiatric association",     "Healthcare"),
+    ("american psychiatric",        "Healthcare"),
+    ("harris corporation",          "Defense"),   # L3Harris predecessor PAC
+    ("serco ",                      "Defense"),
+    ("burns and mcdonnell",         "Defense"),
+    ("ball corporation",            "Defense"),   # aerospace structures + propulsion
+    ("constellation brands",        "Alcohol/Tobacco"),  # Corona, Modelo, wine
+    ("corning incorporated",        "Technology"),
+    ("american staffing",           "Small Business"),
+    ("council of engineering",      "Small Business"),
+    ("acec",                        "Small Business"),
+    ("celanese",                    "Manufacturing"),
+    ("eastman chemical",            "Manufacturing"),
+    ("eastmanpac",                  "Manufacturing"),
     # ── Energy / Fossil Fuels / Utilities ─────────────────────────────────────
     ("koch",                        "Energy"),
     ("kochpac",                     "Energy"),
@@ -155,6 +172,11 @@ INDUSTRY_MAP: list[tuple[str, str]] = [
     ("american gas",                "Energy"),
     ("natural gas",                 "Energy"),
     ("electric utilities",          "Energy"),
+    ("firstenergy",                 "Energy"),
+    ("rural electric cooperative",  "Energy"),
+    ("national rural electric",     "Energy"),
+    ("williams companies",          "Energy"),
+    ("williams pac",                "Energy"),
     # ── Finance / Banking / Insurance ─────────────────────────────────────────
     ("goldman sachs",               "Finance"),
     ("jpmorgan",                    "Finance"),
@@ -230,6 +252,22 @@ INDUSTRY_MAP: list[tuple[str, str]] = [
     ("united food",                 "Labor"),
     ("transport workers",           "Labor"),
     ("nurses",                      "Labor"),
+    ("letter carrier",              "Labor"),
+    ("firefighter",                 "Labor"),
+    ("fire fighters",               "Labor"),
+    ("postal worker",               "Labor"),
+    ("national education association","Labor"),
+    ("nea fund",                    "Labor"),
+    ("unite here",                  "Labor"),
+    ("stand up for workers",        "Labor"),
+    ("writers guild",               "Labor"),
+    ("national electrical contractors","Labor"),
+    ("necapac",                     "Labor"),
+    ("national active and retired federal","Labor"),
+    ("narfe",                       "Labor"),
+    ("state county & municipal",    "Labor"),
+    ("municipal employees",         "Labor"),
+    ("cwa cope",                    "Labor"),
     # ── Agriculture ───────────────────────────────────────────────────────────
     ("farm bureau",                 "Agriculture"),
     ("agri",                        "Agriculture"),
@@ -245,6 +283,7 @@ INDUSTRY_MAP: list[tuple[str, str]] = [
     ("corn growers",                "Agriculture"),
     ("national farmers",            "Agriculture"),
     ("food solutions",              "Agriculture"),
+    ("pork producers",              "Agriculture"),
     # ── Real Estate / Construction ────────────────────────────────────────────
     ("real estate",                 "Real Estate"),
     ("national association of realtors","Real Estate"),
@@ -271,6 +310,9 @@ INDUSTRY_MAP: list[tuple[str, str]] = [
     ("maritime",                    "Transportation"),
     ("air transport",               "Transportation"),
     ("smart pac",                   "Transportation"),  # Sheet Metal, Air, Rail, Transportation
+    ("norfolk southern",            "Transportation"),
+    ("united parcel service",       "Transportation"),
+    ("ups political",               "Transportation"),
     # ── Telecom / Cable / Media ───────────────────────────────────────────────
     ("comcast",                     "Telecom"),
     ("at&t",                        "Telecom"),
@@ -370,6 +412,37 @@ _INTERNAL_PATTERNS = [
     "waging peace",
     "impact pac",
     " victory\n",
+    # Party mobilization / leadership PACs
+    "protect the house",
+    "take back the house",
+    "senate impact",
+    "save america",
+    "huck pac",
+    "eye of the tiger",
+    "no labels",
+    "association of fundraising",
+    "humane society legislative",  # advocacy, not industry
+    "american israel public affairs",  # foreign policy lobby
+    "aipac",
+    # Candidate self-transfers
+    "for va-",
+    "for congress",
+    "for senate",
+    "for house",
+    # Payment processors / political vendors
+    "democracy engine",
+    "election cfo",
+    "bluewest media",
+    "sage media",
+    "aisle 518",
+    "global exchange connection",
+    "minuteman press",
+    "omni homestead",
+    # Individual name patterns (shouldn't appear with is_individual=false, but just in case)
+    "buchanan, katherine",
+    "good, john p.",
+    "subramanyam, suhas",
+    "one virginia pac",
 ]
 
 
@@ -427,11 +500,32 @@ def get_principal_committee(candidate_id: str, api_key: str, cycle: int) -> str 
     return results[0].get("committee_id")
 
 
+_PAC_LOOKUP: dict[str, str] = {}  # populated by load_pac_lookup()
+
+
+def load_pac_lookup(db_path: str | Path) -> None:
+    """Load pac_name_lookup table into memory for use during classification."""
+    global _PAC_LOOKUP
+    try:
+        conn = sqlite3.connect(str(db_path))
+        rows = conn.execute("SELECT pac_name, industry FROM pac_name_lookup").fetchall()
+        conn.close()
+        _PAC_LOOKUP = {r[0].lower(): r[1] for r in rows}
+        if _PAC_LOOKUP:
+            print(f"[lookup] Loaded {len(_PAC_LOOKUP)} PAC name classifications from DB")
+    except Exception:
+        _PAC_LOOKUP = {}
+
+
 def classify_contributor(name: str) -> str:
     low = name.lower()
+    # 1. keyword map (fast, curated)
     for substr, industry in INDUSTRY_MAP:
         if substr in low:
             return industry
+    # 2. Gemini-enriched lookup table (exact name match)
+    if low in _PAC_LOOKUP:
+        return _PAC_LOOKUP[low]
     return "Other"
 
 
@@ -580,6 +674,7 @@ def main(argv: list[str] | None = None) -> int:
 
     conn = sqlite3.connect(DB_PATH)
     setup_db(conn)
+    load_pac_lookup(DB_PATH)
 
     members = {k: v for k, v in VA_MEMBERS.items() if not args.member or k == args.member}
     total_industries = 0
