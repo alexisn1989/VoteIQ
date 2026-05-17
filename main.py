@@ -5925,6 +5925,24 @@ async def pdf_chat(
     }
 
 
+@app.post("/api/admin/upload-db")
+async def upload_db(file: UploadFile = File(...), token: str = Form(...)):
+    """One-time endpoint to upload a SQLite DB to the persistent DATA_DIR.
+    Requires UPLOAD_ADMIN_TOKEN env var to be set."""
+    expected = os.getenv("UPLOAD_ADMIN_TOKEN", "")
+    if not expected or token != expected:
+        raise HTTPException(status_code=403, detail="Invalid token")
+    allowed = {"openstates_va.db", "polls.db"}
+    if file.filename not in allowed:
+        raise HTTPException(status_code=400, detail=f"Only {allowed} allowed")
+    dest = os.path.join(_DATA_DIR, file.filename)
+    data = await file.read()
+    with open(dest, "wb") as f:
+        f.write(data)
+    size_mb = len(data) / (1024 * 1024)
+    return {"ok": True, "saved_to": dest, "size_mb": round(size_mb, 1)}
+
+
 @app.get("/api/congress-debug")
 def congress_debug():
     """Show what federal data is currently in polls.db on this server."""
