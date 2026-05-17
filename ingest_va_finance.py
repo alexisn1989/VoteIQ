@@ -3,6 +3,7 @@
 Ingest Virginia state campaign finance resources from ELECT landing page.
 Uses Gemini to structure the links and descriptions for the VoteIQ knowledge base.
 """
+import hashlib
 import os
 import json
 import re
@@ -15,13 +16,15 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from io import BytesIO
-from pypdf import PdfReader
+from pathlib import Path
+import pdfplumber
 from urllib.parse import urljoin
 
 load_dotenv()
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "polls.db")
+BASE_DIR = Path(__file__).resolve().parent
+DB_PATH = BASE_DIR / "polls.db"
+PDF_CACHE_DIR = BASE_DIR / ".pdf_cache"
 USER_AGENT = "VoteIQ/1.0 (Virginia Election Research)"
 GEMINI_MODEL = "gemini-2.5-flash"
 MAX_PDF_COUNT = 8
@@ -30,6 +33,18 @@ MAX_TOTAL_PDF_BYTES = 18_000_000
 MAX_PDF_TEXT_CHARS = 5000
 
 FINANCE_URL = "https://www.elections.virginia.gov/candidatepac-info/campaign-finance/"
+OPENSTATES_DB = BASE_DIR / "openstates_va.db"
+
+# Hard allowlist — anything outside this is rejected before touching the DB
+VALID_STATE_OFFICES = {
+    "governor", "lieutenant governor", "attorney general",
+    "house of delegates", "state senate",
+}
+# Substrings that indicate a federal office leaked through
+FEDERAL_KEYWORDS = {
+    "u.s. house", "u.s. senate", "congress", "representative",
+    "house of representatives", "senate of the united states",
+}
 
 PEOPLE_QUERIES = [
     "Virginia 2025 election results Governor Lieutenant Governor Attorney General winner party Spanberger",
@@ -56,34 +71,72 @@ When a linked PDF is attached, read the PDF and use its actual contents for the 
 """
 
 PEOPLE_PROMPT = """Search the web for Virginia 2025 state election winners and current officeholders.
-Focus ONLY on Virginia state-level offices — NOT federal (no U.S. House, no U.S. Senate).
+Focus ONLY on Virginia STATE-level offices. DO NOT include any federal offices.
 
-Target offices:
-- Governor, Lieutenant Governor, Attorney General (2025 winners)
-- Virginia House of Delegates (all 100 districts, 2025 winners)
-- Virginia State Senate (all 40 districts, 2025 winners)
+Allowed offices (exact strings only):
+  Governor | Lieutenant Governor | Attorney General | House of Delegates | State Senate
 
-Prefer official sources: vpap.org, elections.virginia.gov, lis.virginia.gov, official .gov bios.
-Return ONLY valid JSON in this format:
+Rules:
+- House of Delegates districts are 1-100 only. State Senate districts are 1-40 only.
+- Only include people you are CERTAIN won their race. Omit anyone uncertain.
+- Use null for any field you cannot verify from an authoritative source.
+- Prefer vpap.org, elections.virginia.gov, lis.virginia.gov, official .gov bios.
+
+Return JSON with this exact structure:
 {
   "people": [
     {
       "person_name": "Full Name",
-      "office": "Governor / Lieutenant Governor / Attorney General / House of Delegates / State Senate",
-      "district": "district number as string or null for statewide",
-      "party": "Democratic / Republican / Independent / null",
+      "office": "House of Delegates",
+      "district": "42",
+      "party": "Democratic",
       "role": "officeholder",
-      "incumbent": true or false,
-      "committee_name": "campaign committee name or null",
-      "finance_url": "COMET or VPAP campaign finance URL or null",
-      "source_url": "best source URL",
-      "data_confidence": "high / medium / low"
+      "incumbent": true,
+      "committee_name": null,
+      "finance_url": null,
+      "source_url": "https://vpap.org/...",
+      "data_confidence": "high"
     }
   ]
 }
-
-Only include people you are confident won their race. Use null for fields you cannot verify.
 """
+
+# Gemini structured output schema — enforces valid office names and confidence values
+PEOPLE_SCHEMA = types.Schema(
+    type=types.Type.OBJECT,
+    properties={
+        "people": types.Schema(
+            type=types.Type.ARRAY,
+            items=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "person_name":     types.Schema(type=types.Type.STRING),
+                    "office":          types.Schema(
+                        type=types.Type.STRING,
+                        enum=["Governor", "Lieutenant Governor", "Attorney General",
+                              "House of Delegates", "State Senate"],
+                    ),
+                    "district":        types.Schema(type=types.Type.STRING, nullable=True),
+                    "party":           types.Schema(
+                        type=types.Type.STRING,
+                        enum=["Democratic", "Republican", "Independent"],
+                        nullable=True,
+                    ),
+                    "role":            types.Schema(type=types.Type.STRING),
+                    "incumbent":       types.Schema(type=types.Type.BOOLEAN),
+                    "committee_name":  types.Schema(type=types.Type.STRING, nullable=True),
+                    "finance_url":     types.Schema(type=types.Type.STRING, nullable=True),
+                    "source_url":      types.Schema(type=types.Type.STRING, nullable=True),
+                    "data_confidence": types.Schema(
+                        type=types.Type.STRING,
+                        enum=["high", "medium", "low"],
+                    ),
+                },
+                required=["person_name", "office", "data_confidence"],
+            ),
+        )
+    },
+)
 
 def setup_db():
     conn = sqlite3.connect(DB_PATH)
@@ -122,21 +175,46 @@ def pdf_link(link):
     return link["url"].lower().split("?", 1)[0].endswith(".pdf")
 
 
-def extract_pdf_text(pdf_bytes):
+def _fetch_pdf(url: str) -> bytes | None:
+    PDF_CACHE_DIR.mkdir(exist_ok=True)
+    cache_key = hashlib.md5(url.encode()).hexdigest()
+    cache_path = PDF_CACHE_DIR / cache_key
+    if cache_path.exists():
+        print(f"  [cache] {url}")
+        return cache_path.read_bytes()
     try:
-        reader = PdfReader(BytesIO(pdf_bytes))
+        resp = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=30)
+        resp.raise_for_status()
+        cache_path.write_bytes(resp.content)
+        return resp.content
+    except requests.RequestException as exc:
+        print(f"  PDF fetch failed: {exc}")
+        return None
+
+
+def extract_pdf_text(pdf_bytes: bytes) -> str:
+    """Extract structured text from PDF using pdfplumber (tables first, then prose)."""
+    parts = []
+    try:
+        with pdfplumber.open(BytesIO(pdf_bytes)) as pdf:
+            for page in pdf.pages[:8]:
+                # Try table extraction first — preserves rows/columns
+                tables = page.extract_tables()
+                if tables:
+                    for table in tables:
+                        for row in table:
+                            cleaned = [str(cell or "").strip() for cell in row]
+                            if any(cleaned):
+                                parts.append(" | ".join(cleaned))
+                else:
+                    text = page.extract_text() or ""
+                    if text.strip():
+                        parts.append(text.strip())
     except Exception as exc:
-        return f"[PDF parser could not open file: {exc}]"
+        return f"[pdfplumber error: {exc}]"
 
-    page_texts = []
-    for page in reader.pages[:8]:
-        try:
-            page_texts.append(page.extract_text() or "")
-        except Exception:
-            page_texts.append("")
-
-    text = "\n\n".join(part.strip() for part in page_texts if part.strip())
-    return text[:MAX_PDF_TEXT_CHARS] if text else "[No extractable PDF text found.]"
+    full = "\n".join(parts)
+    return full[:MAX_PDF_TEXT_CHARS] if full else ""
 
 
 def build_gemini_contents(prompt, links):
@@ -149,33 +227,37 @@ def build_gemini_contents(prompt, links):
         if not pdf_link(link) or attached >= MAX_PDF_COUNT:
             continue
 
-        try:
-            resp = requests.get(link["url"], headers={"User-Agent": USER_AGENT}, timeout=30)
-            resp.raise_for_status()
-        except requests.RequestException as exc:
-            print(f"PDF fetch skipped for {link['title']}: {exc}")
+        pdf_bytes = _fetch_pdf(link["url"])
+        if pdf_bytes is None:
             continue
-
-        pdf_bytes = resp.content
         if len(pdf_bytes) > MAX_PDF_BYTES:
-            print(f"PDF fetch skipped for {link['title']}: file is too large")
+            print(f"  PDF too large, skipping: {link['title']}")
             continue
         if total_pdf_bytes + len(pdf_bytes) > MAX_TOTAL_PDF_BYTES:
-            print("PDF attachment limit reached; skipping remaining PDFs.")
+            print("  PDF attachment total limit reached; stopping.")
             break
 
-        extracted_text.append(
-            f"PDF text extracted locally: {link['title']}\n"
-            f"URL: {link['url']}\n"
-            f"{extract_pdf_text(pdf_bytes)}"
-        )
-        contents.append(f"Attached PDF: {link['title']}\nURL: {link['url']}")
-        contents.append(types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf"))
+        local_text = extract_pdf_text(pdf_bytes)
+        is_scanned = len(local_text.strip()) < 150
+
+        if is_scanned:
+            # Scanned/image PDF — skip garbled local text, let Gemini read natively
+            print(f"  [scanned] {link['title']} — sending to Gemini natively")
+            contents.append(f"Attached PDF (image-based): {link['title']}\nURL: {link['url']}")
+            contents.append(types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf"))
+        else:
+            # Text-based PDF — provide structured local extraction + native attachment
+            extracted_text.append(
+                f"PDF: {link['title']}\nURL: {link['url']}\n{local_text}"
+            )
+            contents.append(f"Attached PDF: {link['title']}\nURL: {link['url']}")
+            contents.append(types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf"))
+
         total_pdf_bytes += len(pdf_bytes)
         attached += 1
 
     if extracted_text:
-        contents.insert(1, "\n\n".join(extracted_text))
+        contents.insert(1, "\n\n---\n\n".join(extracted_text))
     if attached:
         print(f"Extracted and attached {attached} PDF(s) for Gemini to read.")
     return contents
@@ -311,35 +393,143 @@ def merge_people(existing, incoming):
     return merged
 
 
+def load_openstates_index() -> dict:
+    """Return {normalized_name: (name, district, party, chamber)} from openstates_va.db."""
+    if not OPENSTATES_DB.exists():
+        return {}
+    try:
+        conn = sqlite3.connect(OPENSTATES_DB)
+        rows = conn.execute(
+            "SELECT name, district, party, chamber FROM legislators "
+            "WHERE chamber IN ('Delegate', 'Senator')"
+        ).fetchall()
+        conn.close()
+        return {normalize_person_name(r[0]): r for r in rows}
+    except Exception:
+        return {}
+
+
+def is_valid_state_person(person: dict) -> bool:
+    """Hard filter: reject federal offices and impossible district numbers."""
+    office = str(person.get("office") or "").strip().lower()
+    # Block any federal keywords
+    if any(kw in office for kw in FEDERAL_KEYWORDS):
+        return False
+    # Must be a known state office
+    if office not in VALID_STATE_OFFICES:
+        return False
+    # Validate district ranges
+    district = person.get("district")
+    if district and district not in ("", "null", None):
+        try:
+            d = int(str(district).strip())
+            if office == "house of delegates" and not (1 <= d <= 100):
+                return False
+            if office == "state senate" and not (1 <= d <= 40):
+                return False
+        except ValueError:
+            pass
+    return True
+
+
+def _gemini_search_structured(client, query: str) -> list[dict]:
+    """Two-step extraction: search with grounding, then structure with schema."""
+    # Step 1 — grounded search for raw facts
+    raw_response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=(
+            f"Search for Virginia 2025 state election results and current officeholders.\n"
+            f"Query: {query}\n\n"
+            f"Report all names, offices, districts, and party affiliations you find. "
+            f"Be comprehensive. Do NOT include federal offices."
+        ),
+        config=types.GenerateContentConfig(
+            tools=[types.Tool(google_search=types.GoogleSearch())]
+        ),
+    )
+    raw_text = raw_response.text
+
+    # Step 2 — structure raw text into validated schema (no tools = schema works)
+    structured_response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=f"{PEOPLE_PROMPT}\n\nSource material to structure:\n{raw_text[:6000]}",
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=PEOPLE_SCHEMA,
+        ),
+    )
+    try:
+        return json.loads(structured_response.text).get("people", [])
+    except Exception:
+        # Fallback: try to parse free-form JSON
+        return parse_json_object(structured_response.text).get("people", [])
+
+
 def extract_people():
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY is not set")
 
     client = genai.Client(api_key=api_key)
-    people_by_key = {}
+    os_index = load_openstates_index()
+    print(f"  Loaded {len(os_index)} OpenStates legislators for cross-check")
+
+    people_by_key: dict = {}
+    query_hits: dict = {}  # key -> number of queries that returned this person
 
     for query in PEOPLE_QUERIES:
         print(f"Searching people: {query}")
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=f"{PEOPLE_PROMPT}\n\nQuery: {query}",
-            config=types.GenerateContentConfig(
-                tools=[types.Tool(google_search=types.GoogleSearch())]
-            ),
-        )
-        payload = parse_json_object(response.text)
-        for person in payload.get("people", []):
+        try:
+            people_this_query = _gemini_search_structured(client, query)
+        except Exception as exc:
+            print(f"  Query failed: {exc}")
+            continue
+
+        for person in people_this_query:
             name = str(person.get("person_name") or "").strip()
             office = str(person.get("office") or "").strip()
             if not name or not office:
                 continue
+
+            # Hard filter — reject before any merge
+            if not is_valid_state_person(person):
+                print(f"  [rejected] {name} / {office} / district={person.get('district')}")
+                continue
+
             person["finance_url"] = clean_url(person.get("finance_url"))
             person["source_url"] = clean_url(person.get("source_url"))
             person["data_confidence"] = clean_confidence(person.get("data_confidence"))
+
             key = normalize_person_key(person)
+            query_hits[key] = query_hits.get(key, 0) + 1
             people_by_key[key] = merge_people(people_by_key.get(key), person)
 
+    # Cross-query consistency: single-query results get demoted
+    for key, person in people_by_key.items():
+        if query_hits.get(key, 0) == 1 and person.get("data_confidence") == "high":
+            person["data_confidence"] = "medium"
+            print(f"  [demoted] {person['person_name']} seen in only 1 query")
+
+    # OpenStates cross-check: verify GA members against authoritative source
+    verified = 0
+    for key, person in people_by_key.items():
+        office = str(person.get("office") or "").lower()
+        if office not in ("house of delegates", "state senate"):
+            continue
+        os_key = normalize_person_name(person["person_name"])
+        if os_key in os_index:
+            _, os_district, os_party, _ = os_index[os_key]
+            person["district"] = os_district
+            person["party"] = os_party
+            person["data_confidence"] = "high"
+            verified += 1
+        else:
+            # GA member not in OpenStates — flag as unverified
+            if person.get("data_confidence") == "high":
+                person["data_confidence"] = "medium"
+
+    print(f"  OpenStates verified {verified} GA members")
+    print(f"  {len(people_by_key)} people passed all filters")
     return list(people_by_key.values())
 
 
