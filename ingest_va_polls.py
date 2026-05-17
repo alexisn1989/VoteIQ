@@ -36,6 +36,7 @@ import xml.etree.ElementTree as ET
 import time
 import requests
 from bs4 import BeautifulSoup
+from dotenv import load_dotenv
 
 try:
     from google import genai as _genai
@@ -43,6 +44,7 @@ try:
 except ImportError:
     _GENAI_AVAILABLE = False
 
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "polls.db"
@@ -164,7 +166,7 @@ def extract_poll_numbers(text: str) -> dict:
 
 VOTEHUB_POLLS_URL = "https://api.votehub.com/polls"
 
-_GEMINI_MODEL = "gemini-2.0-flash"
+_GEMINI_MODEL = "gemini-2.5-flash"
 _GEMINI_PROMPT = """You are a political data analyst. Extract structured polling data from this Virginia election news article.
 
 Return ONLY valid JSON with these fields (omit any field not found in the article):
@@ -532,6 +534,93 @@ def upsert_poll(conn: sqlite3.Connection, poll: PollRow, results: list[PollResul
     return 1
 
 
+def _pct_in_text(pct, text: str) -> bool:
+    """Check that a percentage value actually appears in the source text."""
+    if pct is None:
+        return False
+    for fmt in (str(int(pct)), f"{pct:.1f}", f"{pct:.0f}%", f"{int(pct)}%"):
+        if fmt in text:
+            return True
+    return False
+
+
+def gemini_to_poll(
+    conn: sqlite3.Connection, gemini_data: dict, article_url: str, article_id: str,
+    source_text: str = "",
+) -> bool:
+    """Convert Gemini-extracted poll data into polls + poll_results rows.
+
+    Rejects records where extracted percentages cannot be found in source_text,
+    guarding against hallucinated numbers.
+    """
+    candidates = gemini_data.get("candidates") or []
+    if not candidates or not gemini_data.get("pollster"):
+        return False
+
+    # Hallucination guard: at least one candidate's pct must appear in source text
+    if source_text and not any(_pct_in_text(c.get("pct"), source_text) for c in candidates):
+        print(f"    [gemini] skipped — percentages not found in source text")
+        return False
+
+    race = gemini_data.get("race", "Virginia")
+    field_end = gemini_data.get("field_end") or gemini_data.get("published_date") or ""
+    cycle = field_end[:4] if field_end else ""
+
+    race_lower = race.lower()
+    if "governor" in race_lower:
+        office_type, seat = "Governor", "Governor"
+    elif "u.s." in race_lower and "senate" in race_lower:
+        office_type, seat = "U.S. Senate", "U.S. Senate"
+    elif "attorney general" in race_lower:
+        office_type, seat = "Attorney General", "Attorney General"
+    elif "senate" in race_lower:
+        office_type, seat = "State Senate", race
+    elif "house" in race_lower or "delegate" in race_lower:
+        office_type, seat = "House of Delegates", race
+    else:
+        office_type, seat = race, race
+
+    record_id = "gemini:" + article_id
+    poll = PollRow(
+        source="news/gemini",
+        source_record_id=record_id,
+        race_id=stable_id("VA", office_type, seat, cycle),
+        cycle=cycle,
+        state="VA",
+        office_type=office_type,
+        seat_name=seat,
+        stage="general",
+        pollster=gemini_data.get("pollster", ""),
+        sponsor=gemini_data.get("sponsor", ""),
+        fte_grade="",
+        sample_size=str(gemini_data.get("sample_size", "")),
+        population=gemini_data.get("population", ""),
+        methodology=gemini_data.get("methodology", ""),
+        start_date=gemini_data.get("field_start", ""),
+        end_date=field_end,
+        election_date="",
+        created_at=gemini_data.get("published_date", ""),
+        url=article_url,
+        notes=f"margin_of_error={gemini_data.get('margin_of_error', '')}",
+        internal=0,
+        partisan="",
+        raw_json=json.dumps(gemini_data, ensure_ascii=False),
+    )
+    results = [
+        PollResult(
+            source_record_id=record_id,
+            answer=c.get("name", ""),
+            candidate_name=c.get("name", ""),
+            candidate_party=c.get("party", ""),
+            pct=c.get("pct"),
+        )
+        for c in candidates
+        if c.get("name")
+    ]
+    upsert_poll(conn, poll, results)
+    return True
+
+
 def ingest_fivethirtyeight(conn: sqlite3.Connection, dry_run: bool = False) -> tuple[int, int]:
     rows_seen = rows_written = 0
     for office_hint, url in FIVETHIRTYEIGHT_URLS.items():
@@ -887,13 +976,18 @@ def ingest_news_feeds(
                 if gemini_key:
                     article_url = item.get("url", "")
                     print(f"    [gemini] fetching {article_url[:80]}")
-                    full_text = fetch_article_text(article_url)
-                    if full_text:
-                        gemini_data = gemini_extract(article_url, full_text, gemini_key)
-                        if gemini_data and "_gemini_error" not in gemini_data:
-                            numbers = gemini_data
-                            print(f"    [gemini] extracted: {list(gemini_data.keys())}")
-                    time.sleep(1)  # stay within free-tier rate limits
+                    full_text = fetch_article_text(article_url) or combined
+                    gemini_data = gemini_extract(article_url, full_text, gemini_key)
+                    if gemini_data and "_gemini_error" not in gemini_data:
+                        numbers = gemini_data
+                        print(f"    [gemini] extracted: {list(gemini_data.keys())}")
+                        if not dry_run:
+                            created = gemini_to_poll(conn, gemini_data, article_url, article_id, source_text=full_text)
+                            if created:
+                                print(f"    [gemini] poll record created: {gemini_data.get('pollster')} / {gemini_data.get('race')}")
+                    elif gemini_data:
+                        print(f"    [gemini] error: {gemini_data.get('_gemini_error', '')[:80]}")
+                    time.sleep(1)  # rate limit
             if dry_run:
                 rows_written += 1
                 continue

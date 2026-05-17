@@ -42,7 +42,7 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "polls.db"
 USER_AGENT = "VoteIQ/1.0 Virginia news ingester (voteiq.io)"
-GEMINI_MODEL = "gemini-2.0-flash"
+GEMINI_MODEL = "gemini-2.5-flash"
 
 NEWS_FEEDS = [
     "https://news.google.com/rss/search?q=" + quote_plus("Virginia politics governor legislature"),
