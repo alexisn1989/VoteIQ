@@ -180,6 +180,14 @@ def admin_ingest_polls(sources: str = "fivethirtyeight,votehub,news", use_gemini
     result = _run_ingest_subprocess(source_list, extra_flags=extra_flags)
     return result
 
+@app.get("/api/admin/reload-votes")
+def admin_reload_votes():
+    """Reload the in-memory vote cache from polls.db (run after ingest_congress_votes.py)."""
+    _load_votes_cache()
+    total = sum(len(v) for v in _VOTES_CACHE.values())
+    return {"ok": True, "total_votes": total, "members": len(_VOTES_CACHE)}
+
+
 @app.get("/api/admin/ingest-fec")
 def admin_ingest_fec(cycle: str = "2026"):
     """Trigger FEC campaign finance ingestion for Virginia candidates."""
@@ -539,6 +547,41 @@ try:
 except Exception as e:
     _results = None
     print(f"Warning: could not load election results: {e}")
+
+# ── Vote cache — loaded once at startup, keyed by bioguide_id ─────────────────
+_VOTES_CACHE: dict[str, list[dict]] = {}
+_MEMBER_CACHE: dict[str, dict] = {}
+
+def _load_votes_cache() -> None:
+    """Load congress_votes and congress_members into memory as JSON-serialisable dicts."""
+    global _VOTES_CACHE, _MEMBER_CACHE
+    if not os.path.exists(_POLLS_DB):
+        return
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+
+        # Load members
+        for row in conn.execute("SELECT * FROM congress_members"):
+            _MEMBER_CACHE[row["bioguide_id"]] = dict(row)
+
+        # Load votes grouped by member
+        for row in conn.execute(
+            "SELECT bioguide_id, chamber, vote_number, vote_date, bill, question, member_vote, result "
+            "FROM congress_votes ORDER BY vote_date DESC, vote_number DESC"
+        ):
+            bgid = row["bioguide_id"]
+            if bgid not in _VOTES_CACHE:
+                _VOTES_CACHE[bgid] = []
+            _VOTES_CACHE[bgid].append(dict(row))
+
+        conn.close()
+        total = sum(len(v) for v in _VOTES_CACHE.values())
+        print(f"Vote cache ready: {total} votes across {len(_VOTES_CACHE)} members.")
+    except Exception as exc:
+        print(f"Vote cache skipped: {exc}")
+
+_load_votes_cache()
 
 
 
@@ -3473,6 +3516,85 @@ def district_map(layer: str = "congressional", lat: float = None, lng: float = N
             return f"<p style='font-family:sans-serif;padding:40px'>Could not build {escape(layer)} map: {escape(str(e))}</p>"
 
 
+def _fetch_vote_context(question: str, bioguide_ids: list[str], limit: int = 8) -> str:
+    """Return a formatted block of relevant votes for the chat system prompt."""
+    if not _VOTES_CACHE or not bioguide_ids:
+        return ""
+
+    q_lower = question.lower()
+
+    # Topic keywords → vote question substrings to match
+    topic_hints = {
+        "gun": ["weapon", "firearm", "gun", "assault"],
+        "health": ["health", "medicaid", "medicare", "aca", "obamacare"],
+        "budget": ["budget", "appropriat", "spending", "debt", "fiscal"],
+        "immigration": ["immigr", "border", "asylum", "dhs"],
+        "tax": ["tax", "revenue", "irs"],
+        "education": ["education", "school", "student", "pell"],
+        "environment": ["environment", "climate", "energy", "epa", "clean"],
+        "defense": ["defense", "military", "ndaa", "armed"],
+        "infrastructure": ["infrastructure", "transpor", "highway", "broadband"],
+        "social security": ["social security", "medicare", "retirement"],
+    }
+    matched_hints: list[str] = []
+    for kw, hints in topic_hints.items():
+        if kw in q_lower:
+            matched_hints.extend(hints)
+
+    lines: list[str] = []
+    for bgid in bioguide_ids:
+        votes = _VOTES_CACHE.get(bgid, [])
+        member = _MEMBER_CACHE.get(bgid, {})
+        name = member.get("name", bgid)
+
+        # Score each vote by relevance to question
+        scored: list[tuple[int, dict]] = []
+        for v in votes:
+            q_text = (v.get("question") or "").lower()
+            bill   = (v.get("bill") or "").lower()
+            score  = 0
+
+            # Direct keyword match in question text
+            for w in re.findall(r"\b\w{4,}\b", q_lower):
+                if w in q_text or w in bill:
+                    score += 2
+
+            # Topic hint match
+            for hint in matched_hints:
+                if hint in q_text:
+                    score += 3
+
+            # Boost if user explicitly asked about this member
+            name_lower = name.lower()
+            last = name_lower.split()[-1] if name_lower.split() else ""
+            if last and last in q_lower:
+                score += 1
+
+            if score > 0:
+                scored.append((score, v))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        top = scored[:limit]
+
+        if not top:
+            # No topic match — include 3 most recent votes anyway if member is relevant
+            top = [(0, v) for v in votes[:3]]
+
+        if top:
+            lines.append(f"\n{name} recent votes:")
+            for _, v in top:
+                yea_nay = v.get("member_vote", "")
+                bill    = v.get("bill", "")
+                q_text  = (v.get("question") or "")[:80]
+                date    = (v.get("vote_date") or "")[:10]
+                result  = v.get("result", "")
+                lines.append(f"  {date} | {bill} | {q_text} | Voted: {yea_nay} | Outcome: {result}")
+
+    if not lines:
+        return ""
+    return "VOTING RECORD (official roll-call data from congress.gov):\n" + "\n".join(lines)
+
+
 try:
     import cohere as _cohere
     _COHERE_CLIENT = _cohere.ClientV2(api_key=os.getenv("COHERE_API_KEY", ""))
@@ -3777,16 +3899,25 @@ async def chat(request: Request, req: ChatRequest):
             f"Senator: {sd_info['senator']} ({sd_info['party']})\n"
             f"Region: {sd_info['region']}"
         )
-    # Pull relevant news articles for the user's question
+    # Pull relevant news and votes for the user's question
     last_question = req.messages[-1].content if req.messages else ""
     pol_names = []
+    bioguide_ids = []
     if ctx and ctx.get("rep"):
         pol_names.append(ctx["rep"])
     if hod_info:
         pol_names.append(hod_info["delegate"])
     if sd_info:
         pol_names.append(sd_info["senator"])
+
+    # Resolve bioguide IDs for the user's federal reps
+    for bgid, m in _MEMBER_CACHE.items():
+        mname = m.get("name", "").lower()
+        if any(pol.lower() in mname or mname in pol.lower() for pol in pol_names if pol):
+            bioguide_ids.append(bgid)
+
     news_context = _fetch_relevant_news(last_question, pol_names)
+    vote_context = _fetch_vote_context(last_question, bioguide_ids)
 
     system_prompt = f"""You are VoteIQ, a nonpartisan civic assistant helping Virginia voters learn about their elected representatives.
 
@@ -3796,8 +3927,11 @@ Your job is to help voters understand who represents them and what those officia
 - The representative's role, responsibilities, and committee assignments
 - How to contact or reach the representative
 - Recent legislation they have sponsored or voted on
+- How they voted on specific bills or issues
 - General information about the office (U.S. House, state legislature, etc.)
 - Voter registration and civic participation
+
+{vote_context if vote_context else ""}
 
 {f'''
 {news_context}
@@ -3807,7 +3941,7 @@ Format citations as: [Outlet — Author](URL) at the end of the relevant sentenc
 If no relevant news is listed above, answer from your training knowledge.
 ''' if news_context else ''}
 
-Keep answers 2-4 sentences. Be factual and nonpartisan. For official contact info direct users to house.gov, senate.gov, or virginiageneralassembly.gov. Never express opinions on representatives or tell people how to vote."""
+Keep answers 2-4 sentences. Be factual and nonpartisan. When citing a vote, include the bill name and Yea/Nay. For official contact info direct users to house.gov, senate.gov, or virginiageneralassembly.gov. Never express opinions on representatives or tell people how to vote."""
     try:
         return ChatResponse(reply=_claude_reply(system_prompt, req.messages, max_tokens=1000))
     except Exception as e:
