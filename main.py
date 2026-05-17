@@ -96,9 +96,51 @@ def _poll_ingest_background() -> None:
         print(f"[polls] Startup ingestion failed: {result.get('error') or result.get('stderr')}")
 
 
+def _fec_pacs_are_fresh(max_age_days: int = 7) -> bool:
+    """Return True if FEC PAC data was ingested within max_age_days."""
+    from datetime import datetime, timezone, timedelta
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        row = conn.execute("SELECT MAX(fetched_at) FROM fec_industry_totals").fetchone()
+        conn.close()
+        if row and row[0]:
+            last = datetime.fromisoformat(row[0].replace("Z", "+00:00"))
+            return datetime.now(timezone.utc) - last < timedelta(days=max_age_days)
+    except Exception:
+        pass
+    return False
+
+
+def _run_fec_ingest_background() -> None:
+    """Run ingest_fec_pacs.py for all three cycles in a background thread."""
+    if _fec_pacs_are_fresh():
+        print("[fec] PAC data fresh — skipping startup ingestion.")
+        return
+    print("[fec] PAC data stale — starting background ingestion (all cycles)…")
+    script = os.path.join(BASE_DIR, "ingest_fec_pacs.py")
+    if not os.path.exists(script):
+        print("[fec] ingest_fec_pacs.py not found — skipping.")
+        return
+    try:
+        result = subprocess.run(
+            [sys.executable, script],
+            capture_output=True, text=True, timeout=1800,  # 30 min max
+        )
+        if result.returncode == 0:
+            _load_pac_cache()
+            print("[fec] Background ingestion complete — PAC cache reloaded.")
+        else:
+            print(f"[fec] Ingestion failed (rc={result.returncode}): {result.stderr[-500:]}")
+    except subprocess.TimeoutExpired:
+        print("[fec] Ingestion timed out after 30 minutes.")
+    except Exception as exc:
+        print(f"[fec] Ingestion error: {exc}")
+
+
 @app.on_event("startup")
 async def startup_poll_ingest() -> None:
     threading.Thread(target=_poll_ingest_background, daemon=True).start()
+    threading.Thread(target=_run_fec_ingest_background, daemon=True).start()
 
 
 @app.get("/api/va-news")
@@ -232,27 +274,33 @@ def admin_reload_pacs():
 
 
 @app.get("/api/admin/ingest-fec-pacs")
-def admin_ingest_fec_pacs(cycle: int = 2026):
-    """Trigger FEC PAC/industry ingestion for VA delegation in a background subprocess."""
-    api_key = os.getenv("FEC_API_KEY", "DEMO_KEY")
+def admin_ingest_fec_pacs(cycle: int | None = None):
+    """Trigger FEC PAC/industry ingestion in a background thread (non-blocking).
+    Omit cycle to run all three cycles (2020, 2022, 2024).
+    """
     script = os.path.join(BASE_DIR, "ingest_fec_pacs.py")
     if not os.path.exists(script):
         return {"ok": False, "error": "ingest_fec_pacs.py not found"}
-    cmd = [sys.executable, script, "--cycle", str(cycle)]
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-        if result.returncode == 0:
-            _load_pac_cache()
-        return {
-            "ok": result.returncode == 0,
-            "returncode": result.returncode,
-            "stdout": result.stdout[-3000:],
-            "stderr": result.stderr[-500:],
-        }
-    except subprocess.TimeoutExpired:
-        return {"ok": False, "error": "timed out after 300s"}
-    except Exception as exc:
-        return {"ok": False, "error": str(exc)}
+
+    def _run():
+        cmd = [sys.executable, script]
+        if cycle:
+            cmd += ["--cycle", str(cycle)]
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+            if result.returncode == 0:
+                _load_pac_cache()
+                print("[fec] Admin-triggered ingestion complete — cache reloaded.")
+            else:
+                print(f"[fec] Admin ingestion failed: {result.stderr[-300:]}")
+        except subprocess.TimeoutExpired:
+            print("[fec] Admin ingestion timed out after 30 minutes.")
+        except Exception as exc:
+            print(f"[fec] Admin ingestion error: {exc}")
+
+    threading.Thread(target=_run, daemon=True).start()
+    label = f"cycle {cycle}" if cycle else "all cycles (2020/2022/2024)"
+    return {"ok": True, "message": f"FEC ingestion started in background for {label}. Cache will reload when complete."}
 
 
 @app.get("/api/congress/pac-summary/{bioguide_id}")
@@ -5216,6 +5264,24 @@ def _request_rep_profiles(req, user_query: str) -> str:
 
 _federal_members_cache: list[dict] | None = None
 
+# Hardcoded VA federal delegation — used when polls.db hasn't been ingested yet.
+# Keep in sync with ingest_congress.py results.
+_VA_FEDERAL_MEMBERS_FALLBACK: list[dict] = [
+    {"bioguide_id": "W000804", "name": "Wittman, Robert J.",              "party": "Republican", "chamber": "House of Representatives", "district": "1"},
+    {"bioguide_id": "K000399", "name": "Kiggans, Jennifer A.",             "party": "Republican", "chamber": "House of Representatives", "district": "2"},
+    {"bioguide_id": "S000185", "name": 'Scott, Robert C. "Bobby"',         "party": "Democratic", "chamber": "House of Representatives", "district": "3"},
+    {"bioguide_id": "M001227", "name": "McClellan, Jennifer L.",           "party": "Democratic", "chamber": "House of Representatives", "district": "4"},
+    {"bioguide_id": "M001239", "name": "McGuire, John J.",                 "party": "Republican", "chamber": "House of Representatives", "district": "5"},
+    {"bioguide_id": "C001118", "name": "Cline, Ben",                       "party": "Republican", "chamber": "House of Representatives", "district": "6"},
+    {"bioguide_id": "V000138", "name": "Vindman, Eugene Simon",            "party": "Democratic", "chamber": "House of Representatives", "district": "7"},
+    {"bioguide_id": "B001292", "name": "Beyer, Donald S.",                 "party": "Democratic", "chamber": "House of Representatives", "district": "8"},
+    {"bioguide_id": "G000568", "name": "Griffith, H. Morgan",              "party": "Republican", "chamber": "House of Representatives", "district": "9"},
+    {"bioguide_id": "S001230", "name": "Subramanyam, Suhas",               "party": "Democratic", "chamber": "House of Representatives", "district": "10"},
+    {"bioguide_id": "W000831", "name": "Walkinshaw, James R.",             "party": "Democratic", "chamber": "House of Representatives", "district": "11"},
+    {"bioguide_id": "W000805", "name": "Warner, Mark R.",                  "party": "Democratic", "chamber": "Senate",                   "district": "S"},
+    {"bioguide_id": "K000384", "name": "Kaine, Tim",                       "party": "Democratic", "chamber": "Senate",                   "district": "S"},
+]
+
 
 def _load_federal_members() -> list[dict]:
     global _federal_members_cache
@@ -5227,12 +5293,16 @@ def _load_federal_members() -> list[dict]:
             "SELECT bioguide_id, name, party, chamber, district FROM congress_members"
         ).fetchall()
         conn.close()
-        _federal_members_cache = [
-            {"bioguide_id": r[0], "name": r[1], "party": r[2], "chamber": r[3], "district": r[4]}
-            for r in rows
-        ]
+        if rows:
+            _federal_members_cache = [
+                {"bioguide_id": r[0], "name": r[1], "party": r[2], "chamber": r[3], "district": r[4]}
+                for r in rows
+            ]
+            return _federal_members_cache
     except Exception:
-        _federal_members_cache = []
+        pass
+    # DB not yet ingested — use hardcoded list for name detection
+    _federal_members_cache = _VA_FEDERAL_MEMBERS_FALLBACK
     return _federal_members_cache
 
 
@@ -5263,6 +5333,8 @@ def _fetch_federal_context(member: dict) -> str:
         if district == "S"
         else f"U.S. Representative, Virginia's {district}th Congressional District"
     )
+    votes, bills = [], []
+    db_available = False
     try:
         conn = sqlite3.connect(_POLLS_DB)
         votes = conn.execute(
@@ -5279,14 +5351,25 @@ def _fetch_federal_context(member: dict) -> str:
             (bio,),
         ).fetchall()
         conn.close()
-    except Exception as exc:
-        return f"[Federal data unavailable: {exc}]"
+        db_available = True
+    except Exception:
+        db_available = False
 
     lines = [
         f"[Federal Member — {name} ({party})]",
         f"Office: {seat} | Chamber: {chamber} | 119th Congress",
         f"Source: congress.gov / clerk.house.gov",
     ]
+    if not db_available:
+        lines.append(
+            "\nNOTE: Federal vote/bill database not yet loaded on this server. "
+            "The member is confirmed as Virginia's federal representative but specific "
+            "roll-call votes and sponsored bills are not available yet. "
+            "Tell the user this person IS a Virginia federal representative and direct them "
+            "to congress.gov for their full voting record."
+        )
+        return "\n".join(lines)
+
     if votes:
         lines.append(f"\nRoll-Call Votes (119th Congress, most recent first — {len(votes)} shown):")
         for vote_date, bill, question, member_vote, result in votes:
