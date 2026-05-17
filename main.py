@@ -1108,6 +1108,60 @@ def _set_cached_reply(key: str, reply: str, cache_type: str = "ad_hoc"):
         pass
 
 
+def _init_rerank_cache():
+    db = os.path.join(BASE_DIR, "openstates_va.db")
+    if not os.path.exists(db):
+        return
+    conn = sqlite3.connect(db)
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS cohere_rerank_cache "
+        "(cache_key TEXT PRIMARY KEY, top_indexes TEXT, created_at INTEGER)"
+    )
+    conn.commit()
+    conn.close()
+
+
+def _rerank_cache_key(question: str, candidates: list[dict]) -> str:
+    normalized = re.sub(r"\s+", " ", question.strip().lower())
+    ids = [str(c.get("url") or c.get("title") or "") for c in candidates]
+    raw = normalized + "||" + json.dumps(ids, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def _get_cached_rerank(key: str) -> list[int] | None:
+    db = os.path.join(BASE_DIR, "openstates_va.db")
+    if not os.path.exists(db):
+        return None
+    try:
+        conn = sqlite3.connect(db)
+        row = conn.execute(
+            "SELECT top_indexes, created_at FROM cohere_rerank_cache WHERE cache_key = ?",
+            (key,),
+        ).fetchone()
+        conn.close()
+        if row and (time.time() - row[1]) < _CACHE_TTL_SECONDS:
+            return json.loads(row[0])
+    except Exception:
+        pass
+    return None
+
+
+def _set_cached_rerank(key: str, top_indexes: list[int]):
+    db = os.path.join(BASE_DIR, "openstates_va.db")
+    if not os.path.exists(db):
+        return
+    try:
+        conn = sqlite3.connect(db)
+        conn.execute(
+            "INSERT OR REPLACE INTO cohere_rerank_cache (cache_key, top_indexes, created_at) VALUES (?, ?, ?)",
+            (key, json.dumps(top_indexes), int(time.time())),
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+
 def _init_feedback_table():
     db = os.path.join(BASE_DIR, "openstates_va.db")
     if not os.path.exists(db):
@@ -1128,6 +1182,7 @@ def _init_feedback_table():
 
 
 _init_query_cache()
+_init_rerank_cache()
 _init_feedback_table()
 
 
@@ -3550,6 +3605,12 @@ def _rerank_articles(question: str, candidates: list[dict], limit: int = 4) -> l
     """Re-rank candidate articles using Cohere Rerank."""
     if not _COHERE_AVAILABLE or not candidates:
         return candidates[:limit]
+
+    cache_key = _rerank_cache_key(question, candidates)
+    cached_indexes = _get_cached_rerank(cache_key)
+    if cached_indexes is not None:
+        return [candidates[i] for i in cached_indexes if 0 <= i < len(candidates)]
+
     try:
         docs = []
         for c in candidates:
@@ -3564,7 +3625,9 @@ def _rerank_articles(question: str, candidates: list[dict], limit: int = 4) -> l
             documents=docs,
             top_n=limit,
         )
-        return [candidates[r.index] for r in resp.results]
+        top_indexes = [r.index for r in resp.results]
+        _set_cached_rerank(cache_key, top_indexes)
+        return [candidates[i] for i in top_indexes]
     except Exception:
         return candidates[:limit]
 
@@ -5547,6 +5610,53 @@ def congress_member_bills(bioguide_id: str, role: str = "sponsored", limit: int 
         ]}
     except Exception as exc:
         return {"bills": [], "error": str(exc)}
+
+
+@app.get("/api/congress/votes/{bioguide_id}")
+def congress_member_votes(bioguide_id: str, limit: int = 50):
+    """Return recent roll-call votes for a VA member."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        rows = conn.execute("""
+            SELECT vote_number, chamber, vote_date, bill, question, member_vote, result
+            FROM congress_votes
+            WHERE bioguide_id = ?
+            ORDER BY vote_date DESC, vote_number DESC
+            LIMIT ?
+        """, (bioguide_id, limit)).fetchall()
+        conn.close()
+        return {"votes": [
+            {"vote_number": r[0], "chamber": r[1], "date": r[2], "bill": r[3],
+             "question": r[4], "vote": r[5], "result": r[6]}
+            for r in rows
+        ]}
+    except Exception as exc:
+        return {"votes": [], "error": str(exc)}
+
+
+@app.get("/api/congress/votes/{bioguide_id}/summary")
+def congress_member_vote_summary(bioguide_id: str):
+    """Return Yea/Nay/Not Voting counts and party-line stats for a member."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        rows = conn.execute("""
+            SELECT member_vote, COUNT(*) as cnt
+            FROM congress_votes
+            WHERE bioguide_id = ?
+            GROUP BY member_vote
+        """, (bioguide_id,)).fetchall()
+        conn.close()
+        summary = {r[0]: r[1] for r in rows}
+        total = sum(summary.values())
+        return {
+            "total": total,
+            "yea": summary.get("Yea", 0) + summary.get("Aye", 0),
+            "nay": summary.get("Nay", 0) + summary.get("No", 0),
+            "not_voting": summary.get("Not Voting", 0),
+            "present": summary.get("Present", 0),
+        }
+    except Exception as exc:
+        return {"total": 0, "error": str(exc)}
 
 
 @app.get("/api/congress/bills")
