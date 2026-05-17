@@ -58,7 +58,7 @@ def _polls_are_fresh() -> bool:
     return False
 
 
-def _run_ingest_subprocess(sources: list[str] | None = None) -> dict:
+def _run_ingest_subprocess(sources: list[str] | None = None, extra_flags: list[str] | None = None) -> dict:
     """Run ingest_va_polls.py in a subprocess and return a result dict."""
     script = os.path.join(BASE_DIR, "ingest_va_polls.py")
     if not os.path.exists(script):
@@ -66,6 +66,7 @@ def _run_ingest_subprocess(sources: list[str] | None = None) -> dict:
     cmd = [sys.executable, script, "--db", _POLLS_DB]
     for s in (sources or ["fivethirtyeight", "votehub", "news"]):
         cmd += ["--source", s]
+    cmd += extra_flags or []
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
         return {
@@ -98,13 +99,14 @@ async def startup_poll_ingest() -> None:
 
 
 @app.get("/api/admin/ingest-polls")
-def admin_ingest_polls(sources: str = "fivethirtyeight,votehub,news", token: str = ""):
-    """Manually trigger poll ingestion. Hit this URL after deploy to populate data."""
+def admin_ingest_polls(sources: str = "fivethirtyeight,votehub,news", use_gemini: bool = False, token: str = ""):
+    """Manually trigger poll ingestion. Pass use_gemini=true to enrich articles with Gemini."""
     expected = os.getenv("POLL_INGEST_ADMIN_TOKEN", "")
     if expected and token != expected:
         raise HTTPException(status_code=403, detail="Invalid poll ingest token")
     source_list = [s.strip() for s in sources.split(",") if s.strip()]
-    result = _run_ingest_subprocess(source_list)
+    extra_flags = ["--use-gemini"] if use_gemini and os.getenv("GEMINI_API_KEY") else []
+    result = _run_ingest_subprocess(source_list, extra_flags=extra_flags)
     return result
 
 

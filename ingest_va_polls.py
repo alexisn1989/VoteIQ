@@ -33,8 +33,15 @@ from typing import Iterable
 from urllib.parse import quote_plus
 import xml.etree.ElementTree as ET
 
+import time
 import requests
 from bs4 import BeautifulSoup
+
+try:
+    import google.generativeai as genai
+    _GENAI_AVAILABLE = True
+except ImportError:
+    _GENAI_AVAILABLE = False
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -156,6 +163,75 @@ def extract_poll_numbers(text: str) -> dict:
 
 
 VOTEHUB_POLLS_URL = "https://api.votehub.com/polls"
+
+_GEMINI_MODEL = "gemini-1.5-flash"
+_GEMINI_PROMPT = """You are a political data analyst. Extract structured polling data from this Virginia election news article.
+
+Return ONLY valid JSON with these fields (omit any field not found in the article):
+{
+  "pollster": "name of the polling firm",
+  "sponsor": "who commissioned the poll",
+  "race": "e.g. Virginia Governor, U.S. Senate Virginia",
+  "field_start": "YYYY-MM-DD when polling fieldwork began",
+  "field_end": "YYYY-MM-DD when polling fieldwork ended",
+  "published_date": "YYYY-MM-DD when the poll was released",
+  "sample_size": 800,
+  "population": "likely voters / registered voters / adults",
+  "methodology": "online / phone / IVR / mixed",
+  "margin_of_error": 3.5,
+  "candidates": [
+    {"name": "Full Name", "party": "D/R/I", "pct": 52.0}
+  ],
+  "lead": {"name": "leading candidate", "pts": 8.0}
+}
+
+IMPORTANT: field_start and field_end are the dates the poll was conducted (when they called/surveyed people), NOT the publication date. These are often different — the article usually says something like "conducted March 3-5" or "surveyed April 10-12".
+
+Article URL: {url}
+
+Article text:
+{text}"""
+
+
+def fetch_article_text(url: str, timeout: int = 15) -> str:
+    """Fetch a news article and return cleaned readable text (up to 5000 chars)."""
+    try:
+        resp = requests.get(
+            url,
+            headers={"User-Agent": USER_AGENT},
+            timeout=timeout,
+            allow_redirects=True,
+        )
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+        for tag in soup(["script", "style", "nav", "header", "footer", "aside", "iframe"]):
+            tag.decompose()
+        # Prefer article body
+        body = soup.find("article") or soup.find(id=re.compile(r"content|article|body", re.I))
+        text = (body or soup).get_text(" ", strip=True)
+        return re.sub(r"\s{2,}", " ", text)[:5000]
+    except Exception:
+        return ""
+
+
+def gemini_extract(url: str, article_text: str, api_key: str) -> dict:
+    """Call Gemini Flash to extract structured poll data from article text."""
+    if not _GENAI_AVAILABLE or not api_key or not article_text:
+        return {}
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(_GEMINI_MODEL)
+        prompt = _GEMINI_PROMPT.format(url=url, text=article_text[:4500])
+        response = model.generate_content(prompt)
+        raw = response.text.strip()
+        # Strip markdown code fences if present
+        raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.M)
+        raw = re.sub(r"\s*```$", "", raw, flags=re.M)
+        result = json.loads(raw)
+        result["_source"] = "gemini"
+        return result
+    except Exception as exc:
+        return {"_gemini_error": str(exc)}
 
 
 @dataclass
@@ -766,6 +842,7 @@ def ingest_news_feeds(
     conn: sqlite3.Connection,
     feeds: list[str],
     dry_run: bool = False,
+    use_gemini: bool = False,
 ) -> tuple[int, int]:
     rows_seen = rows_written = 0
     for feed_url in feeds:
@@ -789,6 +866,19 @@ def ingest_news_feeds(
             article_id = "news:" + stable_id(source, item.get("url"), item.get("title"))
             terms = sorted(set(m.group(0).lower() for m in POLL_TERMS.finditer(combined)))
             numbers = extract_poll_numbers(combined)
+            # Gemini: fetch full article and extract structured data
+            if use_gemini:
+                gemini_key = os.getenv("GEMINI_API_KEY", "")
+                if gemini_key:
+                    article_url = item.get("url", "")
+                    print(f"    [gemini] fetching {article_url[:80]}")
+                    full_text = fetch_article_text(article_url)
+                    if full_text:
+                        gemini_data = gemini_extract(article_url, full_text, gemini_key)
+                        if gemini_data and "_gemini_error" not in gemini_data:
+                            numbers = gemini_data
+                            print(f"    [gemini] extracted: {list(gemini_data.keys())}")
+                    time.sleep(1)  # stay within free-tier rate limits
             if dry_run:
                 rows_written += 1
                 continue
@@ -829,10 +919,10 @@ def ingest_news_feeds(
     return rows_seen, rows_written
 
 
-def run_source(conn: sqlite3.Connection, source: str, func, *args, dry_run: bool = False):
+def run_source(conn: sqlite3.Connection, source: str, func, *args, dry_run: bool = False, **kwargs):
     run_id = start_run(conn, source)
     try:
-        seen, written = func(conn, *args, dry_run=dry_run)
+        seen, written = func(conn, *args, dry_run=dry_run, **kwargs)
     except Exception as exc:
         finish_run(conn, run_id, "error", 0, 0, str(exc))
         raise
@@ -853,6 +943,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--ballotpedia-file", action="append", default=[], help="Saved Ballotpedia HTML file to parse")
     parser.add_argument("--news-feed", action="append", default=[], help="Extra RSS/Atom feed URL")
     parser.add_argument("--dry-run", action="store_true", help="Fetch and parse without writing poll rows")
+    parser.add_argument("--use-gemini", action="store_true", help="Use Gemini Flash to extract poll data from full article text (requires GEMINI_API_KEY env var)")
     args = parser.parse_args(argv)
 
     db_path = Path(args.db)
@@ -878,7 +969,7 @@ def main(argv: list[str] | None = None) -> int:
             )
         if "news" in sources:
             feeds = DEFAULT_NEWS_FEEDS + args.news_feed
-            totals["news"] = run_source(conn, "news", ingest_news_feeds, feeds, dry_run=args.dry_run)
+            totals["news"] = run_source(conn, "news", ingest_news_feeds, feeds, use_gemini=args.use_gemini, dry_run=args.dry_run)
     finally:
         conn.close()
 
