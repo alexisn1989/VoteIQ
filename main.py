@@ -4757,9 +4757,7 @@ async def bills_chat(request: Request, req: BillsChatRequest):
 You have access to the retrieved excerpts below, which may include Virginia General Assembly bills, \
 election results, legislator voting records, and representative profile summaries from the local 2026 session database. \
 Answer the user's question using ONLY the excerpts below — do not rely on your training data. \
-Be concise and direct. For simple factual questions (did X vote for Y?) answer in 1-2 sentences. \
-For legislator profiles use the structured format below but keep each section tight — skip sections with no data. \
-Cite bill numbers and vote counts. No filler phrases, no restating the question.{district_note}{chroma_note}
+Be factual and cite bill numbers when relevant.{district_note}{chroma_note}
 
 VOTE INTERPRETATION — apply these rules when reading vote records:
 - If a legislator votes YES on passage but NO on concurrence/conference substitute, they likely objected to the amended version, not the bill itself. Say: "voted against the House-amended version; accepted final compromise."
