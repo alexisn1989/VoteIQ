@@ -222,24 +222,87 @@ def admin_ingest_fec_pacs(cycle: int = 2026):
 
 @app.get("/api/congress/pac-summary/{bioguide_id}")
 def pac_summary(bioguide_id: str):
-    """Return FEC industry donation totals for a VA member."""
-    rows = _PAC_CACHE.get(bioguide_id)
-    if not rows:
+    """Return FEC industry donation totals with per-cycle breakdown and trend %."""
+    if not os.path.exists(_POLLS_DB):
+        return {"bioguide_id": bioguide_id, "industries": [], "note": "polls.db missing"}
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+        tbl = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='fec_industry_totals'"
+        ).fetchone()
+        if not tbl:
+            conn.close()
+            return {"bioguide_id": bioguide_id, "industries": [], "note": "no data"}
+
+        # Fetch all cycles for this member
+        all_rows = conn.execute(
+            "SELECT industry, cycle, total_amount, contributor_count, top_donors, member_name "
+            "FROM fec_industry_totals WHERE bioguide_id=? ORDER BY industry, cycle",
+            (bioguide_id,)
+        ).fetchall()
+        conn.close()
+    except Exception as exc:
+        return {"bioguide_id": bioguide_id, "industries": [], "note": str(exc)}
+
+    if not all_rows:
         return {"bioguide_id": bioguide_id, "industries": [], "note": "no data — run ingest_fec_pacs.py"}
-    sorted_rows = sorted(rows, key=lambda r: r["total"], reverse=True)
+
+    member_name = all_rows[0]["member_name"]
+
+    # Group by industry
+    from collections import defaultdict
+    by_industry: dict[str, dict] = defaultdict(lambda: {"by_cycle": {}, "top_donors": [], "count": 0})
+    for row in all_rows:
+        ind = row["industry"]
+        cyc = str(row["cycle"])
+        by_industry[ind]["by_cycle"][cyc] = row["total_amount"]
+        by_industry[ind]["count"] += row["contributor_count"]
+        if not by_industry[ind]["top_donors"]:
+            by_industry[ind]["top_donors"] = json.loads(row["top_donors"] or "[]")
+
+    industries = []
+    for ind, data in by_industry.items():
+        by_cycle = data["by_cycle"]
+        sorted_cycles = sorted(by_cycle.keys())
+        latest_total = by_cycle[sorted_cycles[-1]]
+        earliest_total = by_cycle[sorted_cycles[0]]
+
+        # Trend: % change from earliest to latest cycle
+        if len(sorted_cycles) > 1 and earliest_total > 0:
+            trend_pct = round((latest_total - earliest_total) / earliest_total * 100)
+            trend_label = f"+{trend_pct}%" if trend_pct >= 0 else f"{trend_pct}%"
+            is_new = False
+        elif len(sorted_cycles) == 1 and sorted_cycles[0] != "2020":
+            trend_pct = None
+            trend_label = "NEW"
+            is_new = True
+        else:
+            trend_pct = None
+            trend_label = "—"
+            is_new = False
+
+        industries.append({
+            "industry":    ind,
+            "total":       latest_total,
+            "count":       data["count"],
+            "top_donors":  data["top_donors"],
+            "by_cycle":    by_cycle,
+            "cycles":      sorted_cycles,
+            "trend_pct":   trend_pct,
+            "trend_label": trend_label,
+            "is_new":      is_new,
+        })
+
+    industries.sort(key=lambda r: r["total"], reverse=True)
+    all_cycles = sorted({str(row["cycle"]) for row in all_rows})
+
     return {
         "bioguide_id":  bioguide_id,
-        "member_name":  sorted_rows[0].get("member_name"),
-        "cycle":        sorted_rows[0].get("cycle"),
-        "industries":   [
-            {
-                "industry":    r["industry"],
-                "total":       r["total"],
-                "count":       r["count"],
-                "top_donors":  r["top_donors"],
-            }
-            for r in sorted_rows
-        ],
+        "member_name":  member_name,
+        "cycles":       all_cycles,
+        "latest_cycle": all_cycles[-1] if all_cycles else "",
+        "industries":   industries,
     }
 
 

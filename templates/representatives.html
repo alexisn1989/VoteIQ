@@ -116,6 +116,16 @@
   .donor-bar { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
   .donor-amount { font-family: 'Barlow Condensed', sans-serif; font-size: 0.62rem; color: var(--muted); width: 68px; text-align: right; flex-shrink: 0; }
   .donor-no-data { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; color: var(--muted); text-align: center; padding: 14px 0; }
+  .donor-trend { font-family: 'Barlow Condensed', sans-serif; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.04em; width: 44px; text-align: right; flex-shrink: 0; }
+  .donor-trend.up { color: #2a9d4a; }
+  .donor-trend.down { color: #c8102e; }
+  .donor-trend.new { color: #1a52c8; }
+  .donor-trend.flat { color: var(--muted); }
+  .donor-sparkline { display: flex; align-items: flex-end; gap: 2px; height: 16px; width: 36px; flex-shrink: 0; }
+  .spark-bar { flex: 1; background: var(--mid); border-radius: 1px; min-height: 2px; transition: height 0.4s; }
+  .donors-cycle-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+  .donors-cycle-tab { font-family: 'Barlow Condensed', sans-serif; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--mid); background: white; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .donors-cycle-tab.active { background: var(--navy); color: white; border-color: var(--navy); }
 
   /* State officials compact grid */
   .state-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
@@ -363,7 +373,7 @@ function renderCard(m, bills) {
 
       <div class="donors-panel" id="donors-${m.bioguide_id}">
         <div class="donors-title">Industry Campaign Contributions</div>
-        <div class="donors-source">Source: <a href="https://www.fec.gov/data/candidate/${FEC_CANDIDATE_IDS[m.bioguide_id] || ''}/" target="_blank" rel="noopener">FEC.gov</a> &bull; 2024 election cycle &bull; PAC &amp; org contributions only</div>
+        <div class="donors-source" id="donors-source-${m.bioguide_id}">Source: <a href="https://www.fec.gov/data/candidate/${FEC_CANDIDATE_IDS[m.bioguide_id] || ''}/" target="_blank" rel="noopener">FEC.gov</a> &bull; PAC &amp; org contributions only</div>
         <div id="donors-chart-${m.bioguide_id}"><div class="donor-no-data">Loading...</div></div>
       </div>
     </div>`;
@@ -515,27 +525,86 @@ function fmtMoney(n) {
   return `$${Math.round(n)}`;
 }
 
-function renderDonorChart(industries) {
-  // Filter out "Other", show last; sort rest by total desc
-  const named = industries.filter(r => r.industry !== 'Other').sort((a,b) => b.total - a.total);
-  const other = industries.find(r => r.industry === 'Other');
-  const rows = other ? [...named, other] : named;
-  if (!rows.length) return '<div class="donor-no-data">No PAC contribution data yet.</div>';
+function renderDonorChart(data, activeCycle) {
+  const industries = data.industries || [];
+  const cycles = data.cycles || [];
+  if (!industries.length) return '<div class="donor-no-data">No PAC contribution data yet.</div>';
 
-  const max = Math.max(...rows.map(r => r.total));
-  return rows.map(r => {
-    const pct = max > 0 ? Math.max(2, Math.round((r.total / max) * 100)) : 2;
+  // Pick which cycle to display
+  const displayCycle = activeCycle || cycles[cycles.length - 1] || '';
+
+  // Sort: named industries by selected-cycle total, Other last
+  const named = industries.filter(r => r.industry !== 'Other').map(r => ({
+    ...r, displayTotal: r.by_cycle ? (r.by_cycle[displayCycle] || 0) : r.total
+  })).sort((a, b) => b.displayTotal - a.displayTotal);
+  const other = industries.find(r => r.industry === 'Other');
+  const otherDisplay = other ? {...other, displayTotal: other.by_cycle ? (other.by_cycle[displayCycle] || 0) : other.total} : null;
+  const rows = otherDisplay ? [...named, otherDisplay] : named;
+
+  const max = Math.max(...rows.map(r => r.displayTotal), 1);
+
+  // Cycle selector tabs
+  let tabsHtml = '';
+  if (cycles.length > 1) {
+    tabsHtml = `<div class="donors-cycle-tabs">` +
+      cycles.map(c => `<button class="donors-cycle-tab${c === displayCycle ? ' active' : ''}" onclick="switchDonorCycle(this,'${data.bioguide_id}','${c}')">${c}</button>`).join('') +
+      `</div>`;
+  }
+
+  const barsHtml = rows.map(r => {
+    if (!r.displayTotal) return '';
+    const pct = Math.max(2, Math.round((r.displayTotal / max) * 100));
     const color = INDUSTRY_COLORS[r.industry] || '#adb5bd';
     const top = r.top_donors && r.top_donors.length
       ? r.top_donors.slice(0,2).map(d => d.name.replace(/political action committee.*/i,'PAC').trim()).join(', ')
       : '';
+
+    // Trend badge
+    let trendHtml = '';
+    if (r.trend_label && displayCycle === displayCycle /* always show vs base */ ) {
+      const cls = r.trend_label.startsWith('+') ? 'up'
+                : r.trend_label.startsWith('-') ? 'down'
+                : r.trend_label === 'NEW' ? 'new' : 'flat';
+      trendHtml = `<div class="donor-trend ${cls}">${r.trend_label}</div>`;
+    }
+
+    // Sparkline — mini bars for each cycle
+    let sparkHtml = '';
+    if (r.by_cycle && cycles.length > 1) {
+      const vals = cycles.map(c => r.by_cycle[c] || 0);
+      const smax = Math.max(...vals, 1);
+      const sparks = vals.map((v, i) => {
+        const h = Math.max(2, Math.round((v / smax) * 14));
+        const active = cycles[i] === displayCycle ? color : '#ccc';
+        return `<div class="spark-bar" style="height:${h}px;background:${active}"></div>`;
+      }).join('');
+      sparkHtml = `<div class="donor-sparkline" title="${cycles.map((c,i) => c+': '+fmtMoney(vals[i])).join(' / ')}">${sparks}</div>`;
+    }
+
     return `
-      <div class="donor-bar-row" title="${top ? top : r.industry}">
+      <div class="donor-bar-row" title="${top || r.industry}">
         <div class="donor-industry">${r.industry}</div>
         <div class="donor-bar-wrap"><div class="donor-bar" style="width:${pct}%;background:${color}"></div></div>
-        <div class="donor-amount">${fmtMoney(r.total)}</div>
+        ${sparkHtml}
+        ${trendHtml}
+        <div class="donor-amount">${fmtMoney(r.displayTotal)}</div>
       </div>`;
   }).join('');
+
+  return tabsHtml + barsHtml;
+}
+
+function switchDonorCycle(btn, bid, cycle) {
+  const panel = document.getElementById(`donors-${bid}`);
+  panel.querySelectorAll('.donors-cycle-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  const data = donorsCache[bid];
+  if (data) {
+    document.getElementById(`donors-chart-${bid}`).innerHTML = renderDonorChart(data, cycle);
+    // Re-attach active tab after re-render
+    const newBtn = document.getElementById(`donors-${bid}`).querySelector(`.donors-cycle-tab[onclick*="'${cycle}'"]`);
+    if (newBtn) newBtn.classList.add('active');
+  }
 }
 
 async function toggleDonors(bid, btn) {
@@ -556,8 +625,13 @@ async function toggleDonors(bid, btn) {
   try {
     const resp = await fetch(`/api/congress/pac-summary/${bid}`);
     const data = await resp.json();
-    donorsCache[bid] = data.industries || [];
-    document.getElementById(`donors-chart-${bid}`).innerHTML = renderDonorChart(donorsCache[bid]);
+    data.bioguide_id = bid;
+    donorsCache[bid] = data;
+    const src = document.getElementById(`donors-source-${bid}`);
+    if (src && data.latest_cycle) {
+      src.innerHTML = src.innerHTML.replace('PAC &amp; org', `${data.latest_cycle} cycle &bull; PAC &amp; org`);
+    }
+    document.getElementById(`donors-chart-${bid}`).innerHTML = renderDonorChart(data);
   } catch(e) {
     document.getElementById(`donors-chart-${bid}`).innerHTML = '<div class="donor-no-data">Could not load donor data.</div>';
   }
