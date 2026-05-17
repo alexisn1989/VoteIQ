@@ -14,6 +14,8 @@ import os
 import json
 import re
 import time
+import hashlib
+import sqlite3
 from html import escape
 import requests
 import anthropic
@@ -286,6 +288,8 @@ try:
 except Exception as e:
     _results = None
     print(f"Warning: could not load election results: {e}")
+
+_init_query_cache()
 
 
 # ── 2025 General Election results — loaded once on first request ──────────────
@@ -765,6 +769,61 @@ def _claude_reply(system_prompt, messages, max_tokens):
                 raise
             time.sleep(0.75 * (attempt + 1))
     raise last_error
+
+
+_CACHE_TTL_SECONDS = 86400  # 24 hours
+
+
+def _init_query_cache():
+    db = os.path.join(BASE_DIR, "openstates_va.db")
+    if not os.path.exists(db):
+        return
+    conn = sqlite3.connect(db)
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS query_cache "
+        "(cache_key TEXT PRIMARY KEY, reply TEXT, created_at INTEGER)"
+    )
+    conn.commit()
+    conn.close()
+
+
+def _cache_key(query: str, district_note: str) -> str:
+    normalized = re.sub(r"\s+", " ", query.strip().lower())
+    raw = f"{normalized}||{district_note}"
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def _get_cached_reply(key: str) -> str | None:
+    db = os.path.join(BASE_DIR, "openstates_va.db")
+    if not os.path.exists(db):
+        return None
+    try:
+        conn = sqlite3.connect(db)
+        row = conn.execute(
+            "SELECT reply, created_at FROM query_cache WHERE cache_key = ?", (key,)
+        ).fetchone()
+        conn.close()
+        if row and (time.time() - row[1]) < _CACHE_TTL_SECONDS:
+            return row[0]
+    except Exception:
+        pass
+    return None
+
+
+def _set_cached_reply(key: str, reply: str):
+    db = os.path.join(BASE_DIR, "openstates_va.db")
+    if not os.path.exists(db):
+        return
+    try:
+        conn = sqlite3.connect(db)
+        conn.execute(
+            "INSERT OR REPLACE INTO query_cache (cache_key, reply, created_at) VALUES (?, ?, ?)",
+            (key, reply, int(time.time())),
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
 
 
 DISTRICT_CONTEXT = {
@@ -4102,6 +4161,113 @@ def _sqlite_bill_lookup(bill_numbers: list[str]) -> str:
         return ""
 
 
+def _cached_bill_description_lookup(bill_numbers: list[str], session: str | None = None) -> str:
+    """Return cached bill descriptions from openstates_va.db with no external API calls."""
+    if not bill_numbers or not os.path.exists(_OPENSTATES_DB):
+        return ""
+    import sqlite3 as _sq
+    try:
+        conn = _sq.connect(_OPENSTATES_DB)
+        cur = conn.cursor()
+        lines = []
+        for bid in bill_numbers:
+            if session:
+                rows = cur.execute(
+                    "SELECT bill_id, session, title, description, source_url, generated_at "
+                    "FROM bill_descriptions WHERE bill_id=? AND session=?",
+                    (bid, session),
+                ).fetchall()
+            else:
+                rows = cur.execute(
+                    "SELECT bill_id, session, title, description, source_url, generated_at "
+                    "FROM bill_descriptions WHERE bill_id=? ORDER BY session DESC",
+                    (bid,),
+                ).fetchall()
+            for bill_id, sess, title, desc, url, generated_at in rows:
+                lines.append(
+                    f"[Cached Bill Description — {bill_id} {sess}]\n"
+                    f"{desc}"
+                    + (f"\nCached at: {generated_at}" if generated_at else "")
+                    + (f"\nSource: {url}" if url and url not in desc else "")
+                )
+        conn.close()
+        return "\n\n".join(lines)
+    except Exception:
+        return ""
+
+
+def _cached_bill_description_search(query: str, session: str | None = None, limit: int = 8) -> str:
+    """Search cached bill descriptions locally. Uses FTS5 when available, LIKE fallback otherwise."""
+    if not query or not os.path.exists(_OPENSTATES_DB):
+        return ""
+    import sqlite3 as _sq
+
+    terms = [
+        t for t in re.findall(r"[A-Za-z0-9]+", query.lower())
+        if len(t) > 2 and t not in {"what", "who", "how", "did", "the", "for", "and", "are", "bill", "bills"}
+    ][:8]
+    if not terms:
+        return ""
+
+    try:
+        conn = _sq.connect(_OPENSTATES_DB)
+        cur = conn.cursor()
+        rows = []
+        try:
+            match_query = " ".join(terms)
+            if session:
+                rows = cur.execute(
+                    """
+                    SELECT bd.bill_id, bd.session, bd.title, bd.description, bd.source_url
+                    FROM bill_descriptions_fts f
+                    JOIN bill_descriptions bd
+                      ON bd.bill_id=f.bill_id AND bd.session=f.session
+                    WHERE bill_descriptions_fts MATCH ? AND bd.session=?
+                    LIMIT ?
+                    """,
+                    (match_query, session, limit),
+                ).fetchall()
+            else:
+                rows = cur.execute(
+                    """
+                    SELECT bd.bill_id, bd.session, bd.title, bd.description, bd.source_url
+                    FROM bill_descriptions_fts f
+                    JOIN bill_descriptions bd
+                      ON bd.bill_id=f.bill_id AND bd.session=f.session
+                    WHERE bill_descriptions_fts MATCH ?
+                    LIMIT ?
+                    """,
+                    (match_query, limit),
+                ).fetchall()
+        except Exception:
+            like = f"%{'%'.join(terms[:4])}%"
+            if session:
+                rows = cur.execute(
+                    "SELECT bill_id, session, title, description, source_url FROM bill_descriptions "
+                    "WHERE session=? AND search_text LIKE ? LIMIT ?",
+                    (session, like, limit),
+                ).fetchall()
+            else:
+                rows = cur.execute(
+                    "SELECT bill_id, session, title, description, source_url FROM bill_descriptions "
+                    "WHERE search_text LIKE ? LIMIT ?",
+                    (like, limit),
+                ).fetchall()
+        conn.close()
+        if not rows:
+            return ""
+        blocks = []
+        for bill_id, sess, title, desc, url in rows:
+            blocks.append(
+                f"[Cached Bill Search Result — {bill_id} {sess}]\n"
+                f"{desc}"
+                + (f"\nSource: {url}" if url and url not in desc else "")
+            )
+        return "\n\n".join(blocks)
+    except Exception:
+        return ""
+
+
 def _sqlite_legislator_votes(name: str) -> str:
     """Return voting summary and education bill info for a legislator by last name."""
     if not os.path.exists(_VA_LEGIS_DB):
@@ -4345,21 +4511,68 @@ async def bills_debug():
         return {"status": "error", "error": str(e), "type": type(e).__name__, "env": env_info}
 
 
+@app.get("/api/bill-descriptions/search")
+def bill_descriptions_search(q: str, session: str | None = None, limit: int = 8):
+    """Instant local bill-description search. No AI, embedding, Chroma, or OpenStates calls."""
+    if not os.path.exists(_OPENSTATES_DB):
+        return {"count": 0, "results": [], "source": "missing_openstates_db"}
+    import sqlite3 as _sq
+
+    bill_numbers = _extract_bill_numbers(q)
+    blocks = (
+        _cached_bill_description_lookup(bill_numbers, session)
+        if bill_numbers
+        else _cached_bill_description_search(q, session, limit)
+    )
+    results = []
+    for block in blocks.split("\n\n"):
+        if not block.strip():
+            continue
+        header, _, body = block.partition("\n")
+        match = re.search(r"([A-Z]+[0-9]+)\s+([0-9]{4})", header)
+        results.append({
+            "bill_id": match.group(1) if match else "",
+            "session": match.group(2) if match else "",
+            "description": body.strip(),
+        })
+
+    try:
+        conn = _sq.connect(_OPENSTATES_DB)
+        cache_count = conn.execute("SELECT COUNT(*) FROM bill_descriptions").fetchone()[0]
+        conn.close()
+    except Exception:
+        cache_count = None
+    return {
+        "count": len(results),
+        "cache_count": cache_count,
+        "source": "local_sqlite_bill_descriptions",
+        "results": results[:limit],
+    }
+
+
 @app.post("/api/bills-chat", response_model=ChatResponse)
 @limiter.limit("10/minute")
 async def bills_chat(request: Request, req: BillsChatRequest):
     user_query = next(
         (m.content for m in reversed(req.messages) if m.role == "user"), ""
     )
+    mentioned = _extract_bill_numbers(user_query)
+    session_year = _extract_session_year(user_query)
+    cached_bill_context = (
+        _cached_bill_description_lookup(mentioned, session_year)
+        if mentioned
+        else _cached_bill_description_search(user_query, session_year)
+    )
 
     query_vec = None
     results = {"documents": [[]], "metadatas": [[]]}
     chroma_error = None
 
-    try:
-        query_vec = _get_voyage_client().embed([user_query], model=_BILLS_MODEL, input_type="query").embeddings[0]
-    except Exception as e:
-        chroma_error = f"Voyage AI unavailable: {e}"
+    if not cached_bill_context:
+        try:
+            query_vec = _get_voyage_client().embed([user_query], model=_BILLS_MODEL, input_type="query").embeddings[0]
+        except Exception as e:
+            chroma_error = f"Voyage AI unavailable: {e}"
 
     if query_vec is not None:
         try:
@@ -4373,8 +4586,12 @@ async def bills_chat(request: Request, req: BillsChatRequest):
         seen_docs: set[str] = set()
 
         # SQLite bill lookup — supplements ChromaDB with local 2026 bill data
-        mentioned = _extract_bill_numbers(user_query)
-        session_year = _extract_session_year(user_query)
+        if cached_bill_context:
+            for block in cached_bill_context.split("\n\n"):
+                if block and block not in seen_docs:
+                    seen_docs.add(block)
+                    context_blocks.insert(0, block)
+
         if mentioned:
             sqlite_bill = _sqlite_bill_lookup(mentioned)
             if sqlite_bill:
@@ -4525,13 +4742,22 @@ async def bills_chat(request: Request, req: BillsChatRequest):
             parts.append(f"Senate district: {req.sd_district}")
         district_note = f"\nUSER'S DISTRICT CONTEXT: {', '.join(parts)}\n"
 
+    # Response cache — skip on multi-turn conversations (only cache single-question queries)
+    _ck = _cache_key(user_query, district_note) if len(req.messages) == 1 else None
+    if _ck:
+        cached = _get_cached_reply(_ck)
+        if cached:
+            return ChatResponse(reply=cached)
+
     chroma_note = f"\nNOTE: AI knowledge base unavailable ({chroma_error}). Answering from local database only.\n" if chroma_error else ""
 
     system_prompt = f"""You are VoteIQ, a nonpartisan Virginia civic assistant. Today is May 2026. \
 You have access to the retrieved excerpts below, which may include Virginia General Assembly bills, \
 election results, legislator voting records, and representative profile summaries from the local 2026 session database. \
 Answer the user's question using ONLY the excerpts below — do not rely on your training data. \
-Be concise (3-5 sentences), factual, and cite bill numbers when relevant.{district_note}{chroma_note}
+Be concise and direct. For simple factual questions (did X vote for Y?) answer in 1-2 sentences. \
+For legislator profiles use the structured format below but keep each section tight — skip sections with no data. \
+Cite bill numbers and vote counts. No filler phrases, no restating the question.{district_note}{chroma_note}
 
 VOTE INTERPRETATION — apply these rules when reading vote records:
 - If a legislator votes YES on passage but NO on concurrence/conference substitute, they likely objected to the amended version, not the bill itself. Say: "voted against the House-amended version; accepted final compromise."
@@ -4626,7 +4852,10 @@ EXCERPTS:
 {context}"""
 
     try:
-        return ChatResponse(reply=_claude_reply(system_prompt, req.messages, max_tokens=1800))
+        reply = _claude_reply(system_prompt, req.messages, max_tokens=1800)
+        if _ck:
+            _set_cached_reply(_ck, reply)
+        return ChatResponse(reply=reply)
     except Exception as e:
         return ChatResponse(reply=_friendly_claude_error(e))
 
