@@ -6118,30 +6118,77 @@ _races_2026_cache_ts: float = 0.0
 _RACES_2026_TTL = 3600  # 1 hour
 
 
+_ALL_RACES_2026 = {
+    "S":   {"race_id": "S",   "label": "U.S. Senate — Kaine Seat (Class II)", "office": "S", "district": "00", "sort_key": (0, 0)},
+    "H1":  {"race_id": "H1",  "label": "House — District 1",  "office": "H", "district": "01", "sort_key": (1, 1)},
+    "H2":  {"race_id": "H2",  "label": "House — District 2",  "office": "H", "district": "02", "sort_key": (1, 2)},
+    "H3":  {"race_id": "H3",  "label": "House — District 3",  "office": "H", "district": "03", "sort_key": (1, 3)},
+    "H4":  {"race_id": "H4",  "label": "House — District 4",  "office": "H", "district": "04", "sort_key": (1, 4)},
+    "H5":  {"race_id": "H5",  "label": "House — District 5",  "office": "H", "district": "05", "sort_key": (1, 5)},
+    "H6":  {"race_id": "H6",  "label": "House — District 6",  "office": "H", "district": "06", "sort_key": (1, 6)},
+    "H7":  {"race_id": "H7",  "label": "House — District 7",  "office": "H", "district": "07", "sort_key": (1, 7)},
+    "H8":  {"race_id": "H8",  "label": "House — District 8",  "office": "H", "district": "08", "sort_key": (1, 8)},
+    "H9":  {"race_id": "H9",  "label": "House — District 9",  "office": "H", "district": "09", "sort_key": (1, 9)},
+    "H10": {"race_id": "H10", "label": "House — District 10", "office": "H", "district": "10", "sort_key": (1, 10)},
+    "H11": {"race_id": "H11", "label": "House — District 11", "office": "H", "district": "11", "sort_key": (1, 11)},
+}
+
+
+def _load_current_holders() -> dict[str, dict]:
+    """Return dict of race_key -> current holder info from congress_members table."""
+    holders: dict[str, dict] = {}
+    try:
+        db = sqlite3.connect(_POLLS_DB)
+        db.row_factory = sqlite3.Row
+        for row in db.execute(
+            "SELECT bioguide_id, name, party, chamber, district FROM congress_members WHERE state='Virginia'"
+        ):
+            name_raw = row["name"]
+            if "," in name_raw:
+                last, first = name_raw.split(",", 1)
+                first_word = first.strip().split()[0]
+                display = f"{first_word} {last.strip()}"
+            else:
+                display = name_raw
+            party_map = {"Democratic": "DEM", "Republican": "REP", "Independent": "IND"}
+            party = party_map.get(row["party"], (row["party"] or "")[:3].upper())
+            if row["chamber"] == "Senate":
+                if row["bioguide_id"] == "K000384":  # only Kaine's seat up in 2026
+                    key = "S"
+                else:
+                    continue
+            else:
+                key = f"H{row['district']}"
+            holders[key] = {
+                "bioguide_id": row["bioguide_id"],
+                "name": display,
+                "party": party,
+                "party_label": {"DEM": "Democrat", "REP": "Republican"}.get(party, party),
+            }
+        db.close()
+    except Exception:
+        pass
+    return holders
+
+
 def _fetch_races_2026() -> dict:
     global _races_2026_cache, _races_2026_cache_ts
     now = time.time()
     if _races_2026_cache and now - _races_2026_cache_ts < _RACES_2026_TTL:
         return _races_2026_cache
 
+    current_holders = _load_current_holders()
     api_key = os.getenv("FEC_API_KEY", "DEMO_KEY")
     base = "https://api.open.fec.gov/v1"
 
-    # Use the totals endpoint — returns candidate info + financial totals together
     candidates: list[dict] = []
     page = 1
     while True:
         try:
             resp = requests.get(
                 f"{base}/candidates/totals/",
-                params={
-                    "api_key": api_key,
-                    "state": "VA",
-                    "election_year": 2026,
-                    "per_page": 100,
-                    "page": page,
-                    "sort": "name",
-                },
+                params={"api_key": api_key, "state": "VA", "election_year": 2026,
+                        "per_page": 100, "page": page, "sort": "name"},
                 timeout=20,
             )
             resp.raise_for_status()
@@ -6154,25 +6201,23 @@ def _fetch_races_2026() -> dict:
         except Exception as exc:
             return {"races": [], "total_candidates": 0, "cycle": 2026, "error": str(exc)}
 
+    _PARTY_LABELS = {"REP": "Republican", "DEM": "Democrat", "IND": "Independent",
+                     "LIB": "Libertarian", "GRE": "Green"}
+
     enriched: list[dict] = []
     for c in candidates:
         name_raw = c.get("name", "")
-        # FEC names are "LAST, FIRST" — convert to "First Last"
         if "," in name_raw:
             last, first = name_raw.split(",", 1)
             display_name = f"{first.strip().title()} {last.strip().title()}"
         else:
             display_name = name_raw.title()
-
         party = c.get("party", "")
-        party_label = {"REP": "Republican", "DEM": "Democrat", "IND": "Independent",
-                       "LIB": "Libertarian", "GRE": "Green"}.get(party, party)
-
         enriched.append({
             "candidate_id": c.get("candidate_id", ""),
             "name": display_name,
             "party": party,
-            "party_label": party_label,
+            "party_label": _PARTY_LABELS.get(party, party),
             "office": c.get("office", ""),
             "district": c.get("district", ""),
             "incumbent_challenge": c.get("incumbent_challenge_full", ""),
@@ -6180,31 +6225,40 @@ def _fetch_races_2026() -> dict:
             "spent": c.get("disbursements"),
             "cash": c.get("last_cash_on_hand_end_period"),
             "fec_url": f"https://www.fec.gov/data/candidate/{c.get('candidate_id', '')}/",
+            "is_fec_filed": True,
+            "bioguide_id": None,
         })
 
-    # Group by race
+    # Build all 12 races upfront so every district shows even with zero filings
     races: dict[str, dict] = {}
+    for key, meta in _ALL_RACES_2026.items():
+        races[key] = {**meta, "candidates": [],
+                      "current_holder": current_holders.get(key),
+                      "no_filings": False}
+
     for c in enriched:
-        if c["office"] == "S":
-            key = "S"
-            label = "U.S. Senate"
-            sort_key = (0, 0)
-        else:
-            dist_num = int(c["district"].lstrip("0") or 0)
-            key = f"H{dist_num}"
-            label = f"House — District {dist_num}"
-            sort_key = (1, dist_num)
+        key = "S" if c["office"] == "S" else f"H{int(c['district'].lstrip('0') or 0)}"
         if key not in races:
-            races[key] = {"race_id": key, "label": label, "office": c["office"],
-                          "district": c["district"], "sort_key": sort_key, "candidates": []}
+            continue
+        # Try to link FEC candidate to known incumbent by last name + party
+        holder = races[key].get("current_holder")
+        if holder and not c.get("bioguide_id"):
+            holder_last = holder["name"].split()[-1].upper()
+            cand_last = c["name"].split()[-1].upper()
+            if holder_last == cand_last and holder["party"] == c["party"]:
+                c["bioguide_id"] = holder["bioguide_id"]
         races[key]["candidates"].append(c)
 
-    # Sort: incumbents first within each race, then by raised descending
+    from collections import Counter
     for race in races.values():
         race["candidates"].sort(key=lambda x: (
-            0 if x["incumbent_challenge"] == "Incumbent" else 1,
-            -(x["raised"] or 0),
+            0 if x.get("incumbent_challenge") == "Incumbent" else 1,
+            -(x.get("raised") or 0),
         ))
+        pc = Counter(c["party"] for c in race["candidates"])
+        race["has_dem_primary"] = pc.get("DEM", 0) > 1
+        race["has_rep_primary"] = pc.get("REP", 0) > 1
+        race["no_filings"] = len(race["candidates"]) == 0
 
     sorted_races = sorted(races.values(), key=lambda r: r["sort_key"])
     for r in sorted_races:

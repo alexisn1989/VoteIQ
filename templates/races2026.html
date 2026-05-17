@@ -37,19 +37,33 @@
   .filter-btn.dem { background: var(--dem); color: white; border-color: var(--dem); }
   .stats-line { font-family: 'Barlow Condensed', sans-serif; font-size: 0.75rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-left: auto; }
 
-  .race-section { margin-bottom: 36px; }
-  .race-header { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid var(--navy); }
+  .race-section { margin-bottom: 40px; }
+  .race-header { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; padding-bottom: 10px; border-bottom: 2px solid var(--navy); flex-wrap: wrap; }
   .race-label { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; color: var(--navy); }
   .race-count { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
   .race-seat-badge { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; background: #eee8df; color: var(--muted); padding: 3px 8px; }
+  .race-holder-line { font-size: 0.8rem; color: var(--muted); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .race-holder-line a { color: var(--navy); font-weight: 600; text-decoration: none; border-bottom: 1px solid var(--mid); }
+  .race-holder-line a:hover { color: var(--red); border-color: var(--red); }
+  .holder-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .holder-dot.DEM { background: var(--dem); }
+  .holder-dot.REP { background: var(--rep); }
 
-  .candidates-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+  .primary-group { margin-bottom: 20px; }
+  .primary-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; padding: 4px 10px; margin-bottom: 10px; display: inline-block; }
+  .primary-label.dem { background: #e8edfb; color: var(--dem); }
+  .primary-label.rep { background: #fde8e8; color: var(--rep); }
+  .primary-label.other { background: #eee; color: #555; }
+  .primary-label.general { background: var(--navy); color: white; }
+
+  .candidates-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(265px, 1fr)); gap: 14px; }
 
   .candidate-card { background: white; border: 1px solid var(--mid); border-top: 3px solid var(--mid); padding: 18px 16px 14px; position: relative; transition: border-top-color 0.2s, transform 0.15s; }
   .candidate-card:hover { transform: translateY(-2px); }
   .candidate-card.REP { border-top-color: var(--rep); }
   .candidate-card.DEM { border-top-color: var(--dem); }
   .candidate-card.IND, .candidate-card.LIB, .candidate-card.GRE { border-top-color: #888; }
+  .candidate-card.no-filing { border-top-color: var(--mid); background: #fafaf8; opacity: 0.85; }
 
   .cand-badge-row { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
   .party-badge { font-family: 'Barlow Condensed', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 8px; }
@@ -59,27 +73,37 @@
   .status-badge { font-family: 'Barlow Condensed', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 8px; background: #f0f4e8; color: #3a6b0e; }
   .status-badge.challenger { background: #fff3e8; color: #b85a00; }
   .status-badge.open { background: #e8f0f4; color: #0e5a6b; }
+  .status-badge.holder { background: #f0f0f0; color: #555; }
 
   .cand-name { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700; color: var(--navy); margin-bottom: 12px; line-height: 1.25; }
+  .cand-name a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--mid); }
+  .cand-name a:hover { color: var(--red); border-color: var(--red); }
 
   .finance-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
   .finance-item { text-align: center; }
   .finance-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.58rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
   .finance-value { font-family: 'Barlow Condensed', sans-serif; font-size: 0.95rem; font-weight: 700; color: var(--navy); }
-  .finance-value.none { color: var(--muted); font-size: 0.8rem; }
+  .finance-value.none { color: #ccc; font-size: 0.8rem; }
 
   .cash-bar-wrap { height: 3px; background: var(--mid); margin-bottom: 12px; overflow: hidden; }
   .cash-bar { height: 100%; background: var(--navy); transition: width 0.6s ease; }
   .candidate-card.REP .cash-bar { background: var(--rep); }
   .candidate-card.DEM .cash-bar { background: var(--dem); }
 
-  .cand-footer { display: flex; justify-content: flex-end; }
+  .cand-footer { display: flex; justify-content: flex-end; align-items: center; gap: 12px; }
   .fec-link { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); text-decoration: none; border-bottom: 1px solid var(--mid); transition: color 0.2s, border-color 0.2s; }
   .fec-link:hover { color: var(--red); border-color: var(--red); }
+  .rep-link { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy); text-decoration: none; border-bottom: 1px solid var(--navy); transition: color 0.2s; }
+  .rep-link:hover { color: var(--red); }
+
+  .no-filings-card { background: #fafaf8; border: 1px dashed var(--mid); padding: 20px; text-align: center; font-family: 'Barlow Condensed', sans-serif; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
 
   .loading-state { text-align: center; padding: 80px 32px; color: var(--muted); font-family: 'Barlow Condensed', sans-serif; font-size: 1rem; letter-spacing: 0.1em; text-transform: uppercase; }
   .spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid var(--mid); border-top-color: var(--navy); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 14px; }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  .data-note { background: white; border: 1px solid var(--mid); border-left: 3px solid #c8a000; padding: 12px 16px; font-size: 0.8rem; color: var(--muted); margin-bottom: 28px; line-height: 1.5; }
+  .data-note strong { color: var(--navy); }
 
   .source-note { font-size: 0.75rem; color: var(--muted); margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--mid); }
   .source-note a { color: var(--red); text-decoration: none; }
@@ -122,10 +146,15 @@
 <div class="page-hero">
   <div class="page-hero-eyebrow">2026 Election Cycle</div>
   <h1>Virginia <em>2026 Races</em></h1>
-  <p>All candidates who have filed with the FEC for Virginia's federal races — Senate and all 11 House districts. Financial data from campaign filings.</p>
+  <p>All candidates who have filed with the FEC for Virginia's federal races — Senate (Kaine seat) and all 11 House districts. Financial data from campaign filings.</p>
 </div>
 
 <div class="section-wrap">
+
+  <div class="data-note">
+    <strong>Early-cycle data:</strong> It's May 2026. Many incumbents and challengers haven't filed yet or haven't submitted financials. Blank financials (—) mean no report on file with the FEC — not that a candidate hasn't raised money. Current seat-holders are shown even if they haven't formally filed for 2026.
+  </div>
+
   <div class="filter-bar" id="filterBar">
     <button class="filter-btn active" onclick="setFilter('all', this)">All Parties</button>
     <button class="filter-btn" onclick="setFilter('DEM', this)">Democrat</button>
@@ -141,14 +170,14 @@
   </div>
 
   <div class="source-note">
-    Source: <a href="https://www.fec.gov/data/" target="_blank">FEC.gov</a> — Federal Election Commission filings. Financial totals reflect the most recent FEC report. Data may lag by several weeks.
-    <a href="/api/races/2026/refresh" onclick="refreshData(event)" style="margin-left:12px; font-size:0.72rem;">Refresh data</a>
+    Source: <a href="https://www.fec.gov/data/" target="_blank">FEC.gov</a> — Federal Election Commission filings. Financial totals reflect the most recent FEC report.
+    <a href="/api/races/2026/refresh" onclick="refreshData(event)" style="margin-left:12px;">Refresh data</a>
   </div>
 </div>
 
 <footer>
   <div class="footer-logo">Vote<em>IQ</em></div>
-  <p>Virginia Civic Intelligence &bull; Data: FEC.gov, OpenStates</p>
+  <p>Virginia Civic Intelligence &bull; Data: FEC.gov, Congress.gov</p>
 </footer>
 
 <script>
@@ -162,90 +191,155 @@ function fmt(val) {
   return '$' + Math.round(val);
 }
 
-function statusLabel(s) {
-  if (!s) return '';
-  if (s === 'Incumbent') return 'Incumbent';
-  if (s === 'Challenger') return 'Challenger';
-  if (s === 'Open Seat') return 'Open Seat';
-  return s;
-}
-
 function statusClass(s) {
+  if (!s) return '';
   if (s === 'Incumbent') return '';
   if (s === 'Challenger') return 'challenger';
   return 'open';
 }
 
-function renderCard(c, maxRaised) {
+function renderCard(c, maxRaised, isHolderUnfiled) {
   const raisedStr = fmt(c.raised) || '<span class="none">—</span>';
   const spentStr  = fmt(c.spent)  || '<span class="none">—</span>';
   const cashStr   = fmt(c.cash)   || '<span class="none">—</span>';
   const barPct = (maxRaised > 0 && c.raised) ? Math.round((c.raised / maxRaised) * 100) : 0;
-  const statusCls = statusClass(c.incumbent_challenge);
-  const statusTxt = statusLabel(c.incumbent_challenge);
+  const stCls = statusClass(c.incumbent_challenge);
+  const stTxt = c.incumbent_challenge || (isHolderUnfiled ? 'Current Holder' : '');
+  const stBadgeCls = isHolderUnfiled ? 'holder' : stCls;
+  const cardCls = isHolderUnfiled ? 'no-filing' : '';
+
+  const nameHtml = c.bioguide_id
+    ? `<a href="/representatives" title="View on Representatives page">${c.name}</a>`
+    : c.name;
+
+  const footerLinks = [];
+  if (c.bioguide_id)
+    footerLinks.push(`<a class="rep-link" href="/representatives">View Record →</a>`);
+  if (c.fec_url && !isHolderUnfiled)
+    footerLinks.push(`<a class="fec-link" href="${c.fec_url}" target="_blank">FEC Filing →</a>`);
+
+  const financeSection = isHolderUnfiled
+    ? `<div style="font-size:0.75rem;color:var(--muted);margin-bottom:12px;">No 2026 FEC filing on record yet.</div>`
+    : `<div class="finance-grid">
+        <div class="finance-item"><div class="finance-label">Raised</div><div class="finance-value">${raisedStr}</div></div>
+        <div class="finance-item"><div class="finance-label">Spent</div><div class="finance-value">${spentStr}</div></div>
+        <div class="finance-item"><div class="finance-label">Cash</div><div class="finance-value">${cashStr}</div></div>
+      </div>
+      <div class="cash-bar-wrap"><div class="cash-bar" style="width:${barPct}%"></div></div>`;
 
   return `
-    <div class="candidate-card ${c.party}" data-party="${c.party}">
+    <div class="candidate-card ${c.party} ${cardCls}">
       <div class="cand-badge-row">
         <span class="party-badge ${c.party}">${c.party_label || c.party}</span>
-        ${statusTxt ? `<span class="status-badge ${statusCls}">${statusTxt}</span>` : ''}
+        ${stTxt ? `<span class="status-badge ${stBadgeCls}">${stTxt}</span>` : ''}
       </div>
-      <div class="cand-name">${c.name}</div>
-      <div class="finance-grid">
-        <div class="finance-item">
-          <div class="finance-label">Raised</div>
-          <div class="finance-value">${raisedStr}</div>
-        </div>
-        <div class="finance-item">
-          <div class="finance-label">Spent</div>
-          <div class="finance-value">${spentStr}</div>
-        </div>
-        <div class="finance-item">
-          <div class="finance-label">Cash on Hand</div>
-          <div class="finance-value">${cashStr}</div>
-        </div>
-      </div>
-      <div class="cash-bar-wrap">
-        <div class="cash-bar" style="width:${barPct}%"></div>
-      </div>
-      <div class="cand-footer">
-        <a class="fec-link" href="${c.fec_url}" target="_blank">FEC Filing →</a>
-      </div>
+      <div class="cand-name">${nameHtml}</div>
+      ${financeSection}
+      ${footerLinks.length ? `<div class="cand-footer">${footerLinks.join('')}</div>` : ''}
     </div>`;
+}
+
+function isInFilter(c) {
+  if (_activeFilter === 'all') return true;
+  if (_activeFilter === 'other') return c.party !== 'DEM' && c.party !== 'REP';
+  return c.party === _activeFilter;
 }
 
 function renderRaces(races) {
   const container = document.getElementById('racesContainer');
-  if (!races.length) {
-    container.innerHTML = '<div class="loading-state">No candidates found for this filter.</div>';
-    return;
-  }
-
   let html = '';
+
   for (const race of races) {
-    const filtered = _activeFilter === 'all'
-      ? race.candidates
-      : _activeFilter === 'other'
-        ? race.candidates.filter(c => c.party !== 'DEM' && c.party !== 'REP')
-        : race.candidates.filter(c => c.party === _activeFilter);
+    // Build candidate list: real FEC filers + unfiled current holder
+    const filedCands = race.candidates.filter(c => isInFilter(c));
+    const holder = race.current_holder;
 
-    if (!filtered.length) continue;
+    // Show unfiled holder only on "all" or matching party filter
+    const showUnfiledHolder = holder && race.no_filings && (
+      _activeFilter === 'all' ||
+      (_activeFilter === 'DEM' && holder.party === 'DEM') ||
+      (_activeFilter === 'REP' && holder.party === 'REP') ||
+      (_activeFilter === 'other' && holder.party !== 'DEM' && holder.party !== 'REP')
+    );
 
-    const maxRaised = Math.max(...filtered.map(c => c.raised || 0), 1);
-    const incCount = filtered.filter(c => c.incumbent_challenge === 'Incumbent').length;
-    const seatLabel = incCount === 0 ? 'Open Seat' : '';
+    // Check if holder already appears in filed candidates
+    const holderFiled = holder && race.candidates.some(c => c.bioguide_id === holder.bioguide_id);
 
-    html += `
-      <div class="race-section">
-        <div class="race-header">
-          <div class="race-label">${race.label}</div>
-          <div class="race-count">${filtered.length} candidate${filtered.length !== 1 ? 's' : ''}</div>
-          ${seatLabel ? `<div class="race-seat-badge">${seatLabel}</div>` : ''}
-        </div>
-        <div class="candidates-grid">
-          ${filtered.map(c => renderCard(c, maxRaised)).join('')}
-        </div>
+    if (filedCands.length === 0 && !showUnfiledHolder) continue;
+
+    const totalShown = filedCands.length + (showUnfiledHolder && !holderFiled ? 1 : 0);
+    const openSeat = !holder && race.candidates.every(c => c.incumbent_challenge !== 'Incumbent');
+
+    html += `<div class="race-section">
+      <div class="race-header">
+        <div class="race-label">${race.label}</div>
+        <div class="race-count">${totalShown} candidate${totalShown !== 1 ? 's' : ''}</div>
+        ${openSeat ? '<div class="race-seat-badge">Open Seat</div>' : ''}
       </div>`;
+
+    // Current holder line
+    if (holder) {
+      const dotCls = holder.party || '';
+      const holderName = holderFiled
+        ? `<a href="/representatives">${holder.name}</a>`
+        : holder.name;
+      html += `<div class="race-holder-line">
+        <span class="holder-dot ${dotCls}"></span>
+        Current seat-holder: ${holderName} (${holder.party_label})
+      </div>`;
+    }
+
+    // Group by party for primary labeling
+    const demCands = filedCands.filter(c => c.party === 'DEM');
+    const repCands = filedCands.filter(c => c.party === 'REP');
+    const otherCands = filedCands.filter(c => c.party !== 'DEM' && c.party !== 'REP');
+    const maxRaised = Math.max(...filedCands.map(c => c.raised || 0), 1);
+
+    const hasDemPrimary = race.has_dem_primary && demCands.length > 1;
+    const hasRepPrimary = race.has_rep_primary && repCands.length > 1;
+    const showGroups = hasDemPrimary || hasRepPrimary || (demCands.length > 0 && repCands.length > 0);
+
+    if (showGroups) {
+      if (demCands.length > 0) {
+        const lbl = hasDemPrimary ? 'Democratic Primary' : 'Democratic';
+        html += `<div class="primary-group">
+          <span class="primary-label dem">${lbl}</span>
+          <div class="candidates-grid">${demCands.map(c => renderCard(c, maxRaised, false)).join('')}</div>
+        </div>`;
+      }
+      if (repCands.length > 0) {
+        const lbl = hasRepPrimary ? 'Republican Primary' : 'Republican';
+        html += `<div class="primary-group">
+          <span class="primary-label rep">${lbl}</span>
+          <div class="candidates-grid">${repCands.map(c => renderCard(c, maxRaised, false)).join('')}</div>
+        </div>`;
+      }
+      if (otherCands.length > 0) {
+        html += `<div class="primary-group">
+          <span class="primary-label other">Other</span>
+          <div class="candidates-grid">${otherCands.map(c => renderCard(c, maxRaised, false)).join('')}</div>
+        </div>`;
+      }
+    } else {
+      // Flat grid: show unfiled holder card first if needed
+      let cards = '';
+      if (showUnfiledHolder && !holderFiled) {
+        const synth = {
+          name: holder.name, party: holder.party, party_label: holder.party_label,
+          bioguide_id: holder.bioguide_id, incumbent_challenge: 'Current Holder',
+          raised: null, spent: null, cash: null, fec_url: null, is_fec_filed: false,
+        };
+        cards += renderCard(synth, 1, true);
+      }
+      cards += filedCands.map(c => renderCard(c, maxRaised, false)).join('');
+      html += `<div class="candidates-grid">${cards}</div>`;
+    }
+
+    if (race.no_filings && !showUnfiledHolder) {
+      html += `<div class="no-filings-card">No candidates have filed with the FEC for this race yet.</div>`;
+    }
+
+    html += '</div>';
   }
 
   container.innerHTML = html || '<div class="loading-state">No candidates match this filter.</div>';
@@ -262,19 +356,13 @@ function setFilter(f, btn) {
 }
 
 function updateStats() {
-  const total = _allRaces.reduce((s, r) => {
-    const filtered = _activeFilter === 'all' ? r.candidates
-      : _activeFilter === 'other' ? r.candidates.filter(c => c.party !== 'DEM' && c.party !== 'REP')
-      : r.candidates.filter(c => c.party === _activeFilter);
-    return s + filtered.length;
-  }, 0);
-  const races = _allRaces.filter(r => {
-    const f = _activeFilter === 'all' ? r.candidates
-      : _activeFilter === 'other' ? r.candidates.filter(c => c.party !== 'DEM' && c.party !== 'REP')
-      : r.candidates.filter(c => c.party === _activeFilter);
-    return f.length > 0;
-  }).length;
-  document.getElementById('statsLine').textContent = `${total} candidate${total !== 1 ? 's' : ''} across ${races} race${races !== 1 ? 's' : ''}`;
+  let total = 0, raceCount = 0;
+  for (const race of _allRaces) {
+    const n = race.candidates.filter(c => isInFilter(c)).length;
+    if (n > 0) { total += n; raceCount++; }
+  }
+  document.getElementById('statsLine').textContent =
+    `${total} candidate${total !== 1 ? 's' : ''} across ${raceCount} race${raceCount !== 1 ? 's' : ''}`;
 }
 
 async function refreshData(e) {
