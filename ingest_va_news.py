@@ -64,13 +64,20 @@ NEWS_FEEDS = [
     "https://www.wavy.com/feed/",
     "https://www.13newsnow.com/feeds/syndication/rss/news/",
 
-    # Northern Virginia / Shenandoah
+    # Northern Virginia
     "https://www.loudountimes.com/search/?f=rss",
+    "https://www.arlnow.com/feed/",           # Arlington local politics
 
     # Fredericksburg / Central VA
     "https://www.fredericksburg.com/search/?f=rss&t=article&c=news&l=50&s=start_time&sd=desc",
 
-    # Google News targeted searches (headlines only — supplement)
+    # Google News — paywalled outlets covered via headlines
+    "https://news.google.com/rss/search?q=" + quote_plus("Richmond Times-Dispatch Virginia politics legislature"),
+    "https://news.google.com/rss/search?q=" + quote_plus("Roanoke Times Virginia politics Southwest"),
+    "https://news.google.com/rss/search?q=" + quote_plus("Virginian-Pilot Hampton Roads Virginia politics"),
+    "https://news.google.com/rss/search?q=" + quote_plus("Daily Progress Charlottesville Virginia politics"),
+
+    # Google News — topic searches
     "https://news.google.com/rss/search?q=" + quote_plus("Virginia politics governor legislature"),
     "https://news.google.com/rss/search?q=" + quote_plus("Virginia Spanberger election 2025 2026"),
     "https://news.google.com/rss/search?q=" + quote_plus("Virginia Senate House delegates budget"),
@@ -82,7 +89,9 @@ VIRGINIA_TERMS = re.compile(
     r"spanberger|youngkin|warner|kaine|virginia beach|fairfax|arlington|"
     r"chesapeake|portsmouth|suffolk|newport news|hampton|williamsburg|"
     r"roanoke|charlottesville|lynchburg|fredericksburg|loudoun|prince william|"
-    r"general assembly|house of delegates|virginia senate|va\. senate|va\. house)\b",
+    r"harrisonburg|staunton|waynesboro|blacksburg|radford|danville|"
+    r"general assembly|house of delegates|virginia senate|va\. senate|va\. house|"
+    r"times-dispatch|virginian-pilot|roanoke times|daily progress)\b",
     re.I,
 )
 
