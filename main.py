@@ -7,6 +7,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from slowapi.middleware import SlowAPIMiddleware
+import threading
 import uvicorn
 import folium
 import geopandas as gpd
@@ -33,6 +34,50 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
+
+_OPENSTATES_DB = os.path.join(BASE_DIR, "openstates_va.db")
+
+
+def _poll_ingest_background() -> None:
+    """Run poll ingestion on startup if data is missing or stale (>23 h old)."""
+    try:
+        import sqlite3 as _sq
+        from datetime import datetime, timezone, timedelta
+        conn = _sq.connect(_OPENSTATES_DB)
+        try:
+            row = conn.execute(
+                "SELECT MAX(fetched_at) FROM polls WHERE source != 'Ballotpedia'"
+            ).fetchone()
+            if row and row[0]:
+                last = datetime.fromisoformat(row[0].replace("Z", "+00:00"))
+                if datetime.now(timezone.utc) - last < timedelta(hours=23):
+                    print("[polls] Data fresh — skipping startup ingestion.")
+                    conn.close()
+                    return
+        except Exception:
+            pass
+        conn.close()
+        from ingest_va_polls import (
+            setup_db, ingest_fivethirtyeight, ingest_votehub,
+            ingest_ballotpedia, ingest_news_feeds,
+            DEFAULT_BALLOTPEDIA_URLS, DEFAULT_NEWS_FEEDS,
+        )
+        conn = _sq.connect(_OPENSTATES_DB)
+        setup_db(conn)
+        ingest_fivethirtyeight(conn)
+        ingest_votehub(conn)
+        ingest_ballotpedia(conn, DEFAULT_BALLOTPEDIA_URLS)
+        ingest_news_feeds(conn, DEFAULT_NEWS_FEEDS)
+        conn.close()
+        print("[polls] Startup ingestion complete.")
+    except Exception as exc:
+        print(f"[polls] Startup ingestion error: {exc}")
+
+
+@app.on_event("startup")
+async def startup_poll_ingest() -> None:
+    threading.Thread(target=_poll_ingest_background, daemon=True).start()
+
 
 # ── Election maps — all four modes built once at startup ──────────────────────
 import copy
@@ -4082,7 +4127,6 @@ _EDUCATION_KEYWORDS = ("education", "school", "teacher", "student", "curriculum"
                        "higher education", "community college", "university", "literacy", "library")
 
 _VA_LEGIS_DB = os.path.join(BASE_DIR, "virginia_legislature.db")
-_OPENSTATES_DB = os.path.join(BASE_DIR, "openstates_va.db")
 _REP_PROFILES_JSONL = os.path.join(BASE_DIR, "va_rep_profiles.jsonl")
 _rep_profiles_cache = None
 
