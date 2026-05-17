@@ -3417,6 +3417,103 @@ def district_map(layer: str = "congressional", lat: float = None, lng: float = N
             return f"<p style='font-family:sans-serif;padding:40px'>Could not build {escape(layer)} map: {escape(str(e))}</p>"
 
 
+def _fetch_relevant_news(question: str, politician_names: list[str] | None = None, limit: int = 4) -> str:
+    """Query va_news for articles relevant to the user's question and return a context block."""
+    if not os.path.exists(_POLLS_DB):
+        return ""
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+        tbl = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='va_news'").fetchone()
+        if not tbl:
+            conn.close()
+            return ""
+        rows = conn.execute(
+            "SELECT url, title, gemini_json FROM va_news "
+            "WHERE gemini_json IS NOT NULL "
+            "ORDER BY COALESCE(published_at, fetched_at) DESC LIMIT 120"
+        ).fetchall()
+        conn.close()
+
+        q_lower = question.lower()
+        pol_names_lower = [p.lower() for p in (politician_names or [])]
+
+        # Topic keywords from the question
+        topic_map = {
+            "gun": "crime", "weapon": "crime", "assault": "crime", "shooting": "crime",
+            "budget": "budget", "spending": "budget", "tax": "budget",
+            "school": "education", "education": "education", "teacher": "education",
+            "health": "healthcare", "medicaid": "healthcare", "hospital": "healthcare",
+            "environment": "environment", "climate": "environment", "energy": "environment",
+            "election": "elections", "vote": "elections", "ballot": "elections",
+            "redistrict": "redistricting", "map": "redistricting", "district": "redistricting",
+            "law": "legislation", "bill": "legislation", "legislat": "legislation",
+            "crime": "crime", "police": "crime", "arrest": "crime",
+        }
+        matched_topics = {v for k, v in topic_map.items() if k in q_lower}
+
+        scored = []
+        for row in rows:
+            try:
+                d = json.loads(row["gemini_json"])
+            except Exception:
+                continue
+
+            score = 0
+            article_pols = [p.get("name", "").lower() for p in (d.get("politicians") or [])]
+            article_topics = [t.lower() for t in (d.get("topics") or [])]
+
+            # Score by politician name match
+            for pol in pol_names_lower:
+                if any(pol in ap or ap in pol for ap in article_pols):
+                    score += 3
+            # Score by politician name in question
+            for ap in article_pols:
+                last = ap.split()[-1] if ap.split() else ""
+                if last and len(last) > 4 and last in q_lower:
+                    score += 2
+
+            # Score by topic match
+            for t in matched_topics:
+                if t in article_topics:
+                    score += 2
+
+            # Score by keyword match in title/summary
+            title = (d.get("headline") or row["title"] or "").lower()
+            summary = (d.get("summary") or "").lower()
+            words = [w for w in re.findall(r'\b\w{5,}\b', q_lower) if w not in {"about", "which", "their", "where", "there", "would", "could"}]
+            for w in words:
+                if w in title:
+                    score += 1
+                if w in summary:
+                    score += 1
+
+            if score > 0:
+                scored.append((score, d, row["url"], row["title"]))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        top = scored[:limit]
+        if not top:
+            return ""
+
+        lines = ["RECENT VIRGINIA NEWS (use these to answer current-events questions):"]
+        for _, d, url, raw_title in top:
+            headline = d.get("headline") or raw_title or "Article"
+            outlet = d.get("outlet") or ""
+            author = d.get("author") or ""
+            summary = d.get("summary") or ""
+            pub = (d.get("published") or "")[:10]
+            byline = f"{outlet}" + (f" — {author}" if author else "") + (f" ({pub})" if pub else "")
+            lines.append(f"- {headline}" + (f" [{byline}]" if byline else ""))
+            if summary:
+                lines.append(f"  Summary: {summary}")
+            if url:
+                lines.append(f"  Source: {url}")
+        return "\n".join(lines)
+    except Exception:
+        return ""
+
+
 @app.post("/chat", response_model=ChatResponse)
 @limiter.limit("10/minute")
 async def chat(request: Request, req: ChatRequest):
@@ -3478,6 +3575,17 @@ async def chat(request: Request, req: ChatRequest):
             f"Senator: {sd_info['senator']} ({sd_info['party']})\n"
             f"Region: {sd_info['region']}"
         )
+    # Pull relevant news articles for the user's question
+    last_question = req.messages[-1].content if req.messages else ""
+    pol_names = []
+    if ctx and ctx.get("rep"):
+        pol_names.append(ctx["rep"])
+    if hod_info:
+        pol_names.append(hod_info["delegate"])
+    if sd_info:
+        pol_names.append(sd_info["senator"])
+    news_context = _fetch_relevant_news(last_question, pol_names)
+
     system_prompt = f"""You are VoteIQ, a nonpartisan civic assistant helping Virginia voters learn about their elected representatives.
 
 {district_block}
@@ -3488,6 +3596,14 @@ Your job is to help voters understand who represents them and what those officia
 - Recent legislation they have sponsored or voted on
 - General information about the office (U.S. House, state legislature, etc.)
 - Voter registration and civic participation
+
+{f'''
+{news_context}
+
+When answering questions about recent news or current events, cite the article source and author.
+Format citations as: [Outlet — Author](URL) at the end of the relevant sentence.
+If no relevant news is listed above, answer from your training knowledge.
+''' if news_context else ''}
 
 Keep answers 2-4 sentences. Be factual and nonpartisan. For official contact info direct users to house.gov, senate.gov, or virginiageneralassembly.gov. Never express opinions on representatives or tell people how to vote."""
     try:
