@@ -752,12 +752,17 @@ def _friendly_claude_error(error):
     return "VoteIQ's AI assistant is temporarily unavailable. Please try again shortly."
 
 
-def _claude_reply(system_prompt, messages, max_tokens):
+_CLAUDE_SONNET_MODEL = os.getenv("CLAUDE_SONNET_MODEL", "claude-sonnet-4-6")
+_CLAUDE_HAIKU_MODEL = os.getenv("CLAUDE_HAIKU_MODEL", "claude-haiku-4-5-20251001")
+
+
+def _claude_reply(system_prompt, messages, max_tokens, model: str | None = None):
+    model_name = model or _CLAUDE_SONNET_MODEL
     last_error = None
     for attempt in range(3):
         try:
             response = client.messages.create(
-                model="claude-sonnet-4-6",
+                model=model_name,
                 max_tokens=max_tokens,
                 system=system_prompt,
                 messages=[{"role": m.role, "content": m.content} for m in messages],
@@ -769,6 +774,26 @@ def _claude_reply(system_prompt, messages, max_tokens):
                 raise
             time.sleep(0.75 * (attempt + 1))
     raise last_error
+
+
+def _simple_bill_lookup_question(user_query: str, mentioned: list[str], cached_bill_context: str) -> bool:
+    """Route simple exact bill questions to Haiku when local cached context is enough."""
+    if not mentioned or not cached_bill_context:
+        return False
+    q = str(user_query or "").lower()
+    complex_terms = (
+        "my rep", "my representative", "my delegate", "my senator",
+        "vote", "voted", "voting record", "break", "party", "caucus",
+        "sponsor network", "cosponsor", "co-sponsor", "compare",
+        "campaign", "donor", "funding", "contribution",
+    )
+    if any(term in q for term in complex_terms):
+        return False
+    simple_terms = (
+        "what is", "what's", "summarize", "summary", "explain",
+        "describe", "tell me about", "status", "latest action",
+    )
+    return any(term in q for term in simple_terms) or len(q.split()) <= 8
 
 
 _CACHE_TTL_SECONDS = 86400  # 24 hours for ad-hoc chat replies
@@ -796,19 +821,21 @@ def _cache_key(query: str, district_note: str) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
-def _get_cached_reply(key: str) -> str | None:
+def _get_cached_reply(key: str, fallback_key: str | None = None) -> str | None:
     db = os.path.join(BASE_DIR, "openstates_va.db")
     if not os.path.exists(db):
         return None
     try:
         conn = sqlite3.connect(db)
-        row = conn.execute(
-            "SELECT reply, created_at, COALESCE(cache_type, 'ad_hoc') FROM query_cache WHERE cache_key = ?",
-            (key,),
-        ).fetchone()
+        for lookup_key in ([key] + ([fallback_key] if fallback_key and fallback_key != key else [])):
+            row = conn.execute(
+                "SELECT reply, created_at, COALESCE(cache_type, 'ad_hoc') FROM query_cache WHERE cache_key = ?",
+                (lookup_key,),
+            ).fetchone()
+            if row and (row[2] == "prewarm" or (time.time() - row[1]) < _CACHE_TTL_SECONDS):
+                conn.close()
+                return row[0]
         conn.close()
-        if row and (row[2] == "prewarm" or (time.time() - row[1]) < _CACHE_TTL_SECONDS):
-            return row[0]
     except Exception:
         pass
     return None
@@ -4570,6 +4597,7 @@ async def bills_chat(request: Request, req: BillsChatRequest):
         if mentioned
         else _cached_bill_description_search(user_query, session_year)
     )
+    use_haiku = _simple_bill_lookup_question(user_query, mentioned, cached_bill_context)
 
     query_vec = None
     results = {"documents": [[]], "metadatas": [[]]}
@@ -4751,18 +4779,28 @@ async def bills_chat(request: Request, req: BillsChatRequest):
 
     # Response cache — skip on multi-turn conversations (only cache single-question queries)
     _ck = _cache_key(user_query, district_note) if len(req.messages) == 1 else None
+    # Fallback key using only HOD/SD district — matches prewarm entries which omit congressional district
+    _ck_fallback = None
+    if len(req.messages) == 1 and (req.hod_district or req.sd_district):
+        _state_parts = []
+        if req.hod_district: _state_parts.append(f"HOD district: {req.hod_district}")
+        if req.sd_district: _state_parts.append(f"Senate district: {req.sd_district}")
+        _ck_fallback = _cache_key(user_query, f"\nUSER'S DISTRICT CONTEXT: {', '.join(_state_parts)}\n")
     if _ck:
-        cached = _get_cached_reply(_ck)
+        cached = _get_cached_reply(_ck, _ck_fallback)
         if cached:
+            if not cached.rstrip().endswith("public datasets.*"):
+                cached = cached.rstrip() + _SOURCE_LINE
             return ChatResponse(reply=cached)
 
     chroma_note = f"\nNOTE: AI knowledge base unavailable ({chroma_error}). Answering from local database only.\n" if chroma_error else ""
+    model_note = "\nMODEL ROUTING: Simple exact bill lookup using cached local bill context; answer briefly.\n" if use_haiku else ""
 
     system_prompt = f"""You are VoteIQ, a nonpartisan Virginia civic assistant. Today is May 2026. \
 You have access to the retrieved excerpts below, which may include Virginia General Assembly bills, \
 election results, legislator voting records, and representative profile summaries from the local 2026 session database. \
 Answer the user's question using ONLY the excerpts below — do not rely on your training data. \
-Be factual and cite bill numbers when relevant.{district_note}{chroma_note}
+Be factual and cite bill numbers when relevant.{district_note}{chroma_note}{model_note}
 
 VOTE INTERPRETATION — apply these rules when reading vote records:
 - If a legislator votes YES on passage but NO on concurrence/conference substitute, they likely objected to the amended version, not the bill itself. Say: "voted against the House-amended version; accepted final compromise."
@@ -4852,7 +4890,12 @@ EXCERPTS:
 {context}"""
 
     try:
-        reply = _claude_reply(system_prompt, req.messages, max_tokens=1800)
+        reply = _claude_reply(
+            system_prompt,
+            req.messages,
+            max_tokens=700 if use_haiku else 1800,
+            model=_CLAUDE_HAIKU_MODEL if use_haiku else _CLAUDE_SONNET_MODEL,
+        )
         if not reply.rstrip().endswith("public datasets.*"):
             reply = reply.rstrip() + _SOURCE_LINE
         if _ck:
@@ -4965,9 +5008,17 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
         district_note = f"\nUSER'S DISTRICT CONTEXT: {', '.join(parts)}\n"
 
     _ck = _cache_key(user_query, district_note) if len(req.messages) == 1 else None
+    _ck_fb = None
+    if len(req.messages) == 1 and (req.hod_district or req.sd_district):
+        _sp = []
+        if req.hod_district: _sp.append(f"HOD district: {req.hod_district}")
+        if req.sd_district: _sp.append(f"Senate district: {req.sd_district}")
+        _ck_fb = _cache_key(user_query, f"\nUSER'S DISTRICT CONTEXT: {', '.join(_sp)}\n")
     if _ck:
-        cached = _get_cached_reply(_ck)
+        cached = _get_cached_reply(_ck, _ck_fb)
         if cached:
+            if not cached.rstrip().endswith("public datasets.*"):
+                cached = cached.rstrip() + _SOURCE_LINE
             async def _cached_gen(text=cached):
                 chunk = 24
                 for i in range(0, len(text), chunk):
