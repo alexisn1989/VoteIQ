@@ -153,16 +153,15 @@ def _congress_votes_are_fresh() -> bool:
 
 
 def _congress_ingest_background() -> None:
-    """Run ingest_congress_votes.py (no API key needed) if data is missing or stale."""
+    """Run ingest_congress_votes.py (no API key needed) if data is missing or stale.
+    Uses a small limit on startup (50 rolls) so it finishes in ~60s.
+    Full refresh can be triggered via /api/admin/ingest-congress.
+    """
     if _congress_votes_are_fresh():
         print("[congress] Vote data fresh — skipping startup ingestion.")
         return
     print("[congress] Vote data missing or stale — starting background ingestion…")
-    script = os.path.join(BASE_DIR, "ingest_congress_votes.py")
-    if not os.path.exists(script):
-        print("[congress] ingest_congress_votes.py not found — skipping.")
-        return
-    # Also run member/bill ingest if API key is available
+    # Members/bills first (needs API key, fast)
     api_key = os.getenv("CONGRESS_API_KEY", "")
     if api_key:
         members_script = os.path.join(BASE_DIR, "ingest_congress.py")
@@ -172,24 +171,29 @@ def _congress_ingest_background() -> None:
                     [sys.executable, members_script],
                     capture_output=True, text=True, timeout=300,
                 )
-                print(f"[congress] Members/bills ingestion rc={r.returncode}")
+                print(f"[congress] Members/bills rc={r.returncode}")
             except Exception as exc:
-                print(f"[congress] Members/bills ingestion error: {exc}")
+                print(f"[congress] Members/bills error: {exc}")
+    # Votes — small limit on startup so it completes quickly
+    script = os.path.join(BASE_DIR, "ingest_congress_votes.py")
+    if not os.path.exists(script):
+        print("[congress] ingest_congress_votes.py not found — skipping.")
+        return
     try:
         r = subprocess.run(
-            [sys.executable, script, "--house-limit", "300"],
-            capture_output=True, text=True, timeout=600,
+            [sys.executable, script, "--house-limit", "50", "--senate-limit", "50"],
+            capture_output=True, text=True, timeout=180,
         )
         if r.returncode == 0:
             global _federal_members_cache
-            _federal_members_cache = None  # bust cache so fresh data is used
-            print("[congress] Vote ingestion complete.")
+            _federal_members_cache = None
+            print(f"[congress] Startup ingestion complete. {r.stdout.strip().splitlines()[-1] if r.stdout.strip() else ''}")
         else:
-            print(f"[congress] Vote ingestion failed (rc={r.returncode}): {r.stderr[-300:]}")
+            print(f"[congress] Ingestion failed (rc={r.returncode}): {r.stderr[-300:]}")
     except subprocess.TimeoutExpired:
-        print("[congress] Vote ingestion timed out.")
+        print("[congress] Ingestion timed out after 180s.")
     except Exception as exc:
-        print(f"[congress] Vote ingestion error: {exc}")
+        print(f"[congress] Ingestion error: {exc}")
 
 
 @app.on_event("startup")
@@ -5916,6 +5920,34 @@ async def pdf_chat(
         "total_pages": total_pages,
         "chars_used": min(len(doc_text), 14000),
     }
+
+
+@app.get("/api/congress-debug")
+def congress_debug():
+    """Show what federal data is currently in polls.db on this server."""
+    info = {}
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        for table in ("congress_members", "congress_votes", "congress_bills"):
+            try:
+                n = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                info[table] = n
+            except Exception as e:
+                info[table] = f"missing: {e}"
+        # Sample Kiggans votes
+        try:
+            rows = conn.execute(
+                "SELECT vote_date, bill, member_vote FROM congress_votes "
+                "WHERE bioguide_id='K000399' ORDER BY vote_date DESC LIMIT 3"
+            ).fetchall()
+            info["kiggans_sample"] = [{"date": r[0], "bill": r[1], "vote": r[2]} for r in rows]
+        except Exception as e:
+            info["kiggans_sample"] = str(e)
+        conn.close()
+    except Exception as e:
+        info["error"] = str(e)
+    info["_federal_members_cache_size"] = len(_federal_members_cache) if _federal_members_cache is not None else "not loaded"
+    return info
 
 
 @app.get("/api/bills-debug")
