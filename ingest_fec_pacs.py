@@ -370,6 +370,11 @@ INDUSTRY_MAP: list[tuple[str, str]] = [
     ("target corp",                 "Retail"),
     ("convenience stores",          "Retail"),
     ("retail",                      "Retail"),
+    # ── Grassroots / Small-Donor Platforms ───────────────────────────────────
+    ("actblue",                     "Grassroots"),
+    ("winred",                      "Grassroots"),
+    ("democracy engine",            "Grassroots"),
+    ("anedot",                      "Grassroots"),
 ]
 
 # Patterns that indicate internal/party transfers — skip entirely
@@ -388,8 +393,6 @@ _INTERNAL_PATTERNS = [
     "dnc ",
     "republican national",
     "democratic national",
-    "winred",
-    "actblue",
     "leadership pac",
     "leadership fund",
     "senate leadership",
@@ -430,7 +433,6 @@ _INTERNAL_PATTERNS = [
     "for senate",
     "for house",
     # Payment processors / political vendors
-    "democracy engine",
     "election cfo",
     "bluewest media",
     "sage media",
