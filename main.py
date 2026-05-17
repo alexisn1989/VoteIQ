@@ -38,45 +38,70 @@ app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), na
 _OPENSTATES_DB = os.path.join(BASE_DIR, "openstates_va.db")
 
 
-def _poll_ingest_background() -> None:
-    """Run poll ingestion on startup if data is missing or stale (>23 h old)."""
+import subprocess
+import sys
+
+
+def _polls_are_fresh() -> bool:
+    """Return True if polls were ingested within the last 23 hours."""
+    from datetime import datetime, timezone, timedelta
     try:
-        import sqlite3 as _sq
-        from datetime import datetime, timezone, timedelta
-        conn = _sq.connect(_OPENSTATES_DB)
-        try:
-            row = conn.execute(
-                "SELECT MAX(fetched_at) FROM polls WHERE source != 'Ballotpedia'"
-            ).fetchone()
-            if row and row[0]:
-                last = datetime.fromisoformat(row[0].replace("Z", "+00:00"))
-                if datetime.now(timezone.utc) - last < timedelta(hours=23):
-                    print("[polls] Data fresh — skipping startup ingestion.")
-                    conn.close()
-                    return
-        except Exception:
-            pass
+        conn = sqlite3.connect(_OPENSTATES_DB)
+        row = conn.execute("SELECT MAX(fetched_at) FROM polls").fetchone()
         conn.close()
-        from ingest_va_polls import (
-            setup_db, ingest_fivethirtyeight, ingest_votehub,
-            ingest_ballotpedia, ingest_news_feeds,
-            DEFAULT_BALLOTPEDIA_URLS, DEFAULT_NEWS_FEEDS,
-        )
-        conn = _sq.connect(_OPENSTATES_DB)
-        setup_db(conn)
-        ingest_fivethirtyeight(conn)
-        ingest_votehub(conn)
-        ingest_ballotpedia(conn, DEFAULT_BALLOTPEDIA_URLS)
-        ingest_news_feeds(conn, DEFAULT_NEWS_FEEDS)
-        conn.close()
-        print("[polls] Startup ingestion complete.")
+        if row and row[0]:
+            last = datetime.fromisoformat(row[0].replace("Z", "+00:00"))
+            return datetime.now(timezone.utc) - last < timedelta(hours=23)
+    except Exception:
+        pass
+    return False
+
+
+def _run_ingest_subprocess(sources: list[str] | None = None) -> dict:
+    """Run ingest_va_polls.py in a subprocess and return a result dict."""
+    script = os.path.join(BASE_DIR, "ingest_va_polls.py")
+    if not os.path.exists(script):
+        return {"ok": False, "error": "ingest_va_polls.py not found"}
+    cmd = [sys.executable, script]
+    for s in (sources or ["fivethirtyeight", "votehub", "news"]):
+        cmd += ["--source", s]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+        return {
+            "ok": result.returncode == 0,
+            "returncode": result.returncode,
+            "stdout": result.stdout[-2000:],
+            "stderr": result.stderr[-1000:],
+        }
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "ingestion timed out after 180s"}
     except Exception as exc:
-        print(f"[polls] Startup ingestion error: {exc}")
+        return {"ok": False, "error": str(exc)}
+
+
+def _poll_ingest_background() -> None:
+    if _polls_are_fresh():
+        print("[polls] Data fresh — skipping startup ingestion.")
+        return
+    print("[polls] Starting background ingestion…")
+    result = _run_ingest_subprocess()
+    if result["ok"]:
+        print("[polls] Startup ingestion complete.")
+    else:
+        print(f"[polls] Startup ingestion failed: {result.get('error') or result.get('stderr')}")
 
 
 @app.on_event("startup")
 async def startup_poll_ingest() -> None:
     threading.Thread(target=_poll_ingest_background, daemon=True).start()
+
+
+@app.get("/api/admin/ingest-polls")
+def admin_ingest_polls(sources: str = "fivethirtyeight,votehub,news"):
+    """Manually trigger poll ingestion. Hit this URL after deploy to populate data."""
+    source_list = [s.strip() for s in sources.split(",") if s.strip()]
+    result = _run_ingest_subprocess(source_list)
+    return result
 
 
 # ── Election maps — all four modes built once at startup ──────────────────────
