@@ -4614,6 +4614,9 @@ Caucus read is plain-language shorthand derived from OpenStates roll-call data (
 
 **Data source:** [OpenStates](https://openstates.org/va/) | [LIS](https://lis.virginia.gov) | Last updated: [use the "Last updated" date from the profile excerpt above]
 
+---
+*Vote sequence data from [OpenStates](https://openstates.org/va/). Bill text and status from [LIS](https://lis.virginia.gov). We present voting records as-is without editorial interpretation — we show the votes and context, not assumptions about motivation. Data is current through May 16, 2026. Some recent bills may not be reflected. Vote reasons/statements are not available in public datasets.*
+
 CALL TO ACTION — always end every legislator response with this section:
 **Want to dig deeper?** Ask me how [Name] voted on [topic1 from their actual top areas], [topic2], or [topic3]. Or ask about a specific bill by number.
 
