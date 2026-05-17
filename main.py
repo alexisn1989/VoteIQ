@@ -542,6 +542,7 @@ except Exception as e:
 
 
 
+
 # ── 2025 General Election results — loaded once on first request ──────────────
 import glob
 import csv
@@ -3417,93 +3418,231 @@ def district_map(layer: str = "congressional", lat: float = None, lng: float = N
             return f"<p style='font-family:sans-serif;padding:40px'>Could not build {escape(layer)} map: {escape(str(e))}</p>"
 
 
+try:
+    import cohere as _cohere
+    _COHERE_CLIENT = _cohere.ClientV2(api_key=os.getenv("COHERE_API_KEY", ""))
+    _COHERE_AVAILABLE = bool(os.getenv("COHERE_API_KEY"))
+except Exception:
+    _COHERE_CLIENT = None
+    _COHERE_AVAILABLE = False
+
+
+def _cosine_sim(a: list[float], b: list[float]) -> float:
+    dot = sum(x * y for x, y in zip(a, b))
+    na = sum(x * x for x in a) ** 0.5
+    nb = sum(x * x for x in b) ** 0.5
+    return dot / (na * nb) if na and nb else 0.0
+
+
+def _ensure_embeddings_column() -> None:
+    """Add embedding column to va_news if missing."""
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.execute("ALTER TABLE va_news ADD COLUMN embedding TEXT")
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass  # column already exists
+
+
+def _embed_texts(texts: list[str]) -> list[list[float]]:
+    """Embed a list of texts using Cohere embed-english-v3.0."""
+    if not _COHERE_AVAILABLE or not texts:
+        return []
+    try:
+        resp = _COHERE_CLIENT.embed(
+            texts=texts,
+            model="embed-english-v3.0",
+            input_type="search_document",
+            embedding_types=["float"],
+        )
+        return resp.embeddings.float_
+    except Exception:
+        return []
+
+
+def _embed_query(question: str) -> list[float]:
+    """Embed a search query using Cohere."""
+    if not _COHERE_AVAILABLE:
+        return []
+    try:
+        resp = _COHERE_CLIENT.embed(
+            texts=[question],
+            model="embed-english-v3.0",
+            input_type="search_query",
+            embedding_types=["float"],
+        )
+        return resp.embeddings.float_[0]
+    except Exception:
+        return []
+
+
+def backfill_news_embeddings(batch_size: int = 48) -> int:
+    """Embed all va_news rows that don't have an embedding yet. Returns count embedded."""
+    if not _COHERE_AVAILABLE or not os.path.exists(_POLLS_DB):
+        return 0
+    _ensure_embeddings_column()
+    conn = sqlite3.connect(_POLLS_DB)
+    rows = conn.execute(
+        "SELECT article_id, title, gemini_json FROM va_news "
+        "WHERE embedding IS NULL AND gemini_json IS NOT NULL"
+    ).fetchall()
+
+    embedded = 0
+    for i in range(0, len(rows), batch_size):
+        batch = rows[i:i + batch_size]
+        texts = []
+        for _, title, gjson in batch:
+            try:
+                d = json.loads(gjson)
+                summary = d.get("summary") or ""
+                headline = d.get("headline") or title or ""
+                pols = " ".join(p.get("name", "") for p in (d.get("politicians") or []))
+                topics = " ".join(d.get("topics") or [])
+                texts.append(f"{headline}. {summary} {pols} {topics}".strip())
+            except Exception:
+                texts.append(title or "")
+
+        vecs = _embed_texts(texts)
+        if not vecs:
+            break
+        for (article_id, _, _), vec in zip(batch, vecs):
+            conn.execute(
+                "UPDATE va_news SET embedding=? WHERE article_id=?",
+                (json.dumps(vec), article_id)
+            )
+        conn.commit()
+        embedded += len(vecs)
+
+    conn.close()
+    return embedded
+
+
+def _semantic_news_candidates(question: str, limit: int = 20) -> list[dict]:
+    """Return articles ranked by semantic similarity using Cohere embeddings."""
+    q_vec = _embed_query(question)
+    if not q_vec:
+        return []
+    conn = sqlite3.connect(_POLLS_DB)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute(
+        "SELECT article_id, url, title, gemini_json, embedding FROM va_news "
+        "WHERE embedding IS NOT NULL AND gemini_json IS NOT NULL "
+        "ORDER BY COALESCE(published_at, fetched_at) DESC LIMIT 200"
+    ).fetchall()
+    conn.close()
+
+    scored = []
+    for row in rows:
+        try:
+            vec = json.loads(row["embedding"])
+            sim = _cosine_sim(q_vec, vec)
+            d = json.loads(row["gemini_json"])
+            scored.append((sim, d, row["url"], row["title"]))
+        except Exception:
+            continue
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [{"score": s, "data": d, "url": u, "title": t} for s, d, u, t in scored[:limit]]
+
+
+def _rerank_articles(question: str, candidates: list[dict], limit: int = 4) -> list[dict]:
+    """Re-rank candidate articles using Cohere Rerank."""
+    if not _COHERE_AVAILABLE or not candidates:
+        return candidates[:limit]
+    try:
+        docs = []
+        for c in candidates:
+            d = c["data"]
+            headline = d.get("headline") or c["title"] or ""
+            summary = d.get("summary") or ""
+            docs.append(f"{headline}. {summary}")
+
+        resp = _COHERE_CLIENT.rerank(
+            model="rerank-english-v3.0",
+            query=question,
+            documents=docs,
+            top_n=limit,
+        )
+        return [candidates[r.index] for r in resp.results]
+    except Exception:
+        return candidates[:limit]
+
+
 def _fetch_relevant_news(question: str, politician_names: list[str] | None = None, limit: int = 4) -> str:
-    """Query va_news for articles relevant to the user's question and return a context block."""
+    """Find relevant news using Cohere semantic search + rerank, falling back to keyword scoring."""
     if not os.path.exists(_POLLS_DB):
         return ""
     try:
         conn = sqlite3.connect(_POLLS_DB)
-        conn.row_factory = sqlite3.Row
         tbl = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='va_news'").fetchone()
-        if not tbl:
-            conn.close()
-            return ""
-        rows = conn.execute(
-            "SELECT url, title, gemini_json FROM va_news "
-            "WHERE gemini_json IS NOT NULL "
-            "ORDER BY COALESCE(published_at, fetched_at) DESC LIMIT 120"
-        ).fetchall()
         conn.close()
+        if not tbl:
+            return ""
 
-        q_lower = question.lower()
-        pol_names_lower = [p.lower() for p in (politician_names or [])]
+        if _COHERE_AVAILABLE:
+            # Step 1: semantic search — finds conceptually related articles
+            candidates = _semantic_news_candidates(question, limit=20)
 
-        # Topic keywords from the question
-        topic_map = {
-            "gun": "crime", "weapon": "crime", "assault": "crime", "shooting": "crime",
-            "budget": "budget", "spending": "budget", "tax": "budget",
-            "school": "education", "education": "education", "teacher": "education",
-            "health": "healthcare", "medicaid": "healthcare", "hospital": "healthcare",
-            "environment": "environment", "climate": "environment", "energy": "environment",
-            "election": "elections", "vote": "elections", "ballot": "elections",
-            "redistrict": "redistricting", "map": "redistricting", "district": "redistricting",
-            "law": "legislation", "bill": "legislation", "legislat": "legislation",
-            "crime": "crime", "police": "crime", "arrest": "crime",
-        }
-        matched_topics = {v for k, v in topic_map.items() if k in q_lower}
+            # Boost articles mentioning the user's known politicians
+            if politician_names:
+                pol_lower = [p.lower() for p in politician_names]
+                for c in candidates:
+                    pols = [p.get("name", "").lower() for p in (c["data"].get("politicians") or [])]
+                    if any(any(pl in ap or ap in pl for ap in pols) for pl in pol_lower):
+                        c["score"] = c.get("score", 0) + 0.15
+                candidates.sort(key=lambda x: x.get("score", 0), reverse=True)
 
-        scored = []
-        for row in rows:
-            try:
-                d = json.loads(row["gemini_json"])
-            except Exception:
-                continue
+            # Step 2: rerank — picks the best from candidates
+            top = _rerank_articles(question, candidates, limit=limit)
+        else:
+            # Keyword fallback
+            conn = sqlite3.connect(_POLLS_DB)
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                "SELECT url, title, gemini_json FROM va_news "
+                "WHERE gemini_json IS NOT NULL "
+                "ORDER BY COALESCE(published_at, fetched_at) DESC LIMIT 120"
+            ).fetchall()
+            conn.close()
+            q_lower = question.lower()
+            pol_lower = [p.lower() for p in (politician_names or [])]
+            scored = []
+            for row in rows:
+                try:
+                    d = json.loads(row["gemini_json"])
+                except Exception:
+                    continue
+                score = 0
+                article_pols = [p.get("name", "").lower() for p in (d.get("politicians") or [])]
+                for pol in pol_lower:
+                    if any(pol in ap or ap in pol for ap in article_pols):
+                        score += 3
+                words = re.findall(r'\b\w{5,}\b', q_lower)
+                title = (d.get("headline") or row["title"] or "").lower()
+                summary = (d.get("summary") or "").lower()
+                for w in words:
+                    if w in title: score += 1
+                    if w in summary: score += 1
+                if score > 0:
+                    scored.append({"score": score, "data": d, "url": row["url"], "title": row["title"]})
+            scored.sort(key=lambda x: x["score"], reverse=True)
+            top = scored[:limit]
 
-            score = 0
-            article_pols = [p.get("name", "").lower() for p in (d.get("politicians") or [])]
-            article_topics = [t.lower() for t in (d.get("topics") or [])]
-
-            # Score by politician name match
-            for pol in pol_names_lower:
-                if any(pol in ap or ap in pol for ap in article_pols):
-                    score += 3
-            # Score by politician name in question
-            for ap in article_pols:
-                last = ap.split()[-1] if ap.split() else ""
-                if last and len(last) > 4 and last in q_lower:
-                    score += 2
-
-            # Score by topic match
-            for t in matched_topics:
-                if t in article_topics:
-                    score += 2
-
-            # Score by keyword match in title/summary
-            title = (d.get("headline") or row["title"] or "").lower()
-            summary = (d.get("summary") or "").lower()
-            words = [w for w in re.findall(r'\b\w{5,}\b', q_lower) if w not in {"about", "which", "their", "where", "there", "would", "could"}]
-            for w in words:
-                if w in title:
-                    score += 1
-                if w in summary:
-                    score += 1
-
-            if score > 0:
-                scored.append((score, d, row["url"], row["title"]))
-
-        scored.sort(key=lambda x: x[0], reverse=True)
-        top = scored[:limit]
         if not top:
             return ""
 
         lines = ["RECENT VIRGINIA NEWS (use these to answer current-events questions):"]
-        for _, d, url, raw_title in top:
+        for c in top:
+            d = c["data"]
+            url = c.get("url") or ""
+            raw_title = c.get("title") or ""
             headline = d.get("headline") or raw_title or "Article"
             outlet = d.get("outlet") or ""
             author = d.get("author") or ""
             summary = d.get("summary") or ""
             pub = (d.get("published") or "")[:10]
-            byline = f"{outlet}" + (f" — {author}" if author else "") + (f" ({pub})" if pub else "")
+            byline = outlet + (f" — {author}" if author else "") + (f" ({pub})" if pub else "")
             lines.append(f"- {headline}" + (f" [{byline}]" if byline else ""))
             if summary:
                 lines.append(f"  Summary: {summary}")
@@ -6702,6 +6841,18 @@ def virginia_map_page(layer: str = "counties", embed: bool = False):
         html = html.replace("<body>", '<body class="embed-mode">', 1)
     html = html.replace("</head>", inject + "</head>", 1)
     return html
+
+
+@app.on_event("startup")
+async def _on_startup():
+    def _embed_task():
+        try:
+            n = backfill_news_embeddings()
+            if n:
+                print(f"Cohere: embedded {n} new news articles.")
+        except Exception as exc:
+            print(f"Cohere backfill skipped: {exc}")
+    threading.Thread(target=_embed_task, daemon=True).start()
 
 
 if __name__ == "__main__":
