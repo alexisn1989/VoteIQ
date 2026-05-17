@@ -6111,6 +6111,130 @@ def representatives_page():
         return f.read()
 
 
+# ── 2026 Races ────────────────────────────────────────────────────────────────
+
+_races_2026_cache: dict | None = None
+_races_2026_cache_ts: float = 0.0
+_RACES_2026_TTL = 3600  # 1 hour
+
+
+def _fetch_races_2026() -> dict:
+    global _races_2026_cache, _races_2026_cache_ts
+    now = time.time()
+    if _races_2026_cache and now - _races_2026_cache_ts < _RACES_2026_TTL:
+        return _races_2026_cache
+
+    api_key = os.getenv("FEC_API_KEY", "DEMO_KEY")
+    base = "https://api.open.fec.gov/v1"
+
+    # Use the totals endpoint — returns candidate info + financial totals together
+    candidates: list[dict] = []
+    page = 1
+    while True:
+        try:
+            resp = requests.get(
+                f"{base}/candidates/totals/",
+                params={
+                    "api_key": api_key,
+                    "state": "VA",
+                    "election_year": 2026,
+                    "per_page": 100,
+                    "page": page,
+                    "sort": "name",
+                },
+                timeout=20,
+            )
+            resp.raise_for_status()
+            body = resp.json()
+            results = body.get("results", [])
+            candidates.extend(results)
+            if len(results) < 100:
+                break
+            page += 1
+        except Exception as exc:
+            return {"races": [], "total_candidates": 0, "cycle": 2026, "error": str(exc)}
+
+    enriched: list[dict] = []
+    for c in candidates:
+        name_raw = c.get("name", "")
+        # FEC names are "LAST, FIRST" — convert to "First Last"
+        if "," in name_raw:
+            last, first = name_raw.split(",", 1)
+            display_name = f"{first.strip().title()} {last.strip().title()}"
+        else:
+            display_name = name_raw.title()
+
+        party = c.get("party", "")
+        party_label = {"REP": "Republican", "DEM": "Democrat", "IND": "Independent",
+                       "LIB": "Libertarian", "GRE": "Green"}.get(party, party)
+
+        enriched.append({
+            "candidate_id": c.get("candidate_id", ""),
+            "name": display_name,
+            "party": party,
+            "party_label": party_label,
+            "office": c.get("office", ""),
+            "district": c.get("district", ""),
+            "incumbent_challenge": c.get("incumbent_challenge_full", ""),
+            "raised": c.get("receipts"),
+            "spent": c.get("disbursements"),
+            "cash": c.get("last_cash_on_hand_end_period"),
+            "fec_url": f"https://www.fec.gov/data/candidate/{c.get('candidate_id', '')}/",
+        })
+
+    # Group by race
+    races: dict[str, dict] = {}
+    for c in enriched:
+        if c["office"] == "S":
+            key = "S"
+            label = "U.S. Senate"
+            sort_key = (0, 0)
+        else:
+            dist_num = int(c["district"].lstrip("0") or 0)
+            key = f"H{dist_num}"
+            label = f"House — District {dist_num}"
+            sort_key = (1, dist_num)
+        if key not in races:
+            races[key] = {"race_id": key, "label": label, "office": c["office"],
+                          "district": c["district"], "sort_key": sort_key, "candidates": []}
+        races[key]["candidates"].append(c)
+
+    # Sort: incumbents first within each race, then by raised descending
+    for race in races.values():
+        race["candidates"].sort(key=lambda x: (
+            0 if x["incumbent_challenge"] == "Incumbent" else 1,
+            -(x["raised"] or 0),
+        ))
+
+    sorted_races = sorted(races.values(), key=lambda r: r["sort_key"])
+    for r in sorted_races:
+        r.pop("sort_key", None)
+
+    result = {"races": sorted_races, "total_candidates": len(enriched), "cycle": 2026}
+    _races_2026_cache = result
+    _races_2026_cache_ts = now
+    return result
+
+
+@app.get("/api/races/2026")
+def api_races_2026():
+    return _fetch_races_2026()
+
+
+@app.get("/api/races/2026/refresh")
+def api_races_2026_refresh():
+    global _races_2026_cache, _races_2026_cache_ts
+    _races_2026_cache = None
+    _races_2026_cache_ts = 0.0
+    return _fetch_races_2026()
+
+
+@app.get("/races-2026", response_class=HTMLResponse)
+def races_2026_page():
+    with open(os.path.join(BASE_DIR, "templates", "races2026.html"), "r", encoding="utf-8") as f:
+        return f.read()
+
+
 @app.get("/news", response_class=HTMLResponse)
 def news_page():
     with open(os.path.join(BASE_DIR, "templates", "news.html"), "r", encoding="utf-8") as f:
