@@ -1,4 +1,6 @@
-google-genai
+pypdf>=4.0.0
+python-multipart>=0.0.9
+google-genai>=0.31.0
 annotated-doc==0.0.4
 voyageai==0.2.4
 annotated-types==0.7.0

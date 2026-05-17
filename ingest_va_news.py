@@ -44,6 +44,12 @@ DB_PATH = BASE_DIR / "polls.db"
 USER_AGENT = "VoteIQ/1.0 Virginia news ingester (voteiq.io)"
 GEMINI_MODEL = "gemini-2.5-flash"
 
+try:
+    sys.path.insert(0, str(BASE_DIR))
+    from ingest_va_polls import _lookup_va_politician as _db_lookup
+except Exception:
+    _db_lookup = lambda name: {}  # noqa: E731  — fallback if polls module unavailable
+
 NEWS_FEEDS = [
     # Statewide / political (best quality, full article text)
     "https://www.virginiamercury.com/feed/",
@@ -318,23 +324,177 @@ def ingest(
     return seen, written
 
 
+def _name_in_text(name: str, text: str) -> bool:
+    """Check whether a politician name (or unambiguous last name) appears in article text."""
+    tl = text.lower()
+    nl = name.lower().strip()
+    if nl in tl:
+        return True
+    parts = nl.split()
+    # Only use last-name-alone for distinctive surnames (>= 6 chars avoids "Jones", "Reid", "Lee")
+    last = parts[-1] if parts else ""
+    if len(last) >= 6 and last in tl:
+        return True
+    return False
+
+
+def monitor_accuracy(
+    conn: sqlite3.Connection,
+    sample_size: int = 20,
+    verbose: bool = False,
+) -> dict:
+    """
+    Spot-check Gemini extractions against their source articles and report
+    three tiers of concern:
+
+      text_absent      — politician name not found in article text at all
+                         (context confusion or hallucination)
+      db_unknown       — name IS in the text but not in our VA politician DB
+                         (real person we don't know about yet — expand the DB)
+      likely_hallucinated — not in text AND not in DB
+                         (strongest hallucination signal)
+    """
+    rows = conn.execute(
+        """
+        SELECT article_id, gemini_json, url, title
+        FROM va_news
+        WHERE gemini_json IS NOT NULL
+        ORDER BY fetched_at DESC
+        LIMIT ?
+        """,
+        (sample_size,),
+    ).fetchall()
+
+    total_politicians = 0
+    text_absent = 0
+    db_unknown = 0
+    likely_hallucinated = 0
+    fetch_failures = 0
+    issues: list[dict] = []
+
+    for article_id, gjson, url, title in rows:
+        try:
+            extracted = json.loads(gjson or "{}")
+        except json.JSONDecodeError:
+            continue
+
+        politicians = extracted.get("politicians") or []
+        if not politicians:
+            continue
+
+        article_text = fetch_article_text(url)
+        if not article_text:
+            fetch_failures += 1
+            if verbose:
+                print(f"  [fetch fail] {url[:80]}")
+            continue
+
+        for pol in politicians:
+            if not isinstance(pol, dict):
+                continue
+            name = (pol.get("name") or "").strip()
+            if not name:
+                continue
+            total_politicians += 1
+
+            in_text = _name_in_text(name, article_text)
+            in_db   = _db_lookup(name) is not None
+
+            if not in_text:
+                text_absent += 1
+                if not in_db:
+                    likely_hallucinated += 1
+                    issues.append({
+                        "type": "likely_hallucination",
+                        "name": name,
+                        "url":  url,
+                        "title": title,
+                    })
+                    if verbose:
+                        print(f"  LIKELY HALLUCINATION: '{name}' — not in text or DB")
+                        print(f"    {url[:80]}")
+                else:
+                    issues.append({
+                        "type": "text_absent",
+                        "name": name,
+                        "url":  url,
+                        "title": title,
+                    })
+                    if verbose:
+                        print(f"  TEXT ABSENT: '{name}' in DB but missing from article text")
+            elif not in_db:
+                db_unknown += 1
+                issues.append({
+                    "type": "db_unknown",
+                    "name": name,
+                    "url":  url,
+                    "title": title,
+                })
+                if verbose:
+                    print(f"  DB GAP: '{name}' found in text but not in VA politician DB — "
+                          f"consider adding to lookup")
+
+        time.sleep(0.3)
+
+    articles_checked = len(rows) - fetch_failures
+    accuracy = (
+        round((total_politicians - likely_hallucinated) / total_politicians, 3)
+        if total_politicians else 1.0
+    )
+
+    report = {
+        "articles_sampled":    len(rows),
+        "articles_fetched":    articles_checked,
+        "fetch_failures":      fetch_failures,
+        "total_politicians":   total_politicians,
+        "text_absent":         text_absent,
+        "db_unknown":          db_unknown,
+        "likely_hallucinated": likely_hallucinated,
+        "accuracy_rate":       accuracy,
+        "issues":              issues,
+    }
+
+    print(
+        f"\n[monitor] {articles_checked}/{len(rows)} articles fetched | "
+        f"{total_politicians} politicians | "
+        f"{likely_hallucinated} likely hallucinated | "
+        f"accuracy {accuracy:.1%}"
+    )
+    return report
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Ingest Virginia political news via Gemini.")
     parser.add_argument("--db", default=str(DB_PATH))
     parser.add_argument("--limit", type=int, default=50, help="Max articles to process per run")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--monitor", action="store_true",
+                        help="Spot-check recent extractions for hallucinations and exit")
+    parser.add_argument("--monitor-sample", type=int, default=20,
+                        help="Number of recent articles to check with --monitor (default: 20)")
     args = parser.parse_args(argv)
+
+    conn = sqlite3.connect(args.db)
+    setup_db(conn)
+
+    if args.monitor:
+        report = monitor_accuracy(conn, sample_size=args.monitor_sample, verbose=True)
+        conn.close()
+        if report["likely_hallucinated"]:
+            print(f"\n{report['likely_hallucinated']} likely hallucination(s) found — "
+                  f"review issues above and expand va_members_2026.json or the hardcoded list "
+                  f"in ingest_va_polls.py if the names are real.")
+        return 0
 
     api_key = os.getenv("GEMINI_API_KEY", "")
     if not api_key:
         print("ERROR: GEMINI_API_KEY not set in environment.", file=sys.stderr)
+        conn.close()
         return 1
     if not _GENAI_AVAILABLE:
-        print("ERROR: google-generativeai not installed. Run: pip install google-generativeai", file=sys.stderr)
+        print("ERROR: google-genai not installed. Run: pip install google-genai", file=sys.stderr)
+        conn.close()
         return 1
-
-    conn = sqlite3.connect(args.db)
-    setup_db(conn)
 
     seen, written = ingest(conn, NEWS_FEEDS, api_key, limit=args.limit, dry_run=args.dry_run)
     conn.close()

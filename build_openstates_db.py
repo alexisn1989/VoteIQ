@@ -18,6 +18,7 @@ import re
 import sqlite3
 import time
 from dotenv import load_dotenv
+import build_bill_descriptions
 
 load_dotenv()
 
@@ -249,6 +250,15 @@ def main():
         print(f"  Legislators: {total_legs}")
         print(f"  Saved to:    {DB_PATH}")
         conn.close()
+
+    if not args.dry_run:
+        print("\n=== Building bill descriptions cache ===")
+        try:
+            for s in sessions:
+                build_bill_descriptions.build_cache(session=s)
+            print("=== Cache build complete ===")
+        except Exception as e:
+            print(f"[warn] Cache build failed (pull data is safe): {e}")
 
 
 if __name__ == "__main__":

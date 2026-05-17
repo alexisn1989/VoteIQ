@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, field_validator
@@ -21,7 +21,9 @@ import asyncio
 from html import escape
 import requests
 import anthropic
+import google.genai as genai
 from address_lookup import find_district
+import ingest_news
 
 load_dotenv()
 
@@ -37,6 +39,7 @@ app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), na
 
 _OPENSTATES_DB = os.path.join(BASE_DIR, "openstates_va.db")
 _POLLS_DB = os.path.join(BASE_DIR, "polls.db")
+_FEC_DB = os.path.join(BASE_DIR, "fec_va.db")
 
 
 import subprocess
@@ -176,6 +179,109 @@ def admin_ingest_polls(sources: str = "fivethirtyeight,votehub,news", use_gemini
     extra_flags = ["--use-gemini"] if use_gemini and os.getenv("GEMINI_API_KEY") else []
     result = _run_ingest_subprocess(source_list, extra_flags=extra_flags)
     return result
+
+@app.get("/api/admin/ingest-fec")
+def admin_ingest_fec(cycle: str = "2026"):
+    """Trigger FEC campaign finance ingestion for Virginia candidates."""
+    api_key = os.getenv("FEC_API_KEY", "")
+    if not api_key:
+        return {"ok": False, "error": "FEC_API_KEY not set"}
+    script = os.path.join(BASE_DIR, "ingest_fec.py")
+    if not os.path.exists(script):
+        return {"ok": False, "error": "ingest_fec.py not found"}
+    
+    cmd = [sys.executable, script, "--db", _FEC_DB, "--cycle", cycle]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        return {
+            "ok": result.returncode == 0,
+            "stdout": result.stdout[-2000:],
+            "stderr": result.stderr[-500:],
+        }
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "FEC ingestion timed out after 300s"}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+
+def _get_fec_summary(name: str) -> str:
+    """Fetch a grounded FEC context string for a candidate name."""
+    if not os.path.exists(_FEC_DB):
+        return ""
+    try:
+        conn = sqlite3.connect(_FEC_DB)
+        conn.row_factory = sqlite3.Row
+        # Search for candidate by name in the finance table
+        row = conn.execute(
+            "SELECT * FROM va_candidate_finance WHERE name LIKE ? ORDER BY cycle DESC LIMIT 1",
+            (f"%{name}%",)
+        ).fetchone()
+        conn.close()
+        if row:
+            return (
+                f"\nFEC CAMPAIGN FINANCE GROUNDING ({row['cycle']}):\n"
+                f"  - Total Receipts: ${row['total_receipts']:,.2f}\n"
+                f"  - Total Disbursements: ${row['total_disbursements']:,.2f}\n"
+                f"  - Cash on Hand: ${row['cash_on_hand']:,.2f}\n"
+                f"  - Debt Owed: ${row['debts_owed']:,.2f}\n"
+                f"  - Last Updated: {row['last_updated']}\n"
+                f"  - Filing URL: {row['filing_url']}\n"
+            )
+    except Exception as e:
+        print(f"FEC lookup error: {e}")
+    return ""
+
+_GEMINI_MODEL = "gemini-2.5-flash"
+
+def _gemini_reply(system_prompt, messages, max_tokens):
+    """Helper to call Gemini API with system instructions."""
+    from google.genai import types as _gtypes
+    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    contents = [
+        _gtypes.Content(
+            role="user" if m.role == "user" else "model",
+            parts=[_gtypes.Part(text=m.content)],
+        )
+        for m in messages
+    ]
+    response = client.models.generate_content(
+        model=_GEMINI_MODEL,
+        contents=contents,
+        config=_gtypes.GenerateContentConfig(
+            system_instruction=system_prompt,
+            max_output_tokens=max_tokens,
+        ),
+    )
+    return response.text
+
+# ── News review queue ──────────────────────────────────────────────────────────
+
+@app.get("/admin/review", response_class=HTMLResponse)
+async def admin_review_page(request: Request):
+    """Human review queue for flagged news articles."""
+    with open(os.path.join(BASE_DIR, "templates", "review.html"), encoding="utf-8") as f:
+        return HTMLResponse(f.read())
+
+
+@app.get("/api/admin/review-queue")
+def api_review_queue(limit: int = 20, status: str = "pending"):
+    """Return flagged articles awaiting review."""
+    return {"items": ingest_news.get_review_queue(limit=limit, status=status), "stats": ingest_news.queue_stats()}
+
+
+@app.post("/api/admin/review/{article_id}/approve")
+def api_review_approve(article_id: str):
+    found = ingest_news.set_review_status(article_id, "approved")
+    if not found:
+        raise HTTPException(status_code=404, detail="Article not found")
+    return {"ok": True, "article_id": article_id, "status": "approved"}
+
+
+@app.post("/api/admin/review/{article_id}/reject")
+def api_review_reject(article_id: str):
+    found = ingest_news.set_review_status(article_id, "rejected")
+    if not found:
+        raise HTTPException(status_code=404, detail="Article not found")
+    return {"ok": True, "article_id": article_id, "status": "rejected"}
 
 
 # ── Election maps — all four modes built once at startup ──────────────────────
@@ -3389,6 +3495,57 @@ Keep answers 2-4 sentences. Be factual and nonpartisan. For official contact inf
     except Exception as e:
         return ChatResponse(reply=_friendly_claude_error(e))
 
+@app.post("/api/gemini-chat", response_model=ChatResponse)
+@limiter.limit("10/minute")
+async def gemini_chat(request: Request, req: ChatRequest):
+    """Chat with VoteIQ using Gemini, grounded in FEC data and district context."""
+    ctx = DISTRICT_CONTEXT.get(req.district)
+    if not ctx:
+        return ChatResponse(reply="Unknown district.")
+
+    # Build grounded context
+    fec_context = ""
+    if ctx["rep"]:
+        fec_context = _get_fec_summary(ctx["rep"])
+
+    district_block = (
+        f"USER'S CONGRESSIONAL DISTRICT: {req.district}\n"
+        f"U.S. Representative: {ctx['rep']} ({ctx['party']})\n"
+        f"Region: {ctx['region']}\n"
+        f"{fec_context}"
+    )
+
+    # State level context
+    hod_info = HOD_CONTEXT.get(req.hod_district) if req.hod_district else None
+    if hod_info:
+        district_block += (
+            f"\nVA HOUSE OF DELEGATES DISTRICT: {req.hod_district}\n"
+            f"Delegate: {hod_info['delegate']} ({hod_info['party']})\n"
+        )
+
+    system_prompt = f"""You are VoteIQ, a nonpartisan civic assistant for Virginia. 
+You are grounded in local election data and federal campaign finance (FEC) data.
+
+{district_block}
+
+Rules:
+1. Use the FEC finance totals provided in the context if the user asks about money, donors, or campaign spending.
+2. Be factual and nonpartisan.
+3. Keep answers concise (2-4 sentences).
+4. If you don't have specific finance data for a state official, clarify that FEC data only covers federal offices.
+5. Direct users to FEC.gov or house.gov for official records.
+
+Never tell people how to vote or express opinions on the spending habits of representatives."""
+
+    try:
+        # Filter messages for valid types
+        reply = _gemini_reply(system_prompt, req.messages, max_tokens=1000)
+        if not reply.rstrip().endswith("public datasets.*"):
+            reply = reply.rstrip() + "\n\n---\n*Sources: FEC.gov, OpenStates, and VoteIQ Local Data.*"
+        return ChatResponse(reply=reply)
+    except Exception as e:
+        return ChatResponse(reply=f"Gemini Error: {str(e)}")
+
 @app.get("/past-elections", response_class=HTMLResponse)
 def election_results_page():
     results = _load_2025_results()
@@ -4711,6 +4868,77 @@ async def submit_feedback(request: Request, data: FeedbackRequest):
     return {"ok": True}
 
 
+@app.post("/api/pdf-chat")
+async def pdf_chat(
+    file: UploadFile = File(...),
+    question: str = Form(...),
+):
+    """
+    Accept a PDF upload and answer the user's question grounded strictly in
+    the document text.  Using pypdf for deterministic text extraction keeps
+    hallucination near-zero — the model can only cite what was actually parsed.
+    """
+    import pypdf, io
+
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported")
+    if not question.strip():
+        raise HTTPException(status_code=400, detail="question is required")
+
+    pdf_bytes = await file.read()
+    if len(pdf_bytes) > 20 * 1024 * 1024:  # 20 MB cap
+        raise HTTPException(status_code=413, detail="PDF too large (20 MB max)")
+
+    try:
+        reader = pypdf.PdfReader(io.BytesIO(pdf_bytes))
+        pages_text = []
+        for page in reader.pages[:40]:  # cap at 40 pages
+            text = page.extract_text() or ""
+            if text.strip():
+                pages_text.append(text)
+        doc_text = "\n\n".join(pages_text).strip()
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Could not read PDF: {exc}")
+
+    if not doc_text:
+        raise HTTPException(status_code=422, detail="No readable text found in PDF")
+
+    system_prompt = (
+        "You are a Virginia civic assistant. The user has uploaded a document. "
+        "Answer ONLY using the document text provided below. "
+        "Do not add facts, figures, names, or dates that are not explicitly in the document. "
+        "If the answer is not in the document say: \"I don't see that in this document.\" "
+        "Be concise and cite the relevant section when helpful."
+    )
+
+    # Trim to ~14 000 chars to stay well within context while leaving room for reply
+    grounded_prompt = (
+        f"DOCUMENT ({len(reader.pages)} pages, filename: {file.filename}):\n\n"
+        f"{doc_text[:14000]}\n\n"
+        f"---\nQUESTION: {question.strip()}"
+    )
+
+    api_key = os.getenv("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")
+
+    c = anthropic.Anthropic(api_key=api_key)
+    msg = c.messages.create(
+        model=_CLAUDE_SONNET_MODEL,
+        max_tokens=900,
+        system=system_prompt,
+        messages=[{"role": "user", "content": grounded_prompt}],
+    )
+    answer = msg.content[0].text
+
+    return {
+        "answer": answer,
+        "pages_read": len(pages_text),
+        "total_pages": len(reader.pages),
+        "chars_used": min(len(doc_text), 14000),
+    }
+
+
 @app.get("/api/bills-debug")
 async def bills_debug():
     chroma_key = os.getenv("CHROMA_API_KEY", "")
@@ -5022,6 +5250,113 @@ def spanberger_approval():
         return {"count": len(data), "data": data}
     except Exception as exc:
         return {"count": 0, "data": [], "error": str(exc)}
+
+
+@app.get("/api/congress/members")
+def congress_members():
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        rows = conn.execute("""
+            SELECT bioguide_id, name, party, chamber, district, website
+            FROM congress_members
+            ORDER BY chamber DESC, CAST(district AS INTEGER)
+        """).fetchall()
+        conn.close()
+        return {"members": [
+            {"bioguide_id": r[0], "name": r[1], "party": r[2],
+             "chamber": r[3], "district": r[4], "website": r[5]}
+            for r in rows
+        ]}
+    except Exception as exc:
+        return {"members": [], "error": str(exc)}
+
+
+@app.get("/api/congress/bills/{bioguide_id}")
+def congress_member_bills(bioguide_id: str, role: str = "sponsored", limit: int = 20):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        rows = conn.execute("""
+            SELECT b.bill_type, b.bill_number, b.title, b.introduced_date,
+                   b.policy_area, b.latest_action, b.latest_action_date, b.role
+            FROM congress_bills b
+            WHERE b.sponsor_id = ? AND (? = 'all' OR b.role = ?)
+            ORDER BY b.introduced_date DESC
+            LIMIT ?
+        """, (bioguide_id, role, role, limit)).fetchall()
+        conn.close()
+        return {"bills": [
+            {"type": r[0], "number": r[1], "title": r[2], "introduced": r[3],
+             "policy_area": r[4], "latest_action": r[5],
+             "latest_action_date": r[6], "role": r[7]}
+            for r in rows
+        ]}
+    except Exception as exc:
+        return {"bills": [], "error": str(exc)}
+
+
+@app.get("/api/congress/bills")
+def congress_bills_search(policy_area: str = "", limit: int = 50):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        rows = conn.execute("""
+            SELECT b.bill_type, b.bill_number, b.title, b.introduced_date,
+                   b.policy_area, b.latest_action, b.latest_action_date,
+                   b.role, m.name, m.party, m.district
+            FROM congress_bills b
+            JOIN congress_members m ON m.bioguide_id = b.sponsor_id
+            WHERE b.role = 'sponsored'
+              AND (? = '' OR LOWER(b.policy_area) LIKE '%' || LOWER(?) || '%')
+            ORDER BY b.introduced_date DESC
+            LIMIT ?
+        """, (policy_area, policy_area, limit)).fetchall()
+        conn.close()
+        return {"bills": [
+            {"type": r[0], "number": r[1], "title": r[2], "introduced": r[3],
+             "policy_area": r[4], "latest_action": r[5], "latest_action_date": r[6],
+             "role": r[7], "sponsor": r[8], "party": r[9], "district": r[10]}
+            for r in rows
+        ]}
+    except Exception as exc:
+        return {"bills": [], "error": str(exc)}
+
+
+@app.get("/api/va-officials")
+def va_officials(office: str = "", limit: int = 200):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        query = """
+            SELECT person_name, office, district, party, role,
+                   incumbent, finance_url, source_url, data_confidence
+            FROM va_finance_people
+            WHERE (? = '' OR office = ?)
+            ORDER BY
+                CASE office
+                    WHEN 'Governor' THEN 1
+                    WHEN 'Lieutenant Governor' THEN 2
+                    WHEN 'Attorney General' THEN 3
+                    WHEN 'State Senate' THEN 4
+                    WHEN 'House of Delegates' THEN 5
+                    ELSE 6
+                END,
+                CAST(district AS INTEGER)
+            LIMIT ?
+        """
+        rows = conn.execute(query, (office, office, limit)).fetchall()
+        conn.close()
+        return {"officials": [
+            {"name": r[0], "office": r[1], "district": r[2], "party": r[3],
+             "role": r[4], "incumbent": bool(r[5]), "finance_url": r[6],
+             "source_url": r[7], "confidence": r[8]}
+            for r in rows
+        ]}
+    except Exception as exc:
+        return {"officials": [], "error": str(exc)}
+
+
+@app.get("/representatives", response_class=HTMLResponse)
+def representatives_page():
+    with open(os.path.join(BASE_DIR, "templates", "representatives.html"), "r", encoding="utf-8") as f:
+        return f.read()
 
 
 @app.get("/polls", response_class=HTMLResponse)

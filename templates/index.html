@@ -116,9 +116,16 @@
   .viq-chat-chips { padding: 8px 16px; display: flex; flex-wrap: wrap; gap: 6px; background: #f8f9fc; border-top: 1px solid #eaecf4; }
   .viq-chat-chip { font-size: 12px; padding: 5px 12px; border: 1px solid #0d1b2a; border-radius: 20px; background: transparent; color: #0d1b2a; cursor: pointer; transition: background 0.15s; font-family: 'Barlow', sans-serif; }
   .viq-chat-chip:hover { background: #eef2fb; }
-  .viq-chat-input-row { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid #eaecf4; background: #fff; }
-  .viq-chat-input { flex: 1; font-family: 'Barlow', sans-serif; font-size: 14px; padding: 9px 13px; border: 1px solid #c8d0e0; border-radius: 8px; outline: none; color: #0d1b2a; background: #fff; }
+  .viq-chat-input-row { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid #eaecf4; background: #fff; flex-wrap: wrap; }
+  .viq-chat-input { flex: 1; min-width: 0; font-family: 'Barlow', sans-serif; font-size: 14px; padding: 9px 13px; border: 1px solid #c8d0e0; border-radius: 8px; outline: none; color: #0d1b2a; background: #fff; }
   .viq-chat-input:focus { border-color: #0d1b2a; }
+  .viq-pdf-btn { background: none; border: 1px solid #c8d0e0; border-radius: 8px; padding: 9px 11px; cursor: pointer; color: #667; font-size: 16px; line-height: 1; flex-shrink: 0; transition: border-color 0.15s; }
+  .viq-pdf-btn:hover { border-color: #0d1b2a; color: #0d1b2a; }
+  .viq-pdf-badge { display: none; align-items: center; gap: 6px; background: #eef2fb; border: 1px solid #c8d0e0; border-radius: 6px; padding: 4px 10px; font-size: 12px; color: #0d1b2a; font-family: 'Barlow', sans-serif; width: 100%; }
+  .viq-pdf-badge.visible { display: flex; }
+  .viq-pdf-badge-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .viq-pdf-clear { background: none; border: none; cursor: pointer; color: #999; font-size: 14px; padding: 0; line-height: 1; }
+  .viq-pdf-clear:hover { color: #c8102e; }
   .viq-chat-send { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 9px 18px; background: #0d1b2a; color: #fff; border: none; border-radius: 8px; cursor: pointer; transition: background 0.15s; }
   .viq-chat-send:hover { background: #c8102e; }
   .viq-chat-send:disabled { opacity: 0.4; cursor: default; }
@@ -192,8 +199,15 @@
       <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">What is my senator's voting record?</button>
     </div>
     <div class="viq-chat-input-row">
+      <input type="file" id="viqPdfFile" accept=".pdf" style="display:none" onchange="viqOnPdfSelect(this)" />
+      <button class="viq-pdf-btn" title="Upload a PDF to ask about" onclick="document.getElementById('viqPdfFile').click()">📎</button>
       <input class="viq-chat-input" id="viqInput" type="text" placeholder="Ask about your representatives..." />
       <button class="viq-chat-send" id="viqSendBtn" onclick="viqSendMessage()">Ask →</button>
+      <div class="viq-pdf-badge" id="viqPdfBadge">
+        <span>📄</span>
+        <span class="viq-pdf-badge-name" id="viqPdfBadgeName"></span>
+        <button class="viq-pdf-clear" title="Remove PDF" onclick="viqClearPdf()">✕</button>
+      </div>
     </div>
     <div class="viq-chat-footer">Powered by VoteIQ · Verify important info at elections.virginia.gov</div>
   </div>
@@ -915,11 +929,77 @@
       return bubble;
     }
     function viqRemoveTyping() { const t = document.getElementById('viq-typing'); if (t) t.remove(); }
+    // ── PDF upload helpers ────────────────────────────────────────────────────
+    let _viqPdfFile = null;
+
+    function viqOnPdfSelect(input) {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      _viqPdfFile = file;
+      const badge = document.getElementById('viqPdfBadge');
+      document.getElementById('viqPdfBadgeName').textContent = file.name;
+      badge.classList.add('visible');
+      document.getElementById('viqInput').placeholder = 'Ask a question about the PDF…';
+    }
+
+    function viqClearPdf() {
+      _viqPdfFile = null;
+      document.getElementById('viqPdfFile').value = '';
+      document.getElementById('viqPdfBadge').classList.remove('visible');
+      document.getElementById('viqInput').placeholder = 'Ask about your representatives…';
+    }
+
+    async function viqPdfSend(question) {
+      const form = new FormData();
+      form.append('file', _viqPdfFile);
+      form.append('question', question);
+      const res = await fetch('/api/pdf-chat', { method: 'POST', body: form });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'PDF chat failed');
+      }
+      return await res.json();
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     async function viqSendMessage(override) {
       const input = document.getElementById('viqInput');
       const btn = document.getElementById('viqSendBtn');
       const text = override || input.value.trim();
       if (!text || !viqDistrict) return;
+
+      // Route to PDF endpoint when a file is attached
+      if (_viqPdfFile && !override) {
+        input.value = '';
+        btn.disabled = true;
+        viqAddMsg('user', `📄 ${_viqPdfFile.name}: ${text}`);
+        viqAddMsg('assistant', '', true);
+        try {
+          const data = await viqPdfSend(text);
+          viqRemoveTyping();
+          const wrap = document.createElement('div');
+          wrap.className = 'viq-chat-msg bot';
+          const av = document.createElement('div');
+          av.className = 'viq-chat-avatar';
+          av.textContent = 'IQ';
+          const bubble = document.createElement('div');
+          bubble.className = 'viq-chat-bubble';
+          bubble.innerHTML = marked.parse(data.answer || '');
+          wrap.appendChild(av);
+          wrap.appendChild(bubble);
+          document.getElementById('viqMsgList').appendChild(wrap);
+          wrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
+          viqAttachLinkBehavior(bubble);
+          viqEnsureActionRow(wrap);
+          viqAddCopyButton(wrap, function() { return data.answer; });
+          viqAddFeedback(wrap, text);
+        } catch (e) {
+          viqRemoveTyping();
+          viqAddMsg('assistant', 'Sorry, I could not read that PDF. ' + e.message);
+        }
+        btn.disabled = false;
+        return;
+      }
       input.value = '';
       btn.disabled = true;
       document.getElementById('viqChips').style.display = 'none';

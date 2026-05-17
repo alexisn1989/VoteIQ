@@ -110,6 +110,200 @@ _POLLSTER_RE = re.compile(
     re.I,
 )
 
+# name_key -> {name, office, chamber, party}
+_KNOWN_POLITICIANS_CACHE: dict[str, dict] | None = None
+_KNOWN_VA_RACE_TERMS = (
+    "virginia", "governor", "lieutenant governor", "attorney general",
+    "u.s. senate", "us senate", "state senate", "house of delegates",
+    "delegate",
+)
+_GENERIC_POLL_CHOICES = {
+    "undecided", "other", "someone else", "not sure", "none",
+    "approve", "disapprove", "favorable", "unfavorable",
+}
+
+# Statewide candidates not in the GA member list
+_HARDCODED_VA_POLITICIANS: list[dict] = [
+    {"name": "Abigail Spanberger",  "office": "Governor candidate",          "chamber": "", "party": "Democratic"},
+    {"name": "Winsome Earle-Sears", "office": "Lieutenant Governor",          "chamber": "", "party": "Republican"},
+    {"name": "Winsome Sears",       "office": "Lieutenant Governor",          "chamber": "", "party": "Republican"},
+    {"name": "Ghazala Hashmi",      "office": "State Senator",                "chamber": "upper", "party": "Democratic"},
+    {"name": "John Reid",           "office": "Governor candidate",           "chamber": "", "party": "Republican"},
+    {"name": "Jay Jones",           "office": "Attorney General candidate",   "chamber": "", "party": "Democratic"},
+    {"name": "Jason Miyares",       "office": "Attorney General",             "chamber": "", "party": "Republican"},
+    {"name": "Aaron Rouse",         "office": "State Senator",                "chamber": "upper", "party": "Democratic"},
+    {"name": "Bobby Scott",         "office": "U.S. Representative",         "chamber": "", "party": "Democratic"},
+    {"name": "Jennifer McClellan",  "office": "U.S. Representative",         "chamber": "", "party": "Democratic"},
+    {"name": "Rob Wittman",         "office": "U.S. Representative",         "chamber": "", "party": "Republican"},
+    {"name": "Jen Kiggans",         "office": "U.S. Representative",         "chamber": "", "party": "Republican"},
+    {"name": "Ben Cline",           "office": "U.S. Representative",         "chamber": "", "party": "Republican"},
+    {"name": "John McGuire",        "office": "U.S. Representative",         "chamber": "", "party": "Republican"},
+    {"name": "Don Beyer",           "office": "U.S. Representative",         "chamber": "", "party": "Democratic"},
+    {"name": "Gerry Connolly",      "office": "U.S. Representative",         "chamber": "", "party": "Democratic"},
+    {"name": "Suhas Subramanyam",   "office": "U.S. Representative",         "chamber": "", "party": "Democratic"},
+    {"name": "Morgan Griffith",     "office": "U.S. Representative",         "chamber": "", "party": "Republican"},
+    {"name": "Eugene Vindman",      "office": "U.S. Representative",         "chamber": "", "party": "Democratic"},
+]
+
+
+def _name_key(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", clean_text(name).lower()).strip()
+
+
+def _known_va_politicians() -> dict[str, dict]:
+    """Return name_key -> {name, office, chamber, party} for all known Virginia politicians."""
+    global _KNOWN_POLITICIANS_CACHE
+    if _KNOWN_POLITICIANS_CACHE is not None:
+        return _KNOWN_POLITICIANS_CACHE
+
+    lookup: dict[str, dict] = {}
+
+    for entry in _HARDCODED_VA_POLITICIANS:
+        key = _name_key(entry["name"])
+        if key:
+            lookup[key] = entry
+
+    # GA members from OpenStates (va_members_2026.json)
+    members_path = BASE_DIR / "va_members_2026.json"
+    if members_path.exists():
+        try:
+            for m in json.loads(members_path.read_text(encoding="utf-8")):
+                if not isinstance(m, dict):
+                    continue
+                raw_name = m.get("name", "")
+                if not raw_name:
+                    continue
+                chamber = m.get("chamber", "")
+                office = (
+                    f"Delegate District {m['district']}" if "lower" in chamber
+                    else f"Senator District {m['district']}" if "upper" in chamber
+                    else m.get("title", "")
+                )
+                key = _name_key(raw_name)
+                if key:
+                    lookup[key] = {
+                        "name":    raw_name,
+                        "office":  office,
+                        "chamber": chamber,
+                        "party":   m.get("party", ""),
+                    }
+        except Exception:
+            pass
+
+    # va_rep_profiles.jsonl (optional supplemental profiles)
+    profiles_path = BASE_DIR / "va_rep_profiles.jsonl"
+    if profiles_path.exists():
+        try:
+            for line in profiles_path.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                meta = (json.loads(line).get("metadata") or {})
+                raw_name = meta.get("name", "")
+                key = _name_key(raw_name)
+                if key and key not in lookup:
+                    lookup[key] = {
+                        "name":    raw_name,
+                        "office":  meta.get("office", ""),
+                        "chamber": meta.get("chamber", ""),
+                        "party":   meta.get("party", ""),
+                    }
+        except Exception:
+            pass
+
+    _KNOWN_POLITICIANS_CACHE = lookup
+    return _KNOWN_POLITICIANS_CACHE
+
+
+def _lookup_va_politician(name: str) -> dict | None:
+    """Return info dict for a known VA politician, or None if not found."""
+    key = _name_key(name)
+    if not key or key in _GENERIC_POLL_CHOICES:
+        return {}  # generic term — treat as "known" but no info
+    lookup = _known_va_politicians()
+    # exact key match first
+    if key in lookup:
+        return lookup[key]
+    # substring match (handles "Spanberger" matching "abigail spanberger")
+    for k, info in lookup.items():
+        if key in k or k in key:
+            return info
+    return None
+
+
+def _is_known_va_name(name: str) -> bool:
+    return _lookup_va_politician(name) is not None
+
+
+def fact_check_extraction(extracted: dict) -> dict:
+    """
+    Verify Gemini-extracted politician/candidate names against the local VA politician lookup.
+    Attaches verified_office and confidence to each entry; flags unknowns with _warning.
+    """
+    for collection in ("politicians", "candidates"):
+        for person in extracted.get(collection, []) or []:
+            if not isinstance(person, dict):
+                continue
+            name = clean_text(person.get("name"))
+            if not name:
+                continue
+            info = _lookup_va_politician(name)
+            if info is None:
+                person.setdefault("confidence", 1.0)
+                person["confidence"] = min(float(person["confidence"]), 0.4)
+                person["_warning"] = f"'{name}' not found in Virginia politician database"
+                _append_warning(extracted, f"Unverified Virginia politician: {name}")
+            elif info:  # non-empty dict means a real match
+                person["verified_office"] = info.get("office", "")
+                person["verified_party"]  = info.get("party", "")
+                person.setdefault("confidence", 1.0)
+                person["confidence"] = max(float(person["confidence"]), 0.9)
+    return extracted
+
+
+def _append_warning(extracted: dict, warning: str) -> None:
+    warnings = extracted.setdefault("_warnings", [])
+    if warning not in warnings:
+        warnings.append(warning)
+    extracted["_warning"] = "; ".join(warnings)
+
+
+def validate_extraction(extracted: dict, article_text: str) -> dict:
+    """Validate Gemini extraction against Virginia race/date/percentage rules.
+    Politician name verification is handled separately by fact_check_extraction."""
+    if not isinstance(extracted, dict) or not extracted:
+        return extracted
+
+    text = article_text or ""
+
+    race = clean_text(extracted.get("race")).lower()
+    if race and not any(term in race for term in _KNOWN_VA_RACE_TERMS):
+        _append_warning(extracted, f"Race does not look Virginia-specific: {extracted.get('race')}")
+
+    for date_key in ("published", "published_date", "field_start", "field_end"):
+        raw_date = clean_text(extracted.get(date_key))
+        if not raw_date:
+            continue
+        try:
+            parsed = datetime.fromisoformat(raw_date.replace("Z", "+00:00"))
+        except ValueError:
+            _append_warning(extracted, f"Could not parse {date_key}: {raw_date}")
+            continue
+        if parsed.year > 2026 or parsed.year < 2020:
+            _append_warning(extracted, f"Unrealistic {date_key}: {raw_date}")
+
+    candidates = [c for c in (extracted.get("candidates") or []) if isinstance(c, dict)]
+    if candidates:
+        pcts = [parse_pct(c.get("pct")) for c in candidates]
+        pcts = [p for p in pcts if p is not None]
+        total = sum(pcts)
+        if pcts and (total < 80 or total > 120):
+            _append_warning(extracted, f"Percentages sum to {round(total, 1)}%, likely hallucinated")
+        if text and pcts and not any(_pct_in_text(pct, text) for pct in pcts):
+            _append_warning(extracted, "No extracted candidate percentage appears in source article text")
+
+    extracted["_validated"] = True
+    return extracted
+
 
 def extract_poll_numbers(text: str) -> dict:
     """Pull candidate percentages, leads, sample size, methodology, and pollster from text."""
@@ -245,6 +439,8 @@ def gemini_extract(url: str, article_text: str, api_key: str) -> dict:
             contents=prompt,
         )
         result = _parse_gemini_json(response.text)
+        result = validate_extraction(result, article_text)
+        result = fact_check_extraction(result)
         result["_source"] = "gemini"
         return result
     except Exception as exc:
@@ -553,6 +749,10 @@ def gemini_to_poll(
     Rejects records where extracted percentages cannot be found in source_text,
     guarding against hallucinated numbers.
     """
+    gemini_data = validate_extraction(gemini_data, source_text)
+    if gemini_data.get("_warnings"):
+        print(f"    [gemini] validation warnings: {'; '.join(gemini_data['_warnings'])[:240]}")
+
     candidates = gemini_data.get("candidates") or []
     if not candidates or not gemini_data.get("pollster"):
         return False
@@ -586,7 +786,7 @@ def gemini_to_poll(
         source_record_id=record_id,
         race_id=stable_id("VA", office_type, seat, cycle),
         cycle=cycle,
-        state="VA",
+        state="Virginia",
         office_type=office_type,
         seat_name=seat,
         stage="general",
