@@ -137,10 +137,66 @@ def _run_fec_ingest_background() -> None:
         print(f"[fec] Ingestion error: {exc}")
 
 
+def _congress_votes_are_fresh() -> bool:
+    """Return True if congress_votes table has rows ingested in the last 30 days."""
+    from datetime import datetime, timezone, timedelta
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        row = conn.execute("SELECT MAX(fetched_at) FROM congress_votes").fetchone()
+        conn.close()
+        if row and row[0]:
+            last = datetime.fromisoformat(str(row[0]).replace("Z", "+00:00"))
+            return datetime.now(timezone.utc) - last < timedelta(days=30)
+    except Exception:
+        pass
+    return False
+
+
+def _congress_ingest_background() -> None:
+    """Run ingest_congress_votes.py (no API key needed) if data is missing or stale."""
+    if _congress_votes_are_fresh():
+        print("[congress] Vote data fresh — skipping startup ingestion.")
+        return
+    print("[congress] Vote data missing or stale — starting background ingestion…")
+    script = os.path.join(BASE_DIR, "ingest_congress_votes.py")
+    if not os.path.exists(script):
+        print("[congress] ingest_congress_votes.py not found — skipping.")
+        return
+    # Also run member/bill ingest if API key is available
+    api_key = os.getenv("CONGRESS_API_KEY", "")
+    if api_key:
+        members_script = os.path.join(BASE_DIR, "ingest_congress.py")
+        if os.path.exists(members_script):
+            try:
+                r = subprocess.run(
+                    [sys.executable, members_script],
+                    capture_output=True, text=True, timeout=300,
+                )
+                print(f"[congress] Members/bills ingestion rc={r.returncode}")
+            except Exception as exc:
+                print(f"[congress] Members/bills ingestion error: {exc}")
+    try:
+        r = subprocess.run(
+            [sys.executable, script, "--house-limit", "300"],
+            capture_output=True, text=True, timeout=600,
+        )
+        if r.returncode == 0:
+            global _federal_members_cache
+            _federal_members_cache = None  # bust cache so fresh data is used
+            print("[congress] Vote ingestion complete.")
+        else:
+            print(f"[congress] Vote ingestion failed (rc={r.returncode}): {r.stderr[-300:]}")
+    except subprocess.TimeoutExpired:
+        print("[congress] Vote ingestion timed out.")
+    except Exception as exc:
+        print(f"[congress] Vote ingestion error: {exc}")
+
+
 @app.on_event("startup")
 async def startup_poll_ingest() -> None:
     threading.Thread(target=_poll_ingest_background, daemon=True).start()
     threading.Thread(target=_run_fec_ingest_background, daemon=True).start()
+    threading.Thread(target=_congress_ingest_background, daemon=True).start()
 
 
 @app.get("/api/va-news")
