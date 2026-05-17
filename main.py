@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, field_validator
 from dotenv import load_dotenv
@@ -16,6 +16,7 @@ import re
 import time
 import hashlib
 import sqlite3
+import asyncio
 from html import escape
 import requests
 import anthropic
@@ -770,7 +771,7 @@ def _claude_reply(system_prompt, messages, max_tokens):
     raise last_error
 
 
-_CACHE_TTL_SECONDS = 86400  # 24 hours
+_CACHE_TTL_SECONDS = 86400  # 24 hours for ad-hoc chat replies
 
 
 def _init_query_cache():
@@ -782,6 +783,9 @@ def _init_query_cache():
         "CREATE TABLE IF NOT EXISTS query_cache "
         "(cache_key TEXT PRIMARY KEY, reply TEXT, created_at INTEGER)"
     )
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(query_cache)").fetchall()}
+    if "cache_type" not in cols:
+        conn.execute("ALTER TABLE query_cache ADD COLUMN cache_type TEXT DEFAULT 'ad_hoc'")
     conn.commit()
     conn.close()
 
@@ -799,25 +803,26 @@ def _get_cached_reply(key: str) -> str | None:
     try:
         conn = sqlite3.connect(db)
         row = conn.execute(
-            "SELECT reply, created_at FROM query_cache WHERE cache_key = ?", (key,)
+            "SELECT reply, created_at, COALESCE(cache_type, 'ad_hoc') FROM query_cache WHERE cache_key = ?",
+            (key,),
         ).fetchone()
         conn.close()
-        if row and (time.time() - row[1]) < _CACHE_TTL_SECONDS:
+        if row and (row[2] == "prewarm" or (time.time() - row[1]) < _CACHE_TTL_SECONDS):
             return row[0]
     except Exception:
         pass
     return None
 
 
-def _set_cached_reply(key: str, reply: str):
+def _set_cached_reply(key: str, reply: str, cache_type: str = "ad_hoc"):
     db = os.path.join(BASE_DIR, "openstates_va.db")
     if not os.path.exists(db):
         return
     try:
         conn = sqlite3.connect(db)
         conn.execute(
-            "INSERT OR REPLACE INTO query_cache (cache_key, reply, created_at) VALUES (?, ?, ?)",
-            (key, reply, int(time.time())),
+            "INSERT OR REPLACE INTO query_cache (cache_key, reply, created_at, cache_type) VALUES (?, ?, ?, ?)",
+            (key, reply, int(time.time()), cache_type),
         )
         conn.commit()
         conn.close()
@@ -4733,16 +4738,16 @@ async def bills_chat(request: Request, req: BillsChatRequest):
         else:
             return ChatResponse(reply="I'm having trouble connecting to the knowledge base right now. Try asking about a specific bill number (e.g. HB9) or a legislator's name and I'll look it up from local data.")
 
-    district_note = ""
+    district_parts = []
     if req.district:
-        parts = [f"Congressional district: {req.district}"]
-        if req.locality:
-            parts.append(f"locality: {req.locality}")
-        if req.hod_district:
-            parts.append(f"HOD district: {req.hod_district}")
-        if req.sd_district:
-            parts.append(f"Senate district: {req.sd_district}")
-        district_note = f"\nUSER'S DISTRICT CONTEXT: {', '.join(parts)}\n"
+        district_parts.append(f"Congressional district: {req.district}")
+    if req.locality:
+        district_parts.append(f"locality: {req.locality}")
+    if req.hod_district:
+        district_parts.append(f"HOD district: {req.hod_district}")
+    if req.sd_district:
+        district_parts.append(f"Senate district: {req.sd_district}")
+    district_note = f"\nUSER'S DISTRICT CONTEXT: {', '.join(district_parts)}\n" if district_parts else ""
 
     # Response cache — skip on multi-turn conversations (only cache single-question queries)
     _ck = _cache_key(user_query, district_note) if len(req.messages) == 1 else None
@@ -4846,14 +4851,6 @@ If any section has no data, write: "No [section] data available in current datas
 EXCERPTS:
 {context}"""
 
-    _SOURCE_LINE = (
-        "\n\n---\n"
-        "*Sources: [OpenStates](https://openstates.org/va/) · "
-        "[LIS](https://lis.virginia.gov) · "
-        "Data current through May 16, 2026. "
-        "Vote reasons/statements are not available in public datasets.*"
-    )
-
     try:
         reply = _claude_reply(system_prompt, req.messages, max_tokens=1800)
         if not reply.rstrip().endswith("public datasets.*"):
@@ -4863,6 +4860,236 @@ EXCERPTS:
         return ChatResponse(reply=reply)
     except Exception as e:
         return ChatResponse(reply=_friendly_claude_error(e))
+
+
+@app.post("/api/bills-chat-stream")
+@limiter.limit("10/minute")
+async def bills_chat_stream(request: Request, req: BillsChatRequest):
+    """Streaming version of bills-chat — tokens appear as Claude generates them."""
+    # Reuse the same context/prompt/cache logic as bills_chat
+    user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
+    mentioned = _extract_bill_numbers(user_query)
+    session_year = _extract_session_year(user_query)
+    cached_bill_context = (
+        _cached_bill_description_lookup(mentioned, session_year)
+        if mentioned
+        else _cached_bill_description_search(user_query, session_year)
+    )
+
+    query_vec = None
+    results = {"documents": [[]], "metadatas": [[]]}
+    chroma_error = None
+
+    if not cached_bill_context:
+        try:
+            query_vec = _get_voyage_client().embed([user_query], model=_BILLS_MODEL, input_type="query").embeddings[0]
+        except Exception as e:
+            chroma_error = f"Voyage AI unavailable: {e}"
+
+    if query_vec is not None:
+        try:
+            results = _query_chroma(query_vec, n_results=10)
+        except Exception as e:
+            chroma_error = f"ChromaDB unavailable: {e}"
+
+    exact_lookup_note = ""
+    try:
+        context_blocks: list[str] = []
+        seen_docs: set[str] = set()
+        if cached_bill_context:
+            for block in cached_bill_context.split("\n\n"):
+                if block and block not in seen_docs:
+                    seen_docs.add(block); context_blocks.insert(0, block)
+        if mentioned:
+            sqlite_bill = _sqlite_bill_lookup(mentioned)
+            if sqlite_bill:
+                for block in sqlite_bill.split("\n\n"):
+                    if block and block not in seen_docs:
+                        seen_docs.add(block); context_blocks.insert(0, block)
+        if mentioned:
+            os_votes = _openstates_vote_lookup(mentioned, session_year)
+            if os_votes:
+                for block in os_votes.split("\n\n"):
+                    if block and block not in seen_docs:
+                        seen_docs.add(block); context_blocks.insert(0, block)
+        leg_name = _extract_legislator_name(user_query)
+        if leg_name:
+            for fn in (_sqlite_legislator_votes, _openstates_legislator_lookup):
+                result = fn(leg_name)
+                if result and result not in seen_docs:
+                    seen_docs.add(result); context_blocks.insert(0, result)
+        rep_profiles = _request_rep_profiles(req, user_query)
+        if rep_profiles:
+            for block in rep_profiles.split("\n\n[Representative Profile"):
+                pb = block if block.startswith("[Representative Profile") else (
+                    "[Representative Profile" + block if block.strip() else ""
+                )
+                if pb and pb not in seen_docs:
+                    seen_docs.add(pb); context_blocks.insert(0, pb)
+        if mentioned:
+            exact_docs = _fetch_bills_by_id(mentioned, session_year)
+            if session_year:
+                exact_lookup_note = (
+                    f"\nEXACT LOOKUP: Found excerpts for {', '.join(mentioned)} from the {session_year} session.\n"
+                    if exact_docs else
+                    f"\nEXACT LOOKUP: No excerpts were found for {', '.join(mentioned)} from the {session_year} session.\n"
+                )
+            for doc, meta in exact_docs:
+                if doc not in seen_docs:
+                    seen_docs.add(doc)
+                    context_blocks.append(f"[{meta.get('chunk_type','?')} — {meta.get('bill_id','?')} {meta.get('session','?')}]\n{doc}")
+        for doc, meta in zip(results["documents"][0], results["metadatas"][0]):
+            if session_year:
+                fy = _session_year(meta.get("session")) or _session_year(meta.get("session_id")) or _session_year(doc)
+                if fy and fy != session_year:
+                    continue
+            if doc not in seen_docs:
+                seen_docs.add(doc)
+                context_blocks.append(f"[{meta.get('chunk_type','?')} — {meta.get('bill_id','?')} {meta.get('session','?')}]\n{doc}")
+        context = "\n\n---\n\n".join(context_blocks)
+    except Exception as e:
+        context = ""; chroma_error = f"Result parsing error: {e}"
+
+    if not context and chroma_error:
+        fallback_msg = "I'm having trouble connecting to the knowledge base right now. Try asking about a specific bill number (e.g. HB9) or a legislator's name."
+        async def _err():
+            yield f"data: {json.dumps({'token': fallback_msg})}\n\ndata: [DONE]\n\n"
+        return StreamingResponse(_err(), media_type="text/event-stream")
+
+    district_note = ""
+    if req.district:
+        parts = [f"Congressional district: {req.district}"]
+        if req.locality: parts.append(f"locality: {req.locality}")
+        if req.hod_district: parts.append(f"HOD district: {req.hod_district}")
+        if req.sd_district: parts.append(f"Senate district: {req.sd_district}")
+        district_note = f"\nUSER'S DISTRICT CONTEXT: {', '.join(parts)}\n"
+
+    _ck = _cache_key(user_query, district_note) if len(req.messages) == 1 else None
+    if _ck:
+        cached = _get_cached_reply(_ck)
+        if cached:
+            async def _cached_gen(text=cached):
+                chunk = 24
+                for i in range(0, len(text), chunk):
+                    yield f"data: {json.dumps({'token': text[i:i+chunk]})}\n\n"
+                    await asyncio.sleep(0)
+                yield "data: [DONE]\n\n"
+            return StreamingResponse(_cached_gen(), media_type="text/event-stream")
+
+    chroma_note = (
+        f"\nNOTE: AI knowledge base unavailable ({chroma_error}). Answering from local database only.\n"
+        if chroma_error else ""
+    )
+    system_prompt = f"""You are VoteIQ, a nonpartisan Virginia civic assistant. Today is May 2026. \
+You have access to the retrieved excerpts below, which may include Virginia General Assembly bills, \
+election results, legislator voting records, and representative profile summaries from the local 2026 session database. \
+Answer the user's question using ONLY the excerpts below — do not rely on your training data. \
+Be factual and cite bill numbers when relevant.{district_note}{chroma_note}
+
+VOTE INTERPRETATION — apply these rules when reading vote records:
+- If a legislator votes YES on passage but NO on concurrence/conference substitute, they likely objected to the amended version, not the bill itself. Say: "voted against the House-amended version; accepted final compromise."
+- If a legislator votes YES in committee but NO on floor, they may have had ideological concerns or constituent pressure. Do not assume — say "voted NO on floor passage after supporting it in committee; dataset does not explain the change."
+- Always show the SEQUENCE of votes when available, not just the final result. A bill can have 4-8 votes — the pattern matters.
+- Flag when a NO vote is on a substitute or amendment vs. the original bill. These are different positions.
+- "Concur House Substitute", "Concur House Amendment", "Adopt Conference Committee Report" are amendment/concurrence votes — not original passage votes.
+- "Reported from [Committee]" = committee vote. "Passage R" or "Passage H" = floor vote.
+
+HALLUCINATION PREVENTION — follow these rules strictly:
+1. Never say a legislator "prioritized", "championed", "focused on", or "made X a priority" unless the excerpt explicitly states it. Sponsoring a bill does not imply it was a priority.
+2. Never infer a legislator's role beyond what the data shows. If they are listed as sponsor, say "sponsored". If their exact role is unclear, say "co-sponsored or listed as patron — exact role unclear."
+3. Always distinguish:
+   - CONFIRMED: data directly states it
+   - INFERRED: your interpretation — label it
+   - UNCERTAIN: data not available — say so
+4. Never fill data gaps with assumptions. If you don't have it, say so.
+5. Always cite source inline: "According to OpenStates (openstates.org)" for votes/sponsorships, "According to LIS" for bill text/status.
+
+WHEN TO SAY "I DON'T KNOW":
+- Vote data missing → "I don't have vote data for this bill in the current dataset"
+- Bill text not in DB → "I don't have the full bill text — check lis.virginia.gov"
+- Patron unclear → "Primary patron unclear from available data; listed as co-sponsor"
+
+CITATION FORMAT — always include bill ID as a clickable markdown link, vote counts, source database, legislator links when available.
+
+RESPONSE FORMAT — use this exact structure for legislator questions:
+
+Your [chamber] representative is **[Full Name] ([Party], District [N])**.
+
+**[YEAR] Session Voting Record:**
+- Overall vote rate: [CONFIRMED — OpenStates] [Y] YES ([X]%), [N] NO out of [N] floor votes
+- Party alignment: [CONFIRMED — calculated from vote records] voted with [Party] party majority on [X]% of floor votes
+- Caucus read: [copy exactly from excerpt if present]
+- Committee votes: [CONFIRMED — OpenStates] [N] total — [Y] YES, [N] NO
+
+**Key Votes** (if present in excerpt):
+- [markdown bill link]: [YES/NO] — [one-line plain-English issue summary]
+
+**Dissenting Votes — voted NO but bill passed ([N] total):**
+- [Policy area]: [bill links] — [one-line description]
+Pattern: [INFERRED] [one sentence ending with "Dataset does not include stated reasons for these votes."]
+
+**Vote Breakdown by Issue Area** (if present in excerpt):
+- [topic]: [N] votes — [Y] YES, [N] NO | party alignment: [X]%
+
+**Legislative Partnerships** (if present in excerpt):
+- [Name] ([Party]) — [N] bills co-sponsored
+
+**Bills Sponsored ([N] total, [X] passed):**
+- [bill link] — [one plain-English sentence]
+
+PLAIN-ENGLISH BILL HOOKS — for every bill, add a plain-English one-sentence summary after the link.
+LEGISLATIVE FOCUS — if excerpt contains "Legislative focus" line, lead with it.
+COMMITTEE VOTE CONTEXT — if excerpt contains [CONTEXT] note, include it in plain language.
+IMPORTANT: Always copy bill links exactly. List ALL sponsored bills. Render Companion bill lines as links.
+
+**Methodology note** (always include for caucus/party alignment questions):
+Caucus read is plain-language shorthand derived from OpenStates roll-call data. Split-vote threshold: 15–85% YES, minimum 5 members. "Breaks from party" = actual NO votes against party majority. Issue-area tags are keyword-based.
+
+CALL TO ACTION — always end legislator responses with:
+**Want to dig deeper?** Ask me how [Name] voted on [topic1], [topic2], or [topic3]. Or ask about a specific bill by number.
+
+If any section has no data, write: "No [section] data available in current dataset."{exact_lookup_note}
+
+EXCERPTS:
+{context}"""
+
+    msgs = [{"role": m.role, "content": m.content} for m in req.messages]
+
+    async def _stream_gen():
+        full_reply = ""
+        try:
+            with client.messages.stream(
+                model="claude-sonnet-4-6",
+                max_tokens=1800,
+                system=system_prompt,
+                messages=msgs,
+            ) as stream:
+                for text in stream.text_stream:
+                    full_reply += text
+                    yield f"data: {json.dumps({'token': text})}\n\n"
+            if not full_reply.rstrip().endswith("public datasets.*"):
+                full_reply = full_reply.rstrip() + _SOURCE_LINE
+                yield f"data: {json.dumps({'token': _SOURCE_LINE})}\n\n"
+            if _ck:
+                _set_cached_reply(_ck, full_reply)
+        except Exception as e:
+            yield f"data: {json.dumps({'error': _friendly_claude_error(e)})}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        _stream_gen(),
+        media_type="text/event-stream",
+        headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache"},
+    )
+
+
+_SOURCE_LINE = (
+    "\n\n---\n"
+    "*Sources: [OpenStates](https://openstates.org/va/) · "
+    "[LIS](https://lis.virginia.gov) · "
+    "Data current through May 16, 2026. "
+    "Vote reasons/statements are not available in public datasets.*"
+)
 
 
 _va_counties_geojson_cache = None
