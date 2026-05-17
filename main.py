@@ -36,6 +36,7 @@ app.add_middleware(SlowAPIMiddleware)
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 
 _OPENSTATES_DB = os.path.join(BASE_DIR, "openstates_va.db")
+_POLLS_DB = os.path.join(BASE_DIR, "polls.db")
 
 
 import subprocess
@@ -46,7 +47,7 @@ def _polls_are_fresh() -> bool:
     """Return True if polls were ingested within the last 23 hours."""
     from datetime import datetime, timezone, timedelta
     try:
-        conn = sqlite3.connect(_OPENSTATES_DB)
+        conn = sqlite3.connect(_POLLS_DB)
         row = conn.execute("SELECT MAX(fetched_at) FROM polls").fetchone()
         conn.close()
         if row and row[0]:
@@ -62,7 +63,7 @@ def _run_ingest_subprocess(sources: list[str] | None = None) -> dict:
     script = os.path.join(BASE_DIR, "ingest_va_polls.py")
     if not os.path.exists(script):
         return {"ok": False, "error": "ingest_va_polls.py not found"}
-    cmd = [sys.executable, script]
+    cmd = [sys.executable, script, "--db", _POLLS_DB]
     for s in (sources or ["fivethirtyeight", "votehub", "news"]):
         cmd += ["--source", s]
     try:
@@ -4706,8 +4707,8 @@ def polls_search(
     limit: int = 25,
 ):
     """Read Virginia poll rows ingested by ingest_va_polls.py."""
-    if not os.path.exists(_OPENSTATES_DB):
-        return {"count": 0, "results": [], "source": "missing_openstates_db"}
+    if not os.path.exists(_POLLS_DB):
+        return {"count": 0, "results": [], "source": "missing_polls_db"}
     limit = max(1, min(int(limit or 25), 100))
     where = ["LOWER(COALESCE(state, '')) = 'virginia'"]
     params: list[object] = []
@@ -4722,7 +4723,7 @@ def polls_search(
         params.append(race_id)
 
     try:
-        conn = sqlite3.connect(_OPENSTATES_DB)
+        conn = sqlite3.connect(_POLLS_DB)
         conn.row_factory = sqlite3.Row
         table_exists = conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='polls'"
@@ -4764,11 +4765,11 @@ def polls_search(
 @app.get("/api/poll-articles")
 def poll_articles(limit: int = 25):
     """Read poll-related news/RSS mentions ingested by ingest_va_polls.py."""
-    if not os.path.exists(_OPENSTATES_DB):
-        return {"count": 0, "results": [], "source": "missing_openstates_db"}
+    if not os.path.exists(_POLLS_DB):
+        return {"count": 0, "results": [], "source": "missing_polls_db"}
     limit = max(1, min(int(limit or 25), 100))
     try:
-        conn = sqlite3.connect(_OPENSTATES_DB)
+        conn = sqlite3.connect(_POLLS_DB)
         conn.row_factory = sqlite3.Row
         table_exists = conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='poll_articles'"
@@ -4794,7 +4795,7 @@ def poll_articles(limit: int = 25):
 @app.get("/api/polls-debug")
 def polls_debug():
     """Diagnostic: DB path, file existence, row counts, last ingest time."""
-    db_path = _OPENSTATES_DB
+    db_path = _POLLS_DB
     info: dict = {"db_path": db_path, "db_exists": os.path.exists(db_path)}
     if info["db_exists"]:
         info["db_size_bytes"] = os.path.getsize(db_path)
@@ -4831,8 +4832,8 @@ def polls_feed(
     limit: int = 60,
 ):
     """Return Virginia polls with nested candidate results for the polls page."""
-    if not os.path.exists(_OPENSTATES_DB):
-        return {"count": 0, "results": [], "source": "missing_openstates_db"}
+    if not os.path.exists(_POLLS_DB):
+        return {"count": 0, "results": [], "source": "missing_polls_db"}
     limit = max(1, min(int(limit or 60), 200))
     where = ["state = 'Virginia'"]
     params: list = []
@@ -4841,7 +4842,7 @@ def polls_feed(
         params.append(f"%{office}%")
     where_sql = " AND ".join(where)
     try:
-        conn = sqlite3.connect(_OPENSTATES_DB)
+        conn = sqlite3.connect(_POLLS_DB)
         conn.row_factory = sqlite3.Row
         for tbl in ("polls", "poll_results"):
             exists = conn.execute(

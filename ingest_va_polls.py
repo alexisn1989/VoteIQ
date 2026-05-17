@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Ingest Virginia polling data into openstates_va.db.
+Ingest Virginia polling data into polls.db.
 
 Sources:
   - FiveThirtyEight CSV data endpoints, filtered to state=Virginia.
@@ -38,7 +38,7 @@ from bs4 import BeautifulSoup
 
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "openstates_va.db"
+DB_PATH = BASE_DIR / "polls.db"
 USER_AGENT = "VoteIQ/1.0 Virginia polling ingester (contact: local VoteIQ app)"
 
 FIVETHIRTYEIGHT_URLS = {
