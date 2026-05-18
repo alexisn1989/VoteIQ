@@ -197,46 +197,50 @@ def _congress_votes_are_fresh() -> bool:
 
 def _congress_ingest_background() -> None:
     """Run ingest_congress_votes.py (no API key needed) if data is missing or stale.
-    Uses a small limit on startup (50 rolls) so it finishes in ~60s.
+    Always reloads in-memory caches from the persistent disk at the end so
+    federal vote/FEC data is available without a manual upload after each deploy.
     Full refresh can be triggered via /api/admin/ingest-congress.
     """
     if _congress_votes_are_fresh():
         print("[congress] Vote data fresh — skipping startup ingestion.")
-        return
-    print("[congress] Vote data missing or stale — starting background ingestion…")
-    # Members/bills first (needs API key, fast)
-    api_key = os.getenv("CONGRESS_API_KEY", "")
-    if api_key:
-        members_script = os.path.join(BASE_DIR, "ingest_congress.py")
-        if os.path.exists(members_script):
+    else:
+        print("[congress] Vote data missing or stale — starting background ingestion…")
+        # Members/bills first (needs API key, fast)
+        api_key = os.getenv("CONGRESS_API_KEY", "")
+        if api_key:
+            members_script = os.path.join(BASE_DIR, "ingest_congress.py")
+            if os.path.exists(members_script):
+                try:
+                    r = subprocess.run(
+                        [sys.executable, members_script],
+                        capture_output=True, text=True, timeout=300,
+                    )
+                    print(f"[congress] Members/bills rc={r.returncode}")
+                except Exception as exc:
+                    print(f"[congress] Members/bills error: {exc}")
+        # Votes — small limit on startup so it completes quickly
+        script = os.path.join(BASE_DIR, "ingest_congress_votes.py")
+        if os.path.exists(script):
             try:
                 r = subprocess.run(
-                    [sys.executable, members_script],
-                    capture_output=True, text=True, timeout=300,
+                    [sys.executable, script, "--house-limit", "50", "--senate-limit", "50"],
+                    capture_output=True, text=True, timeout=180,
                 )
-                print(f"[congress] Members/bills rc={r.returncode}")
+                if r.returncode == 0:
+                    print(f"[congress] Startup ingestion complete. {r.stdout.strip().splitlines()[-1] if r.stdout.strip() else ''}")
+                else:
+                    print(f"[congress] Ingestion failed (rc={r.returncode}): {r.stderr[-300:]}")
+            except subprocess.TimeoutExpired:
+                print("[congress] Ingestion timed out after 180s.")
             except Exception as exc:
-                print(f"[congress] Members/bills error: {exc}")
-    # Votes — small limit on startup so it completes quickly
-    script = os.path.join(BASE_DIR, "ingest_congress_votes.py")
-    if not os.path.exists(script):
-        print("[congress] ingest_congress_votes.py not found — skipping.")
-        return
-    try:
-        r = subprocess.run(
-            [sys.executable, script, "--house-limit", "50", "--senate-limit", "50"],
-            capture_output=True, text=True, timeout=180,
-        )
-        if r.returncode == 0:
-            global _federal_members_cache
-            _federal_members_cache = None
-            print(f"[congress] Startup ingestion complete. {r.stdout.strip().splitlines()[-1] if r.stdout.strip() else ''}")
-        else:
-            print(f"[congress] Ingestion failed (rc={r.returncode}): {r.stderr[-300:]}")
-    except subprocess.TimeoutExpired:
-        print("[congress] Ingestion timed out after 180s.")
-    except Exception as exc:
-        print(f"[congress] Ingestion error: {exc}")
+                print(f"[congress] Ingestion error: {exc}")
+
+    # Always reload caches from persistent disk so data is live after every deploy
+    global _federal_members_cache
+    _federal_members_cache = None
+    _load_pac_cache()
+    _load_votes_cache()
+    print("[congress] In-memory caches reloaded from persistent disk.")
 
 
 @app.on_event("startup")
@@ -6509,6 +6513,153 @@ def congress_bills_search(policy_area: str = "", limit: int = 50):
         ]}
     except Exception as exc:
         return {"bills": [], "error": str(exc)}
+
+
+@app.get("/api/congress/profile/{bioguide_id}")
+def congress_member_profile(bioguide_id: str):
+    """Full profile: member info + committees + FEC donors + vote stats + party alignment."""
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+
+        member = conn.execute(
+            "SELECT bioguide_id, name, party, chamber, state, district, website "
+            "FROM congress_members WHERE bioguide_id = ?", (bioguide_id,)
+        ).fetchone()
+        if not member:
+            conn.close()
+            return {"error": "member not found"}
+
+        committees = conn.execute(
+            """SELECT committee_name, is_subcommittee, parent_code, parent_name, role
+               FROM congress_committees WHERE bioguide_id = ?
+               ORDER BY is_subcommittee, committee_name""", (bioguide_id,)
+        ).fetchall()
+
+        vote_rows = conn.execute(
+            """SELECT member_vote, COUNT(*) FROM congress_votes
+               WHERE bioguide_id = ? GROUP BY member_vote""", (bioguide_id,)
+        ).fetchall()
+        vote_map = {r[0]: r[1] for r in vote_rows}
+        yea = vote_map.get("Yea", 0) + vote_map.get("Aye", 0)
+        nay = vote_map.get("Nay", 0) + vote_map.get("No", 0)
+        total_votes = sum(vote_map.values())
+
+        # Party alignment: % matching majority of same-party VA colleagues per roll call
+        party = member["party"]
+        same_party_ids = conn.execute(
+            "SELECT bioguide_id FROM congress_members WHERE party = ? AND bioguide_id != ?",
+            (party, bioguide_id)
+        ).fetchall()
+        same_party_ids = [r[0] for r in same_party_ids]
+
+        aligned = 0
+        checked = 0
+        if same_party_ids:
+            placeholders = ",".join("?" * len(same_party_ids))
+            pairs = conn.execute(f"""
+                SELECT v1.bill, v1.chamber, v1.member_vote,
+                       GROUP_CONCAT(v2.member_vote) as party_votes
+                FROM congress_votes v1
+                JOIN congress_votes v2
+                  ON v1.bill = v2.bill AND v1.chamber = v2.chamber
+                  AND v2.bioguide_id IN ({placeholders})
+                WHERE v1.bioguide_id = ?
+                  AND v1.member_vote IN ('Yea','Nay','Aye','No')
+                GROUP BY v1.bill, v1.chamber, v1.member_vote
+            """, (*same_party_ids, bioguide_id)).fetchall()
+
+            for bill, chamber, my_vote, party_votes_str in pairs:
+                if not party_votes_str:
+                    continue
+                party_votes = party_votes_str.split(",")
+                party_votes = [v for v in party_votes if v in ("Yea", "Nay", "Aye", "No")]
+                if not party_votes:
+                    continue
+                yea_like = {"Yea", "Aye"}
+                nay_like = {"Nay", "No"}
+                party_yeas = sum(1 for v in party_votes if v in yea_like)
+                party_nays = sum(1 for v in party_votes if v in nay_like)
+                if party_yeas == party_nays:
+                    continue
+                party_majority = "yea" if party_yeas > party_nays else "nay"
+                my_side = "yea" if my_vote in yea_like else "nay"
+                checked += 1
+                if my_side == party_majority:
+                    aligned += 1
+
+        alignment_pct = round(aligned / checked * 100, 1) if checked else None
+
+        recent_votes = conn.execute(
+            """SELECT vote_date, bill, question, member_vote, result
+               FROM congress_votes WHERE bioguide_id = ?
+               ORDER BY vote_date DESC LIMIT 30""", (bioguide_id,)
+        ).fetchall()
+
+        bills = conn.execute(
+            """SELECT bill_type, bill_number, title, introduced_date,
+                      policy_area, latest_action, latest_action_date, role
+               FROM congress_bills WHERE sponsor_id = ?
+               ORDER BY introduced_date DESC LIMIT 20""", (bioguide_id,)
+        ).fetchall()
+
+        # FEC donor data (latest cycle)
+        fec_rows = conn.execute(
+            """SELECT industry, total_amount, top_donors
+               FROM fec_industry_totals
+               WHERE bioguide_id = ? AND cycle = (
+                   SELECT MAX(cycle) FROM fec_industry_totals WHERE bioguide_id = ?
+               )
+               ORDER BY total_amount DESC""", (bioguide_id, bioguide_id)
+        ).fetchall()
+        conn.close()
+
+        photo_letter = bioguide_id[0].upper()
+        photo_url = f"https://bioguide.congress.gov/bioguide/photo/{photo_letter}/{bioguide_id}.jpg"
+
+        return {
+            "member": {
+                "bioguide_id": member["bioguide_id"],
+                "name": member["name"],
+                "party": member["party"],
+                "chamber": member["chamber"],
+                "district": member["district"],
+                "website": member["website"],
+                "photo_url": photo_url,
+            },
+            "committees": [
+                {"name": r["committee_name"], "is_sub": bool(r["is_subcommittee"]),
+                 "parent": r["parent_name"], "role": r["role"] or ""}
+                for r in committees
+            ],
+            "vote_stats": {
+                "total": total_votes, "yea": yea, "nay": nay,
+                "yea_pct": round(yea / total_votes * 100, 1) if total_votes else 0,
+                "party_alignment_pct": alignment_pct,
+                "alignment_votes_checked": checked,
+            },
+            "recent_votes": [
+                {"date": r[0], "bill": r[1], "question": r[2], "vote": r[3], "result": r[4]}
+                for r in recent_votes
+            ],
+            "bills": [
+                {"type": r[0], "number": r[1], "title": r[2], "introduced": r[3],
+                 "policy_area": r[4], "latest_action": r[5], "latest_action_date": r[6], "role": r[7]}
+                for r in bills
+            ],
+            "fec": [
+                {"industry": r[0], "total": r[1],
+                 "top_donors": json.loads(r[2] or "[]")}
+                for r in fec_rows
+            ],
+        }
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+@app.get("/federal-profiles", response_class=HTMLResponse)
+def federal_profiles_page(request: Request):
+    return templates.TemplateResponse("federal_profiles.html", {"request": request})
 
 
 @app.get("/api/va-officials")
