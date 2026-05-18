@@ -433,7 +433,6 @@ _INTERNAL_PATTERNS = [
     "state party",
     "waging peace",
     "impact pac",
-    " victory\n",
     # Party mobilization / leadership PACs
     "protect the house",
     "take back the house",
@@ -480,6 +479,12 @@ _INTERNAL_PATTERNS = [
     "majority forward",
     "blue america",
     "unitemized",
+    "bennet warner",
+    "gop winning women",
+    "freedom fall blue wave",
+    "freedom fall",
+    "blue wave fund",
+    "winning women",
     # Leadership PACs
     "ameripac",
     "commonwealth pac",

@@ -6287,7 +6287,7 @@ def spanberger_approval():
 @app.get("/api/congress/members")
 def congress_members():
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(_POLLS_DB)
         rows = conn.execute("""
             SELECT bioguide_id, name, party, chamber, district, website
             FROM congress_members
@@ -6303,10 +6303,35 @@ def congress_members():
         return {"members": [], "error": str(exc)}
 
 
+@app.get("/api/congress/member/{bioguide_id}")
+def congress_member_detail(bioguide_id: str):
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        row = conn.execute(
+            "SELECT bioguide_id, name, party, chamber, state, district, website "
+            "FROM congress_members WHERE bioguide_id = ?",
+            (bioguide_id,)
+        ).fetchone()
+        conn.close()
+        if not row:
+            return {"member": None, "error": "not found"}
+        return {"member": {
+            "bioguide_id": row[0],
+            "name": row[1],
+            "party": row[2],
+            "chamber": row[3],
+            "state": row[4],
+            "district": row[5],
+            "website": row[6],
+        }}
+    except Exception as exc:
+        return {"member": None, "error": str(exc)}
+
+
 @app.get("/api/congress/bills/{bioguide_id}")
 def congress_member_bills(bioguide_id: str, role: str = "sponsored", limit: int = 20):
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(_POLLS_DB)
         rows = conn.execute("""
             SELECT b.bill_type, b.bill_number, b.title, b.introduced_date,
                    b.policy_area, b.latest_action, b.latest_action_date, b.role
@@ -6330,7 +6355,7 @@ def congress_member_bills(bioguide_id: str, role: str = "sponsored", limit: int 
 def congress_member_votes(bioguide_id: str, limit: int = 50):
     """Return recent roll-call votes for a VA member."""
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(_POLLS_DB)
         rows = conn.execute("""
             SELECT vote_number, chamber, vote_date, bill, question, member_vote, result
             FROM congress_votes
@@ -6352,7 +6377,7 @@ def congress_member_votes(bioguide_id: str, limit: int = 50):
 def congress_member_vote_summary(bioguide_id: str):
     """Return Yea/Nay/Not Voting counts and party-line stats for a member."""
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(_POLLS_DB)
         rows = conn.execute("""
             SELECT member_vote, COUNT(*) as cnt
             FROM congress_votes
@@ -6376,7 +6401,7 @@ def congress_member_vote_summary(bioguide_id: str):
 @app.get("/api/congress/bills")
 def congress_bills_search(policy_area: str = "", limit: int = 50):
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(_POLLS_DB)
         rows = conn.execute("""
             SELECT b.bill_type, b.bill_number, b.title, b.introduced_date,
                    b.policy_area, b.latest_action, b.latest_action_date,
@@ -6402,7 +6427,7 @@ def congress_bills_search(policy_area: str = "", limit: int = 50):
 @app.get("/api/va-officials")
 def va_officials(office: str = "", limit: int = 200):
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(_POLLS_DB)
         query = """
             SELECT person_name, office, district, party, role,
                    incumbent, finance_url, source_url, data_confidence
@@ -6701,6 +6726,28 @@ async def bills_chat(request: Request, req: BillsChatRequest):
                 seen_docs.add(os_leg)
                 context_blocks.insert(0, os_leg)
 
+        # FEC campaign finance context — inject when question is money/donor related
+        _money_kws = ["fund", "donor", "pac", "money", "contribut", "financ", "pay",
+                      "sponsor", "lobbying", "rais", "campaign", "donation", "grassroot",
+                      "industry", "who back", "who fund", "who support", "who pay",
+                      "corporate", "actblue", "winred", "special interest"]
+        _is_money_q = any(kw in user_query.lower() for kw in _money_kws)
+        if _is_money_q and _PAC_CACHE:
+            _fec_bgids: list[str] = []
+            # Match by extracted leg_name or district context
+            _search_names: list[str] = [leg_name] if leg_name else []
+            if req.district and DISTRICT_CONTEXT.get(req.district, {}).get("rep"):
+                _search_names.append(DISTRICT_CONTEXT[req.district]["rep"])
+            for bgid, m in _MEMBER_CACHE.items():
+                mname = m.get("name", "").lower()
+                if any(n and (n.lower() in mname or mname in n.lower()) for n in _search_names):
+                    _fec_bgids.append(bgid)
+            if _fec_bgids:
+                fec_block = _fetch_finance_context(_fec_bgids, user_query)
+                if fec_block and fec_block not in seen_docs:
+                    seen_docs.add(fec_block)
+                    context_blocks.insert(0, fec_block)
+
         # Representative profile chunks — powers "what has my rep done?" prompts
         rep_profiles = _request_rep_profiles(req, user_query)
         if rep_profiles:
@@ -6843,10 +6890,12 @@ async def bills_chat(request: Request, req: BillsChatRequest):
     system_prompt = f"""You are VoteIQ, a nonpartisan Virginia civic assistant. Today is May 2026. \
 You have access to the retrieved excerpts below, which may include Virginia General Assembly bills, \
 election results, legislator voting records, representative profile summaries from the local 2026 session database, \
-AND roll-call votes and sponsored bills for Virginia's 13 federal representatives (119th Congress) from congress.gov. \
+roll-call votes and sponsored bills for Virginia's 13 federal representatives (119th Congress) from congress.gov, \
+AND FEC campaign finance data showing PAC/industry contributions by sector for Virginia federal members. \
 Answer the user's question using ONLY the excerpts below — do not rely on your training data. \
 Be factual and cite bill numbers when relevant. \
-For federal members (U.S. House/Senate), cite bill type and number (e.g. H.R. 23) and note the source as congress.gov.{district_note}{chroma_note}{model_note}
+For federal members (U.S. House/Senate), cite bill type and number (e.g. H.R. 23) and note the source as congress.gov. \
+For campaign finance questions, use the CAMPAIGN FINANCE & INDUSTRY CORRELATION excerpt if present and cite "(FEC data, fec.gov)".{district_note}{chroma_note}{model_note}
 
 VOTE INTERPRETATION — apply these rules when reading vote records:
 - If a legislator votes YES on passage but NO on concurrence/conference substitute, they likely objected to the amended version, not the bill itself. Say: "voted against the House-amended version; accepted final compromise."
@@ -7009,6 +7058,27 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
                 result = fn(leg_name)
                 if result and result not in seen_docs:
                     seen_docs.add(result); context_blocks.insert(0, result)
+
+        # FEC campaign finance context — inject when question is money/donor related
+        _money_kws = ["fund", "donor", "pac", "money", "contribut", "financ", "pay",
+                      "sponsor", "lobbying", "rais", "campaign", "donation", "grassroot",
+                      "industry", "who back", "who fund", "who support", "who pay",
+                      "corporate", "actblue", "winred", "special interest"]
+        _is_money_q = any(kw in user_query.lower() for kw in _money_kws)
+        if _is_money_q and _PAC_CACHE:
+            _fec_bgids: list[str] = []
+            _search_names: list[str] = [leg_name] if leg_name else []
+            if req.district and DISTRICT_CONTEXT.get(req.district, {}).get("rep"):
+                _search_names.append(DISTRICT_CONTEXT[req.district]["rep"])
+            for bgid, m in _MEMBER_CACHE.items():
+                mname = m.get("name", "").lower()
+                if any(n and (n.lower() in mname or mname in n.lower()) for n in _search_names):
+                    _fec_bgids.append(bgid)
+            if _fec_bgids:
+                fec_block = _fetch_finance_context(_fec_bgids, user_query)
+                if fec_block and fec_block not in seen_docs:
+                    seen_docs.add(fec_block); context_blocks.insert(0, fec_block)
+
         rep_profiles = _request_rep_profiles(req, user_query)
         if rep_profiles:
             for block in rep_profiles.split("\n\n[Representative Profile"):
@@ -7088,10 +7158,12 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
     system_prompt = f"""You are VoteIQ, a nonpartisan Virginia civic assistant. Today is May 2026. \
 You have access to the retrieved excerpts below, which may include Virginia General Assembly bills, \
 election results, legislator voting records, representative profile summaries from the local 2026 session database, \
-AND roll-call votes and sponsored bills for Virginia's 13 federal representatives (119th Congress) from congress.gov. \
+roll-call votes and sponsored bills for Virginia's 13 federal representatives (119th Congress) from congress.gov, \
+AND FEC campaign finance data showing PAC/industry contributions by sector for Virginia federal members. \
 Answer the user's question using ONLY the excerpts below — do not rely on your training data. \
 Be factual and cite bill numbers when relevant. \
-For federal members (U.S. House/Senate), cite bill type and number (e.g. H.R. 23) and note the source as congress.gov.{district_note}{chroma_note}{model_note}
+For federal members (U.S. House/Senate), cite bill type and number (e.g. H.R. 23) and note the source as congress.gov. \
+For campaign finance questions, use the CAMPAIGN FINANCE & INDUSTRY CORRELATION excerpt if present and cite "(FEC data, fec.gov)".{district_note}{chroma_note}{model_note}
 
 VOTE INTERPRETATION — apply these rules when reading vote records:
 - If a legislator votes YES on passage but NO on concurrence/conference substitute, they likely objected to the amended version, not the bill itself. Say: "voted against the House-amended version; accepted final compromise."
