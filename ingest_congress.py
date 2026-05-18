@@ -263,6 +263,56 @@ def _extract_bill_text_versions(data: dict) -> list[dict]:
     return versions
 
 
+_GOVINFO_TYPE_MAP = {
+    "h.r.": "hr", "hr": "hr",
+    "s.": "s", "s": "s",
+    "h.res.": "hres", "hres": "hres",
+    "s.res.": "sres", "sres": "sres",
+    "h.con.res.": "hconres", "hconres": "hconres",
+    "s.con.res.": "sconres", "sconres": "sconres",
+    "h.j.res.": "hjres", "hjres": "hjres",
+    "s.j.res.": "sjres", "sjres": "sjres",
+}
+
+
+def _govinfo_urls(congress: int, bill_type: str, bill_number: str) -> list[str]:
+    """Return govinfo.gov XML URLs to try, from most-enacted to introduced."""
+    bt = _GOVINFO_TYPE_MAP.get(bill_type.lower().replace(" ", ""), bill_type.lower().replace(".", ""))
+    num = bill_number.strip()
+    versions = ["enr", "eh", "rh", "ih"] if bt.startswith("h") else ["enr", "es", "rs", "is"]
+    urls = []
+    for v in versions:
+        pkg = f"BILLS-{congress}{bt}{num}{v}"
+        urls.append(f"https://www.govinfo.gov/content/pkg/{pkg}/xml/{pkg}.xml")
+    return urls
+
+
+def _fetch_govinfo_text(congress: int, bill_type: str, bill_number: str) -> dict | None:
+    """Try govinfo.gov XML for a bill — fallback when Congress.gov text API returns nothing."""
+    for url in _govinfo_urls(congress, bill_type, bill_number):
+        result = _url_get(url)
+        if not result:
+            continue
+        body, content_type = result
+        if not body.strip():
+            continue
+        # Strip XML tags to get plain text
+        try:
+            text = re.sub(r"<[^>]+>", " ", body)
+            text = re.sub(r"\s+", " ", text).strip()
+            if len(text) > 200:
+                return {
+                    "version_name": "govinfo",
+                    "version_type": "xml",
+                    "version_date": "",
+                    "source_url": url,
+                    "text": text[:50000],
+                }
+        except Exception:
+            continue
+    return None
+
+
 def _normalize_bill_filter(value: str | None) -> tuple[str, str] | None:
     if not value:
         return None
@@ -370,7 +420,9 @@ def fetch_bill_texts(conn: sqlite3.Connection, api_key: str, dry_run: bool,
 
         selected = fetch_bill_text(congress, bill_type, bill_number, api_key)
         if not selected or not selected.get("text"):
-            print(f"    Warning: no usable text for {bill_type.upper()}{bill_number} ({congress})")
+            # Fallback: try govinfo.gov XML directly
+            selected = _fetch_govinfo_text(congress, bill_type, bill_number)
+        if not selected or not selected.get("text"):
             continue
         upsert_bill_text(conn, congress, bill_type, bill_number, selected, dry_run)
         fetched += 1

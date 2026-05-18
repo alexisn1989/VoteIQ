@@ -370,6 +370,36 @@ def admin_ingest_congress(
     return {"ok": all(v.get("ok") for v in results.values()), "scripts": results}
 
 
+@app.get("/api/admin/refresh-bill-text")
+def admin_refresh_bill_text(refresh: bool = False):
+    """Fetch full bill text from Congress.gov + govinfo.gov fallback for all stored bills.
+    Run weekly via cron to pick up newly published text. Safe to call repeatedly —
+    skips bills that already have text unless refresh=true.
+    """
+    api_key = os.getenv("CONGRESS_API_KEY", "")
+    if not api_key:
+        return {"ok": False, "error": "CONGRESS_API_KEY not set"}
+    script = os.path.join(BASE_DIR, "ingest_congress.py")
+    if not os.path.exists(script):
+        return {"ok": False, "error": "ingest_congress.py not found"}
+    args = [sys.executable, script, "--fetch-text", "--bill-limit", "0"]
+    if refresh:
+        args.append("--refresh-text")
+    try:
+        r = subprocess.run(args, capture_output=True, text=True, timeout=900)
+        lines = r.stdout.strip().splitlines()
+        summary = next((l for l in reversed(lines) if "bill text" in l.lower()), lines[-1] if lines else "")
+        return {
+            "ok": r.returncode == 0,
+            "summary": summary,
+            "stderr": r.stderr[-300:] if r.returncode != 0 else "",
+        }
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "timed out after 900s"}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+
+
 @app.get("/api/admin/ingest-polls")
 def admin_ingest_polls(sources: str = "fivethirtyeight,votehub,news", use_gemini: bool = False, token: str = ""):
     """Manually trigger poll ingestion. Pass use_gemini=true to enrich articles with Gemini."""
@@ -6738,7 +6768,8 @@ def congress_member_profile(bioguide_id: str):
 
 @app.get("/federal-profiles", response_class=HTMLResponse)
 def federal_profiles_page(request: Request):
-    return templates.TemplateResponse("federal_profiles.html", {"request": request})
+    with open(os.path.join(BASE_DIR, "templates", "federal_profiles.html"), "r", encoding="utf-8") as f:
+        return HTMLResponse(f.read())
 
 
 @app.get("/api/va-officials")
