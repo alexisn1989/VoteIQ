@@ -6995,6 +6995,11 @@ async def bills_chat(request: Request, req: BillsChatRequest):
             if fed_ctx and fed_ctx not in seen_docs:
                 seen_docs.add(fed_ctx)
                 context_blocks.insert(0, fed_ctx)
+            if _is_money_q:
+                fec_block = _fetch_finance_context([fed_member["bioguide_id"]], user_query)
+                if fec_block and fec_block not in seen_docs:
+                    seen_docs.add(fec_block)
+                    context_blocks.insert(0, fec_block)
 
         # Representative profile chunks — powers "what has my rep done?" prompts
         rep_profiles = _request_rep_profiles(req, user_query)
@@ -7342,6 +7347,10 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
             fed_ctx = _fetch_federal_context(fed_member)
             if fed_ctx and fed_ctx not in seen_docs:
                 seen_docs.add(fed_ctx); context_blocks.insert(0, fed_ctx)
+            if _is_money_q:
+                fec_block = _fetch_finance_context([fed_member["bioguide_id"]], user_query)
+                if fec_block and fec_block not in seen_docs:
+                    seen_docs.add(fec_block); context_blocks.insert(0, fec_block)
         if mentioned:
             exact_docs = _fetch_bills_by_id(mentioned, session_year)
             if session_year:
