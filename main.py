@@ -5473,9 +5473,18 @@ def _fetch_federal_context(member: dict) -> str:
     try:
         conn = sqlite3.connect(_POLLS_DB)
         votes = conn.execute(
-            """SELECT vote_date, bill, question, member_vote, result
-               FROM congress_votes WHERE bioguide_id = ?
-               ORDER BY vote_date DESC LIMIT 40""",
+            """SELECT cv.vote_date, cv.bill, cv.question, cv.member_vote, cv.result,
+                      COALESCE(cb.title, bd.title, '') AS bill_title,
+                      COALESCE(cb.policy_area, bd.policy_area, '') AS policy_area
+               FROM congress_votes cv
+               LEFT JOIN congress_bills cb
+                   ON cv.congress = cb.congress
+                   AND cv.bill = (cb.bill_type || ' ' || cb.bill_number)
+               LEFT JOIN congress_bill_details bd
+                   ON cv.congress = bd.congress
+                   AND cv.bill = (bd.bill_type || ' ' || bd.bill_number)
+               WHERE cv.bioguide_id = ?
+               ORDER BY cv.vote_date DESC LIMIT 40""",
             (bio,),
         ).fetchall()
         bills = conn.execute(
@@ -5524,8 +5533,13 @@ def _fetch_federal_context(member: dict) -> str:
 
     if votes:
         lines.append(f"\nRoll-Call Votes (119th Congress, most recent first — {len(votes)} shown):")
-        for vote_date, bill, question, member_vote, result in votes:
-            lines.append(f"  {vote_date} | {bill} | {question} | Voted: {member_vote} | Result: {result}")
+        for row in votes:
+            vote_date, bill, question, member_vote, result = row[0], row[1], row[2], row[3], row[4]
+            bill_title = row[5] if len(row) > 5 else ""
+            policy_area = row[6] if len(row) > 6 else ""
+            title_tag = f" — {bill_title}" if bill_title else ""
+            area_tag = f" [{policy_area}]" if policy_area else ""
+            lines.append(f"  {vote_date} | {bill}{title_tag}{area_tag} | {question} | Voted: {member_vote} | Result: {result}")
     else:
         lines.append("\nNo roll-call votes in dataset.")
 

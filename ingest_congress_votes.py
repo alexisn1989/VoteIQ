@@ -69,6 +69,18 @@ def setup_db(conn: sqlite3.Connection) -> None:
         );
         CREATE INDEX IF NOT EXISTS idx_cv_bioguide ON congress_votes(bioguide_id);
         CREATE INDEX IF NOT EXISTS idx_cv_date     ON congress_votes(vote_date);
+        CREATE TABLE IF NOT EXISTS congress_bill_details (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            congress     INTEGER NOT NULL,
+            bill_type    TEXT NOT NULL,
+            bill_number  TEXT NOT NULL,
+            title        TEXT,
+            policy_area  TEXT,
+            fetched_at   TEXT NOT NULL,
+            UNIQUE(congress, bill_type, bill_number)
+        );
+        CREATE INDEX IF NOT EXISTS idx_cbd_bill
+            ON congress_bill_details(congress, bill_type, bill_number);
     """)
     conn.commit()
 
@@ -263,10 +275,78 @@ def ingest_senate(conn: sqlite3.Connection, limit: int = 200, dry_run: bool = Fa
     return inserted
 
 
+def enrich_bill_titles(conn: sqlite3.Connection, dry_run: bool = False) -> int:
+    """Fetch titles for bills in congress_votes that are missing from congress_bill_details.
+    Uses the Congress.gov API — skipped if CONGRESS_API_KEY is not set."""
+    import os
+    api_key = os.getenv("CONGRESS_API_KEY", "")
+    if not api_key:
+        return 0
+
+    # Find unique bills in congress_votes that don't have a title yet
+    rows = conn.execute("""
+        SELECT DISTINCT cv.congress, cv.bill
+        FROM congress_votes cv
+        WHERE cv.bill != ''
+          AND NOT EXISTS (
+              SELECT 1 FROM congress_bill_details bd
+              WHERE bd.congress = cv.congress
+                AND cv.bill = (bd.bill_type || ' ' || bd.bill_number)
+          )
+        LIMIT 200
+    """).fetchall()
+
+    if not rows:
+        return 0
+
+    print(f"  Enriching titles for {len(rows)} bills…")
+    enriched = 0
+    now = datetime.now(timezone.utc).isoformat()
+    for congress, bill_str in rows:
+        # Parse "H.R. 881" → type="hr", number="881"
+        parts = bill_str.strip().split()
+        if len(parts) < 2:
+            continue
+        raw_type = parts[0].lower().replace(".", "").replace(" ", "")
+        bill_num = parts[-1]
+        url = (
+            f"https://api.congress.gov/v3/bill/{congress}/{raw_type}/{bill_num}"
+            f"?format=json&api_key={api_key}"
+        )
+        data = _get(url)
+        if not data:
+            time.sleep(0.3)
+            continue
+        try:
+            import json
+            obj = json.loads(data)
+            b = obj.get("bill", {})
+            title = b.get("title", "") or b.get("shortTitle", "")
+            policy_area = (b.get("policyArea") or {}).get("name", "")
+        except Exception:
+            title, policy_area = "", ""
+        if not dry_run and title:
+            conn.execute(
+                """INSERT INTO congress_bill_details
+                       (congress, bill_type, bill_number, title, policy_area, fetched_at)
+                   VALUES (?,?,?,?,?,?)
+                   ON CONFLICT(congress, bill_type, bill_number) DO UPDATE SET
+                       title=excluded.title, policy_area=excluded.policy_area,
+                       fetched_at=excluded.fetched_at""",
+                (congress, parts[0], bill_num, title, policy_area, now),
+            )
+            conn.commit()
+            enriched += 1
+        time.sleep(0.4)
+    return enriched
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Ingest VA federal delegation roll-call votes")
     parser.add_argument("--house-limit",  type=int, default=150)
     parser.add_argument("--senate-limit", type=int, default=200)
+    parser.add_argument("--enrich-titles", action="store_true",
+                        help="Fetch bill titles from Congress.gov API (requires CONGRESS_API_KEY)")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
 
@@ -275,6 +355,9 @@ def main(argv: list[str] | None = None) -> int:
 
     h = ingest_house(conn,  limit=args.house_limit,  dry_run=args.dry_run)
     s = ingest_senate(conn, limit=args.senate_limit, dry_run=args.dry_run)
+    if args.enrich_titles:
+        e = enrich_bill_titles(conn, dry_run=args.dry_run)
+        print(f"  Enriched {e} bill titles.")
     conn.close()
 
     verb = "would insert" if args.dry_run else "inserted/updated"
