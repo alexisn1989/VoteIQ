@@ -140,6 +140,46 @@ def _run_fec_ingest_background() -> None:
         print(f"[fec] Ingestion error: {exc}")
 
 
+def _committees_are_fresh() -> bool:
+    """Return True if committee assignments were fetched within the last 7 days."""
+    from datetime import datetime, timezone, timedelta
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        row = conn.execute("SELECT MAX(fetched_at) FROM congress_committees").fetchone()
+        conn.close()
+        if row and row[0]:
+            last = datetime.fromisoformat(str(row[0]).replace("Z", "+00:00"))
+            return datetime.now(timezone.utc) - last < timedelta(days=7)
+    except Exception:
+        pass
+    return False
+
+
+def _run_committee_ingest_background() -> None:
+    """Run ingest_committees.py if committee data is missing or stale (7-day TTL)."""
+    if _committees_are_fresh():
+        print("[committees] Data fresh — skipping.")
+        return
+    print("[committees] Committee data stale — fetching from unitedstates/congress-legislators…")
+    script = os.path.join(BASE_DIR, "ingest_committees.py")
+    if not os.path.exists(script):
+        print("[committees] ingest_committees.py not found — skipping.")
+        return
+    try:
+        result = subprocess.run(
+            [sys.executable, "-X", "utf8", script],
+            capture_output=True, text=True, timeout=120,
+        )
+        if result.returncode == 0:
+            print("[committees] Ingestion complete.")
+        else:
+            print(f"[committees] Failed (rc={result.returncode}): {result.stderr[-300:]}")
+    except subprocess.TimeoutExpired:
+        print("[committees] Timed out.")
+    except Exception as exc:
+        print(f"[committees] Error: {exc}")
+
+
 def _congress_votes_are_fresh() -> bool:
     """Return True if congress_votes table has rows ingested in the last 30 days."""
     from datetime import datetime, timezone, timedelta
@@ -204,6 +244,7 @@ async def startup_poll_ingest() -> None:
     threading.Thread(target=_poll_ingest_background, daemon=True).start()
     threading.Thread(target=_run_fec_ingest_background, daemon=True).start()
     threading.Thread(target=_congress_ingest_background, daemon=True).start()
+    threading.Thread(target=_run_committee_ingest_background, daemon=True).start()
 
 
 @app.get("/api/va-news")
@@ -367,6 +408,30 @@ def admin_ingest_fec_pacs(cycle: int | None = None):
     threading.Thread(target=_run, daemon=True).start()
     label = f"cycle {cycle}" if cycle else "all cycles (2020/2022/2024)"
     return {"ok": True, "message": f"FEC ingestion started in background for {label}. Cache will reload when complete."}
+
+
+@app.get("/api/admin/ingest-committees")
+def admin_ingest_committees():
+    """Refresh congressional committee assignments from unitedstates/congress-legislators (non-blocking)."""
+    script = os.path.join(BASE_DIR, "ingest_committees.py")
+    if not os.path.exists(script):
+        return {"ok": False, "error": "ingest_committees.py not found"}
+
+    def _run():
+        try:
+            result = subprocess.run(
+                [sys.executable, "-X", "utf8", script],
+                capture_output=True, text=True, timeout=120,
+            )
+            if result.returncode == 0:
+                print("[committees] Admin refresh complete.")
+            else:
+                print(f"[committees] Admin refresh failed: {result.stderr[-300:]}")
+        except Exception as exc:
+            print(f"[committees] Admin refresh error: {exc}")
+
+    threading.Thread(target=_run, daemon=True).start()
+    return {"ok": True, "message": "Committee ingestion started — data refreshes within ~10 seconds."}
 
 
 @app.get("/api/congress/pac-summary/{bioguide_id}")
@@ -5399,7 +5464,7 @@ def _fetch_federal_context(member: dict) -> str:
         if district == "S"
         else f"U.S. Representative, Virginia's {district}th Congressional District"
     )
-    votes, bills = [], []
+    votes, bills, committees = [], [], []
     db_available = False
     try:
         conn = sqlite3.connect(_POLLS_DB)
@@ -5414,6 +5479,12 @@ def _fetch_federal_context(member: dict) -> str:
                       latest_action, latest_action_date, role
                FROM congress_bills WHERE sponsor_id = ?
                ORDER BY latest_action_date DESC LIMIT 25""",
+            (bio,),
+        ).fetchall()
+        committees = conn.execute(
+            """SELECT committee_name, is_subcommittee, parent_name, role
+               FROM congress_committees WHERE bioguide_id = ?
+               ORDER BY is_subcommittee, committee_name""",
             (bio,),
         ).fetchall()
         conn.close()
@@ -5435,6 +5506,17 @@ def _fetch_federal_context(member: dict) -> str:
             "to congress.gov for their full voting record."
         )
         return "\n".join(lines)
+
+    if committees:
+        lines.append(f"\nCommittee Assignments ({len(committees)} total):")
+        for cname, is_sub, parent, role in committees:
+            role_tag = f" [{role}]" if role else ""
+            if is_sub:
+                lines.append(f"  └─ {cname}{role_tag} (Subcommittee of {parent})")
+            else:
+                lines.append(f"  • {cname}{role_tag}")
+    else:
+        lines.append("\nNo committee data available.")
 
     if votes:
         lines.append(f"\nRoll-Call Votes (119th Congress, most recent first — {len(votes)} shown):")
@@ -5940,6 +6022,11 @@ async def upload_db(file: UploadFile = File(...), token: str = Form(...)):
     with open(dest, "wb") as f:
         f.write(data)
     size_mb = len(data) / (1024 * 1024)
+    if file.filename == "polls.db":
+        _load_pac_cache()
+        _load_votes_cache()
+        global _federal_members_cache
+        _federal_members_cache = None
     return {"ok": True, "saved_to": dest, "size_mb": round(size_mb, 1)}
 
 
@@ -6748,6 +6835,16 @@ async def bills_chat(request: Request, req: BillsChatRequest):
                     seen_docs.add(fec_block)
                     context_blocks.insert(0, fec_block)
 
+        # Federal member votes + bills — inject for any question about a VA federal rep
+        fed_member = _federal_member_by_name(user_query)
+        if not fed_member and leg_name:
+            fed_member = _federal_member_by_name(leg_name)
+        if fed_member:
+            fed_ctx = _fetch_federal_context(fed_member)
+            if fed_ctx and fed_ctx not in seen_docs:
+                seen_docs.add(fed_ctx)
+                context_blocks.insert(0, fed_ctx)
+
         # Representative profile chunks — powers "what has my rep done?" prompts
         rep_profiles = _request_rep_profiles(req, user_query)
         if rep_profiles:
@@ -7088,6 +7185,8 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
                 if pb and pb not in seen_docs:
                     seen_docs.add(pb); context_blocks.insert(0, pb)
         fed_member = _federal_member_by_name(user_query)
+        if not fed_member and leg_name:
+            fed_member = _federal_member_by_name(leg_name)
         if fed_member:
             fed_ctx = _fetch_federal_context(fed_member)
             if fed_ctx and fed_ctx not in seen_docs:
