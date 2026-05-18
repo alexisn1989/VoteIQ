@@ -5601,8 +5601,8 @@ def _fetch_federal_context(member: dict) -> str:
         db_available = False
 
     lines = [
-        f"[Federal Member — {name} ({party})]",
-        f"Office: {seat} | Chamber: {chamber} | 119th Congress",
+        f"[Representative Profile — {name} ({party}) | Federal | 119th Congress]",
+        f"Office: {seat} | Chamber: {chamber}",
         f"Source: congress.gov / clerk.house.gov",
     ]
     if not db_available:
@@ -5615,6 +5615,20 @@ def _fetch_federal_context(member: dict) -> str:
         )
         return "\n".join(lines)
 
+    # Vote summary stats — mirror state rep format
+    if votes:
+        yes_ct  = sum(1 for r in votes if str(r[3]).upper() in ("YEA", "YES", "AYE"))
+        no_ct   = sum(1 for r in votes if str(r[3]).upper() in ("NAY", "NO", "NAYE"))
+        pres_ct = sum(1 for r in votes if str(r[3]).upper() in ("PRESENT",))
+        nv_ct   = sum(1 for r in votes if str(r[3]).upper() in ("NOT VOTING",))
+        total_v = len(votes)
+        yes_rate = round(yes_ct / total_v * 100, 1) if total_v else 0
+        lines.append(
+            f"\nOverall voting record (119th Congress, {total_v} roll calls shown): "
+            f"{yes_ct} Yes, {no_ct} No, {nv_ct} Not voting, {pres_ct} Present"
+        )
+        lines.append(f"Yes rate: {yes_rate}%")
+
     if committees:
         lines.append(f"\nCommittee Assignments ({len(committees)} total):")
         for cname, is_sub, parent, role in committees:
@@ -5626,8 +5640,17 @@ def _fetch_federal_context(member: dict) -> str:
     else:
         lines.append("\nNo committee data available.")
 
+    if bills:
+        lines.append(f"\nSponsored / Co-Sponsored Bills ({len(bills)} shown):")
+        for bill_type, bill_number, title, policy_area, latest_action, latest_action_date, role in bills:
+            bid = f"{bill_type.upper()} {bill_number}"
+            area = f" [{policy_area}]" if policy_area else ""
+            lines.append(f"  {bid}: {title}{area} | {role} | Last action: {latest_action_date} — {latest_action}")
+    else:
+        lines.append("\nNo sponsored bills in dataset.")
+
     if votes:
-        lines.append(f"\nRoll-Call Votes (119th Congress, most recent first — {len(votes)} shown):")
+        lines.append(f"\nRoll-Call Votes (most recent first — {len(votes)} shown):")
         for row in votes:
             vote_date, bill, question, member_vote, result = row[0], row[1], row[2], row[3], row[4]
             bill_title = row[5] if len(row) > 5 else ""
@@ -5637,15 +5660,6 @@ def _fetch_federal_context(member: dict) -> str:
             lines.append(f"  {vote_date} | {bill}{title_tag}{area_tag} | {question} | Voted: {member_vote} | Result: {result}")
     else:
         lines.append("\nNo roll-call votes in dataset.")
-
-    if bills:
-        lines.append(f"\nSponsored / Co-Sponsored Bills ({len(bills)} shown):")
-        for bill_type, bill_number, title, policy_area, latest_action, latest_action_date, role in bills:
-            bid = f"{bill_type.upper()} {bill_number}"
-            area = f" [{policy_area}]" if policy_area else ""
-            lines.append(f"  {bid}: {title}{area} | {role} | Last action: {latest_action_date} — {latest_action}")
-    else:
-        lines.append("\nNo sponsored bills in dataset.")
 
     return "\n".join(lines)
 
@@ -7100,6 +7114,11 @@ async def bills_chat(request: Request, req: BillsChatRequest):
         fed_member = _federal_member_by_name(user_query)
         if not fed_member and leg_name:
             fed_member = _federal_member_by_name(leg_name)
+        # Auto-load district's federal rep when user asks a profile/record question
+        if not fed_member and req.district and _profile_question(user_query):
+            dist_rep_name = DISTRICT_CONTEXT.get(req.district, {}).get("rep")
+            if dist_rep_name:
+                fed_member = _federal_member_by_name(dist_rep_name)
         if fed_member:
             fed_ctx = _fetch_federal_context(fed_member)
             if fed_ctx and fed_ctx not in seen_docs:
@@ -7267,6 +7286,15 @@ Answer the user's question using ONLY the excerpts below — do not rely on your
 Be factual and cite bill numbers when relevant. \
 For federal members (U.S. House/Senate), cite bill type and number (e.g. H.R. 23) and note the source as congress.gov. \
 For campaign finance questions, use the CAMPAIGN FINANCE & INDUSTRY CORRELATION excerpt if present and cite "(FEC data, fec.gov)".{district_note}{chroma_note}{model_note}
+
+FEDERAL REP RESPONSE FORMAT — when a [Representative Profile — Name | Federal] excerpt is present, \
+respond in the same style as state rep answers: \
+(1) Start with a one-sentence intro identifying who the rep is and their seat. \
+(2) Give overall vote stats (Yes/No counts and yes rate) from the "Overall voting record" line. \
+(3) Highlight 3-5 key sponsored bills with their title and status. \
+(4) List their committee assignments. \
+(5) Close with a note pointing to congress.gov for full detail. \
+Use the same plain, civic-report tone as state legislator responses.
 
 VOTE INTERPRETATION — apply these rules when reading vote records:
 - If a legislator votes YES on passage but NO on concurrence/conference substitute, they likely objected to the amended version, not the bill itself. Say: "voted against the House-amended version; accepted final compromise."
@@ -7461,6 +7489,11 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
         fed_member = _federal_member_by_name(user_query)
         if not fed_member and leg_name:
             fed_member = _federal_member_by_name(leg_name)
+        # Auto-load district's federal rep when user asks a profile/record question
+        if not fed_member and req.district and _profile_question(user_query):
+            dist_rep_name = DISTRICT_CONTEXT.get(req.district, {}).get("rep")
+            if dist_rep_name:
+                fed_member = _federal_member_by_name(dist_rep_name)
         if fed_member:
             fed_ctx = _fetch_federal_context(fed_member)
             if fed_ctx and fed_ctx not in seen_docs:
@@ -7549,6 +7582,15 @@ Answer the user's question using ONLY the excerpts below — do not rely on your
 Be factual and cite bill numbers when relevant. \
 For federal members (U.S. House/Senate), cite bill type and number (e.g. H.R. 23) and note the source as congress.gov. \
 For campaign finance questions, use the CAMPAIGN FINANCE & INDUSTRY CORRELATION excerpt if present and cite "(FEC data, fec.gov)".{district_note}{chroma_note}{model_note}
+
+FEDERAL REP RESPONSE FORMAT — when a [Representative Profile — Name | Federal] excerpt is present, \
+respond in the same style as state rep answers: \
+(1) Start with a one-sentence intro identifying who the rep is and their seat. \
+(2) Give overall vote stats (Yes/No counts and yes rate) from the "Overall voting record" line. \
+(3) Highlight 3-5 key sponsored bills with their title and status. \
+(4) List their committee assignments. \
+(5) Close with a note pointing to congress.gov for full detail. \
+Use the same plain, civic-report tone as state legislator responses.
 
 VOTE INTERPRETATION — apply these rules when reading vote records:
 - If a legislator votes YES on passage but NO on concurrence/conference substitute, they likely objected to the amended version, not the bill itself. Say: "voted against the House-amended version; accepted final compromise."
