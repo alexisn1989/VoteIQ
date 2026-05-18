@@ -296,7 +296,9 @@ def _fetch_govinfo_text(congress: int, bill_type: str, bill_number: str) -> dict
         body, content_type = result
         if not body.strip():
             continue
-        # Strip XML tags to get plain text
+        # Must be actual XML — reject HTML error pages
+        if not body.lstrip().startswith("<") or "Page Not Found" in body[:500]:
+            continue
         try:
             text = re.sub(r"<[^>]+>", " ", body)
             text = re.sub(r"\s+", " ", text).strip()
