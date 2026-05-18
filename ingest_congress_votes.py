@@ -21,8 +21,9 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 
+import os as _os
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH  = BASE_DIR / "polls.db"
+DB_PATH  = Path(_os.getenv("DATA_DIR", str(BASE_DIR))) / "polls.db"
 
 HOUSE_BASE   = "https://clerk.house.gov/evs/{year}/roll{roll:03d}.xml"
 SENATE_MENU  = "https://www.senate.gov/legislative/LIS/roll_call_lists/vote_menu_{congress}_{session}.xml"

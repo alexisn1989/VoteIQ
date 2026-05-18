@@ -30,7 +30,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "polls.db"
+DB_PATH = Path(os.getenv("DATA_DIR", str(BASE_DIR))) / "polls.db"
 CONGRESS_API_BASE = "https://api.congress.gov/v3"
 USER_AGENT = "VoteIQ/1.0 (civic data; alexisnieuwenhuys89@gmail.com)"
 CURRENT_CONGRESS = 119
