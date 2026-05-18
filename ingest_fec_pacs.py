@@ -638,7 +638,7 @@ def fetch_contributions(committee_id: str, api_key: str, cycle: int, max_pages: 
 
 
 def aggregate_by_industry(contributions: list[dict]) -> dict[str, dict]:
-    """Sum contributions by industry, skip internal transfers."""
+    """Sum contributions by industry, skip internal transfers. Deduplicates same-PAC multi-transaction entries."""
     totals: dict[str, dict] = {}
     for c in contributions:
         name = c.get("contributor_name") or ""
@@ -649,17 +649,25 @@ def aggregate_by_industry(contributions: list[dict]) -> dict[str, dict]:
             continue
         industry = classify_contributor(name)
         if industry not in totals:
-            totals[industry] = {"total": 0.0, "count": 0, "donors": []}
-        totals[industry]["total"]  += amount
-        totals[industry]["count"]  += 1
-        totals[industry]["donors"].append({"name": name, "amount": amount})
+            totals[industry] = {"total": 0.0, "count": 0, "donor_map": {}}
+        totals[industry]["total"] += amount
+        totals[industry]["count"] += 1
+        # Aggregate multiple transactions from the same PAC (keyed case-insensitively)
+        key = name.upper()
+        if key not in totals[industry]["donor_map"]:
+            totals[industry]["donor_map"][key] = {"name": name, "amount": 0.0}
+        totals[industry]["donor_map"][key]["amount"] += amount
 
-    # Keep only top 5 donors per industry by amount
-    for industry in totals:
-        totals[industry]["donors"].sort(key=lambda d: d["amount"], reverse=True)
-        totals[industry]["donors"] = totals[industry]["donors"][:5]
-
-    return totals
+    # Convert donor_map → sorted top-5 list
+    result: dict[str, dict] = {}
+    for industry, data in totals.items():
+        top5 = sorted(data["donor_map"].values(), key=lambda d: d["amount"], reverse=True)[:5]
+        result[industry] = {
+            "total": data["total"],
+            "count": data["count"],
+            "donors": list(top5),
+        }
+    return result
 
 
 def setup_db(conn: sqlite3.Connection) -> None:
@@ -739,6 +747,10 @@ def main(argv: list[str] | None = None) -> int:
     setup_db(conn)
     load_pac_lookup(DB_PATH)
 
+    # Competitive races where WinRed/ActBlue dominate the top pages, pushing PAC money below
+    # the default pagination limit. Double the page budget to capture industry contributions.
+    _COMPETITIVE = {"K000399", "V000138", "S001230", "M001239"}  # Kiggans, Vindman, Subramanyam, McGuire
+
     members = {k: v for k, v in VA_MEMBERS.items() if not args.member or k == args.member}
     total_industries = 0
 
@@ -773,7 +785,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  Committee ID: {cmte_id}")
             time.sleep(0.5)
 
-            contributions = fetch_contributions(cmte_id, api_key, cycle, max_pages=args.max_pages)
+            member_max_pages = args.max_pages * 2 if bioguide_id in _COMPETITIVE else args.max_pages
+            if member_max_pages != args.max_pages:
+                print(f"  Competitive race — using {member_max_pages} pages")
+            contributions = fetch_contributions(cmte_id, api_key, cycle, max_pages=member_max_pages)
             print(f"  Fetched {len(contributions)} contribution records")
 
             industry_totals = aggregate_by_industry(contributions)

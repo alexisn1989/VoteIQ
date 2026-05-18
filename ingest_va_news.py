@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
 import os
 import re
@@ -28,14 +29,17 @@ from pathlib import Path
 from urllib.parse import quote_plus
 
 import requests
+import pdfplumber
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
 try:
     from google import genai as _genai
+    from google.genai import types as _gtypes
     _GENAI_AVAILABLE = True
 except ImportError:
     _GENAI_AVAILABLE = False
+    _gtypes = None
 
 load_dotenv()
 
@@ -43,6 +47,9 @@ BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "polls.db"
 USER_AGENT = "VoteIQ/1.0 Virginia news ingester (voteiq.io)"
 GEMINI_MODEL = "gemini-2.5-flash"
+PDF_CACHE_DIR = BASE_DIR / ".pdf_cache"
+MAX_PDF_BYTES = 6_000_000
+MAX_PDF_TEXT_CHARS = 5000
 
 try:
     sys.path.insert(0, str(BASE_DIR))
@@ -154,18 +161,70 @@ def fetch_text(url: str, timeout: int = 20) -> str:
     return resp.text
 
 
-def fetch_article_text(url: str, timeout: int = 15) -> str:
-    """Fetch a full article page and return clean readable text (up to 5000 chars)."""
+def extract_pdf_text(pdf_bytes: bytes) -> str:
+    """Extract structured text from PDF using pdfplumber (tables first, then prose)."""
+    parts = []
     try:
         html = fetch_text(url, timeout=timeout)
         soup = BeautifulSoup(html, "html.parser")
+        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+            for page in pdf.pages[:8]:
+                # Try table extraction first — preserves rows/columns
+                tables = page.extract_tables()
+                if tables:
+                    for table in tables:
+                        for row in table:
+                            cleaned = [str(cell or "").strip() for cell in row]
+                            if any(cleaned):
+                                parts.append(" | ".join(cleaned))
+                else:
+                    text = page.extract_text() or ""
+                    if text.strip():
+                        parts.append(text.strip())
+    except Exception as exc:
+        return f"[pdfplumber error: {exc}]"
+
+    full = "\n\n".join(parts)
+    return full[:MAX_PDF_TEXT_CHARS] if full else ""
+
+
+def fetch_article_text(url: str, timeout: int = 15) -> tuple[str, bytes | None]:
+    """Fetch a full article page or PDF and return (text, pdf_bytes)."""
+    try:
+        # Handle PDF caching
+        is_pdf = url.lower().split("?", 1)[0].endswith(".pdf")
+        if is_pdf:
+            PDF_CACHE_DIR.mkdir(exist_ok=True)
+            cache_key = hashlib.md5(url.encode()).hexdigest()
+            cache_path = PDF_CACHE_DIR / cache_key
+            if cache_path.exists():
+                print(f"  [cache] {url}")
+                pdf_bytes = cache_path.read_bytes()
+                return extract_pdf_text(pdf_bytes), pdf_bytes
+
+        resp = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=timeout, allow_redirects=True)
+        resp.raise_for_status()
+
+        content_type = resp.headers.get("Content-Type", "").lower()
+        if "pdf" in content_type or is_pdf:
+            pdf_bytes = resp.content
+            if len(pdf_bytes) > MAX_PDF_BYTES:
+                return "[PDF too large to process]", None
+            if is_pdf:
+                cache_key = hashlib.md5(url.encode()).hexdigest()
+                (PDF_CACHE_DIR / cache_key).write_bytes(pdf_bytes)
+            return extract_pdf_text(pdf_bytes), pdf_bytes
+
+        soup = BeautifulSoup(resp.text, "html.parser")
         for tag in soup(["script", "style", "nav", "header", "footer", "aside", "iframe"]):
             tag.decompose()
         body = soup.find("article") or soup.find(id=re.compile(r"content|article|body", re.I))
         raw = (body or soup).get_text(" ", strip=True)
         return re.sub(r"\s{2,}", " ", raw)[:5000]
+        return re.sub(r"\s{2,}", " ", raw)[:5000], None
     except Exception:
         return ""
+        return "", None
 
 
 def rss_items(feed_text: str) -> list[dict]:
@@ -234,13 +293,20 @@ def _parse_gemini_json(raw: str) -> dict:
     raise ValueError(f"No valid JSON found in: {raw[:200]}")
 
 
-def gemini_extract(url: str, article_text: str, api_key: str) -> dict | None:
+def gemini_extract(url: str, article_text: str, api_key: str, pdf_bytes: bytes | None = None) -> dict | None:
     """Call Gemini Flash to extract structured political news data."""
-    if not _GENAI_AVAILABLE or not api_key or not article_text.strip():
+    if not _GENAI_AVAILABLE or not api_key:
+        return None
+    if not article_text.strip() and not pdf_bytes:
         return None
     try:
         client = _genai.Client(api_key=api_key)
         prompt = GEMINI_PROMPT.replace("{url}", url).replace("{text}", article_text[:4500])
+        
+        contents = [prompt]
+        if pdf_bytes:
+            contents.append(_gtypes.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf"))
+
         response = client.models.generate_content(
             model=GEMINI_MODEL,
             contents=prompt,
@@ -291,14 +357,15 @@ def ingest(
             print(f"  [{seen}] {item['title'][:70]}")
 
             # Fetch full article and send to Gemini
-            article_text = fetch_article_text(url) if url else ""
-            if not article_text:
+            article_text, pdf_bytes = fetch_article_text(url) if url else ("", None)
+            if not article_text.strip() and not pdf_bytes:
                 article_text = combined  # fall back to RSS summary
 
-            gemini_data = gemini_extract(url, article_text, api_key)
+            gemini_data = gemini_extract(url, article_text, api_key, pdf_bytes=pdf_bytes)
             if gemini_data:
+                pdf_info = f" | PDF attached ({len(pdf_bytes)} bytes)" if pdf_bytes else ""
                 status = "ok" if "_error" not in gemini_data else f"error: {gemini_data['_error']}"
-                print(f"    gemini: {status} | topics={gemini_data.get('topics')} | politicians={[p.get('name') for p in gemini_data.get('politicians', [])]}")
+                print(f"    gemini: {status}{pdf_info} | topics={gemini_data.get('topics')} | politicians={[p.get('name') for p in gemini_data.get('politicians', [])]}")
             else:
                 gemini_data = {}
 
@@ -392,6 +459,7 @@ def monitor_accuracy(
             continue
 
         article_text = fetch_article_text(url)
+        article_text, _ = fetch_article_text(url)
         if not article_text:
             fetch_failures += 1
             if verbose:

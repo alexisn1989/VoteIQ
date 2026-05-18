@@ -640,6 +640,35 @@ function switchChartView(bid, view) {
   }
 }
 
+const _CORPORATE_INDUSTRIES = new Set([
+  'Finance','Healthcare','Defense','Energy','Real Estate','Telecom','Automotive',
+  'Agriculture','Technology','Manufacturing','Transportation','Hospitality',
+  'Small Business','Alcohol/Tobacco','Legal','Guns/NRA','Ideological'
+]);
+
+function buildRatioHeadline(rows) {
+  let grassroots = 0, corporate = 0, labor = 0;
+  for (const r of rows) {
+    if (!r.displayTotal) continue;
+    if (r.industry === 'Grassroots') grassroots += r.displayTotal;
+    else if (r.industry === 'Labor')  labor      += r.displayTotal;
+    else if (_CORPORATE_INDUSTRIES.has(r.industry)) corporate += r.displayTotal;
+  }
+  const total = grassroots + corporate + labor;
+  if (!total) return '';
+  const gPct  = Math.round(grassroots / total * 100);
+  const cPct  = Math.round(corporate  / total * 100);
+  const lPct  = Math.round(labor      / total * 100);
+  const parts = [];
+  if (grassroots) parts.push(`<span style="color:#43aa8b;font-weight:600">${gPct}% grassroots</span>`);
+  if (corporate)  parts.push(`<span style="color:#6c757d;font-weight:600">${cPct}% corporate PAC</span>`);
+  if (labor)      parts.push(`<span style="color:#e07b39;font-weight:600">${lPct}% labor</span>`);
+  if (parts.length < 2) return '';
+  const ratio = corporate > 0 ? (grassroots / corporate).toFixed(1) : null;
+  const ratioNote = ratio && grassroots > 0 ? ` &mdash; ${ratio}× more grassroots than corporate PAC` : '';
+  return `<div style="font-size:12px;margin-bottom:10px;color:#555;">${parts.join(' &bull; ')}${ratioNote}</div>`;
+}
+
 function renderDonorChart(data, activeCycle) {
   const industries = data.industries || [];
   const cycles = data.cycles || [];
@@ -649,6 +678,8 @@ function renderDonorChart(data, activeCycle) {
   const rows = buildRows(data, displayCycle);
   const bid = data.bioguide_id;
   const view = _chartViewState[bid] || 'bar';
+
+  const headlineHtml = buildRatioHeadline(rows);
 
   // Cycle selector tabs + view toggle
   let tabsHtml = '<div style="display:flex;align-items:center;margin-bottom:12px;gap:6px;flex-wrap:wrap;">';
@@ -664,7 +695,7 @@ function renderDonorChart(data, activeCycle) {
   tabsHtml += '</div>';
 
   const chartHtml = view === 'pie' ? renderPieChart(rows) : renderBarChart(rows, data, displayCycle);
-  return tabsHtml + chartHtml;
+  return headlineHtml + tabsHtml + chartHtml;
 }
 
 function switchDonorCycle(btn, bid, cycle) {

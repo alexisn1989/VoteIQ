@@ -320,7 +320,13 @@ def admin_ingest_news(limit: int = 50):
 
 
 @app.get("/api/admin/ingest-congress")
-def admin_ingest_congress(congress: int = 119, house_limit: int = 300):
+def admin_ingest_congress(
+    congress: int = 119,
+    house_limit: int = 300,
+    fetch_text: bool = False,
+    refresh_text: bool = False,
+    bill: str | None = None,
+):
     """Populate polls.db congress_members, congress_bills, congress_votes tables.
     ingest_congress.py requires CONGRESS_API_KEY; ingest_congress_votes.py runs always.
     """
@@ -328,7 +334,14 @@ def admin_ingest_congress(congress: int = 119, house_limit: int = 300):
     results = {}
     scripts = []
     if api_key:
-        scripts.append(("ingest_congress.py", ["--congress", str(congress)]))
+        ingest_args = ["--congress", str(congress)]
+        if fetch_text:
+            ingest_args.append("--fetch-text")
+        if refresh_text:
+            ingest_args.append("--refresh-text")
+        if bill:
+            ingest_args.extend(["--bill", bill])
+        scripts.append(("ingest_congress.py", ingest_args))
     else:
         results["ingest_congress.py"] = {"ok": False, "skipped": "CONGRESS_API_KEY not set — members/bills not refreshed"}
     scripts.append(("ingest_congress_votes.py", ["--house-limit", str(house_limit)]))
@@ -3992,6 +4005,58 @@ _INDUSTRY_TOPIC_HINTS: dict[str, list[str]] = {
 }
 
 
+def _fetch_news_context(query: str, politician_name: str = "", limit: int = 4) -> str:
+    """Return recent Virginia news articles relevant to the query/politician as a context block."""
+    if not os.path.exists(_POLLS_DB):
+        return ""
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        rows = conn.execute(
+            """SELECT title, source, published_at, gemini_json, url
+               FROM va_news
+               WHERE gemini_json IS NOT NULL
+               ORDER BY COALESCE(published_at, fetched_at) DESC
+               LIMIT 100"""
+        ).fetchall()
+        conn.close()
+    except Exception:
+        return ""
+
+    q_lower = query.lower()
+    pol_lower = politician_name.lower()
+    scored = []
+    for title, source, published_at, gemini_json_str, url in rows:
+        try:
+            g = json.loads(gemini_json_str or "{}")
+        except Exception:
+            g = {}
+        politicians = [p.get("name", "").lower() for p in (g.get("politicians") or [])]
+        topics = [t.lower() for t in (g.get("topics") or [])]
+        summary = (g.get("summary") or "").strip()
+
+        score = 0
+        if pol_lower and any(pol_lower in p or p in pol_lower for p in politicians if p):
+            score += 3
+        if any(kw in q_lower for kw in topics):
+            score += 2
+        if any(kw in (title or "").lower() for kw in q_lower.split() if len(kw) > 4):
+            score += 1
+        if score > 0:
+            scored.append((score, title, source, published_at, summary, url))
+
+    if not scored:
+        return ""
+
+    scored.sort(key=lambda x: -x[0])
+    lines = ["[Virginia News — recent coverage]"]
+    for _, title, source, published_at, summary, url in scored[:limit]:
+        date = (published_at or "")[:10]
+        lines.append(f"  • {date} | {source} | {title}")
+        if summary:
+            lines.append(f"    Summary: {summary}")
+    return "\n".join(lines)
+
+
 def _fetch_finance_context(bioguide_ids: list[str], question: str) -> str:
     """Return a formatted PAC/industry donation block correlated with voting patterns."""
     if not _PAC_CACHE or not bioguide_ids:
@@ -7015,6 +7080,13 @@ async def bills_chat(request: Request, req: BillsChatRequest):
                     seen_docs.add(fec_block)
                     context_blocks.insert(0, fec_block)
 
+        # Recent Virginia news — inject relevant articles
+        news_pol = (fed_member["name"] if fed_member else "") or leg_name or ""
+        news_block = _fetch_news_context(user_query, politician_name=news_pol)
+        if news_block and news_block not in seen_docs:
+            seen_docs.add(news_block)
+            context_blocks.append(news_block)
+
         # Representative profile chunks — powers "what has my rep done?" prompts
         rep_profiles = _request_rep_profiles(req, user_query)
         if rep_profiles:
@@ -7158,7 +7230,8 @@ async def bills_chat(request: Request, req: BillsChatRequest):
 You have access to the retrieved excerpts below, which may include Virginia General Assembly bills, \
 election results, legislator voting records, representative profile summaries from the local 2026 session database, \
 roll-call votes and sponsored bills for Virginia's 13 federal representatives (119th Congress) from congress.gov, \
-AND FEC campaign finance data showing PAC/industry contributions by sector for Virginia federal members. \
+FEC campaign finance data showing PAC/industry contributions by sector for Virginia federal members, \
+AND recent Virginia political news articles (sourced from Virginia news outlets via Gemini extraction). \
 Answer the user's question using ONLY the excerpts below — do not rely on your training data. \
 Be factual and cite bill numbers when relevant. \
 For federal members (U.S. House/Senate), cite bill type and number (e.g. H.R. 23) and note the source as congress.gov. \
@@ -7365,6 +7438,13 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
                 fec_block = _fetch_finance_context([fed_member["bioguide_id"]], user_query)
                 if fec_block and fec_block not in seen_docs:
                     seen_docs.add(fec_block); context_blocks.insert(0, fec_block)
+
+        # Recent Virginia news
+        news_pol = (fed_member["name"] if fed_member else "") or leg_name or ""
+        news_block = _fetch_news_context(user_query, politician_name=news_pol)
+        if news_block and news_block not in seen_docs:
+            seen_docs.add(news_block); context_blocks.append(news_block)
+
         if mentioned:
             exact_docs = _fetch_bills_by_id(mentioned, session_year)
             if session_year:
@@ -7432,7 +7512,8 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
 You have access to the retrieved excerpts below, which may include Virginia General Assembly bills, \
 election results, legislator voting records, representative profile summaries from the local 2026 session database, \
 roll-call votes and sponsored bills for Virginia's 13 federal representatives (119th Congress) from congress.gov, \
-AND FEC campaign finance data showing PAC/industry contributions by sector for Virginia federal members. \
+FEC campaign finance data showing PAC/industry contributions by sector for Virginia federal members, \
+AND recent Virginia political news articles (sourced from Virginia news outlets via Gemini extraction). \
 Answer the user's question using ONLY the excerpts below — do not rely on your training data. \
 Be factual and cite bill numbers when relevant. \
 For federal members (U.S. House/Senate), cite bill type and number (e.g. H.R. 23) and note the source as congress.gov. \

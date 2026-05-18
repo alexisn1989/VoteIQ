@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sqlite3
 import sys
 import time
@@ -25,6 +26,7 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
+from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -74,6 +76,20 @@ def setup_db(conn: sqlite3.Connection) -> None:
             ON congress_bills(sponsor_id);
         CREATE INDEX IF NOT EXISTS idx_congress_bills_date
             ON congress_bills(introduced_date DESC);
+
+        CREATE TABLE IF NOT EXISTS congress_bill_texts (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            congress        INTEGER NOT NULL,
+            bill_type       TEXT NOT NULL,
+            bill_number     TEXT NOT NULL,
+            version_name    TEXT,
+            version_type    TEXT,
+            version_date    TEXT,
+            source_url      TEXT,
+            text            TEXT,
+            fetched_at      TEXT NOT NULL,
+            UNIQUE(congress, bill_type, bill_number)
+        );
     """)
     conn.commit()
 
@@ -87,6 +103,281 @@ def api_get(path: str, api_key: str, **params) -> dict:
     )
     with urllib.request.urlopen(req, timeout=20) as resp:
         return json.loads(resp.read())
+
+
+def _decode_bytes(data: bytes, content_type: str) -> str:
+    charset = "utf-8"
+    if content_type:
+        parts = content_type.split("charset=")
+        if len(parts) > 1:
+            charset = parts[-1].split(";")[0].strip() or charset
+    try:
+        return data.decode(charset, errors="replace")
+    except Exception:
+        return data.decode("utf-8", errors="replace")
+
+
+def _html_to_text(html: str) -> str:
+    return BeautifulSoup(html, "html.parser").get_text("\n").strip()
+
+
+def _url_get(url: str, timeout: int = 30) -> tuple[str, str] | None:
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={
+                "Accept": "application/json,text/html,text/plain,*/*",
+                "User-Agent": USER_AGENT,
+            },
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            content_type = resp.headers.get("Content-Type", "")
+            body = resp.read()
+            return _decode_bytes(body, content_type), content_type
+    except Exception:
+        return None
+
+
+def _normalize_text_version(item: dict) -> dict:
+    if not isinstance(item, dict):
+        return {}
+    if "billTextVersion" in item and isinstance(item["billTextVersion"], dict):
+        item = item["billTextVersion"]
+
+    version_name = str(item.get("versionName") or item.get("version") or
+                        item.get("versionCode") or item.get("version_name") or "")
+    version_type = str(item.get("type") or item.get("format") or
+                        item.get("versionType") or item.get("version_type") or "")
+    version_date = str(item.get("versionDate") or item.get("date") or "")
+    source_url = str(item.get("url") or item.get("sourceUrl") or
+                     item.get("billTextUrl") or item.get("source_url") or "")
+
+    def _extract_text_value(value):
+        if isinstance(value, str):
+            return value.strip()
+        if isinstance(value, dict):
+            for key in ("text", "body", "content", "value", "parsedText", "bodyText"):
+                nested = value.get(key)
+                if isinstance(nested, str) and nested.strip():
+                    return nested.strip()
+        return None
+
+    text = _extract_text_value(item.get("text"))
+    if not text:
+        text = _extract_text_value(item.get("parsedText"))
+    if not text:
+        text = _extract_text_value(item.get("bodyText"))
+    if not text:
+        text = _extract_text_value(item.get("body"))
+    if not text:
+        text = _extract_text_value(item.get("billText"))
+
+    return {
+        "version_name": version_name,
+        "version_type": version_type,
+        "version_date": version_date,
+        "source_url": source_url,
+        "text": text if isinstance(text, str) and text.strip() else None,
+    }
+
+
+def _parse_version_date(date_str: str) -> str:
+    if not date_str:
+        return ""
+    try:
+        return datetime.fromisoformat(date_str).isoformat()
+    except ValueError:
+        return date_str.strip()
+
+
+def _score_text_version(version: dict) -> tuple[int, str]:
+    t = (version.get("version_type") or "").lower()
+    if "xml" in t:
+        score = 5
+    elif "formatted" in t or "formattedtext" in t or "formatted_text" in t:
+        score = 4
+    elif "text" in t or "plain" in t:
+        score = 3
+    elif "html" in t:
+        score = 2
+    elif "pdf" in t:
+        score = 1
+    else:
+        score = 0
+    return score, _parse_version_date(version.get("version_date") or "")
+
+
+def _fetch_text_from_url(source_url: str) -> str | None:
+    if not source_url:
+        return None
+    if source_url.lower().endswith(".pdf"):
+        return None
+    fetched = _url_get(source_url)
+    if not fetched:
+        return None
+    body, content_type = fetched
+    if "application/json" in content_type:
+        try:
+            data = json.loads(body)
+            if isinstance(data, dict):
+                normalized = _normalize_text_version(data)
+                return normalized.get("text")
+        except Exception:
+            return None
+    if "html" in content_type:
+        return _html_to_text(body)
+    return body.strip()
+
+
+def _extract_bill_text_versions(data: dict) -> list[dict]:
+    versions = []
+    candidates = [
+        data.get("billTextVersions"),
+        data.get("billTextVersion"),
+        data.get("bill_text_versions"),
+        data.get("versions"),
+        data.get("billText"),
+    ]
+    for raw in candidates:
+        if not raw:
+            continue
+        if isinstance(raw, list):
+            for item in raw:
+                normalized = _normalize_text_version(item)
+                if normalized:
+                    versions.append(normalized)
+        elif isinstance(raw, dict):
+            normalized = _normalize_text_version(raw)
+            if normalized:
+                versions.append(normalized)
+        elif isinstance(raw, str):
+            versions.append({
+                "version_name": "text",
+                "version_type": "text",
+                "version_date": "",
+                "source_url": "",
+                "text": raw.strip(),
+            })
+        if versions:
+            break
+    return versions
+
+
+def _normalize_bill_filter(value: str | None) -> tuple[str, str] | None:
+    if not value:
+        return None
+    cleaned = re.sub(r"\s+", "", str(value or "")).upper().replace(".", "")
+    match = re.match(r"^(HR|S)(\d+)$", cleaned)
+    if not match:
+        return None
+    return match.group(1).lower(), match.group(2)
+
+
+def fetch_bill_text(congress: int, bill_type: str, bill_number: str, api_key: str) -> dict | None:
+    try:
+        data = api_get(
+            f"bill/{congress}/{bill_type}/{bill_number}/text",
+            api_key,
+            format="json",
+        )
+    except Exception as exc:
+        print(f"    Warning: could not fetch text for {bill_type.upper()}{bill_number} ({congress}): {exc}")
+        return None
+
+    versions = _extract_bill_text_versions(data)
+    if not versions:
+        # Try to extract top-level text fields if present
+        normalized = _normalize_text_version(data)
+        if normalized.get("text"):
+            versions = [normalized]
+    if not versions:
+        return None
+
+    versions = sorted(versions, key=_score_text_version, reverse=True)
+    for version in versions:
+        if version.get("text"):
+            return version
+        if version.get("source_url"):
+            version["text"] = _fetch_text_from_url(version["source_url"])
+            if version["text"]:
+                return version
+
+    # Last resort: return the best candidate even if text is missing
+    return versions[0] if versions else None
+
+
+def upsert_bill_text(conn: sqlite3.Connection, congress: int, bill_type: str,
+                     bill_number: str, version: dict, dry_run: bool) -> int:
+    if dry_run:
+        print(
+            f"    [dry] text for {bill_type.upper()}{bill_number} ({congress}) "
+            f"version={version.get('version_name') or version.get('version_type')} "
+            f"date={version.get('version_date')} source={version.get('source_url')}"
+        )
+        return 1
+
+    conn.execute(
+        """INSERT INTO congress_bill_texts
+                   (congress, bill_type, bill_number, version_name, version_type,
+                    version_date, source_url, text, fetched_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(congress, bill_type, bill_number) DO UPDATE SET
+                   version_name=excluded.version_name,
+                   version_type=excluded.version_type,
+                   version_date=excluded.version_date,
+                   source_url=excluded.source_url,
+                   text=excluded.text,
+                   fetched_at=excluded.fetched_at""",
+        (
+            congress,
+            bill_type,
+            bill_number,
+            version.get("version_name"),
+            version.get("version_type"),
+            version.get("version_date"),
+            version.get("source_url"),
+            version.get("text"),
+            now_iso(),
+        ),
+    )
+    return 1
+
+
+def fetch_bill_texts(conn: sqlite3.Connection, api_key: str, dry_run: bool,
+                     refresh: bool = False, bill_filter: tuple[str, str] | None = None) -> int:
+    where = ""
+    params = []
+    if bill_filter:
+        where = "WHERE bill_type = ? AND bill_number = ?"
+        params = [bill_filter[0], bill_filter[1]]
+
+    rows = conn.execute(
+        f"SELECT DISTINCT congress, bill_type, bill_number FROM congress_bills {where}",
+        params,
+    ).fetchall()
+    if not rows:
+        return 0
+
+    fetched = 0
+    for congress, bill_type, bill_number in rows:
+        if not refresh:
+            existing = conn.execute(
+                "SELECT 1 FROM congress_bill_texts WHERE congress=? AND bill_type=? AND bill_number=? LIMIT 1",
+                (congress, bill_type, bill_number),
+            ).fetchone()
+            if existing:
+                continue
+
+        selected = fetch_bill_text(congress, bill_type, bill_number, api_key)
+        if not selected or not selected.get("text"):
+            print(f"    Warning: no usable text for {bill_type.upper()}{bill_number} ({congress})")
+            continue
+        upsert_bill_text(conn, congress, bill_type, bill_number, selected, dry_run)
+        fetched += 1
+        if not dry_run:
+            conn.commit()
+        time.sleep(0.3)
+    return fetched
 
 
 def fetch_va_members(api_key: str) -> list[dict]:
@@ -114,12 +405,15 @@ def fetch_member_detail(bioguide_id: str, api_key: str) -> dict:
 
 
 def fetch_legislation(bioguide_id: str, role: str, api_key: str,
-                      limit: int = 50) -> list[dict]:
+                      limit: int = 50, congress: int | None = None) -> list[dict]:
     """role: 'sponsored' or 'cosponsored'"""
     key = "sponsoredLegislation" if role == "sponsored" else "cosponsoredLegislation"
     path = f"member/{bioguide_id}/{role}-legislation"
+    params = {"limit": limit}
+    if congress is not None:
+        params["congress"] = congress
     try:
-        data = api_get(path, api_key, limit=limit)
+        data = api_get(path, api_key, **params)
         return data.get(key, [])
     except Exception as exc:
         print(f"    Warning: could not fetch {role} legislation: {exc}")
@@ -154,10 +448,10 @@ def upsert_member(conn: sqlite3.Connection, m: dict, detail: dict,
 
 
 def upsert_bills(conn: sqlite3.Connection, bills: list[dict], sponsor_id: str,
-                 role: str, dry_run: bool) -> int:
+                 role: str, dry_run: bool, default_congress: int) -> int:
     written = 0
     for b in bills:
-        congress = b.get("congress")
+        congress = b.get("congress") or default_congress
         btype = (b.get("type") or "").lower()
         bnum = str(b.get("number", ""))
         title = (b.get("title") or "")[:400]
@@ -193,7 +487,9 @@ def upsert_bills(conn: sqlite3.Connection, bills: list[dict], sponsor_id: str,
 
 
 def ingest(conn: sqlite3.Connection, api_key: str, dry_run: bool,
-           bill_limit: int = 50) -> None:
+           bill_limit: int = 50, fetch_text: bool = False,
+           refresh_text: bool = False, congress: int = CURRENT_CONGRESS,
+           bill_filter: tuple[str, str] | None = None) -> None:
     print("Fetching current Virginia members...")
     members = fetch_va_members(api_key)
     print(f"  Found {len(members)} VA members")
@@ -209,10 +505,15 @@ def ingest(conn: sqlite3.Connection, api_key: str, dry_run: bool,
         time.sleep(0.3)
 
         for role in ("sponsored", "cosponsored"):
-            bills = fetch_legislation(bid, role, api_key, limit=bill_limit)
-            n = upsert_bills(conn, bills, bid, role, dry_run)
+            bills = fetch_legislation(bid, role, api_key, limit=bill_limit, congress=congress)
+            n = upsert_bills(conn, bills, bid, role, dry_run, default_congress=congress)
             print(f"    {role}: {n} bills")
             time.sleep(0.3)
+
+    if fetch_text:
+        print("\nFetching bill text from Congress.gov for stored bills...")
+        fetched = fetch_bill_texts(conn, api_key, dry_run, refresh_text, bill_filter=bill_filter)
+        print(f"  Bill text fetched for {fetched} bills")
 
     if not dry_run:
         conn.commit()
@@ -230,6 +531,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--congress", type=int, default=CURRENT_CONGRESS)
     parser.add_argument("--bill-limit", type=int, default=50,
                         help="Max sponsored/cosponsored bills to fetch per member")
+    parser.add_argument("--fetch-text", action="store_true",
+                        help="Fetch latest bill text versions from Congress.gov /text endpoint")
+    parser.add_argument("--refresh-text", action="store_true",
+                        help="Refresh bill text even when a text record already exists")
+    parser.add_argument("--bill", help="Optional bill filter for text fetch, e.g. HR1 or S2")
     parser.add_argument("--api-key", default=os.getenv("CONGRESS_API_KEY", ""),
                         help="Congress.gov API key (or set CONGRESS_API_KEY env var)")
     args = parser.parse_args(argv)
@@ -238,9 +544,23 @@ def main(argv: list[str] | None = None) -> int:
         print("ERROR: CONGRESS_API_KEY not set.", file=sys.stderr)
         return 1
 
+    bill_filter = _normalize_bill_filter(args.bill)
+    if args.bill and bill_filter is None:
+        print(f"ERROR: invalid bill format: {args.bill}", file=sys.stderr)
+        return 1
+
     conn = sqlite3.connect(args.db)
     setup_db(conn)
-    ingest(conn, args.api_key, args.dry_run, bill_limit=args.bill_limit)
+    ingest(
+        conn,
+        args.api_key,
+        args.dry_run,
+        bill_limit=args.bill_limit,
+        fetch_text=args.fetch_text,
+        refresh_text=args.refresh_text,
+        congress=args.congress,
+        bill_filter=bill_filter,
+    )
     conn.close()
     return 0
 
