@@ -63,6 +63,8 @@ app.include_router(voices_router, prefix="/api/v1")
 
 from voteiq.api.routes.polls import router as _polls_router
 app.include_router(_polls_router)
+from voteiq.api.routes.news import router as _news_router
+app.include_router(_news_router)
 
 # DATA_DIR: set to Render persistent disk mount path (e.g. /var/data) in production.
 # Falls back to the project directory for local development.
@@ -278,72 +280,7 @@ async def startup_poll_ingest() -> None:
     threading.Thread(target=_run_committee_ingest_background, daemon=True).start()
 
 
-@app.get("/api/va-news")
-def va_news(limit: int = 30, topic: str | None = None, politician: str | None = None):
-    """Return Virginia political news extracted by Gemini."""
-    if not os.path.exists(_POLLS_DB):
-        return {"count": 0, "results": [], "source": "missing_polls_db"}
-    limit = max(1, min(int(limit or 30), 100))
-    try:
-        conn = sqlite3.connect(_POLLS_DB)
-        conn.row_factory = sqlite3.Row
-        tbl = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='va_news'"
-        ).fetchone()
-        if not tbl:
-            conn.close()
-            return {"count": 0, "results": [], "source": "va_news_not_initialized"}
-        rows = conn.execute(
-            "SELECT article_id, source, url, title, published_at, gemini_json, fetched_at "
-            "FROM va_news ORDER BY COALESCE(published_at, fetched_at) DESC LIMIT ?",
-            (limit * 3,),  # over-fetch so we can filter in Python
-        ).fetchall()
-        conn.close()
-        results = []
-        for row in rows:
-            item = dict(row)
-            gj = item.pop("gemini_json", None)
-            item["data"] = json.loads(gj) if gj else {}
-            # topic filter
-            if topic:
-                topics = item["data"].get("topics") or []
-                if not any(topic.lower() in t.lower() for t in topics):
-                    continue
-            # politician filter
-            if politician:
-                pols = [p.get("name", "") for p in (item["data"].get("politicians") or [])]
-                if not any(politician.lower() in p.lower() for p in pols):
-                    continue
-            results.append(item)
-            if len(results) >= limit:
-                break
-        return {"count": len(results), "source": "va_news", "results": results}
-    except Exception as exc:
-        return {"count": 0, "results": [], "source": "va_news_error", "error": str(exc)}
-
-
-@app.get("/api/admin/ingest-news")
-def admin_ingest_news(limit: int = 50, _: None = Depends(_require_admin)):
-    """Trigger Virginia political news ingestion via Gemini."""
-    api_key = os.getenv("GEMINI_API_KEY", "")
-    if not api_key:
-        return {"ok": False, "error": "GEMINI_API_KEY not set"}
-    script = os.path.join(BASE_DIR, "ingest_va_news.py")
-    if not os.path.exists(script):
-        return {"ok": False, "error": "ingest_va_news.py not found"}
-    import subprocess
-    cmd = [sys.executable, script, "--db", _POLLS_DB, "--limit", str(limit)]
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-        return {
-            "ok": result.returncode == 0,
-            "stdout": result.stdout[-2000:],
-            "stderr": result.stderr[-500:],
-        }
-    except subprocess.TimeoutExpired:
-        return {"ok": False, "error": "timed out after 300s"}
-    except Exception as exc:
-        return {"ok": False, "error": str(exc)}
+# /api/va-news and /api/admin/ingest-news moved to voteiq/api/routes/news.py
 
 
 @app.get("/api/admin/ingest-congress")
@@ -753,35 +690,7 @@ def _gemini_reply(system_prompt, messages, max_tokens):
     )
     return response.text
 
-# ── News review queue ──────────────────────────────────────────────────────────
-
-@app.get("/admin/review", response_class=HTMLResponse)
-async def admin_review_page(request: Request, _: None = Depends(_require_admin)):
-    """Human review queue for flagged news articles."""
-    with open(os.path.join(BASE_DIR, "templates", "review.html"), encoding="utf-8") as f:
-        return HTMLResponse(f.read())
-
-
-@app.get("/api/admin/review-queue")
-def api_review_queue(limit: int = 20, status: str = "pending", _: None = Depends(_require_admin)):
-    """Return flagged articles awaiting review."""
-    return {"items": ingest_news.get_review_queue(limit=limit, status=status), "stats": ingest_news.queue_stats()}
-
-
-@app.post("/api/admin/review/{article_id}/approve")
-def api_review_approve(article_id: str, _: None = Depends(_require_admin)):
-    found = ingest_news.set_review_status(article_id, "approved")
-    if not found:
-        raise HTTPException(status_code=404, detail="Article not found")
-    return {"ok": True, "article_id": article_id, "status": "approved"}
-
-
-@app.post("/api/admin/review/{article_id}/reject")
-def api_review_reject(article_id: str, _: None = Depends(_require_admin)):
-    found = ingest_news.set_review_status(article_id, "rejected")
-    if not found:
-        raise HTTPException(status_code=404, detail="Article not found")
-    return {"ok": True, "article_id": article_id, "status": "rejected"}
+# News review queue moved to voteiq/api/routes/news.py
 
 
 # ── Election maps — all four modes built once at startup ──────────────────────
@@ -6954,10 +6863,7 @@ def races_2026_page():
         return f.read()
 
 
-@app.get("/news", response_class=HTMLResponse)
-def news_page():
-    with open(os.path.join(BASE_DIR, "templates", "news.html"), "r", encoding="utf-8") as f:
-        return f.read()
+# /news route moved to voteiq/api/routes/news.py
 
 
 # /polls route moved to voteiq/api/routes/polls.py
