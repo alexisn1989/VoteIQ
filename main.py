@@ -1,4 +1,8 @@
-from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Form, Query, Depends, Header
+from civic_analyst import run_analyst, lookup_member
+from voteiq.queries.timing import get_donation_timing, get_timing_summary
+from voteiq.routes.voices import router as voices_router
+from config.voices import VOICE_PROMPTS, TIER_MAX_TOKENS, TIER_VOICE_MAP
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, field_validator
@@ -27,6 +31,25 @@ import ingest_news
 
 load_dotenv()
 
+
+def _require_admin(
+    token: str | None = Query(default=None),
+    authorization: str | None = Header(default=None),
+) -> None:
+    """FastAPI dependency — enforces ADMIN_TOKEN on admin/debug endpoints.
+    Accepts the token as ?token= query param or Authorization: Bearer <token>.
+    If ADMIN_TOKEN is not set the app is in dev mode and all requests pass.
+    """
+    expected = os.getenv("ADMIN_TOKEN", "")
+    if not expected:
+        return
+    bearer = ""
+    if authorization and authorization.lower().startswith("bearer "):
+        bearer = authorization[7:].strip()
+    provided = bearer or (token or "")
+    if provided != expected:
+        raise HTTPException(status_code=403, detail="Invalid or missing admin token")
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = FastAPI()
@@ -36,6 +59,10 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
+app.include_router(voices_router, prefix="/api/v1")
+
+from voteiq.api.routes.polls import router as _polls_router
+app.include_router(_polls_router)
 
 # DATA_DIR: set to Render persistent disk mount path (e.g. /var/data) in production.
 # Falls back to the project directory for local development.
@@ -296,7 +323,7 @@ def va_news(limit: int = 30, topic: str | None = None, politician: str | None = 
 
 
 @app.get("/api/admin/ingest-news")
-def admin_ingest_news(limit: int = 50):
+def admin_ingest_news(limit: int = 50, _: None = Depends(_require_admin)):
     """Trigger Virginia political news ingestion via Gemini."""
     api_key = os.getenv("GEMINI_API_KEY", "")
     if not api_key:
@@ -326,6 +353,7 @@ def admin_ingest_congress(
     fetch_text: bool = False,
     refresh_text: bool = False,
     bill: str | None = None,
+    _: None = Depends(_require_admin),
 ):
     """Populate polls.db congress_members, congress_bills, congress_votes tables.
     ingest_congress.py requires CONGRESS_API_KEY; ingest_congress_votes.py runs always.
@@ -371,7 +399,7 @@ def admin_ingest_congress(
 
 
 @app.get("/api/admin/refresh-bill-text")
-def admin_refresh_bill_text(refresh: bool = False):
+def admin_refresh_bill_text(refresh: bool = False, _: None = Depends(_require_admin)):
     """Fetch full bill text from Congress.gov + govinfo.gov fallback for all stored bills.
     Run weekly via cron to pick up newly published text. Safe to call repeatedly —
     skips bills that already have text unless refresh=true.
@@ -401,18 +429,19 @@ def admin_refresh_bill_text(refresh: bool = False):
 
 
 @app.get("/api/admin/ingest-polls")
-def admin_ingest_polls(sources: str = "fivethirtyeight,votehub,news", use_gemini: bool = False, token: str = ""):
+def admin_ingest_polls(
+    sources: str = "fivethirtyeight,votehub,news",
+    use_gemini: bool = False,
+    _: None = Depends(_require_admin),
+):
     """Manually trigger poll ingestion. Pass use_gemini=true to enrich articles with Gemini."""
-    expected = os.getenv("POLL_INGEST_ADMIN_TOKEN", "")
-    if expected and token != expected:
-        raise HTTPException(status_code=403, detail="Invalid poll ingest token")
     source_list = [s.strip() for s in sources.split(",") if s.strip()]
     extra_flags = ["--use-gemini"] if use_gemini and os.getenv("GEMINI_API_KEY") else []
     result = _run_ingest_subprocess(source_list, extra_flags=extra_flags)
     return result
 
 @app.get("/api/admin/reload-votes")
-def admin_reload_votes():
+def admin_reload_votes(_: None = Depends(_require_admin)):
     """Reload the in-memory vote cache from polls.db (run after ingest_congress_votes.py)."""
     _load_votes_cache()
     total = sum(len(v) for v in _VOTES_CACHE.values())
@@ -420,7 +449,7 @@ def admin_reload_votes():
 
 
 @app.get("/api/admin/reload-pacs")
-def admin_reload_pacs():
+def admin_reload_pacs(_: None = Depends(_require_admin)):
     """Reload the in-memory PAC/industry cache from polls.db (run after ingest_fec_pacs.py)."""
     _load_pac_cache()
     total = sum(len(v) for v in _PAC_CACHE.values())
@@ -428,7 +457,7 @@ def admin_reload_pacs():
 
 
 @app.get("/api/admin/ingest-fec-pacs")
-def admin_ingest_fec_pacs(cycle: int | None = None):
+def admin_ingest_fec_pacs(cycle: int | None = None, _: None = Depends(_require_admin)):
     """Trigger FEC PAC/industry ingestion in a background thread (non-blocking).
     Omit cycle to run all three cycles (2020, 2022, 2024).
     """
@@ -458,7 +487,7 @@ def admin_ingest_fec_pacs(cycle: int | None = None):
 
 
 @app.get("/api/admin/ingest-committees")
-def admin_ingest_committees():
+def admin_ingest_committees(_: None = Depends(_require_admin)):
     """Refresh congressional committee assignments from unitedstates/congress-legislators (non-blocking)."""
     script = os.path.join(BASE_DIR, "ingest_committees.py")
     if not os.path.exists(script):
@@ -567,8 +596,90 @@ def pac_summary(bioguide_id: str):
     }
 
 
+@app.get("/api/congress/donors/{candidate_id}")
+def candidate_donors(
+    candidate_id: str,
+    cycle: int = 2024,
+    sector: str = "",
+    limit: int = 100,
+    offset: int = 0,
+    sort: str = "amount",
+):
+    """Paginated donor list for a FEC candidate ID from fec_individual_contributions."""
+    if not os.path.exists(_POLLS_DB):
+        return {"error": "polls.db missing"}
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+
+        tbl = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='fec_individual_contributions'"
+        ).fetchone()
+        if not tbl:
+            conn.close()
+            return {"candidate_id": candidate_id, "donors": [], "note": "no data — run fec_employer_pipeline.py"}
+
+        sort_col = "amount" if sort == "amount" else "contribution_date"
+        where = "candidate_id = ? AND cycle = ?"
+        params: list = [candidate_id, cycle]
+        if sector:
+            where += " AND employer_sector = ?"
+            params.append(sector)
+
+        total = conn.execute(
+            f"SELECT COUNT(*) FROM fec_individual_contributions WHERE {where}", params
+        ).fetchone()[0]
+
+        rows = conn.execute(
+            f"""SELECT contributor_name, contributor_employer, employer_sector,
+                       contributor_occupation, amount, contribution_date, city, state
+                FROM fec_individual_contributions
+                WHERE {where}
+                ORDER BY {sort_col} DESC
+                LIMIT ? OFFSET ?""",
+            [*params, limit, offset],
+        ).fetchall()
+
+        sector_rows = conn.execute(
+            """SELECT employer_sector, SUM(amount) AS total, COUNT(*) AS donors
+               FROM fec_individual_contributions
+               WHERE candidate_id = ? AND cycle = ?
+               GROUP BY employer_sector ORDER BY total DESC""",
+            [candidate_id, cycle],
+        ).fetchall()
+        conn.close()
+
+        return {
+            "candidate_id": candidate_id,
+            "cycle": cycle,
+            "total_donors": total,
+            "limit": limit,
+            "offset": offset,
+            "sector_filter": sector or None,
+            "sector_totals": [
+                {"sector": r["employer_sector"], "total": r["total"], "donors": r["donors"]}
+                for r in sector_rows
+            ],
+            "donors": [
+                {
+                    "name": r["contributor_name"],
+                    "employer": r["contributor_employer"],
+                    "sector": r["employer_sector"],
+                    "occupation": r["contributor_occupation"],
+                    "amount": r["amount"],
+                    "date": r["contribution_date"],
+                    "city": r["city"],
+                    "state": r["state"],
+                }
+                for r in rows
+            ],
+        }
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
 @app.get("/api/admin/ingest-fec")
-def admin_ingest_fec(cycle: str = "2026"):
+def admin_ingest_fec(cycle: str = "2026", _: None = Depends(_require_admin)):
     """Trigger FEC campaign finance ingestion for Virginia candidates."""
     api_key = os.getenv("FEC_API_KEY", "")
     if not api_key:
@@ -619,6 +730,8 @@ def _get_fec_summary(name: str) -> str:
 
 _GEMINI_MODEL = "gemini-2.5-flash"
 
+VOTEIQ_SYSTEM_PROMPT = VOICE_PROMPTS["free"]
+
 def _gemini_reply(system_prompt, messages, max_tokens):
     """Helper to call Gemini API with system instructions."""
     from google.genai import types as _gtypes
@@ -643,20 +756,20 @@ def _gemini_reply(system_prompt, messages, max_tokens):
 # ── News review queue ──────────────────────────────────────────────────────────
 
 @app.get("/admin/review", response_class=HTMLResponse)
-async def admin_review_page(request: Request):
+async def admin_review_page(request: Request, _: None = Depends(_require_admin)):
     """Human review queue for flagged news articles."""
     with open(os.path.join(BASE_DIR, "templates", "review.html"), encoding="utf-8") as f:
         return HTMLResponse(f.read())
 
 
 @app.get("/api/admin/review-queue")
-def api_review_queue(limit: int = 20, status: str = "pending"):
+def api_review_queue(limit: int = 20, status: str = "pending", _: None = Depends(_require_admin)):
     """Return flagged articles awaiting review."""
     return {"items": ingest_news.get_review_queue(limit=limit, status=status), "stats": ingest_news.queue_stats()}
 
 
 @app.post("/api/admin/review/{article_id}/approve")
-def api_review_approve(article_id: str):
+def api_review_approve(article_id: str, _: None = Depends(_require_admin)):
     found = ingest_news.set_review_status(article_id, "approved")
     if not found:
         raise HTTPException(status_code=404, detail="Article not found")
@@ -664,7 +777,7 @@ def api_review_approve(article_id: str):
 
 
 @app.post("/api/admin/review/{article_id}/reject")
-def api_review_reject(article_id: str):
+def api_review_reject(article_id: str, _: None = Depends(_require_admin)):
     found = ingest_news.set_review_status(article_id, "rejected")
     if not found:
         raise HTTPException(status_code=404, detail="Article not found")
@@ -1906,6 +2019,8 @@ class ChatRequest(BaseModel):
     locality: str = ""
     hod_district: int | None = None
     sd_district: int | None = None
+    voice: str = "free"
+    tier:  str = "free"
 
     @field_validator('hod_district', 'sd_district', mode='before')
     @classmethod
@@ -1913,6 +2028,17 @@ class ChatRequest(BaseModel):
         if v == '' or v is None:
             return None
         return int(v)
+
+    @field_validator('voice')
+    @classmethod
+    def validate_voice(cls, v, info):
+        tier    = (info.data or {}).get('tier', 'free')
+        allowed = TIER_VOICE_MAP.get(tier, ['free'])
+        if v not in VOICE_PROMPTS:
+            return 'free'
+        if v not in allowed:
+            return 'free'
+        return v
 
 class ChatResponse(BaseModel):
     reply: str
@@ -4482,18 +4608,20 @@ async def chat(request: Request, req: ChatRequest):
     vote_context    = _fetch_vote_context(last_question, bioguide_ids)
     finance_context = _fetch_finance_context(bioguide_ids, last_question)
 
-    system_prompt = f"""You are VoteIQ, a nonpartisan civic assistant helping Virginia voters learn about their elected representatives.
+    base_prompt = VOICE_PROMPTS.get(req.voice, VOICE_PROMPTS["free"])
+    max_tokens  = TIER_MAX_TOKENS.get(req.tier, TIER_MAX_TOKENS["free"])
+
+    system_prompt = f"""{base_prompt}
+
+---
 
 {district_block}
 
-Your job is to help voters understand who represents them and what those officials do. Answer questions about:
-- The representative's role, responsibilities, and committee assignments
-- How to contact or reach the representative
-- Recent legislation they have sponsored or voted on
-- How they voted on specific bills or issues
-- Campaign donors and which industries fund their campaigns
-- General information about the office (U.S. House, state legislature, etc.)
-- Voter registration and civic participation
+Available data for this representative:
+- Committee assignments and legislative role
+- Recent votes (with bill name and Yea/Nay)
+- Campaign donors and industry totals (FEC data, fec.gov)
+- Voter registration and civic participation info
 
 {vote_context if vote_context else ""}
 
@@ -4507,9 +4635,9 @@ Format citations as: [Outlet — Author](URL) at the end of the relevant sentenc
 If no relevant news is listed above, answer from your training knowledge.
 ''' if news_context else ''}
 
-Keep answers 2-4 sentences. Be factual and nonpartisan. When citing a vote, include the bill name and Yea/Nay. When citing donors or industry contributions, state the dollar amount and add "(FEC data, fec.gov)" so users know the source. For official contact info direct users to house.gov, senate.gov, or virginiageneralassembly.gov. Never express opinions on representatives or tell people how to vote."""
+When citing a vote, include the bill name and Yea/Nay. When citing donors or industry contributions, state the dollar amount and add "(FEC data, fec.gov)". For official contact info direct users to house.gov, senate.gov, or virginiageneralassembly.gov. Never express opinions on representatives or tell people how to vote."""
     try:
-        return ChatResponse(reply=_claude_reply(system_prompt, req.messages, max_tokens=1000))
+        return ChatResponse(reply=_claude_reply(system_prompt, req.messages, max_tokens=max_tokens))
     except Exception as e:
         return ChatResponse(reply=_friendly_claude_error(e))
 
@@ -4541,23 +4669,24 @@ async def gemini_chat(request: Request, req: ChatRequest):
             f"Delegate: {hod_info['delegate']} ({hod_info['party']})\n"
         )
 
-    system_prompt = f"""You are VoteIQ, a nonpartisan civic assistant for Virginia. 
-You are grounded in local election data and federal campaign finance (FEC) data.
+    base_prompt = VOICE_PROMPTS.get(req.voice, VOICE_PROMPTS["free"])
+    max_tokens  = TIER_MAX_TOKENS.get(req.tier, TIER_MAX_TOKENS["free"])
+
+    system_prompt = f"""{base_prompt}
+
+---
 
 {district_block}
 
-Rules:
-1. Use the FEC finance totals provided in the context if the user asks about money, donors, or campaign spending.
-2. Be factual and nonpartisan.
-3. Keep answers concise (2-4 sentences).
-4. If you don't have specific finance data for a state official, clarify that FEC data only covers federal offices.
-5. Direct users to FEC.gov or house.gov for official records.
-
-Never tell people how to vote or express opinions on the spending habits of representatives."""
+Additional rules:
+- Use FEC finance totals from context when user asks about money or donors.
+- FEC data only covers federal offices — clarify this for state officials.
+- Direct users to FEC.gov or house.gov for official records.
+- Never tell people how to vote or express opinions on representatives."""
 
     try:
         # Filter messages for valid types
-        reply = _gemini_reply(system_prompt, req.messages, max_tokens=1000)
+        reply = _gemini_reply(system_prompt, req.messages, max_tokens=max_tokens)
         if not reply.rstrip().endswith("public datasets.*"):
             reply = reply.rstrip() + "\n\n---\n*Sources: FEC.gov, OpenStates, and VoteIQ Local Data.*"
         return ChatResponse(reply=reply)
@@ -5664,6 +5793,18 @@ def _fetch_federal_context(member: dict) -> str:
     return "\n".join(lines)
 
 
+# ── Federal bill type map (prefix → DB bill_type) ─────────────────────────────
+
+_FEDERAL_BILL_TYPE_MAP: dict[str, str] = {
+    "HR": "hr",
+    "SR": "sres",   # _federal_sqlite_bill_lookup falls back to "s" when sres misses
+    "HJ": "hjres",
+    "SJ": "sjres",
+    "HC": "hconres",
+    "SC": "sconres",
+}
+
+
 # ── SQLite bill lookup ─────────────────────────────────────────────────────────
 
 def _sqlite_bill_lookup(bill_numbers: list[str]) -> str:
@@ -5701,6 +5842,68 @@ def _sqlite_bill_lookup(bill_numbers: list[str]) -> str:
                 + (f"\nLast House action: {house_action}" if house_action else "")
                 + (f"\nLast Senate action: {senate_action}" if senate_action else "")
                 + (f"\nGovernor action: {gov_action}" if gov_action else "")
+            )
+        conn.close()
+        return "\n\n".join(lines)
+    except Exception:
+        return ""
+
+
+_FEDERAL_BILL_TYPE_MAP = {
+    "HR": "hr",
+    "SR": "sres",
+    "HJ": "hjres",
+    "SJ": "sjres",
+}
+
+def _federal_sqlite_bill_lookup(bill_ids: list[str]) -> str:
+    """Return a formatted excerpt for federal bill IDs (e.g. 'HR1137') from congress_bill_texts."""
+    if not bill_ids or not os.path.exists(_POLLS_DB):
+        return ""
+    federal_ids = [(bid, _FEDERAL_BILL_TYPE_MAP.get(re.match(r"^([A-Z]+)", bid).group(1), ""))
+                   for bid in bill_ids
+                   if re.match(r"^([A-Z]+)", bid) and re.match(r"^([A-Z]+)", bid).group(1) in _FEDERAL_BILL_TYPE_MAP]
+    if not federal_ids:
+        return ""
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        lines = []
+        for bid, btype in federal_ids:
+            bnum = re.sub(r"^[A-Z]+", "", bid)
+            # try exact bill_type first, then fallback ("SR" → try "s" if "sres" misses)
+            row = conn.execute(
+                """SELECT bt.text, COALESCE(cb.title,''), COALESCE(cb.policy_area,''),
+                          COALESCE(cb.latest_action,''), bt.congress
+                   FROM congress_bill_texts bt
+                   LEFT JOIN congress_bills cb
+                       ON cb.congress=bt.congress AND cb.bill_type=bt.bill_type AND cb.bill_number=bt.bill_number
+                   WHERE bt.bill_type=? AND bt.bill_number=?
+                   ORDER BY bt.congress DESC LIMIT 1""",
+                (btype, bnum),
+            ).fetchone()
+            if not row and btype == "sres":
+                row = conn.execute(
+                    """SELECT bt.text, COALESCE(cb.title,''), COALESCE(cb.policy_area,''),
+                              COALESCE(cb.latest_action,''), bt.congress
+                       FROM congress_bill_texts bt
+                       LEFT JOIN congress_bills cb
+                           ON cb.congress=bt.congress AND cb.bill_type=bt.bill_type AND cb.bill_number=bt.bill_number
+                       WHERE bt.bill_type='s' AND bt.bill_number=?
+                       ORDER BY bt.congress DESC LIMIT 1""",
+                    (bnum,),
+                ).fetchone()
+            if not row:
+                continue
+            text, title, policy_area, latest_action, congress = row
+            excerpt = (text or "")[:2500].rstrip()
+            session_label = "2025" if int(congress or 119) >= 119 else str(congress)
+            area_tag = f" [{policy_area}]" if policy_area else ""
+            action_tag = f"\nLatest action: {latest_action}" if latest_action else ""
+            lines.append(
+                f"[Federal Bill Text — {bid} ({session_label} Congress)]{area_tag}\n"
+                f"Title: {title}\n"
+                + action_tag
+                + f"\n\nText excerpt:\n{excerpt}"
             )
         conn.close()
         return "\n\n".join(lines)
@@ -6135,12 +6338,9 @@ async def pdf_chat(
 
 
 @app.post("/api/admin/upload-db")
-async def upload_db(file: UploadFile = File(...), token: str = Form(...)):
+async def upload_db(file: UploadFile = File(...), _: None = Depends(_require_admin)):
     """One-time endpoint to upload a SQLite DB to the persistent DATA_DIR.
-    Requires UPLOAD_ADMIN_TOKEN env var to be set."""
-    expected = os.getenv("UPLOAD_ADMIN_TOKEN", "")
-    if not expected or token != expected:
-        raise HTTPException(status_code=403, detail="Invalid token")
+    Requires ADMIN_TOKEN env var to be set."""
     allowed = {"openstates_va.db", "polls.db"}
     if file.filename not in allowed:
         raise HTTPException(status_code=400, detail=f"Only {allowed} allowed")
@@ -6158,7 +6358,7 @@ async def upload_db(file: UploadFile = File(...), token: str = Form(...)):
 
 
 @app.get("/api/congress-debug")
-def congress_debug():
+def congress_debug(_: None = Depends(_require_admin)):
     """Show what federal data is currently in polls.db on this server."""
     info = {}
     try:
@@ -6186,7 +6386,7 @@ def congress_debug():
 
 
 @app.get("/api/bills-debug")
-async def bills_debug():
+async def bills_debug(_: None = Depends(_require_admin)):
     chroma_key = os.getenv("CHROMA_API_KEY", "")
     voyage_key = os.getenv("VOYAGE_API_KEY", "")
     env_info = {
@@ -6246,256 +6446,7 @@ def bill_descriptions_search(q: str, session: str | None = None, limit: int = 8)
     }
 
 
-@app.get("/api/polls")
-def polls_search(
-    office: str | None = None,
-    cycle: str | None = None,
-    race_id: str | None = None,
-    limit: int = 25,
-):
-    """Read Virginia poll rows ingested by ingest_va_polls.py."""
-    if not os.path.exists(_POLLS_DB):
-        return {"count": 0, "results": [], "source": "missing_polls_db"}
-    limit = max(1, min(int(limit or 25), 100))
-    where = ["LOWER(COALESCE(state, '')) = 'virginia'"]
-    params: list[object] = []
-    if office:
-        where.append("LOWER(COALESCE(office_type, '')) LIKE ?")
-        params.append(f"%{office.lower()}%")
-    if cycle:
-        where.append("cycle = ?")
-        params.append(cycle)
-    if race_id:
-        where.append("race_id = ?")
-        params.append(race_id)
-
-    try:
-        conn = sqlite3.connect(_POLLS_DB)
-        conn.row_factory = sqlite3.Row
-        table_exists = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='polls'"
-        ).fetchone()
-        if not table_exists:
-            conn.close()
-            return {"count": 0, "results": [], "source": "polls_table_not_initialized"}
-        rows = conn.execute(
-            f"""
-            SELECT *
-            FROM polls
-            WHERE {' AND '.join(where)}
-            ORDER BY COALESCE(end_date, start_date, created_at, fetched_at) DESC
-            LIMIT ?
-            """,
-            (*params, limit),
-        ).fetchall()
-        records = []
-        for row in rows:
-            results = conn.execute(
-                """
-                SELECT answer, candidate_name, candidate_party, pct
-                FROM poll_results
-                WHERE source_record_id = ?
-                ORDER BY pct DESC
-                """,
-                (row["source_record_id"],),
-            ).fetchall()
-            item = dict(row)
-            item["results"] = [dict(r) for r in results]
-            item.pop("raw_json", None)
-            records.append(item)
-        conn.close()
-        return {"count": len(records), "source": "local_sqlite_polls", "results": records}
-    except Exception as exc:
-        return {"count": 0, "results": [], "source": "polls_error", "error": str(exc)}
-
-
-@app.get("/api/poll-articles")
-def poll_articles(limit: int = 25):
-    """Read poll-related news/RSS mentions ingested by ingest_va_polls.py."""
-    if not os.path.exists(_POLLS_DB):
-        return {"count": 0, "results": [], "source": "missing_polls_db"}
-    limit = max(1, min(int(limit or 25), 100))
-    try:
-        conn = sqlite3.connect(_POLLS_DB)
-        conn.row_factory = sqlite3.Row
-        table_exists = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='poll_articles'"
-        ).fetchone()
-        if not table_exists:
-            conn.close()
-            return {"count": 0, "results": [], "source": "poll_articles_table_not_initialized"}
-        rows = conn.execute(
-            """
-            SELECT source, title, summary, published_at, url, matched_terms, extracted_numbers, fetched_at
-            FROM poll_articles
-            ORDER BY COALESCE(published_at, fetched_at) DESC
-            LIMIT ?
-            """,
-            (limit,),
-        ).fetchall()
-        conn.close()
-        return {"count": len(rows), "source": "local_sqlite_poll_articles", "results": [dict(r) for r in rows]}
-    except Exception as exc:
-        return {"count": 0, "results": [], "source": "poll_articles_error", "error": str(exc)}
-
-
-@app.get("/api/polls-debug")
-def polls_debug():
-    """Diagnostic: DB path, file existence, row counts, last ingest time."""
-    db_path = _POLLS_DB
-    info: dict = {"db_path": db_path, "db_exists": os.path.exists(db_path)}
-    if info["db_exists"]:
-        info["db_size_bytes"] = os.path.getsize(db_path)
-    try:
-        conn = sqlite3.connect(db_path)
-        tables = [r[0] for r in conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        ).fetchall()]
-        info["tables"] = tables
-        for tbl in ("polls", "poll_results", "poll_articles", "poll_ingest_runs"):
-            if tbl in tables:
-                info[f"{tbl}_count"] = conn.execute(f"SELECT COUNT(*) FROM {tbl}").fetchone()[0]
-                if tbl == "polls":
-                    row = conn.execute(
-                        "SELECT state, COUNT(*) FROM polls GROUP BY state ORDER BY COUNT(*) DESC LIMIT 5"
-                    ).fetchall()
-                    info["polls_by_state"] = [{"state": r[0], "count": r[1]} for r in row]
-                    last = conn.execute("SELECT MAX(fetched_at) FROM polls").fetchone()[0]
-                    info["polls_last_fetched"] = last
-                if tbl == "poll_ingest_runs":
-                    runs = conn.execute(
-                        "SELECT source, status, rows_written, started_at FROM poll_ingest_runs ORDER BY id DESC LIMIT 10"
-                    ).fetchall()
-                    info["recent_ingest_runs"] = [dict(zip(["source","status","rows_written","started_at"], r)) for r in runs]
-        conn.close()
-    except Exception as exc:
-        info["db_error"] = str(exc)
-    return info
-
-
-@app.get("/api/polls-feed")
-def polls_feed(
-    office: str | None = None,
-    limit: int = 60,
-):
-    """Return Virginia polls with nested candidate results for the polls page."""
-    if not os.path.exists(_POLLS_DB):
-        return {"count": 0, "results": [], "source": "missing_polls_db"}
-    limit = max(1, min(int(limit or 60), 200))
-    where = ["state = 'Virginia'"]
-    params: list = []
-    if office:
-        where.append("LOWER(office_type) LIKE LOWER(?)")
-        params.append(f"%{office}%")
-    where_sql = " AND ".join(where)
-    try:
-        conn = sqlite3.connect(_POLLS_DB)
-        conn.row_factory = sqlite3.Row
-        for tbl in ("polls", "poll_results"):
-            exists = conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (tbl,)
-            ).fetchone()
-            if not exists:
-                conn.close()
-                return {"count": 0, "results": [], "source": f"{tbl}_not_initialized"}
-        rows = conn.execute(
-            f"""
-            SELECT p.source_record_id, p.source, p.cycle, p.office_type, p.seat_name,
-                   p.stage, p.pollster, p.sponsor, p.fte_grade, p.sample_size,
-                   p.population, p.methodology, p.start_date, p.end_date,
-                   p.election_date, p.url, p.notes, p.internal, p.partisan,
-                   pr.answer, pr.candidate_name, pr.candidate_party, pr.pct
-            FROM (
-                SELECT * FROM polls
-                WHERE {where_sql}
-                ORDER BY COALESCE(end_date, start_date, created_at, fetched_at) DESC
-                LIMIT ?
-            ) p
-            LEFT JOIN poll_results pr ON pr.source_record_id = p.source_record_id
-            ORDER BY COALESCE(p.end_date, p.start_date, p.created_at) DESC, p.source_record_id
-            """,
-            params + [limit],
-        ).fetchall()
-        conn.close()
-        polls: dict = {}
-        order: list = []
-        for row in rows:
-            rid = row["source_record_id"]
-            if rid not in polls:
-                order.append(rid)
-                polls[rid] = {
-                    "source_record_id": rid,
-                    "source": row["source"],
-                    "cycle": row["cycle"],
-                    "office_type": row["office_type"],
-                    "seat_name": row["seat_name"],
-                    "stage": row["stage"],
-                    "pollster": row["pollster"],
-                    "sponsor": row["sponsor"],
-                    "fte_grade": row["fte_grade"],
-                    "sample_size": row["sample_size"],
-                    "population": row["population"],
-                    "methodology": row["methodology"],
-                    "start_date": row["start_date"],
-                    "end_date": row["end_date"],
-                    "election_date": row["election_date"],
-                    "url": row["url"],
-                    "notes": row["notes"],
-                    "internal": row["internal"],
-                    "partisan": row["partisan"],
-                    "results": [],
-                }
-            if row["candidate_name"] or row["answer"]:
-                polls[rid]["results"].append({
-                    "answer": row["answer"],
-                    "candidate_name": row["candidate_name"],
-                    "candidate_party": row["candidate_party"],
-                    "pct": row["pct"],
-                })
-        result_list = [polls[rid] for rid in order]
-        return {"count": len(result_list), "source": "local_sqlite_polls_feed", "results": result_list}
-    except Exception as exc:
-        return {"count": 0, "results": [], "source": "polls_feed_error", "error": str(exc)}
-
-
-@app.get("/api/spanberger-approval")
-def spanberger_approval():
-    """Return Spanberger poll numbers over time for the approval tracker chart."""
-    if not os.path.exists(_POLLS_DB):
-        return {"count": 0, "data": []}
-    try:
-        conn = sqlite3.connect(_POLLS_DB)
-        conn.row_factory = sqlite3.Row
-        rows = conn.execute(
-            """
-            SELECT p.end_date, p.start_date, p.pollster, p.sample_size,
-                   p.population, p.source, p.url,
-                   pr.pct, pr.candidate_name, pr.candidate_party
-            FROM poll_results pr
-            JOIN polls p ON p.source_record_id = pr.source_record_id
-            WHERE LOWER(pr.candidate_name) LIKE '%spanberger%'
-              AND pr.pct >= 30
-              AND (p.cycle >= '2024' OR COALESCE(p.end_date, p.start_date, '') >= '2024')
-            ORDER BY COALESCE(p.end_date, p.start_date) ASC
-            """
-        ).fetchall()
-        conn.close()
-        data = [
-            {
-                "date": row["end_date"] or row["start_date"],
-                "pollster": row["pollster"],
-                "pct": row["pct"],
-                "candidate_name": row["candidate_name"],
-                "sample_size": row["sample_size"],
-                "population": row["population"],
-                "source": row["source"],
-                "url": row["url"],
-            }
-            for row in rows
-        ]
-        return {"count": len(data), "data": data}
-    except Exception as exc:
-        return {"count": 0, "data": [], "error": str(exc)}
+# polls routes moved to voteiq/api/routes/polls.py
 
 
 @app.get("/api/congress/members")
@@ -7009,10 +6960,7 @@ def news_page():
         return f.read()
 
 
-@app.get("/polls", response_class=HTMLResponse)
-def polls_page():
-    with open(os.path.join(BASE_DIR, "templates", "polls.html"), "r", encoding="utf-8") as f:
-        return f.read()
+# /polls route moved to voteiq/api/routes/polls.py
 
 
 @app.post("/api/bills-chat", response_model=ChatResponse)
@@ -7062,6 +7010,12 @@ async def bills_chat(request: Request, req: BillsChatRequest):
             sqlite_bill = _sqlite_bill_lookup(mentioned)
             if sqlite_bill:
                 for block in sqlite_bill.split("\n\n"):
+                    if block and block not in seen_docs:
+                        seen_docs.add(block)
+                        context_blocks.insert(0, block)
+            fed_bill = _federal_sqlite_bill_lookup(mentioned)
+            if fed_bill:
+                for block in fed_bill.split("\n\n"):
                     if block and block not in seen_docs:
                         seen_docs.add(block)
                         context_blocks.insert(0, block)
@@ -7443,6 +7397,11 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
             sqlite_bill = _sqlite_bill_lookup(mentioned)
             if sqlite_bill:
                 for block in sqlite_bill.split("\n\n"):
+                    if block and block not in seen_docs:
+                        seen_docs.add(block); context_blocks.insert(0, block)
+            fed_bill = _federal_sqlite_bill_lookup(mentioned)
+            if fed_bill:
+                for block in fed_bill.split("\n\n"):
                     if block and block not in seen_docs:
                         seen_docs.add(block); context_blocks.insert(0, block)
         if mentioned:
@@ -8351,6 +8310,80 @@ def virginia_map_page(layer: str = "counties", embed: bool = False):
         html = html.replace("<body>", '<body class="embed-mode">', 1)
     html = html.replace("</head>", inject + "</head>", 1)
     return html
+
+
+@app.get("/api/analyst/{member_id}")
+async def analyst_endpoint(
+    member_id:    str,
+    level:        str = Query("federal", pattern="^(federal|state)$"),
+    analyst_type: str = Query(
+        "triangle",
+        pattern="^(triangle|donor_shift|geography|loyalty|effectiveness)$"
+    ),
+    cycle:        str = "2024",
+):
+    member = lookup_member(member_id, level)
+    name   = member.get("name") if member else member_id
+
+    report = run_analyst(
+        name         = name,
+        member_id    = member_id,
+        level        = level,
+        analyst_type = analyst_type,
+        cycle        = int(cycle) if level == "federal" else cycle,
+    )
+    return {"member_id": member_id, "level": level,
+            "analyst_type": analyst_type, "cycle": cycle,
+            "report": report}
+
+
+@app.get("/api/timing/{member_id}")
+async def timing_analyst_endpoint(
+    member_id:   str,
+    level:       str = Query(
+                     "federal",
+                     pattern="^(federal|state)$"
+                 ),
+    cycle:       str = "2024",
+    session:     str = "2024",
+    days_window: int = Query(
+                     30,
+                     ge=7,    # minimum 7 days
+                     le=180,  # maximum 180 days
+                 ),
+):
+    if level == "federal":
+        raise HTTPException(
+            status_code=400,
+            detail="Timing analyst is not yet available for federal members.",
+        )
+
+    member = lookup_member(member_id, level)
+    name   = member.get("name") if member else member_id
+
+    summary = get_timing_summary(
+        lis_id      = member_id,
+        cycle       = cycle,
+        session     = session,
+        days_window = days_window,
+    )
+    pairs = get_donation_timing(
+        lis_id      = member_id,
+        cycle       = cycle,
+        session     = session,
+        days_window = days_window,
+    )
+
+    return {
+        "member_id":   member_id,
+        "name":        name,
+        "level":       level,
+        "cycle":       cycle,
+        "session":     session,
+        "days_window": days_window,
+        "summary":     summary,
+        "pairs":       pairs,
+    }
 
 
 @app.on_event("startup")
