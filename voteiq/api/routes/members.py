@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
+from collections import defaultdict
 from pathlib import Path
 
 from fastapi import APIRouter, Request
@@ -329,3 +330,132 @@ def va_officials(office: str = "", limit: int = 200):
         ]}
     except Exception as exc:
         return {"officials": [], "error": str(exc)}
+
+
+@router.get("/api/congress/pac-summary/{bioguide_id}")
+def pac_summary(bioguide_id: str):
+    """Return FEC industry donation totals with per-cycle breakdown and trend %."""
+    if not os.path.exists(_POLLS_DB):
+        return {"bioguide_id": bioguide_id, "industries": [], "note": "polls.db missing"}
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+        tbl = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='fec_industry_totals'"
+        ).fetchone()
+        if not tbl:
+            conn.close()
+            return {"bioguide_id": bioguide_id, "industries": [], "note": "no data"}
+        all_rows = conn.execute(
+            "SELECT industry, cycle, total_amount, contributor_count, top_donors, member_name "
+            "FROM fec_industry_totals WHERE bioguide_id=? ORDER BY industry, cycle",
+            (bioguide_id,)
+        ).fetchall()
+        conn.close()
+    except Exception as exc:
+        return {"bioguide_id": bioguide_id, "industries": [], "note": str(exc)}
+
+    if not all_rows:
+        return {"bioguide_id": bioguide_id, "industries": [], "note": "no data — run ingest_fec_pacs.py"}
+
+    member_name = all_rows[0]["member_name"]
+    by_industry: dict = defaultdict(lambda: {"by_cycle": {}, "top_donors": [], "count": 0})
+    for row in all_rows:
+        ind, cyc = row["industry"], str(row["cycle"])
+        by_industry[ind]["by_cycle"][cyc] = row["total_amount"]
+        by_industry[ind]["count"] += row["contributor_count"]
+        if not by_industry[ind]["top_donors"]:
+            by_industry[ind]["top_donors"] = json.loads(row["top_donors"] or "[]")
+
+    industries = []
+    for ind, data in by_industry.items():
+        by_cycle = data["by_cycle"]
+        sorted_cycles = sorted(by_cycle.keys())
+        latest, earliest = by_cycle[sorted_cycles[-1]], by_cycle[sorted_cycles[0]]
+        if len(sorted_cycles) > 1 and earliest > 0:
+            trend_pct = round((latest - earliest) / earliest * 100)
+            trend_label = f"+{trend_pct}%" if trend_pct >= 0 else f"{trend_pct}%"
+            is_new = False
+        elif len(sorted_cycles) == 1 and sorted_cycles[0] != "2020":
+            trend_pct, trend_label, is_new = None, "NEW", True
+        else:
+            trend_pct, trend_label, is_new = None, "—", False
+        industries.append({
+            "industry": ind, "total": latest, "count": data["count"],
+            "top_donors": data["top_donors"], "by_cycle": by_cycle,
+            "cycles": sorted_cycles, "trend_pct": trend_pct,
+            "trend_label": trend_label, "is_new": is_new,
+        })
+
+    industries.sort(key=lambda r: r["total"], reverse=True)
+    all_cycles = sorted({str(row["cycle"]) for row in all_rows})
+    return {
+        "bioguide_id": bioguide_id, "member_name": member_name,
+        "cycles": all_cycles, "latest_cycle": all_cycles[-1] if all_cycles else "",
+        "industries": industries,
+    }
+
+
+@router.get("/api/congress/donors/{candidate_id}")
+def candidate_donors(
+    candidate_id: str,
+    cycle: int = 2024,
+    sector: str = "",
+    limit: int = 100,
+    offset: int = 0,
+    sort: str = "amount",
+):
+    """Paginated donor list for a FEC candidate ID."""
+    if not os.path.exists(_POLLS_DB):
+        return {"error": "polls.db missing"}
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+        tbl = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='fec_individual_contributions'"
+        ).fetchone()
+        if not tbl:
+            conn.close()
+            return {"candidate_id": candidate_id, "donors": [], "note": "no data — run fec_employer_pipeline.py"}
+        sort_col = "amount" if sort == "amount" else "contribution_date"
+        where = "candidate_id = ? AND cycle = ?"
+        params: list = [candidate_id, cycle]
+        if sector:
+            where += " AND employer_sector = ?"
+            params.append(sector)
+        total = conn.execute(
+            f"SELECT COUNT(*) FROM fec_individual_contributions WHERE {where}", params
+        ).fetchone()[0]
+        rows = conn.execute(
+            f"""SELECT contributor_name, contributor_employer, employer_sector,
+                       contributor_occupation, amount, contribution_date, city, state
+                FROM fec_individual_contributions
+                WHERE {where} ORDER BY {sort_col} DESC LIMIT ? OFFSET ?""",
+            [*params, limit, offset],
+        ).fetchall()
+        sector_rows = conn.execute(
+            """SELECT employer_sector, SUM(amount) AS total, COUNT(*) AS donors
+               FROM fec_individual_contributions
+               WHERE candidate_id = ? AND cycle = ?
+               GROUP BY employer_sector ORDER BY total DESC""",
+            [candidate_id, cycle],
+        ).fetchall()
+        conn.close()
+        return {
+            "candidate_id": candidate_id, "cycle": cycle,
+            "total_donors": total, "limit": limit, "offset": offset,
+            "sector_filter": sector or None,
+            "sector_totals": [
+                {"sector": r["employer_sector"], "total": r["total"], "donors": r["donors"]}
+                for r in sector_rows
+            ],
+            "donors": [
+                {"name": r["contributor_name"], "employer": r["contributor_employer"],
+                 "sector": r["employer_sector"], "occupation": r["contributor_occupation"],
+                 "amount": r["amount"], "date": r["contribution_date"],
+                 "city": r["city"], "state": r["state"]}
+                for r in rows
+            ],
+        }
+    except Exception as exc:
+        return {"error": str(exc)}
