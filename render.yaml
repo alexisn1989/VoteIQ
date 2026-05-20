@@ -1,0 +1,8 @@
+services:
+  - type: cron
+    name: voteiq-news-ingest
+    schedule: "0 6 * * *"   # 6am UTC daily
+    buildCommand: pip install -r requirements.txt
+    startCommand: python ingest_news.py
+    env: python
+    plan: free
