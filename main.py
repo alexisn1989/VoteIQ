@@ -73,6 +73,8 @@ from voteiq.api.routes.chat import router as _chat_router
 app.include_router(_chat_router)
 from voteiq.api.routes.elections import router as _elections_router
 app.include_router(_elections_router)
+from voteiq.api.routes.district import router as _district_router
+app.include_router(_district_router)
 
 # DATA_DIR: set to Render persistent disk mount path (e.g. /var/data) in production.
 # Falls back to the project directory for local development.
@@ -1944,15 +1946,7 @@ def lookup(address: str):
         ],
     }
 
-@app.get("/map", response_class=HTMLResponse)
-def get_map(address: str):
-    result = find_district(address)
-    if "error" in result:
-        return "<p>Address not found</p>"
-    m = folium.Map(location=[result["lat"], result["lng"]], zoom_start=12)
-    folium.Marker(location=[result["lat"], result["lng"]], popup=f"{result['district']}", icon=folium.Icon(color="red")).add_to(m)
-    folium.GeoJson(_get_va_cd()).add_to(m)
-    return m.get_root().render()
+# /map moved to voteiq/api/routes/district.py
 
 
 def _build_district_map(layer: str, user_lat: float = None, user_lng: float = None, district: int = None) -> str:
@@ -3612,30 +3606,10 @@ def _build_statewide_bubble_map(year: str, office: str) -> str:
     return rendered.replace("</html>", bounds_js + "</html>")
 
 
-@app.get("/statewide-bubble-map", response_class=HTMLResponse)
-def statewide_bubble_map(year: str, office: str, v: str = None):
-    key = f"{year}:{office}"
-    if key not in _statewide_bubble_maps:
-        _statewide_bubble_maps[key] = _build_statewide_bubble_map(year, office)
-    return _statewide_bubble_maps[key]
+# /statewide-bubble-map moved to voteiq/api/routes/district.py
 
 
-@app.get("/district-map", response_class=HTMLResponse)
-def district_map(layer: str = "congressional", lat: float = None, lng: float = None, district: int = None):
-    if layer in ("congressional", "hod_results", "hod_flip", "gov_results", "ltgov_results", "ag_results", "pres_2024", "senate_2024", "congress_2024", "senate_2023_results", "hod_2023_results", "senate_2023_flip_2019", "hod_2023_flip_2021", "gov_2021", "ltgov_2021", "ag_2021", "hod_2021_results", "congress_2022", "gov_2017", "ltgov_2017", "ag_2017", "senate_2019_results", "hod_2019_results", "pres_2016", "congress_2016", "pres_2020", "senate_2020", "congress_2020", "senate_2018", "congress_2018", "pres_flip", "gov_flip", "gov_2025_flip", "congress_midterm_flip", "hod_state_flip", "pres_2020_2024_flip", "congress_2024_flip") and lat is None:
-        if layer not in _district_maps:
-            try:
-                _district_maps[layer] = _build_district_map(layer)
-            except Exception as e:
-                return f"<p style='font-family:sans-serif;padding:40px'>Could not build map: {escape(str(e))}</p>"
-        return _district_maps[layer]
-    else:
-        try:
-            return _build_district_map(layer, user_lat=lat, user_lng=lng, district=district)
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return f"<p style='font-family:sans-serif;padding:40px'>Could not build {escape(layer)} map: {escape(str(e))}</p>"
+# /district-map moved to voteiq/api/routes/district.py
 
 
 def _fetch_vote_context(question: str, bioguide_ids: list[str], limit: int = 8) -> str:
@@ -4168,17 +4142,7 @@ _DISTRICT_MAP_FILES = {
 _district_map_cache: dict[tuple, str] = {}
 
 
-@app.get("/maps/{chamber}/{year}", response_class=HTMLResponse)
-def district_result_map(chamber: str, year: str):
-    from fastapi import HTTPException
-    key = (chamber.lower(), year)
-    if key not in _DISTRICT_MAP_FILES:
-        raise HTTPException(status_code=404, detail=f"No map for {chamber}/{year}")
-    if key not in _district_map_cache:
-        path = os.path.join(BASE_DIR, "templates", _DISTRICT_MAP_FILES[key])
-        with open(path, "r", encoding="utf-8") as f:
-            _district_map_cache[key] = f.read()
-    return _district_map_cache[key]
+# /maps/{chamber}/{year} moved to voteiq/api/routes/district.py
 
 
 def _build_election_summary(year: str) -> str:
@@ -6227,59 +6191,10 @@ def _load_sd_geojson():
     return _va_sd_geojson_cache
 
 
-@app.get("/baseline-map", response_class=HTMLResponse)
-def baseline_map_page():
-    map_html = _build_district_map("locality_baseline")
-    return HTMLResponse(content=map_html)
+# /baseline-map moved to voteiq/api/routes/district.py
 
 
-@app.get("/virignia-map", response_class=HTMLResponse)
-@app.get("/virginia-map", response_class=HTMLResponse)
-def virginia_map_page(layer: str = "counties", embed: bool = False):
-    allowed_layers = {
-        "counties", "pres_flip", "gov_flip", "gov_2025_flip", "congress_midterm_flip",
-        "hod_state_flip", "density_2017", "density_2019", "density_2021",
-        "density_2023", "density_2025", "sd_flip", "hod_flip", "hod", "sd",
-    }
-    initial_layer = layer if layer in allowed_layers else "counties"
-    mapbox_token = os.getenv("MAPBOX_TOKEN", "")
-    counties = _load_va_counties_geojson()
-    hod = _load_hod_geojson()
-    sd = _load_sd_geojson()
-    pres_flip = _build_pres_2016_2020_flip_geojson()
-    hod_flip = _build_state_leg_2023_flip_geojson("hod")
-    sd_flip = _build_state_leg_2023_flip_geojson("senate")
-    gov_flip = _build_locality_office_flip_geojson("2017", "2021", "Governor")
-    gov_2025_flip = _build_locality_office_flip_geojson("2021", "2025", "Governor")
-    congress_midterm_flip = _build_congress_flip_geojson("2018", "2022")
-    hod_state_flip = _build_hod_2017_2021_flip_geojson()
-    hod_density_layers = {year: _build_hod_density_geojson(year) for year in ("2017", "2019", "2021", "2023", "2025")}
-    hod_density_point_layers = {year: _build_hod_density_points_geojson(year) for year in ("2017", "2019", "2021", "2023", "2025")}
-    def _s(obj): return json.dumps(obj, default=str).replace("</script>", "<\\/script>")
-    with open(os.path.join(BASE_DIR, "templates", "virginia_map.html"), "r", encoding="utf-8") as f:
-        html = f.read()
-    inject = (
-        f"<script>"
-        f"window._MAPBOX_TOKEN={json.dumps(mapbox_token)};"
-        f"window._INITIAL_LAYER={json.dumps(initial_layer)};"
-        f"window._VA_GEOJSON={_s(counties)};"
-        f"window._HOD_GEOJSON={_s(hod)};"
-        f"window._SD_GEOJSON={_s(sd)};"
-        f"window._PRES_FLIP_GEOJSON={_s(pres_flip)};"
-        f"window._HOD_FLIP_GEOJSON={_s(hod_flip)};"
-        f"window._SD_FLIP_GEOJSON={_s(sd_flip)};"
-        f"window._GOV_FLIP_GEOJSON={_s(gov_flip)};"
-        f"window._GOV_2025_FLIP_GEOJSON={_s(gov_2025_flip)};"
-        f"window._CONGRESS_MIDTERM_FLIP_GEOJSON={_s(congress_midterm_flip)};"
-        f"window._HOD_STATE_FLIP_GEOJSON={_s(hod_state_flip)};"
-        f"window._HOD_DENSITY_GEOJSON={_s(hod_density_layers)};"
-        f"window._HOD_DENSITY_POINTS_GEOJSON={_s(hod_density_point_layers)};"
-        f"</script>"
-    )
-    if embed:
-        html = html.replace("<body>", '<body class="embed-mode">', 1)
-    html = html.replace("</head>", inject + "</head>", 1)
-    return html
+# /virignia-map and /virginia-map moved to voteiq/api/routes/district.py
 
 
 @app.get("/api/analyst/{member_id}")
