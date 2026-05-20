@@ -130,6 +130,14 @@
   .viq-chat-send:hover { background: #c8102e; }
   .viq-chat-send:disabled { opacity: 0.4; cursor: default; }
   .viq-chat-footer { font-size: 11px; color: #8892a4; text-align: center; padding: 6px 16px 10px; background: #fff; font-family: 'Barlow', sans-serif; }
+  .viq-voice-bar { display: flex; padding: 6px 16px 8px; background: #fff; border-top: 1px solid #eaecf4; gap: 0; }
+  .viq-voice-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 14px; border: 1px solid #c8d0e0; background: transparent; color: #8892a4; cursor: pointer; transition: all 0.15s; }
+  .viq-voice-btn:first-child { border-radius: 4px 0 0 4px; }
+  .viq-voice-btn:last-child  { border-radius: 0 4px 4px 0; }
+  .viq-voice-btn + .viq-voice-btn { border-left: none; }
+  .viq-voice-btn.active      { background: #0d1b2a; color: #fff; border-color: #0d1b2a; }
+  .viq-voice-btn.pro.active  { background: #1a52c8; color: #fff; border-color: #1a52c8; }
+  .viq-voice-btn.news.active { background: #c8102e; color: #fff; border-color: #c8102e; }
   .map-btn-hidden { display: none !important; }
   .viq-chat-bubble a { color: #0d6efd; text-decoration: underline; }
   .viq-chat-bubble a:hover { color: #c8102e; }
@@ -198,6 +206,11 @@
       <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">What committees does my rep serve on?</button>
       <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">What bills has my delegate sponsored?</button>
       <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">What is my senator's voting record?</button>
+    </div>
+    <div class="viq-voice-bar" id="viqVoiceBar">
+      <button class="viq-voice-btn active"     onclick="viqSetVoice('free',     this)">Free</button>
+      <button class="viq-voice-btn pro"        onclick="viqSetVoice('pro',      this)">Pro</button>
+      <button class="viq-voice-btn news"       onclick="viqSetVoice('newsroom', this)">Newsroom</button>
     </div>
     <div class="viq-chat-input-row">
       <input type="file" id="viqPdfFile" accept=".pdf" style="display:none" onchange="viqOnPdfSelect(this)" />
@@ -549,7 +562,14 @@
     let viqDistrict = 'VA-00';
     let viqLocality = '';
     let viqHod = null, viqSd = null;
+    let viqVoice = 'free';
     const viqMsgs = [];
+
+    function viqSetVoice(v, btn) {
+      viqVoice = v;
+      document.querySelectorAll('.viq-voice-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
     function viqEsc(value) {
       return String(value ?? '').replace(/[&<>"']/g, ch => ({
         '&': '&amp;',
@@ -1014,7 +1034,7 @@
         const res = await fetch('/api/bills-chat-stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ district: viqDistrict, locality: viqLocality, hod_district: viqHod, sd_district: viqSd, messages: viqMsgs })
+          body: JSON.stringify({ district: viqDistrict, locality: viqLocality, hod_district: viqHod, sd_district: viqSd, messages: viqMsgs, voice: viqVoice, tier: viqVoice })
         });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const reader = res.body.getReader();
