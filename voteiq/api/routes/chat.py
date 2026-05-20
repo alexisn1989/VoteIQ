@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
 
 from voteiq.api.claude import get_claude_client, get_model
-from voteiq.config.voices import TIER_MAX_TOKENS, TIER_VOICE_MAP, VOICE_PROMPTS
+from voteiq.config.voices import TIER_MAX_TOKENS, TIER_VOICE_MAP, VOICE_PROMPTS, get_system_prompt
 
 router = APIRouter(tags=["chat"])
 
@@ -43,8 +43,8 @@ class ChatRequest(BaseModel):
     locality: str = ""
     hod_district: int | None = None
     sd_district:  int | None = None
-    voice: str = "free"
     tier:  str = "free"
+    voice: str = "free"
 
     @field_validator("hod_district", "sd_district", mode="before")
     @classmethod
@@ -71,8 +71,8 @@ class BillsChatRequest(BaseModel):
     locality:     str = ""
     hod_district: int | None = None
     sd_district:  int | None = None
-    voice: str = "free"
     tier:  str = "free"
+    voice: str = "free"
 
     @field_validator("hod_district", "sd_district", mode="before")
     @classmethod
@@ -96,8 +96,8 @@ class BillsChatRequest(BaseModel):
 class ElectionChatRequest(BaseModel):
     year:     str
     messages: list[ChatMessage]
-    voice:    str = "free"
     tier:     str = "free"
+    voice:    str = "free"
 
     @field_validator("voice")
     @classmethod
@@ -333,7 +333,29 @@ def _build_bills_context(
     return context, exact_lookup_note, use_haiku, chroma_error
 
 
-# ── Bills system prompt (shared by both bills-chat routes) ────────────────────
+# ── Bills helpers (shared by both bills-chat routes) ─────────────────────────
+
+def build_bills_query_context(user_query: str, context: str) -> dict:
+    q = (user_query or "").lower()
+    touches_voting_patterns = (
+        any(w in q for w in ["vote", "votes", "voting", "roll call", "pattern", "party line", "defection"])
+        or "voting record" in q
+    )
+    return {
+        "touches_donor_data": any(
+            w in q for w in [
+                "donor", "donors", "fec", "pac", "finance", "funding",
+                "money", "contribution", "contributions", "campaign finance",
+            ]
+        ),
+        "touches_voting_patterns": touches_voting_patterns,
+        "touches_speech_context": any(
+            w in q for w in ["speech", "transcript", "said", "statement", "floor", "hearing"]
+        ),
+        "federal_rep_present": "| Federal]" in context,
+        "state_rep_present":   "| State]" in context or "HOD" in context or "Senate District" in context,
+    }
+
 
 def _bills_system_prompt(
     district_note: str,
@@ -357,6 +379,7 @@ def _bills_system_prompt(
         f"respond in the same style as state rep answers: "
         f"(1) Start with a one-sentence intro identifying who the rep is and their seat. "
         f"(2) Give overall vote stats (Yes/No counts and yes rate) from the \"Overall voting record\" line. "
+        f"For senators, note that yes rates are not directly comparable to House members — Senate votes include more procedural and cloture votes where minority-party senators routinely vote Nay. "
         f"(3) Highlight 3-5 key sponsored bills with their title and status. "
         f"(4) List their committee assignments. "
         f"(5) Close with a note pointing to congress.gov for full detail. "
@@ -367,7 +390,11 @@ def _bills_system_prompt(
         f"- Always show the SEQUENCE of votes when available, not just the final result. A bill can have 4-8 votes — the pattern matters.\n"
         f"- Flag when a NO vote is on a substitute or amendment vs. the original bill. These are different positions.\n"
         f"- \"Concur House Substitute\", \"Concur House Amendment\", \"Adopt Conference Committee Report\" are amendment/concurrence votes — not original passage votes.\n"
-        f"- \"Reported from [Committee]\" = committee vote. \"Passage R\" or \"Passage H\" = floor vote."
+        f"- \"Reported from [Committee]\" = committee vote. \"Passage R\" or \"Passage H\" = floor vote.\n"
+        f"- SENATE VS HOUSE YES RATES: Never compare a senator's yes rate to a representative's without flagging the difference. "
+        f"Senate votes include far more procedural, cloture, and motion votes where minority-party senators routinely vote Nay — "
+        f"this structurally depresses Senate yes rates relative to House yes rates. "
+        f"Always note: \"Senate yes rates are not directly comparable to House yes rates due to the higher volume of procedural and cloture votes in the Senate.\""
         f"\n\nHALLUCINATION PREVENTION — follow these rules strictly:\n"
         f"1. Never say a legislator \"prioritized\", \"championed\", \"focused on\", or \"made X a priority\" unless the excerpt explicitly states it. Sponsoring a bill does not imply it was a priority.\n"
         f"2. Never infer a legislator's role beyond what the data shows. If they are listed as sponsor, say \"sponsored\". If their exact role is unclear, say \"co-sponsored or listed as patron — exact role unclear.\"\n"
@@ -511,7 +538,33 @@ async def chat(req: ChatRequest):
     vote_context    = _m._fetch_vote_context(last_question, bioguide_ids)
     finance_context = _m._fetch_finance_context(bioguide_ids, last_question)
 
-    base_prompt = VOICE_PROMPTS.get(req.voice, VOICE_PROMPTS["free"])
+    question_lower = (last_question or "").lower()
+    query_context = {
+        "touches_donor_data": any(
+            word in question_lower
+            for word in [
+                "donor", "donors", "fec", "pac", "campaign finance",
+                "funding", "money", "contribution", "contributions",
+            ]
+        ),
+        "touches_voting_patterns": any(
+            word in question_lower
+            for word in [
+                "vote", "votes", "voting", "record", "roll call",
+                "party line", "defection", "pattern",
+            ]
+        ),
+        "touches_speech_context": any(
+            word in question_lower
+            for word in [
+                "speech", "transcript", "said", "statement", "floor", "hearing",
+            ]
+        ),
+        "federal_rep_present": bool(bioguide_ids),
+        "state_rep_present":   bool(hod_info or sd_info),
+    }
+
+    base_prompt = get_system_prompt(voice=req.voice, query_context=query_context)
     max_tokens  = TIER_MAX_TOKENS.get(req.tier, TIER_MAX_TOKENS["free"])
 
     system_prompt = f"""{base_prompt}
@@ -555,7 +608,19 @@ async def election_chat(req: ElectionChatRequest):
     user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
     summary    = _m._build_election_chat_context(req.year, user_query)
 
-    system_prompt = f"""You are a friendly Virginia election results assistant on the VoteIQ platform.
+    q = (user_query or "").lower()
+    query_context = {
+        "touches_donor_data":      False,
+        "touches_voting_patterns": any(w in q for w in ["vote", "votes", "voting", "record", "margin", "turnout"]),
+        "touches_speech_context":  False,
+        "federal_rep_present":     False,
+        "state_rep_present":       False,
+    }
+    voice_prompt = get_system_prompt(voice=req.voice, query_context=query_context)
+
+    system_prompt = f"""{voice_prompt}
+
+You are focused on Virginia {req.year} election results only.
 
 Here are the official {req.year} Virginia election results:
 
@@ -642,7 +707,11 @@ async def bills_chat(req: BillsChatRequest):
     )
     model_note = "\nMODEL ROUTING: Simple exact bill lookup using cached local bill context; answer briefly.\n" if use_haiku else ""
 
-    system_prompt = _bills_system_prompt(district_note, chroma_note, model_note, exact_lookup_note, context)
+    query_context = build_bills_query_context(user_query, context)
+    voice_prompt  = get_system_prompt(req.voice, query_context)
+    system_prompt = voice_prompt + "\n\n" + _bills_system_prompt(
+        district_note, chroma_note, model_note, exact_lookup_note, context
+    )
     model, _      = get_model(req.tier, use_haiku)
     max_tokens    = 700 if use_haiku else TIER_MAX_TOKENS.get(req.tier, 1800)
 
@@ -709,7 +778,11 @@ async def bills_chat_stream(req: BillsChatRequest):
     )
     model_note = "\nMODEL ROUTING: Simple exact bill lookup using cached local bill context; answer briefly.\n" if use_haiku else ""
 
-    system_prompt = _bills_system_prompt(district_note, chroma_note, model_note, exact_lookup_note, context)
+    query_context = build_bills_query_context(user_query, context)
+    voice_prompt  = get_system_prompt(req.voice, query_context)
+    system_prompt = voice_prompt + "\n\n" + _bills_system_prompt(
+        district_note, chroma_note, model_note, exact_lookup_note, context
+    )
     model, _      = get_model(req.tier, use_haiku)
     max_tokens    = 700 if use_haiku else TIER_MAX_TOKENS.get(req.tier, 1800)
     msgs          = [{"role": m.role, "content": m.content} for m in req.messages]

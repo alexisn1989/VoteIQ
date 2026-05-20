@@ -246,6 +246,12 @@ Use safe language:
 - "correlation does not imply causation"
 - "requires further verification"
 
+Chamber comparison rules:
+- Never compare a senator's yes rate to a representative's without flagging the difference.
+- Senate votes include more procedural, cloture, and motion votes where minority-party
+  senators routinely vote Nay. This structurally depresses Senate yes rates relative to
+  House yes rates. Always note the caveat when making cross-chamber voting comparisons.
+
 Default response style:
 - Answer the user's question first.
 - Use only the sections relevant to the question.
@@ -520,3 +526,30 @@ VOICE_PROMPTS = {
     "academic":   ACADEMIC_VOICE_PROMPT,
     "enterprise": ENTERPRISE_VOICE_PROMPT,
 }
+
+
+# ── Dynamic prompt assembly ───────────────────────────────────────────────────
+
+def get_system_prompt(voice: str, query_context: dict | None = None) -> str:
+    """Assemble a system prompt for the given voice, tuned by query_context flags."""
+    query_context = query_context or {}
+    base   = VOICE_PROMPTS.get(voice, VOICE_PROMPTS["free"])
+    config = VOICE_CONFIG.get(voice, VOICE_CONFIG["free"])
+
+    blocks = [base, FALLBACK_INSTRUCTION]
+
+    # Free tier: append upsell block when the query touches gated features
+    if voice == "free" and (
+        query_context.get("touches_donor_data")
+        or query_context.get("touches_voting_patterns")
+        or query_context.get("touches_speech_context")
+    ):
+        blocks.append(FREE_UPSELL_RULES)
+
+    # Paid tiers: gate speech context if config disables it
+    if not config.get("allow_speech_context") and query_context.get("touches_speech_context"):
+        blocks.append(
+            "\nSpeech and transcript context is not available at your current tier."
+        )
+
+    return "\n".join(blocks)
