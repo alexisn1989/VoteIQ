@@ -449,3 +449,65 @@ def lookup(address: str):
             {"name": "Jay C. Jones",          "party": "Democrat", "title": "Attorney General",    "url": "https://www.ag.virginia.gov/about/contact/"},
         ],
     }
+
+
+# ── /results + /api/results-data ─────────────────────────────────────────────
+
+@router.get("/results", response_class=HTMLResponse)
+def results_page():
+    with (_TEMPLATE_DIR / "results.html").open("r", encoding="utf-8") as f:
+        return f.read()
+
+
+def _group_counts(ballot_options: list, vote_name: str) -> tuple[int, int, int, int]:
+    opt = next((o for o in ballot_options if o["name"].upper() == vote_name), None)
+    if not opt:
+        return 0, 0, 0, 0
+    groups = {g["groupName"]: g["voteCount"] for g in opt.get("groupResults", [])}
+    return (
+        opt["voteCount"],
+        groups.get("Early Voting", 0),
+        groups.get("Election Day", 0),
+        groups.get("Mailed Absentee", 0),
+    )
+
+
+@router.get("/api/results-data")
+def results_data():
+    with (_DATA_DIR / "data_2026_special.json").open(encoding="utf-8") as f:
+        data = json.load(f)
+
+    statewide_opts = data.get("results", {}).get("ballotItems", [{}])[0].get("ballotOptions", [])
+    yes_state, yes_early_s, yes_eday_s, yes_mail_s = _group_counts(statewide_opts, "YES")
+    no_state,  no_early_s,  no_eday_s,  no_mail_s  = _group_counts(statewide_opts, "NO")
+
+    local = []
+    for j in data.get("localResults", []):
+        yes_v = no_v = 0
+        yes_early = no_early = yes_eday = no_eday = yes_mail = no_mail = 0
+        for item in j.get("ballotItems", []):
+            opts = item.get("ballotOptions", [])
+            yv, ye, yd, ym = _group_counts(opts, "YES")
+            nv, ne, nd, nm = _group_counts(opts, "NO")
+            yes_v += yv; yes_early += ye; yes_eday += yd; yes_mail += ym
+            no_v  += nv; no_early  += ne; no_eday  += nd; no_mail  += nm
+        total = yes_v + no_v
+        local.append({
+            "name":      j["name"].strip(),
+            "yes": yes_v, "no": no_v, "total": total,
+            "pct_yes":   round(yes_v / total * 100, 1) if total else 50.0,
+            "winner":    "Yes" if yes_v >= no_v else "No",
+            "early_yes": yes_early, "early_no": no_early,
+            "eday_yes":  yes_eday,  "eday_no":  no_eday,
+            "mail_yes":  yes_mail,  "mail_no":  no_mail,
+        })
+
+    return {
+        "statewide": {
+            "yes": yes_state, "no": no_state,
+            "early":        {"yes": yes_early_s, "no": no_early_s},
+            "election_day": {"yes": yes_eday_s,  "no": no_eday_s},
+            "mail":         {"yes": yes_mail_s,   "no": no_mail_s},
+        },
+        "local": local,
+    }
