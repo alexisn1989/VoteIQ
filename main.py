@@ -5022,65 +5022,10 @@ class FeedbackRequest(BaseModel):
 # upload-db, congress-debug moved to voteiq/api/routes/admin.py
 
 
-@app.get("/api/bills-debug")
-async def bills_debug(_: None = Depends(_require_admin)):
-    chroma_key = os.getenv("CHROMA_API_KEY", "")
-    voyage_key = os.getenv("VOYAGE_API_KEY", "")
-    env_info = {
-        "CHROMA_API_KEY":  chroma_key[:8]  + "..." if chroma_key  else "MISSING",
-        "CHROMA_TENANT":   os.getenv("CHROMA_TENANT",   "MISSING"),
-        "CHROMA_DATABASE": os.getenv("CHROMA_DATABASE", "MISSING"),
-        "VOYAGE_API_KEY":  voyage_key[:8]  + "..." if voyage_key  else "MISSING",
-        "version": "v4",
-    }
-    try:
-        col_id   = _get_chroma_collection_id()
-        test_vec = _get_voyage_client().embed(
-            ["HB4 affordable housing"], model=_BILLS_MODEL, input_type="query"
-        ).embeddings[0]
-        res = _query_chroma(test_vec, n_results=2)
-        return {"status": "ok", "collection_id": col_id, "env": env_info,
-                "sample": res["documents"][0]}
-    except Exception as e:
-        return {"status": "error", "error": str(e), "type": type(e).__name__, "env": env_info}
+# /api/admin/bills-debug moved to voteiq/api/routes/admin.py
 
 
-@app.get("/api/bill-descriptions/search")
-def bill_descriptions_search(q: str, session: str | None = None, limit: int = 8):
-    """Instant local bill-description search. No AI, embedding, Chroma, or OpenStates calls."""
-    if not os.path.exists(_OPENSTATES_DB):
-        return {"count": 0, "results": [], "source": "missing_openstates_db"}
-
-    bill_numbers = _extract_bill_numbers(q)
-    blocks = (
-        _cached_bill_description_lookup(bill_numbers, session)
-        if bill_numbers
-        else _cached_bill_description_search(q, session, limit)
-    )
-    results = []
-    for block in blocks.split("\n\n"):
-        if not block.strip():
-            continue
-        header, _, body = block.partition("\n")
-        match = re.search(r"([A-Z]+[0-9]+)\s+([0-9]{4})", header)
-        results.append({
-            "bill_id": match.group(1) if match else "",
-            "session": match.group(2) if match else "",
-            "description": body.strip(),
-        })
-
-    try:
-        conn = sqlite3.connect(_OPENSTATES_DB)
-        cache_count = conn.execute("SELECT COUNT(*) FROM bill_descriptions").fetchone()[0]
-        conn.close()
-    except Exception:
-        cache_count = None
-    return {
-        "count": len(results),
-        "cache_count": cache_count,
-        "source": "local_sqlite_bill_descriptions",
-        "results": results[:limit],
-    }
+# /api/admin/bill-descriptions/search moved to voteiq/api/routes/admin.py
 
 
 # polls routes moved to voteiq/api/routes/polls.py

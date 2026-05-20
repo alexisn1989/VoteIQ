@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sqlite3
 import subprocess
 import sys
@@ -278,3 +279,60 @@ def congress_debug(_: None = Depends(require_admin_token)):
 
 
 # pac-summary and donors live in voteiq/api/routes/members.py
+
+
+# ── bills debug / search ───────────────────────────────────────────────────────
+
+@router.get("/bills-debug")
+async def bills_debug(_ = Depends(require_admin_token)):
+    conn = sqlite3.connect(_POLLS_DB)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    tables = {}
+    for table in ["va_bills", "va_votes", "donor_sector_totals", "va_sbe_contributions"]:
+        try:
+            cur.execute(f"SELECT COUNT(*) AS count FROM {table}")
+            tables[table] = cur.fetchone()["count"]
+        except Exception as e:
+            tables[table] = f"error: {e}"
+    conn.close()
+    return {"status": "success", "tables": tables}
+
+
+@router.get("/bill-descriptions/search")
+def bill_descriptions_search(q: str, session: str | None = None, limit: int = 8):
+    """Instant local bill-description search — no AI, Chroma, or Voyage calls."""
+    import main as _m
+    if not os.path.exists(_m._OPENSTATES_DB):
+        return {"count": 0, "results": [], "source": "missing_openstates_db"}
+
+    bill_numbers = _m._extract_bill_numbers(q)
+    blocks = (
+        _m._cached_bill_description_lookup(bill_numbers, session)
+        if bill_numbers
+        else _m._cached_bill_description_search(q, session, limit)
+    )
+    results = []
+    for block in blocks.split("\n\n"):
+        if not block.strip():
+            continue
+        header, _, body = block.partition("\n")
+        match = re.search(r"([A-Z]+[0-9]+)\s+([0-9]{4})", header)
+        results.append({
+            "bill_id": match.group(1) if match else "",
+            "session": match.group(2) if match else "",
+            "description": body.strip(),
+        })
+
+    try:
+        conn = sqlite3.connect(_m._OPENSTATES_DB)
+        cache_count = conn.execute("SELECT COUNT(*) FROM bill_descriptions").fetchone()[0]
+        conn.close()
+    except Exception:
+        cache_count = None
+    return {
+        "count":        len(results),
+        "cache_count":  cache_count,
+        "source":       "local_sqlite_bill_descriptions",
+        "results":      results[:limit],
+    }
