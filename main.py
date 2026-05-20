@@ -75,6 +75,8 @@ from voteiq.api.routes.elections import router as _elections_router
 app.include_router(_elections_router)
 from voteiq.api.routes.district import router as _district_router
 app.include_router(_district_router)
+from voteiq.api.routes.feedback import router as _feedback_router
+app.include_router(_feedback_router)
 
 # DATA_DIR: set to Render persistent disk mount path (e.g. /var/data) in production.
 # Falls back to the project directory for local development.
@@ -5011,22 +5013,7 @@ class FeedbackRequest(BaseModel):
     district: str = ""
 
 
-@app.post("/api/feedback")
-async def submit_feedback(request: Request, data: FeedbackRequest):
-    if data.rating not in ("up", "down"):
-        raise HTTPException(status_code=400, detail="rating must be 'up' or 'down'")
-    db = _OPENSTATES_DB
-    try:
-        conn = sqlite3.connect(db)
-        conn.execute(
-            "INSERT INTO feedback (created_at, rating, query, reply_hash, district) VALUES (?, ?, ?, ?, ?)",
-            (int(time.time()), data.rating, data.query[:500], data.reply_hash[:64], data.district[:100]),
-        )
-        conn.commit()
-        conn.close()
-    except Exception:
-        pass
-    return {"ok": True}
+# /api/feedback moved to voteiq/api/routes/feedback.py
 
 
 # /api/pdf-chat moved to voteiq/api/routes/chat.py
