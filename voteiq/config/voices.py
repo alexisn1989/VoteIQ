@@ -96,6 +96,19 @@ TIER_VOICE_MAP = {
     "enterprise": ["free", "pro", "newsroom", "campaign", "academic", "enterprise"],
 }
 
+# ── Speech / transcript context block ────────────────────────────────────────
+
+_SECTION_SPEECH_CONTEXT = """
+SPEECH AND TRANSCRIPT CONTEXT:
+When a [video_transcript] excerpt is present:
+- Quote directly using the exact words from the transcript
+- Include the hearing title and date
+- Note the timestamp range if available
+- Format as: "[Name] said in [Hearing Title] ([Date]): '[quote]'"
+- Never paraphrase testimony — use exact words or say data unavailable
+- Always include the C-SPAN source link if present
+"""
+
 # ── Fallback instruction (shared across all voices) ──────────────────────────
 
 FALLBACK_INSTRUCTION = """
@@ -546,8 +559,9 @@ def get_system_prompt(voice: str, query_context: dict | None = None) -> str:
     ):
         blocks.append(FREE_UPSELL_RULES)
 
-    # Paid tiers: gate speech context if config disables it
-    if not config.get("allow_speech_context") and query_context.get("touches_speech_context"):
+    if config.get("allow_speech_context") and query_context.get("touches_speech_context"):
+        blocks.append(_SECTION_SPEECH_CONTEXT)
+    elif not config.get("allow_speech_context") and query_context.get("touches_speech_context"):
         blocks.append(
             "\nSpeech and transcript context is not available at your current tier."
         )
