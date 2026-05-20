@@ -5,7 +5,7 @@ and store segments + full text in polls.db.
 Usage:
     python ingest_hearing_transcripts.py hearing_video.mp4
     python ingest_hearing_transcripts.py hearing_video.mp4 --title "HB 10 Finance Subcommittee" --bill HB10 --model medium
-    python ingest_hearing_transcripts.py hearing_video.mp4 --dry-run
+    python ingest_hearing_transcripts.py hearing_video.mp4 --source-url https://www.c-span.org/video/?123456 --dry-run
 """
 from __future__ import annotations
 
@@ -34,10 +34,28 @@ CREATE TABLE IF NOT EXISTS hearing_transcripts (
     full_text     TEXT,
     segments_json TEXT,
     duration_s    REAL,
+    source_url    TEXT,
     ingested_at   TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_ht_bill   ON hearing_transcripts(bill_id);
-CREATE INDEX IF NOT EXISTS idx_ht_date   ON hearing_transcripts(hearing_date);
+CREATE INDEX IF NOT EXISTS idx_ht_bill ON hearing_transcripts(bill_id);
+CREATE INDEX IF NOT EXISTS idx_ht_date ON hearing_transcripts(hearing_date);
+
+CREATE TABLE IF NOT EXISTS hearing_segments (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    transcript_id   TEXT NOT NULL,
+    hearing_title   TEXT,
+    bill_id         TEXT,
+    hearing_date    TEXT,
+    speaker         TEXT,
+    timestamp_start TEXT,
+    timestamp_end   TEXT,
+    quote           TEXT,
+    source_url      TEXT,
+    FOREIGN KEY (transcript_id) REFERENCES hearing_transcripts(transcript_id)
+);
+CREATE INDEX IF NOT EXISTS idx_hs_transcript ON hearing_segments(transcript_id);
+CREATE INDEX IF NOT EXISTS idx_hs_bill        ON hearing_segments(bill_id);
+CREATE INDEX IF NOT EXISTS idx_hs_date        ON hearing_segments(hearing_date);
 """
 
 
@@ -77,6 +95,11 @@ def transcribe(
     return result
 
 
+def _fmt_ts(seconds: float) -> str:
+    s = int(seconds)
+    return f"{s // 3600:02d}:{(s % 3600) // 60:02d}:{s % 60:02d}"
+
+
 def ingest(
     video_path: str,
     *,
@@ -84,6 +107,7 @@ def ingest(
     title: str | None = None,
     bill_id: str | None = None,
     hearing_date: str | None = None,
+    source_url: str | None = None,
     model_name: str = "base",
     language: str | None = None,
     dry_run: bool = False,
@@ -105,18 +129,21 @@ def ingest(
     duration = segments[-1]["end"] if segments else 0.0
     tid = _transcript_id(video_path)
     now = datetime.now(timezone.utc).isoformat()
+    hearing_title = title or Path(video_path).stem
+    hearing_dt    = hearing_date or now[:10]
 
     row = {
         "transcript_id": tid,
         "source_file":   str(Path(video_path).name),
-        "title":         title or Path(video_path).stem,
+        "title":         hearing_title,
         "bill_id":       bill_id,
-        "hearing_date":  hearing_date or now[:10],
+        "hearing_date":  hearing_dt,
         "model":         model_name,
         "language":      result.get("language", "en"),
         "full_text":     result.get("text", "").strip(),
         "segments_json": json.dumps(segments, ensure_ascii=False),
         "duration_s":    duration,
+        "source_url":    source_url,
         "ingested_at":   now,
     }
 
@@ -130,9 +157,9 @@ def ingest(
     conn.execute(
         """INSERT INTO hearing_transcripts
                (transcript_id, source_file, title, bill_id, hearing_date,
-                model, language, full_text, segments_json, duration_s, ingested_at)
+                model, language, full_text, segments_json, duration_s, source_url, ingested_at)
            VALUES (:transcript_id, :source_file, :title, :bill_id, :hearing_date,
-                   :model, :language, :full_text, :segments_json, :duration_s, :ingested_at)
+                   :model, :language, :full_text, :segments_json, :duration_s, :source_url, :ingested_at)
            ON CONFLICT(transcript_id) DO UPDATE SET
                title         = excluded.title,
                bill_id       = excluded.bill_id,
@@ -140,8 +167,33 @@ def ingest(
                full_text     = excluded.full_text,
                segments_json = excluded.segments_json,
                duration_s    = excluded.duration_s,
+               source_url    = excluded.source_url,
                ingested_at   = excluded.ingested_at""",
         row,
+    )
+
+    # Repopulate hearing_segments for this transcript (delete + re-insert)
+    conn.execute("DELETE FROM hearing_segments WHERE transcript_id = ?", (tid,))
+    conn.executemany(
+        """INSERT INTO hearing_segments
+               (transcript_id, hearing_title, bill_id, hearing_date,
+                speaker, timestamp_start, timestamp_end, quote, source_url)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        [
+            (
+                tid,
+                hearing_title,
+                bill_id,
+                hearing_dt,
+                None,                        # speaker — Whisper base has no diarization
+                _fmt_ts(seg["start"]),
+                _fmt_ts(seg["end"]),
+                seg["text"],
+                source_url,
+            )
+            for seg in segments
+            if seg["text"]
+        ],
     )
     conn.commit()
     conn.close()
@@ -167,8 +219,9 @@ def main(argv: list[str]) -> int:
     p.add_argument("--model",    default="base",
                    choices=["tiny", "base", "small", "medium", "large"],
                    help="Whisper model size (default: base)")
-    p.add_argument("--language", help="Force language code, e.g. 'en'")
-    p.add_argument("--dry-run",  action="store_true", help="Parse but don't write to DB")
+    p.add_argument("--source-url", dest="source_url", help="C-SPAN or source video URL")
+    p.add_argument("--language",   help="Force language code, e.g. 'en'")
+    p.add_argument("--dry-run",    action="store_true", help="Parse but don't write to DB")
     args = p.parse_args(argv)
 
     result = ingest(
@@ -177,6 +230,7 @@ def main(argv: list[str]) -> int:
         title=args.title,
         bill_id=args.bill_id,
         hearing_date=args.hearing_date,
+        source_url=args.source_url,
         model_name=args.model,
         language=args.language,
         dry_run=args.dry_run,

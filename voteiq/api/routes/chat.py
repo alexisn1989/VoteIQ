@@ -334,6 +334,63 @@ def _build_bills_context(
 
 # ── Bills helpers (shared by both bills-chat routes) ─────────────────────────
 
+_POLLS_DB = os.path.join(os.getenv("DATA_DIR", _BASE_DIR), "polls.db")
+
+
+def _fetch_transcript_context(query: str, bill_id: str | None = None, limit: int = 5) -> str:
+    """Return formatted [video_transcript] blocks relevant to the query."""
+    import sqlite3
+    if not os.path.exists(_POLLS_DB):
+        return ""
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+        params: list = []
+        clauses: list[str] = []
+
+        if bill_id:
+            clauses.append("s.bill_id = ?")
+            params.append(bill_id.upper())
+
+        keywords = [w for w in query.lower().split() if len(w) > 3][:6]
+        if keywords:
+            kw_clause = " OR ".join("lower(s.quote) LIKE ?" for _ in keywords)
+            clauses.append(f"({kw_clause})")
+            params.extend(f"%{k}%" for k in keywords)
+
+        if not clauses:
+            conn.close()
+            return ""
+
+        where = " AND ".join(clauses) if bill_id else " OR ".join(clauses)
+        rows = conn.execute(
+            f"""SELECT s.speaker, s.hearing_title, s.hearing_date,
+                       s.timestamp_start, s.timestamp_end, s.quote, s.source_url
+                FROM hearing_segments s
+                WHERE {where}
+                ORDER BY s.hearing_date DESC, s.id
+                LIMIT ?""",
+            params + [limit],
+        ).fetchall()
+        conn.close()
+    except Exception:
+        return ""
+
+    if not rows:
+        return ""
+
+    return "\n\n".join(
+        f"""[video_transcript]
+Speaker: {row['speaker'] or 'Unknown'}
+Hearing Title: {row['hearing_title']}
+Date: {row['hearing_date']}
+Timestamp: {row['timestamp_start']}–{row['timestamp_end']}
+Quote: "{row['quote']}"
+Source: {row['source_url'] or 'Not available'}"""
+        for row in rows
+    )
+
+
 def build_bills_query_context(user_query: str, context: str) -> dict:
     q = (user_query or "").lower()
     touches_voting_patterns = (
@@ -716,6 +773,12 @@ async def bills_chat(req: BillsChatRequest):
     model_note = "\nMODEL ROUTING: Simple exact bill lookup using cached local bill context; answer briefly.\n" if use_haiku else ""
 
     query_context = build_bills_query_context(user_query, context)
+    if query_context["touches_speech_context"]:
+        import main as _m2
+        _bill_ids = _m2._extract_bill_numbers(user_query) if hasattr(_m2, "_extract_bill_numbers") else []
+        tc = _fetch_transcript_context(user_query, bill_id=_bill_ids[0] if _bill_ids else None)
+        if tc:
+            context = context + "\n\n---\n\n" + tc if context else tc
     voice_prompt  = get_system_prompt(req.voice, query_context)
     system_prompt = voice_prompt + "\n\n" + _bills_system_prompt(
         district_note, chroma_note, model_note, exact_lookup_note, context
@@ -787,6 +850,12 @@ async def bills_chat_stream(req: BillsChatRequest):
     model_note = "\nMODEL ROUTING: Simple exact bill lookup using cached local bill context; answer briefly.\n" if use_haiku else ""
 
     query_context = build_bills_query_context(user_query, context)
+    if query_context["touches_speech_context"]:
+        import main as _m2
+        _bill_ids = _m2._extract_bill_numbers(user_query) if hasattr(_m2, "_extract_bill_numbers") else []
+        tc = _fetch_transcript_context(user_query, bill_id=_bill_ids[0] if _bill_ids else None)
+        if tc:
+            context = context + "\n\n---\n\n" + tc if context else tc
     voice_prompt  = get_system_prompt(req.voice, query_context)
     system_prompt = voice_prompt + "\n\n" + _bills_system_prompt(
         district_note, chroma_note, model_note, exact_lookup_note, context
