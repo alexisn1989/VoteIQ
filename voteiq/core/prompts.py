@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from voteiq.config.voices import VOICE_PROMPTS, VOICE_CONFIG
+from voteiq.config.voices import VOICE_PROMPTS, VOICE_CONFIG, _SECTION_SPEECH_CONTEXT as _SPEECH_CTX
 
 # ── Base sections (always included) ──────────────────────────────────────────
 
@@ -52,11 +52,7 @@ VOTE INTERPRETATION RULES:
 - Present vote patterns as data, not conclusions.
 """
 
-_SECTION_SPEECH_CONTEXT = """
-SPEECH AND TRANSCRIPT CONTEXT:
-[Stub — transcript ingestion not yet built.
-Do not reference speech or floor statement data until this section is populated.]
-"""
+_SECTION_SPEECH_CONTEXT = _SPEECH_CTX  # canonical definition in voteiq/config/voices.py
 
 _SECTION_FEDERAL_REP_FORMAT = """
 FEDERAL REP RESPONSE FORMAT:
