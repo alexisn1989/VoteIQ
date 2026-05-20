@@ -51,7 +51,7 @@ def _reload_caches() -> None:
 
 # ── ingest endpoints ───────────────────────────────────────────────────────────
 
-@router.get("/ingest-congress")
+@router.post("/ingest-congress")
 def admin_ingest_congress(
     congress: int = 119,
     house_limit: int = 300,
@@ -113,7 +113,7 @@ def admin_refresh_bill_text(refresh: bool = False, _: None = Depends(require_adm
         return {"ok": False, "error": str(exc)}
 
 
-@router.get("/ingest-polls")
+@router.post("/ingest-polls")
 def admin_ingest_polls(
     sources: str = "fivethirtyeight,votehub,news",
     use_gemini: bool = False,
@@ -143,7 +143,7 @@ def admin_ingest_polls(
         return {"ok": False, "error": str(exc)}
 
 
-@router.get("/reload-votes")
+@router.post("/reload-votes")
 def admin_reload_votes(_: None = Depends(require_admin_token)):
     """Reload the in-memory vote cache from polls.db."""
     import main as _m
@@ -221,12 +221,38 @@ def admin_ingest_committees(
     return {"ok": True, "message": "Committee ingestion started — data refreshes within ~10 seconds."}
 
 
-@router.get("/ingest-fec")
+@router.post("/ingest-fec")
 def admin_ingest_fec(cycle: str = "2026", _: None = Depends(require_admin_token)):
     """Trigger FEC campaign finance ingestion for Virginia candidates."""
     if not os.getenv("FEC_API_KEY"):
         return {"ok": False, "error": "FEC_API_KEY not set"}
     return _run_script("ingest_fec.py", ["--db", _FEC_DB, "--cycle", cycle], timeout=300)
+
+
+@router.post("/ingest-fec-individuals")
+async def admin_ingest_fec_individuals(_: None = Depends(require_admin_token)):
+    """
+    Run full FEC individual contributions pipeline
+    for all Virginia House/Senate members into polls.db.
+    """
+    if not os.getenv("FEC_API_KEY"):
+        return {"ok": False, "error": "FEC_API_KEY not set"}
+    try:
+        r = subprocess.run(
+            [sys.executable, "-m", "voteiq.scripts.fix_fec_pipeline"],
+            capture_output=True, text=True, timeout=900,
+            env={**os.environ, "PYTHONPATH": _BASE_DIR},
+        )
+        return {
+            "ok": r.returncode == 0,
+            "returncode": r.returncode,
+            "stdout": r.stdout[-3000:],
+            "stderr": r.stderr[-1000:] if r.stderr else None,
+        }
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "timed out after 900s"}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
 
 
 @router.post("/upload-db")
