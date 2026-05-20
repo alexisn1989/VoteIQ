@@ -6,3 +6,11 @@ services:
     startCommand: python ingest_news.py
     env: python
     plan: free
+
+  - type: cron
+    name: voteiq-va-news-ingest
+    schedule: "0 7 * * *"   # 7am UTC daily (after Gemini pipeline)
+    buildCommand: pip install -r requirements.txt
+    startCommand: python ingest_va_news.py
+    env: python
+    plan: free

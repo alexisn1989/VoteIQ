@@ -220,10 +220,8 @@ def fetch_article_text(url: str, timeout: int = 15) -> tuple[str, bytes | None]:
             tag.decompose()
         body = soup.find("article") or soup.find(id=re.compile(r"content|article|body", re.I))
         raw = (body or soup).get_text(" ", strip=True)
-        return re.sub(r"\s{2,}", " ", raw)[:5000]
         return re.sub(r"\s{2,}", " ", raw)[:5000], None
     except Exception:
-        return ""
         return "", None
 
 
