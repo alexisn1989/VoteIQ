@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from config.voices import VOICE_PROMPTS, VOICE_CONFIG
+from voteiq.config.voices import VOICE_PROMPTS, VOICE_CONFIG
 
 # ── Base sections (always included) ──────────────────────────────────────────
 
