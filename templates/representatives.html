@@ -74,7 +74,8 @@
   .stat-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.58rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); display: block; margin-top: 2px; }
 
   .member-bills { flex: 1; padding: 14px 18px; }
-  .bills-heading { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .bills-heading { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .bills-hint { font-family: 'Barlow Condensed', sans-serif; font-size: 0.58rem; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; opacity: 0.7; }
   .bill-item { padding: 8px 0; border-bottom: 1px solid var(--mid); display: flex; gap: 10px; align-items: flex-start; }
   .bill-item:last-child { border-bottom: none; }
   .bill-id { font-family: 'Barlow Condensed', sans-serif; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; color: var(--red); flex-shrink: 0; padding-top: 1px; min-width: 52px; }
@@ -138,6 +139,31 @@
   .pie-legend-label { color: var(--navy); font-weight: 700; letter-spacing: 0.04em; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .pie-legend-pct { color: var(--muted); width: 36px; text-align: right; flex-shrink: 0; }
   .pie-legend-amt { color: var(--muted); width: 52px; text-align: right; flex-shrink: 0; font-size: 0.58rem; }
+
+  /* Bill explainer drawer */
+  .bill-item { cursor: pointer; }
+  .bill-item:hover { background: #f8f6f1; }
+  .panel-bill { cursor: pointer; transition: background 0.15s; }
+  .panel-bill:hover { background: #f8f6f1; }
+  .bill-explainer-overlay { display: none; position: fixed; inset: 0; background: rgba(13,27,42,.45); z-index: 200; }
+  .bill-explainer-overlay.open { display: block; }
+  .bill-explainer-drawer { position: fixed; right: 0; top: 0; bottom: 0; width: min(480px, 100vw); background: white; border-left: 3px solid var(--navy); z-index: 201; display: flex; flex-direction: column; transform: translateX(100%); transition: transform .25s cubic-bezier(.4,0,.2,1); }
+  .bill-explainer-overlay.open .bill-explainer-drawer { transform: translateX(0); }
+  .explainer-head { padding: 18px 20px 14px; border-bottom: 1px solid var(--mid); display: flex; align-items: flex-start; gap: 12px; }
+  .explainer-bill-id { font-family: 'Barlow Condensed', sans-serif; font-size: .85rem; font-weight: 700; letter-spacing: .08em; color: var(--red); flex-shrink: 0; padding-top: 2px; }
+  .explainer-bill-title { font-size: .82rem; color: var(--navy); line-height: 1.4; flex: 1; }
+  .explainer-close { background: none; border: none; cursor: pointer; font-size: 1.2rem; color: var(--muted); flex-shrink: 0; padding: 2px 4px; line-height: 1; }
+  .explainer-close:hover { color: var(--navy); }
+  .explainer-body { flex: 1; overflow-y: auto; padding: 20px; font-size: .85rem; line-height: 1.65; color: var(--navy); }
+  .explainer-body h2 { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700; margin: 0 0 12px; }
+  .explainer-body strong { font-weight: 600; }
+  .explainer-body p { margin: 0 0 10px; }
+  .explainer-typing { display: flex; gap: 4px; align-items: center; padding: 8px 0; }
+  .explainer-typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: explainer-dot 1.2s infinite; }
+  .explainer-typing span:nth-child(2) { animation-delay: .2s; }
+  .explainer-typing span:nth-child(3) { animation-delay: .4s; }
+  @keyframes explainer-dot { 0%,80%,100% { opacity:.2; transform:scale(.8); } 40% { opacity:1; transform:scale(1); } }
+  .explainer-src { font-family: 'Barlow Condensed', sans-serif; font-size: .6rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding: 10px 20px; border-top: 1px solid var(--mid); }
 
   /* State officials compact grid */
   .state-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
@@ -270,8 +296,9 @@ function billId(b) {
 }
 
 function renderBillItem(b) {
+  const json = JSON.stringify(b).replace(/"/g, '&quot;');
   return `
-    <div class="bill-item">
+    <div class="bill-item" onclick='openBillExplainer(${JSON.stringify(b).replace(/'/g, "&#39;")})' title="Click for plain-English explainer">
       <div class="bill-id">${billId(b)}</div>
       <div>
         <div class="bill-title">${truncate(b.title, 90)}</div>
@@ -314,7 +341,7 @@ async function loadPanelBills(bid, role) {
     return;
   }
   grid.innerHTML = bills.map(b => `
-    <div class="panel-bill">
+    <div class="panel-bill" onclick='openBillExplainer(${JSON.stringify(b).replace(/'/g, "&#39;")})' title="Click for plain-English explainer">
       <div class="panel-bill-id">${billId(b)}</div>
       <div class="panel-bill-title">${b.title || ''}</div>
       <div class="panel-bill-meta">
@@ -365,6 +392,7 @@ function renderCard(m, bills) {
 
       <div class="member-bills">
         <div class="bills-heading">Recent Sponsored Bills</div>
+        ${preview.length ? '<div class="bills-hint">Click any bill for a plain-English explainer</div>' : ''}
         ${preview.length ? preview.map(renderBillItem).join('') : '<div style="color:var(--muted);font-size:0.8rem;padding:8px 0;">No bills yet this Congress.</div>'}
       </div>
 
@@ -788,6 +816,70 @@ async function init() {
 
 init();
 initStateOfficials();
+
+// ── Federal bill explainer drawer ─────────────────────────────────────────────
+
+function openBillExplainer(b) {
+  const overlay = document.getElementById('billExplainerOverlay');
+  const idEl    = document.getElementById('billExplainerId');
+  const titleEl = document.getElementById('billExplainerTitle');
+  const bodyEl  = document.getElementById('billExplainerBody');
+
+  idEl.textContent    = billId(b);
+  titleEl.textContent = b.title || '';
+  bodyEl.innerHTML    = '<div class="explainer-typing"><span></span><span></span><span></span></div>';
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  const query = `Explain this federal bill: ${billId(b)} — ${b.title || ''}. What does it do, who is affected, and what is its current status?`;
+
+  fetch('/api/bills-chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages: [{ role: 'user', content: query }], district: '', locality: '', hod_district: null, sd_district: null, voice: 'free', tier: 'free' })
+  })
+  .then(r => r.json())
+  .then(data => {
+    bodyEl.innerHTML = renderExplainerMarkdown(data.reply || 'No information available for this bill.');
+  })
+  .catch(() => {
+    bodyEl.innerHTML = '<p style="color:var(--muted)">Could not load bill explainer. Check your connection and try again.</p>';
+  });
+}
+
+function closeBillExplainer() {
+  document.getElementById('billExplainerOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function renderExplainerMarkdown(md) {
+  return md
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^### (.+)$/gm, '<h3 style="font-size:.88rem;font-weight:700;margin:12px 0 6px;">$3</h3>'.replace('$3','$1'))
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" style="color:var(--red)">$1</a>')
+    .replace(/^- (.+)$/gm, '<li style="margin-left:16px;margin-bottom:4px;">$1</li>')
+    .replace(/\n{2,}/g, '</p><p>')
+    .replace(/^(?!<[hli])(.+)$/gm, '$1')
+    .replace(/(<\/li>\n<li)/g, '$1')
+    .split('\n').filter(l => l.trim()).join('\n')
+    .replace(/^(?!<[hpl]|<li)(.+)$/gm, '<p>$1</p>');
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeBillExplainer(); });
 </script>
+
+<!-- Bill explainer drawer -->
+<div class="bill-explainer-overlay" id="billExplainerOverlay" onclick="if(event.target===this)closeBillExplainer()">
+  <div class="bill-explainer-drawer">
+    <div class="explainer-head">
+      <div class="explainer-bill-id" id="billExplainerId"></div>
+      <div class="explainer-bill-title" id="billExplainerTitle"></div>
+      <button class="explainer-close" onclick="closeBillExplainer()" title="Close">&times;</button>
+    </div>
+    <div class="explainer-body" id="billExplainerBody"></div>
+    <div class="explainer-src">Source: congress.gov &bull; VoteIQ civic assistant</div>
+  </div>
+</div>
 </body>
 </html>
