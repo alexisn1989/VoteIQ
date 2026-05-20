@@ -208,9 +208,9 @@
       <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">What is my senator's voting record?</button>
     </div>
     <div class="viq-voice-bar" id="viqVoiceBar">
-      <button class="viq-voice-btn active"     onclick="viqSetVoice('free',     this)">Free</button>
-      <button class="viq-voice-btn pro"        onclick="viqSetVoice('pro',      this)">Pro</button>
-      <button class="viq-voice-btn news"       onclick="viqSetVoice('newsroom', this)">Newsroom</button>
+      <button class="viq-voice-btn active" type="button" aria-pressed="true" onclick="viqSetVoice('free', this)">Free</button>
+      <button class="viq-voice-btn pro" type="button" aria-pressed="false" onclick="viqSetVoice('pro', this)">Pro</button>
+      <button class="viq-voice-btn news" type="button" aria-pressed="false" onclick="viqSetVoice('newsroom', this)">Newsroom</button>
     </div>
     <div class="viq-chat-input-row">
       <input type="file" id="viqPdfFile" accept=".pdf" style="display:none" onchange="viqOnPdfSelect(this)" />
@@ -562,14 +562,20 @@
     let viqDistrict = 'VA-00';
     let viqLocality = '';
     let viqHod = null, viqSd = null;
-    let viqVoice = 'free';
     const viqMsgs = [];
 
-    function viqSetVoice(v, btn) {
-      viqVoice = v;
-      document.querySelectorAll('.viq-voice-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-    }
+    window.viqVoice = window.viqVoice || 'free';
+    window.viqSetVoice = function(voice, btn) {
+      window.viqVoice = voice || 'free';
+      document.querySelectorAll('.viq-voice-btn').forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-pressed', 'false');
+      });
+      if (btn) {
+        btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
+      }
+    };
     function viqEsc(value) {
       return String(value ?? '').replace(/[&<>"']/g, ch => ({
         '&': '&amp;',
@@ -1034,7 +1040,7 @@
         const res = await fetch('/api/bills-chat-stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ district: viqDistrict, locality: viqLocality, hod_district: viqHod, sd_district: viqSd, messages: viqMsgs, voice: viqVoice, tier: viqVoice })
+          body: JSON.stringify({ district: viqDistrict, locality: viqLocality, hod_district: viqHod, sd_district: viqSd, messages: viqMsgs, voice: window.viqVoice, tier: window.viqVoice })
         });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const reader = res.body.getReader();
