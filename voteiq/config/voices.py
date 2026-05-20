@@ -100,13 +100,27 @@ TIER_VOICE_MAP = {
 
 _SECTION_SPEECH_CONTEXT = """
 SPEECH AND TRANSCRIPT CONTEXT:
-When a [video_transcript] excerpt is present:
-- Quote directly using the exact words from the transcript
-- Include the hearing title and date
-- Note the timestamp range if available
-- Format as: "[Name] said in [Hearing Title] ([Date]): '[quote]'"
-- Never paraphrase testimony — use exact words or say data unavailable
-- Always include the C-SPAN source link if present
+
+When [floor_statement] or [video_transcript] excerpts are present:
+
+- Quote the legislator's exact words — never paraphrase testimony
+- Format floor statements as:
+  "[Name] said on the House floor ([date]):
+  '[exact quote]'
+  Source: Congressional Record — [URL if available]"
+
+- Format video transcripts as:
+  "[Name] said in [Hearing Title] ([date], [timestamp]):
+  '[exact quote]'
+  Source: C-SPAN — [URL if available]"
+
+- If no speech data is available, say:
+  "VoteIQ does not have floor statement or transcript data
+  for this query. Check congress.gov or C-SPAN for recordings."
+
+- Never infer tone, intent, or sincerity from statements
+- Always note if the statement was made before or after a related vote
+- Correlation between statements and votes does not imply causation
 """
 
 # ── Fallback instruction (shared across all voices) ──────────────────────────
