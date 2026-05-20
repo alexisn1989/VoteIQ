@@ -11,7 +11,12 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
 
 from voteiq.api.claude import get_claude_client, get_model
-from voteiq.config.voices import TIER_MAX_TOKENS, TIER_VOICE_MAP, VOICE_PROMPTS, get_system_prompt
+from voteiq.config.voices import (
+    TIER_MAX_TOKENS,
+    TIER_VOICE_MAP,  # unused until Supabase auth lands — re-enable tier gate then
+    VOICE_PROMPTS,
+    get_system_prompt,
+)
 
 router = APIRouter(tags=["chat"])
 
@@ -56,12 +61,10 @@ class ChatRequest(BaseModel):
     @field_validator("voice")
     @classmethod
     def validate_voice(cls, v, info):
-        tier    = (info.data or {}).get("tier", "free")
-        allowed = TIER_VOICE_MAP.get(tier, ["free"])
         if v not in VOICE_PROMPTS:
             return "free"
-        if v not in allowed:
-            return "free"
+        # Tier gate disabled until auth is wired
+        # Re-enable after Supabase auth lands
         return v
 
 
@@ -84,12 +87,10 @@ class BillsChatRequest(BaseModel):
     @field_validator("voice")
     @classmethod
     def validate_voice(cls, v, info):
-        tier    = (info.data or {}).get("tier", "free")
-        allowed = TIER_VOICE_MAP.get(tier, ["free"])
         if v not in VOICE_PROMPTS:
             return "free"
-        if v not in allowed:
-            return "free"
+        # Tier gate disabled until auth is wired
+        # Re-enable after Supabase auth lands
         return v
 
 
@@ -102,12 +103,10 @@ class ElectionChatRequest(BaseModel):
     @field_validator("voice")
     @classmethod
     def validate_voice(cls, v, info):
-        tier    = (info.data or {}).get("tier", "free")
-        allowed = TIER_VOICE_MAP.get(tier, ["free"])
         if v not in VOICE_PROMPTS:
             return "free"
-        if v not in allowed:
-            return "free"
+        # Tier gate disabled until auth is wired
+        # Re-enable after Supabase auth lands
         return v
 
 
