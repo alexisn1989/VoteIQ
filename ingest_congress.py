@@ -90,6 +90,22 @@ def setup_db(conn: sqlite3.Connection) -> None:
             fetched_at      TEXT NOT NULL,
             UNIQUE(congress, bill_type, bill_number)
         );
+
+        CREATE TABLE IF NOT EXISTS congress_floor_statements (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            bioguide_id     TEXT NOT NULL,
+            member_name     TEXT,
+            congress        INTEGER,
+            chamber         TEXT,
+            statement_date  TEXT,
+            title           TEXT,
+            text            TEXT,
+            source_url      TEXT,
+            fetched_at      TEXT NOT NULL,
+            UNIQUE(bioguide_id, statement_date, title)
+        );
+        CREATE INDEX IF NOT EXISTS idx_cfs_member ON congress_floor_statements(bioguide_id);
+        CREATE INDEX IF NOT EXISTS idx_cfs_date   ON congress_floor_statements(statement_date DESC);
     """)
     conn.commit()
 
@@ -225,8 +241,19 @@ def _fetch_text_from_url(source_url: str) -> str | None:
         except Exception:
             return None
     if "html" in content_type:
-        return _html_to_text(body)
-    return body.strip()
+        text = _html_to_text(body)
+    else:
+        text = body.strip()
+    # Reject soft-404 responses from govinfo.gov and similar CDNs
+    preview = text[:300].lower()
+    if (
+        "page not found" in preview
+        or "404 not found" in preview
+        or "error 404" in preview
+        or len(text) < 200
+    ):
+        return None
+    return text
 
 
 def _extract_bill_text_versions(data: dict) -> list[dict]:
@@ -296,20 +323,25 @@ def _fetch_govinfo_text(congress: int, bill_type: str, bill_number: str) -> dict
         body, content_type = result
         if not body.strip():
             continue
-        # Must be actual XML — reject HTML error pages
-        if not body.lstrip().startswith("<") or "Page Not Found" in body[:500]:
+        # Real govinfo XML is served as application/xml or text/xml.
+        # A 404/error page is always text/html — reject immediately.
+        if "html" in content_type.lower():
+            continue
+        # Belt-and-suspenders: reject anything that doesn't look like XML
+        if not body.lstrip().startswith("<"):
             continue
         try:
             text = re.sub(r"<[^>]+>", " ", body)
             text = re.sub(r"\s+", " ", text).strip()
-            if len(text) > 200:
-                return {
-                    "version_name": "govinfo",
-                    "version_type": "xml",
-                    "version_date": "",
-                    "source_url": url,
-                    "text": text[:50000],
-                }
+            if not _is_real_bill_text(text):
+                continue
+            return {
+                "version_name": "govinfo",
+                "version_type": "xml",
+                "version_date": "",
+                "source_url": url,
+                "text": text[:50000],
+            }
         except Exception:
             continue
     return None
@@ -358,8 +390,21 @@ def fetch_bill_text(congress: int, bill_type: str, bill_number: str, api_key: st
     return versions[0] if versions else None
 
 
+_GARBAGE_MARKERS = ("page not found", "404 not found", "error 404", "access denied")
+
+
+def _is_real_bill_text(text: str | None) -> bool:
+    """Return False if text is a soft-404 or too short to be real bill text."""
+    if not text or len(text) < 200:
+        return False
+    preview = text[:400].lower()
+    return not any(m in preview for m in _GARBAGE_MARKERS)
+
+
 def upsert_bill_text(conn: sqlite3.Connection, congress: int, bill_type: str,
                      bill_number: str, version: dict, dry_run: bool) -> int:
+    if not _is_real_bill_text(version.get("text")):
+        return 0
     if dry_run:
         print(
             f"    [dry] text for {bill_type.upper()}{bill_number} ({congress}) "
@@ -404,7 +449,8 @@ def fetch_bill_texts(conn: sqlite3.Connection, api_key: str, dry_run: bool,
         params = [bill_filter[0], bill_filter[1]]
 
     rows = conn.execute(
-        f"SELECT DISTINCT congress, bill_type, bill_number FROM congress_bills {where}",
+        f"SELECT DISTINCT congress, bill_type, bill_number FROM congress_bills {where}"
+        f" ORDER BY congress DESC, bill_number ASC",
         params,
     ).fetchall()
     if not rows:
@@ -412,6 +458,8 @@ def fetch_bill_texts(conn: sqlite3.Connection, api_key: str, dry_run: bool,
 
     fetched = 0
     for congress, bill_type, bill_number in rows:
+        if not bill_type or not bill_number:
+            continue
         if not refresh:
             existing = conn.execute(
                 "SELECT 1 FROM congress_bill_texts WHERE congress=? AND bill_type=? AND bill_number=? LIMIT 1",
@@ -540,10 +588,85 @@ def upsert_bills(conn: sqlite3.Connection, bills: list[dict], sponsor_id: str,
     return written
 
 
+def fetch_floor_statements(bioguide_id: str, api_key: str,
+                           congress: int = CURRENT_CONGRESS,
+                           limit: int = 50) -> list[dict]:
+    """Fetch floor statements for one member from Congress.gov."""
+    statements = []
+    offset = 0
+    while True:
+        try:
+            data = api_get(
+                f"member/{bioguide_id}/floor-statements",
+                api_key,
+                congress=congress,
+                limit=min(limit, 250),
+                offset=offset,
+            )
+        except Exception as exc:
+            print(f"    [floor-stmt] fetch error for {bioguide_id}: {exc}")
+            break
+        items = data.get("floorStatements") or []
+        statements.extend(items)
+        if len(items) < 250 or len(statements) >= limit:
+            break
+        offset += len(items)
+        time.sleep(0.3)
+    return statements[:limit]
+
+
+def upsert_floor_statements(
+    conn: sqlite3.Connection,
+    bioguide_id: str,
+    member_name: str,
+    statements: list[dict],
+    congress: int,
+    dry_run: bool,
+) -> int:
+    written = 0
+    for s in statements:
+        title = (s.get("title") or "").strip()
+        date  = (s.get("date") or "")[:10]
+        if not title and not date:
+            continue
+        row = {
+            "bioguide_id":    bioguide_id,
+            "member_name":    member_name,
+            "congress":       congress,
+            "chamber":        s.get("chamber", ""),
+            "statement_date": date,
+            "title":          title,
+            "text":           (s.get("text") or "").strip() or None,
+            "source_url":     s.get("url") or s.get("congressdotgov_url") or None,
+            "fetched_at":     now_iso(),
+        }
+        if dry_run:
+            written += 1
+            continue
+        try:
+            conn.execute(
+                """INSERT INTO congress_floor_statements
+                       (bioguide_id, member_name, congress, chamber,
+                        statement_date, title, text, source_url, fetched_at)
+                   VALUES (:bioguide_id, :member_name, :congress, :chamber,
+                           :statement_date, :title, :text, :source_url, :fetched_at)
+                   ON CONFLICT(bioguide_id, statement_date, title) DO UPDATE SET
+                       text       = excluded.text,
+                       source_url = excluded.source_url,
+                       fetched_at = excluded.fetched_at""",
+                row,
+            )
+            written += 1
+        except Exception as exc:
+            print(f"    [floor-stmt] upsert error: {exc}")
+    return written
+
+
 def ingest(conn: sqlite3.Connection, api_key: str, dry_run: bool,
            bill_limit: int = 50, fetch_text: bool = False,
            refresh_text: bool = False, congress: int = CURRENT_CONGRESS,
-           bill_filter: tuple[str, str] | None = None) -> None:
+           bill_filter: tuple[str, str] | None = None,
+           floor_statements: bool = False) -> None:
     print("Fetching current Virginia members...")
     members = fetch_va_members(api_key)
     print(f"  Found {len(members)} VA members")
@@ -562,6 +685,12 @@ def ingest(conn: sqlite3.Connection, api_key: str, dry_run: bool,
             bills = fetch_legislation(bid, role, api_key, limit=bill_limit, congress=congress)
             n = upsert_bills(conn, bills, bid, role, dry_run, default_congress=congress)
             print(f"    {role}: {n} bills")
+            time.sleep(0.3)
+
+        if floor_statements:
+            stmts = fetch_floor_statements(bid, api_key, congress=congress)
+            n = upsert_floor_statements(conn, bid, name, stmts, congress, dry_run)
+            print(f"    floor statements: {n}")
             time.sleep(0.3)
 
     if fetch_text:
@@ -590,6 +719,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--refresh-text", action="store_true",
                         help="Refresh bill text even when a text record already exists")
     parser.add_argument("--bill", help="Optional bill filter for text fetch, e.g. HR1 or S2")
+    parser.add_argument("--floor-statements", action="store_true",
+                        help="Also fetch floor statements for each member")
     parser.add_argument("--api-key", default=os.getenv("CONGRESS_API_KEY", ""),
                         help="Congress.gov API key (or set CONGRESS_API_KEY env var)")
     args = parser.parse_args(argv)
@@ -614,6 +745,7 @@ def main(argv: list[str] | None = None) -> int:
         refresh_text=args.refresh_text,
         congress=args.congress,
         bill_filter=bill_filter,
+        floor_statements=args.floor_statements,
     )
     conn.close()
     return 0

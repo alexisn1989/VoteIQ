@@ -280,9 +280,11 @@ def _build_bills_context(
             for doc, meta in exact_docs:
                 if doc not in seen_docs:
                     seen_docs.add(doc)
+                    src = meta.get("source", "")
+                    src_tag = " | FEDERAL" if src == "federal" else (" | Virginia" if src else "")
                     label = (
                         f"[{meta.get('chunk_type','?')} — "
-                        f"{meta.get('bill_id','?')} {meta.get('session','?')}]"
+                        f"{meta.get('bill_id','?')} {meta.get('session','?')}{src_tag}]"
                     )
                     context_blocks.append(f"{label}\n{doc}")
         elif session_year:
@@ -301,9 +303,11 @@ def _build_bills_context(
             for doc, meta in session_docs:
                 if doc not in seen_docs:
                     seen_docs.add(doc)
+                    src = meta.get("source", "")
+                    src_tag = " | FEDERAL" if src == "federal" else (" | Virginia" if src else "")
                     label = (
                         f"[{meta.get('chunk_type','?')} — "
-                        f"{meta.get('bill_id','?')} {meta.get('session','?')}]"
+                        f"{meta.get('bill_id','?')} {meta.get('session','?')}{src_tag}]"
                     )
                     context_blocks.append(f"{label}\n{doc}")
 
@@ -318,9 +322,11 @@ def _build_bills_context(
                     continue
             if doc not in seen_docs:
                 seen_docs.add(doc)
+                src = meta.get("source", "")
+                src_tag = " | FEDERAL" if src == "federal" else (" | Virginia" if src else "")
                 label = (
                     f"[{meta.get('chunk_type','?')} — "
-                    f"{meta.get('bill_id','?')} {meta.get('session','?')}]"
+                    f"{meta.get('bill_id','?')} {meta.get('session','?')}{src_tag}]"
                 )
                 context_blocks.append(f"{label}\n{doc}")
 
@@ -337,58 +343,98 @@ def _build_bills_context(
 _POLLS_DB = os.path.join(os.getenv("DATA_DIR", _BASE_DIR), "polls.db")
 
 
-def _fetch_transcript_context(query: str, bill_id: str | None = None, limit: int = 5) -> str:
-    """Return formatted [video_transcript] blocks relevant to the query."""
+def _fetch_transcript_context(query: str, bill_id: str | None = None,
+                               bioguide_ids: list[str] | None = None,
+                               limit: int = 5) -> str:
+    """Return formatted [video_transcript] and [floor_statement] blocks relevant to the query."""
     import sqlite3
     if not os.path.exists(_POLLS_DB):
         return ""
+
+    keywords = [w for w in query.lower().split() if len(w) > 3][:6]
+    blocks: list[str] = []
+
     try:
         conn = sqlite3.connect(_POLLS_DB)
         conn.row_factory = sqlite3.Row
-        params: list = []
-        clauses: list[str] = []
 
+        # ── hearing_segments ──────────────────────────────────────────────────
+        hs_params: list = []
+        hs_clauses: list[str] = []
         if bill_id:
-            clauses.append("s.bill_id = ?")
-            params.append(bill_id.upper())
-
-        keywords = [w for w in query.lower().split() if len(w) > 3][:6]
+            hs_clauses.append("s.bill_id = ?")
+            hs_params.append(bill_id.upper())
         if keywords:
             kw_clause = " OR ".join("lower(s.quote) LIKE ?" for _ in keywords)
-            clauses.append(f"({kw_clause})")
-            params.extend(f"%{k}%" for k in keywords)
+            hs_clauses.append(f"({kw_clause})")
+            hs_params.extend(f"%{k}%" for k in keywords)
 
-        if not clauses:
-            conn.close()
-            return ""
+        if hs_clauses:
+            where = " AND ".join(hs_clauses) if bill_id else " OR ".join(hs_clauses)
+            rows = conn.execute(
+                f"""SELECT s.speaker, s.hearing_title, s.hearing_date,
+                           s.timestamp_start, s.timestamp_end, s.quote, s.source_url
+                    FROM hearing_segments s
+                    WHERE {where}
+                    ORDER BY s.hearing_date DESC, s.id
+                    LIMIT ?""",
+                hs_params + [limit],
+            ).fetchall()
+            for row in rows:
+                blocks.append(
+                    f"[video_transcript]\n"
+                    f"Speaker: {row['speaker'] or 'Unknown'}\n"
+                    f"Hearing Title: {row['hearing_title']}\n"
+                    f"Date: {row['hearing_date']}\n"
+                    f"Timestamp: {row['timestamp_start']}–{row['timestamp_end']}\n"
+                    f"Quote: \"{row['quote']}\"\n"
+                    f"Source: {row['source_url'] or 'Not available'}"
+                )
 
-        where = " AND ".join(clauses) if bill_id else " OR ".join(clauses)
-        rows = conn.execute(
-            f"""SELECT s.speaker, s.hearing_title, s.hearing_date,
-                       s.timestamp_start, s.timestamp_end, s.quote, s.source_url
-                FROM hearing_segments s
-                WHERE {where}
-                ORDER BY s.hearing_date DESC, s.id
-                LIMIT ?""",
-            params + [limit],
-        ).fetchall()
+        # ── congress_floor_statements ─────────────────────────────────────────
+        fs_params: list = []
+        fs_clauses: list[str] = []
+        if bioguide_ids:
+            placeholders = ",".join("?" * len(bioguide_ids))
+            fs_clauses.append(f"fs.bioguide_id IN ({placeholders})")
+            fs_params.extend(bioguide_ids)
+        if keywords:
+            kw_clause = " OR ".join(
+                f"(lower(fs.title) LIKE ? OR lower(fs.text) LIKE ?)" for _ in keywords
+            )
+            fs_clauses.append(f"({kw_clause})")
+            for k in keywords:
+                fs_params.extend([f"%{k}%", f"%{k}%"])
+
+        if fs_clauses:
+            where = " AND ".join(fs_clauses) if bioguide_ids else " OR ".join(fs_clauses)
+            fs_rows = conn.execute(
+                f"""SELECT fs.member_name, fs.congress, fs.chamber,
+                           fs.statement_date, fs.title, fs.text, fs.source_url
+                    FROM congress_floor_statements fs
+                    WHERE {where}
+                    ORDER BY fs.statement_date DESC
+                    LIMIT ?""",
+                fs_params + [limit],
+            ).fetchall()
+            for row in fs_rows:
+                text_preview = (row['text'] or '')[:800].strip()
+                blocks.append(
+                    f"[floor_statement]\n"
+                    f"Speaker: {row['member_name']}\n"
+                    f"Congress: {row['congress']}th\n"
+                    f"Chamber: {row['chamber']}\n"
+                    f"Date: {row['statement_date']}\n"
+                    f"Title: {row['title']}\n"
+                    f"Text: \"{text_preview}\"\n"
+                    f"Source: {row['source_url'] or 'congress.gov'}"
+                )
+
         conn.close()
     except Exception:
         return ""
 
-    if not rows:
-        return ""
-
-    return "\n\n".join(
-        f"""[video_transcript]
-Speaker: {row['speaker'] or 'Unknown'}
-Hearing Title: {row['hearing_title']}
-Date: {row['hearing_date']}
-Timestamp: {row['timestamp_start']}–{row['timestamp_end']}
-Quote: "{row['quote']}"
-Source: {row['source_url'] or 'Not available'}"""
-        for row in rows
-    )
+    return "\n\n".join(blocks)
 
 
 def build_bills_query_context(user_query: str, context: str) -> dict:
@@ -425,6 +471,7 @@ def _bills_system_prompt(
         f"You have access to the retrieved excerpts below, which may include Virginia General Assembly bills, "
         f"election results, legislator voting records, representative profile summaries from the local 2026 session database, "
         f"roll-call votes and sponsored bills for Virginia's 13 federal representatives (119th Congress) from congress.gov, "
+        f"full bill text for 119th Congress federal bills sourced from govinfo.gov (labeled '| FEDERAL' in excerpts), "
         f"FEC campaign finance data showing PAC/industry contributions by sector for Virginia federal members, "
         f"AND recent Virginia political news articles (sourced from Virginia news outlets via Gemini extraction). "
         f"Answer the user's question using ONLY the excerpts below — do not rely on your training data. "
@@ -632,6 +679,12 @@ async def chat(req: ChatRequest):
     base_prompt = get_system_prompt(voice=req.voice, query_context=query_context)
     max_tokens  = TIER_MAX_TOKENS.get(req.tier, TIER_MAX_TOKENS["free"])
 
+    transcript_context = ""
+    if query_context.get("touches_speech_context"):
+        transcript_context = _fetch_transcript_context(
+            last_question, bioguide_ids=bioguide_ids or None
+        )
+
     system_prompt = f"""{base_prompt}
 
 ---
@@ -656,7 +709,9 @@ Format citations as: [Outlet — Author](URL) at the end of the relevant sentenc
 If no relevant news is listed above, answer from your training knowledge.
 ''' if news_context else ''}
 
-When citing a vote, include the bill name and Yea/Nay. When citing donors or industry contributions, state the dollar amount and add "(FEC data, fec.gov)". For official contact info direct users to house.gov, senate.gov, or virginiageneralassembly.gov. Never express opinions on representatives or tell people how to vote."""
+When citing a vote, include the bill name and Yea/Nay. When citing donors or industry contributions, state the dollar amount and add "(FEC data, fec.gov)". For official contact info direct users to house.gov, senate.gov, or virginiageneralassembly.gov. Never express opinions on representatives or tell people how to vote.
+
+{transcript_context if transcript_context else ""}"""
 
     try:
         return ChatResponse(reply=_m._claude_reply(system_prompt, req.messages, max_tokens=max_tokens))
@@ -776,7 +831,10 @@ async def bills_chat(req: BillsChatRequest):
     if query_context["touches_speech_context"]:
         import main as _m2
         _bill_ids = _m2._extract_bill_numbers(user_query) if hasattr(_m2, "_extract_bill_numbers") else []
-        tc = _fetch_transcript_context(user_query, bill_id=_bill_ids[0] if _bill_ids else None)
+        tc = _fetch_transcript_context(
+            user_query,
+            bill_id=_bill_ids[0] if _bill_ids else None,
+        )
         if tc:
             context = context + "\n\n---\n\n" + tc if context else tc
     voice_prompt  = get_system_prompt(req.voice, query_context)
@@ -853,7 +911,10 @@ async def bills_chat_stream(req: BillsChatRequest):
     if query_context["touches_speech_context"]:
         import main as _m2
         _bill_ids = _m2._extract_bill_numbers(user_query) if hasattr(_m2, "_extract_bill_numbers") else []
-        tc = _fetch_transcript_context(user_query, bill_id=_bill_ids[0] if _bill_ids else None)
+        tc = _fetch_transcript_context(
+            user_query,
+            bill_id=_bill_ids[0] if _bill_ids else None,
+        )
         if tc:
             context = context + "\n\n---\n\n" + tc if context else tc
     voice_prompt  = get_system_prompt(req.voice, query_context)
