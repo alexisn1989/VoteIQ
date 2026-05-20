@@ -5944,78 +5944,10 @@ def _load_sd_geojson():
 # /virignia-map and /virginia-map moved to voteiq/api/routes/district.py
 
 
-@app.get("/api/analyst/{member_id}")
-async def analyst_endpoint(
-    member_id:    str,
-    level:        str = Query("federal", pattern="^(federal|state)$"),
-    analyst_type: str = Query(
-        "triangle",
-        pattern="^(triangle|donor_shift|geography|loyalty|effectiveness)$"
-    ),
-    cycle:        str = "2024",
-):
-    member = lookup_member(member_id, level)
-    name   = member.get("name") if member else member_id
-
-    report = run_analyst(
-        name         = name,
-        member_id    = member_id,
-        level        = level,
-        analyst_type = analyst_type,
-        cycle        = int(cycle) if level == "federal" else cycle,
-    )
-    return {"member_id": member_id, "level": level,
-            "analyst_type": analyst_type, "cycle": cycle,
-            "report": report}
+# /api/analyst/{member_id} — live in voteiq/api/routes/analyst.py
 
 
-@app.get("/api/timing/{member_id}")
-async def timing_analyst_endpoint(
-    member_id:   str,
-    level:       str = Query(
-                     "federal",
-                     pattern="^(federal|state)$"
-                 ),
-    cycle:       str = "2024",
-    session:     str = "2024",
-    days_window: int = Query(
-                     30,
-                     ge=7,    # minimum 7 days
-                     le=180,  # maximum 180 days
-                 ),
-):
-    if level == "federal":
-        raise HTTPException(
-            status_code=400,
-            detail="Timing analyst is not yet available for federal members.",
-        )
-
-    member = lookup_member(member_id, level)
-    name   = member.get("name") if member else member_id
-
-    summary = get_timing_summary(
-        lis_id      = member_id,
-        cycle       = cycle,
-        session     = session,
-        days_window = days_window,
-    )
-    pairs = get_donation_timing(
-        lis_id      = member_id,
-        cycle       = cycle,
-        session     = session,
-        days_window = days_window,
-    )
-
-    return {
-        "member_id":   member_id,
-        "name":        name,
-        "level":       level,
-        "cycle":       cycle,
-        "session":     session,
-        "days_window": days_window,
-        "summary":     summary,
-        "pairs":       pairs,
-    }
+# /api/timing/{member_id} — live in voteiq/api/routes/analyst.py
 
 
 @app.on_event("startup")
