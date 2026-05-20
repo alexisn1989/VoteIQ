@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from html import escape
 from pathlib import Path
 
@@ -9,6 +10,11 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 
 router = APIRouter(tags=["district"])
+
+
+def _get_district_contexts():
+    from main import HOD_CONTEXT, SD_CONTEXT, DISTRICT_CONTEXT, _HOD_MEMBER_URL
+    return HOD_CONTEXT, SD_CONTEXT, DISTRICT_CONTEXT, _HOD_MEMBER_URL
 
 _BASE_DIR     = Path(__file__).resolve().parents[3]
 _DATA_DIR     = Path(os.getenv("DATA_DIR", str(_BASE_DIR)))
@@ -169,3 +175,277 @@ def virginia_map_page(layer: str = "counties", embed: bool = False):
         html = html.replace("<body>", '<body class="embed-mode">', 1)
     html = html.replace("</head>", inject + "</head>", 1)
     return html
+
+
+# ── / ─────────────────────────────────────────────────────────────────────────
+
+@router.get("/", response_class=HTMLResponse)
+def home():
+    with (_TEMPLATE_DIR / "index.html").open("r", encoding="utf-8") as f:
+        return f.read()
+
+
+# ── /api/lookup ───────────────────────────────────────────────────────────────
+
+_NORFOLK_COUNCIL_URLS: dict[str, str] = {
+    "martin a thomas jr":   "https://www.norfolk.gov/542/Vice-Mayor-Martin-A-Thomas-Jr",
+    "courtney doyle":       "https://www.norfolk.gov/4111/Courtney-R-Doyle",
+    "courtney r doyle":     "https://www.norfolk.gov/4111/Courtney-R-Doyle",
+    "mamie johnson":        "https://www.norfolk.gov/2932/Mamie-B-Johnson",
+    "mamie b johnson":      "https://www.norfolk.gov/2932/Mamie-B-Johnson",
+    "john e jp paige":      "https://www.norfolk.gov/538/John-E-JP-Paige",
+    "tommy r smigiel jr":   "https://www.norfolk.gov/539/Thomas-R-Smigiel-Jr",
+    "thomas r smigiel jr":  "https://www.norfolk.gov/539/Thomas-R-Smigiel-Jr",
+    "jeremy d mcgee":       "https://www.norfolk.gov/6429/Jeremy-D-McGee",
+    "carlos j clanton":     "https://www.norfolk.gov/6428/Carlos-J-Clanton",
+}
+
+_NORFOLK_SCHOOL_BOARD_URLS: dict[str, str] = {
+    "dr adale m martin":      "https://www.npsk12.com/our-division/school-board/school-board-members/dr-adale-m-martin-member",
+    "adale m martin":         "https://www.npsk12.com/our-division/school-board/school-board-members/dr-adale-m-martin-member",
+    "tanya k bhasin":         "https://www.npsk12.com/our-division/school-board/school-board-members/ms-tanya-k-bhasin-member",
+    "tiffany moore buffaloe": "https://www.npsk12.com/our-division/school-board/school-board-members/mrs-tiffany-moore-buffaloe-member",
+    "ken d paulson":          "https://www.npsk12.com/our-division/school-board/school-board-members/mr-kenneth-paulson-member",
+    "kenneth d paulson":      "https://www.npsk12.com/our-division/school-board/school-board-members/mr-kenneth-paulson-member",
+    "kenneth paulson":        "https://www.npsk12.com/our-division/school-board/school-board-members/mr-kenneth-paulson-member",
+    "jason inge":             "https://www.npsk12.com/our-division/school-board/school-board-members/mr-jason-inge-member",
+    "jodi m slaughter":       "https://www.npsk12.com/our-division/school-board/school-board-members/mr-jason-inge-member",
+    "sarah e dicalogero":     "https://www.npsk12.com/our-division/school-board/school-board-members/ms-sarah-e-dicalogero-chair",
+    "alfreda a thomas":       "https://www.npsk12.com/our-division/school-board/school-board-members/ms-alfreda-a-thomas-vice-chair",
+    "alfreda thomas":         "https://www.npsk12.com/our-division/school-board/school-board-members/ms-alfreda-a-thomas-vice-chair",
+    "carlos j clanton":       "https://www.norfolk.gov/6428/Carlos-J-Clanton",
+}
+
+
+def _slug(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", str(name or "").lower()).strip()
+
+
+def _official(officials: dict, key: str) -> dict | None:
+    o = officials.get(key)
+    return {"name": o["name"], "party": o.get("party", ""), "url": o.get("url", "")} if o else None
+
+
+@router.get("/api/lookup")
+def lookup(address: str):
+    from address_lookup import (
+        _vb_council, _vb_school_board,
+        _norfolk_officials, _chesapeake_officials, _portsmouth_officials,
+        _hampton_officials, _newport_news_officials, _suffolk_officials,
+    )
+    import address_lookup as _al
+    HOD_CONTEXT, SD_CONTEXT, DISTRICT_CONTEXT, _HOD_MEMBER_URL = _get_district_contexts()
+
+    result = _al.find_district(address)
+    if "error" in result:
+        return {"district": result}
+
+    hod_num  = result.get("hod_district")
+    sd_num   = result.get("sd_district")
+    hod_info = HOD_CONTEXT.get(hod_num) if hod_num else None
+    sd_info  = SD_CONTEXT.get(sd_num)   if sd_num  else None
+
+    cd_num_raw = result.get("district_number", "")
+    try:
+        cd_key = f"VA-{int(cd_num_raw):02d}"
+    except (ValueError, TypeError):
+        cd_key = "VA-00"
+    cd_info = DISTRICT_CONTEXT.get(cd_key, {})
+
+    vb_num    = result.get("vb_council_district")
+    vb_info   = _vb_council.get(vb_num) if vb_num is not None else None
+    mayor_info = _vb_council.get(0)
+
+    def _officer(key):
+        o = _vb_council.get(key)
+        return {"name": o["name"], "email": o["email"], "party": o.get("party", ""), "url": o.get("url", "")} if o else None
+
+    polling_place = (
+        result.get("vb_polling_place") or
+        result.get("hampton_polling_place") or
+        result.get("portsmouth_polling_place") or
+        result.get("suffolk_polling_place") or
+        result.get("chesapeake_polling_place") or
+        result.get("norfolk_polling_place")
+    )
+    precinct_number = (
+        result.get("hampton_precinct_number") or
+        result.get("portsmouth_precinct_number") or
+        result.get("suffolk_precinct_number") or
+        result.get("chesapeake_precinct_number") or
+        result.get("norfolk_precinct_number") or
+        result.get("newport_news_precinct_number") or
+        (polling_place or {}).get("precinct_number")
+    )
+    precinct_name = result.get("precinct")
+    precinct_info = {
+        "name":         precinct_name,
+        "number":       precinct_number,
+        "location":     (polling_place or {}).get("location") or result.get("hampton_polling_location") or result.get("portsmouth_polling_location") or result.get("suffolk_polling_location") or result.get("chesapeake_polling_location") or result.get("norfolk_polling_location") or result.get("newport_news_polling_location"),
+        "address":      (polling_place or {}).get("full_address") or result.get("newport_news_polling_address"),
+        "address_line_1": (polling_place or {}).get("address_line_1"),
+        "address_line_2": (polling_place or {}).get("address_line_2"),
+        "city":         (polling_place or {}).get("city"),
+        "state":        (polling_place or {}).get("state"),
+        "zip_code":     (polling_place or {}).get("zip_code"),
+        "room":         (polling_place or {}).get("room"),
+    } if precinct_name and precinct_name != "Not found" else None
+
+    locality = result.get("locality", "").lower()
+
+    return {
+        "district":     result,
+        "precinct_info": precinct_info,
+        "vb_council": {
+            "district_number": vb_num,
+            "name":     vb_info["name"],
+            "email":    vb_info["email"],
+            "district": vb_info["district"],
+            "party":    vb_info.get("party", ""),
+            "mayor":    {"name": mayor_info["name"], "email": mayor_info["email"], "party": mayor_info.get("party", "")} if mayor_info else None,
+            "sheriff":                _officer("Sheriff"),
+            "commonwealths_attorney": _officer("Commonwealth's Attorney"),
+            "commissioner":           _officer("Commissioner of the Revenue"),
+            "treasurer":              _officer("City Treasurer"),
+            "clerk":                  _officer("Clerk of the Circuit Court"),
+        } if vb_info else None,
+        "norfolk": {
+            "precinct":          result.get("norfolk_precinct") or result.get("precinct"),
+            "precinct_number":   result.get("norfolk_precinct_number"),
+            "polling_location":  result.get("norfolk_polling_location"),
+            "polling_address":   (result.get("norfolk_polling_place") or {}).get("full_address"),
+            "mayor":                  _official(_norfolk_officials, "mayor"),
+            "sheriff":                _official(_norfolk_officials, "sheriff"),
+            "commonwealths_attorney": _official(_norfolk_officials, "commonwealths_attorney"),
+            "treasurer":              _official(_norfolk_officials, "treasurer"),
+            "commissioner":           _official(_norfolk_officials, "commissioner"),
+            "ward":             result.get("norfolk_ward"),
+            "ward_rep":         result.get("norfolk_ward_rep"),
+            "ward_rep_url":     result.get("norfolk_ward_rep_url") or _NORFOLK_COUNCIL_URLS.get(_slug(result.get("norfolk_ward_rep")), ""),
+            "ward_sbm":         result.get("norfolk_ward_sbm"),
+            "ward_sbm_url":     result.get("norfolk_ward_sbm_url") or _NORFOLK_SCHOOL_BOARD_URLS.get(_slug(result.get("norfolk_ward_sbm")), ""),
+            "superward":        result.get("norfolk_superward"),
+            "superward_rep":    result.get("norfolk_superward_rep"),
+            "superward_rep_url": result.get("norfolk_superward_rep_url") or _NORFOLK_COUNCIL_URLS.get(_slug(result.get("norfolk_superward_rep")), ""),
+            "superward_sbm":    result.get("norfolk_superward_sbm"),
+            "superward_sbm_url": result.get("norfolk_superward_sbm_url") or _NORFOLK_SCHOOL_BOARD_URLS.get(_slug(result.get("norfolk_superward_sbm")), ""),
+        } if "norfolk" in locality else None,
+        "chesapeake": {
+            "precinct":         result.get("chesapeake_precinct") or result.get("precinct"),
+            "precinct_number":  result.get("chesapeake_precinct_number"),
+            "polling_location": result.get("chesapeake_polling_location"),
+            "polling_address":  (result.get("chesapeake_polling_place") or {}).get("full_address"),
+            "polling_room":     (result.get("chesapeake_polling_place") or {}).get("room"),
+            "mayor":                  _official(_chesapeake_officials, "mayor"),
+            "vice_mayor":             _official(_chesapeake_officials, "vice_mayor"),
+            "sheriff":                _official(_chesapeake_officials, "sheriff"),
+            "commonwealths_attorney": _official(_chesapeake_officials, "commonwealths_attorney"),
+            "commissioner":           _official(_chesapeake_officials, "commissioner"),
+            "treasurer":              _official(_chesapeake_officials, "treasurer"),
+            "clerk":                  _official(_chesapeake_officials, "clerk"),
+            "council":       [{"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} for m in _chesapeake_officials.get("council", [])],
+            "school_board":  [{"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} for m in _chesapeake_officials.get("school_board", [])],
+        } if "chesapeake" in locality else None,
+        "portsmouth": {
+            "precinct":         result.get("portsmouth_precinct") or result.get("precinct"),
+            "precinct_number":  result.get("portsmouth_precinct_number"),
+            "polling_location": result.get("portsmouth_polling_location"),
+            "polling_address":  (result.get("portsmouth_polling_place") or {}).get("full_address"),
+            "polling_room":     (result.get("portsmouth_polling_place") or {}).get("room"),
+            "mayor":                  _official(_portsmouth_officials, "mayor"),
+            "vice_mayor":             _official(_portsmouth_officials, "vice_mayor"),
+            "sheriff":                _official(_portsmouth_officials, "sheriff"),
+            "commonwealths_attorney": _official(_portsmouth_officials, "commonwealths_attorney"),
+            "commissioner":           _official(_portsmouth_officials, "commissioner"),
+            "treasurer":              _official(_portsmouth_officials, "treasurer"),
+            "clerk":                  _official(_portsmouth_officials, "clerk"),
+            "council":      [{"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} for m in _portsmouth_officials.get("council", [])],
+            "school_board": [{"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} for m in _portsmouth_officials.get("school_board", [])],
+        } if "portsmouth" in locality else None,
+        "hampton": {
+            "precinct":         result.get("hampton_precinct") or result.get("precinct"),
+            "precinct_number":  result.get("hampton_precinct_number"),
+            "polling_location": result.get("hampton_polling_location"),
+            "polling_address":  (result.get("hampton_polling_place") or {}).get("full_address"),
+            "polling_room":     (result.get("hampton_polling_place") or {}).get("room"),
+            "mayor":                  _official(_hampton_officials, "mayor"),
+            "vice_mayor":             _official(_hampton_officials, "vice_mayor"),
+            "sheriff":                _official(_hampton_officials, "sheriff"),
+            "commonwealths_attorney": _official(_hampton_officials, "commonwealths_attorney"),
+            "commissioner":           _official(_hampton_officials, "commissioner"),
+            "treasurer":              _official(_hampton_officials, "treasurer"),
+            "clerk":                  _official(_hampton_officials, "clerk"),
+            "council":      [{"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} for m in _hampton_officials.get("council", [])],
+            "school_board": [{"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} for m in _hampton_officials.get("school_board", [])],
+        } if "hampton" in locality else None,
+        "newport_news": {
+            "precinct":           result.get("newport_news_precinct") or result.get("precinct"),
+            "precinct_number":    result.get("newport_news_precinct_number"),
+            "polling_location":   result.get("newport_news_polling_location"),
+            "polling_address":    result.get("newport_news_polling_address"),
+            "mayor":                  _official(_newport_news_officials, "mayor"),
+            "vice_mayor":             _official(_newport_news_officials, "vice_mayor"),
+            "sheriff":                _official(_newport_news_officials, "sheriff"),
+            "commonwealths_attorney": _official(_newport_news_officials, "commonwealths_attorney"),
+            "commissioner":           _official(_newport_news_officials, "commissioner"),
+            "treasurer":              _official(_newport_news_officials, "treasurer"),
+            "clerk":                  _official(_newport_news_officials, "clerk"),
+            "council_district":       result.get("nn_council_district"),
+            "council_district_name":  result.get("nn_council_district_name"),
+            "council":      [{"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} for m in _newport_news_officials.get(f"council_{result.get('nn_council_district')}", [])],
+            "school_board": (
+                [{"name": m["name"], "party": m.get("party", ""), "url": m.get("url", ""), "district": m.get("district", "")} for m in _newport_news_officials.get(f"school_board_{result.get('nn_council_district')}", [])] +
+                [{"name": m["name"], "party": m.get("party", ""), "url": m.get("url", ""), "district": m.get("district", "")} for m in _newport_news_officials.get("school_board_at_large", [])]
+            ),
+        } if "newport news" in locality else None,
+        "suffolk": {
+            "precinct":         result.get("suffolk_precinct") or result.get("precinct"),
+            "precinct_number":  result.get("suffolk_precinct_number"),
+            "polling_location": result.get("suffolk_polling_location"),
+            "polling_address":  (result.get("suffolk_polling_place") or {}).get("full_address"),
+            "polling_room":     (result.get("suffolk_polling_place") or {}).get("room"),
+            "mayor":                  _official(_suffolk_officials, "mayor"),
+            "vice_mayor":             _official(_suffolk_officials, "vice_mayor"),
+            "sheriff":                _official(_suffolk_officials, "sheriff"),
+            "commonwealths_attorney": _official(_suffolk_officials, "commonwealths_attorney"),
+            "commissioner":           _official(_suffolk_officials, "commissioner"),
+            "treasurer":              _official(_suffolk_officials, "treasurer"),
+            "clerk":                  _official(_suffolk_officials, "clerk"),
+            "council": [{"name": m["name"], "party": m.get("party", "")} for m in _suffolk_officials.get("council", [])],
+        } if "suffolk" in locality else None,
+        "vb_school_board": {
+            "member":   (lambda o: {"name": o["name"], "party": o.get("party", ""), "url": o.get("url", "")} if o else None)(_vb_school_board.get(vb_num)),
+            "at_large": (lambda o: {"name": o["name"], "party": o.get("party", ""), "url": o.get("url", "")} if o else None)(_vb_school_board.get("at_large")),
+        } if vb_num is not None else None,
+        "us_rep": {
+            "district_number": int(cd_num_raw) if cd_num_raw not in ("", "N/A") else None,
+            "rep":    cd_info.get("rep"),
+            "party":  cd_info.get("party"),
+            "region": cd_info.get("region"),
+            "url":    cd_info.get("url"),
+        } if cd_info.get("rep") else None,
+        "state_delegate": {
+            "district_number": hod_num,
+            "delegate":        hod_info["delegate"],
+            "party":           hod_info["party"],
+            "locality":        hod_info["locality"],
+            "url":             _HOD_MEMBER_URL.get(hod_num),
+        } if hod_info else None,
+        "state_senator": {
+            "district_number": sd_num,
+            "senator":         sd_info["senator"],
+            "party":           sd_info["party"],
+            "region":          sd_info["region"],
+            "url":             sd_info.get("url"),
+        } if sd_info else None,
+        "us_senators": [
+            {"name": "Mark Warner", "party": "Democrat", "title": "Virginia · Senior Senator", "url": "https://www.warner.senate.gov/public/index.cfm/contact"},
+            {"name": "Tim Kaine",   "party": "Democrat", "title": "Virginia · Junior Senator", "url": "https://www.kaine.senate.gov/contact"},
+        ],
+        "us_president": {"name": "Donald J. Trump", "party": "Republican", "title": "United States", "url": "https://www.whitehouse.gov/contact/"},
+        "va_statewide": [
+            {"name": "Abigail D. Spanberger", "party": "Democrat", "title": "Governor",            "url": "https://www.governor.virginia.gov/contact/"},
+            {"name": "Ghazala F. Hashmi",     "party": "Democrat", "title": "Lieutenant Governor", "url": "https://www.ltgov.virginia.gov/contact/"},
+            {"name": "Jay C. Jones",          "party": "Democrat", "title": "Attorney General",    "url": "https://www.ag.virginia.gov/about/contact/"},
+        ],
+    }
