@@ -22,12 +22,18 @@ router = APIRouter(tags=["chat"])
 
 _BASE_DIR = str(Path(__file__).resolve().parent.parent.parent.parent)
 
+_NEWS_TERMS = (
+    "news", "article", "articles", "headline", "headlines", "coverage",
+    "recent", "latest", "current", "today", "yesterday", "this week",
+    "reported", "reporting", "press", "story", "stories",
+)
+
 _SOURCE_LINE = (
     "\n\n---\n"
-    "*Sources: [OpenStates](https://openstates.org/va/) · "
-    "[LIS](https://lis.virginia.gov) · "
+    "*Sources: Congress.gov · Congressional Record/GovInfo where available · "
+    "OpenStates · Virginia LIS · FEC where available. "
     "Data current through May 16, 2026. "
-    "Vote reasons/statements are not available in public datasets.*"
+    "VoteIQ does not infer motive, intent, or causation from votes, donations, or bill activity.*"
 )
 
 
@@ -122,6 +128,9 @@ def _build_bills_context(
     """
     import main as _m
 
+    query_context = {
+        "touches_news": any(w in (user_query or "").lower() for w in _NEWS_TERMS),
+    }
     mentioned    = _m._extract_bill_numbers(user_query)
     session_year = _m._extract_session_year(user_query)
     cached_bill_context = (
@@ -135,7 +144,9 @@ def _build_bills_context(
     results      = {"documents": [[]], "metadatas": [[]]}
     chroma_error = None
 
-    if not cached_bill_context:
+    # Only skip Chroma when a specific bill was mentioned AND found in local cache.
+    # For general queries, always run semantic search — keyword cache is too noisy to block it.
+    if not (mentioned and cached_bill_context):
         try:
             query_vec = _m._get_voyage_client().embed(
                 [user_query], model=_m._BILLS_MODEL, input_type="query"
@@ -232,6 +243,13 @@ def _build_bills_context(
             dist_rep_name = _m.DISTRICT_CONTEXT.get(req.district, {}).get("rep")
             if dist_rep_name:
                 fed_member = _m._federal_member_by_name(dist_rep_name)
+        _speech_kws = (
+            "said", "speech", "floor", "statement", "spoke", "remarks",
+            "testified", "hearing", "executive order", "executive orders",
+            "governor order", "eo-",
+        )
+        _is_speech_q = any(kw in user_query.lower() for kw in _speech_kws)
+
         if fed_member:
             fed_ctx = _m._fetch_federal_context(fed_member)
             if fed_ctx and fed_ctx not in seen_docs:
@@ -242,12 +260,32 @@ def _build_bills_context(
                 if fec_block and fec_block not in seen_docs:
                     seen_docs.add(fec_block)
                     context_blocks.insert(0, fec_block)
+            if _is_speech_q:
+                floor_block = _fetch_floor_statements(
+                    bioguide_id=fed_member["bioguide_id"],
+                    query=user_query,
+                    limit=5,
+                )
+                if floor_block and floor_block not in seen_docs:
+                    seen_docs.add(floor_block)
+                    context_blocks.insert(0, floor_block)
 
-        news_pol   = (fed_member["name"] if fed_member else "") or leg_name or ""
-        news_block = _m._fetch_news_context(user_query, politician_name=news_pol)
-        if news_block and news_block not in seen_docs:
-            seen_docs.add(news_block)
-            context_blocks.append(news_block)
+        if query_context.get("touches_news"):
+            news_pol = (fed_member["name"] if fed_member else "") or leg_name or ""
+            news_ctx = _m._fetch_news_context(user_query, politician_name=news_pol)
+            if news_ctx and news_ctx not in seen_docs:
+                seen_docs.add(news_ctx)
+                context_blocks.insert(0, news_ctx)
+
+        gov_block = _m._fetch_governor_action_context(user_query, bill_numbers=mentioned or None)
+        if gov_block and gov_block not in seen_docs:
+            seen_docs.add(gov_block)
+            context_blocks.append(gov_block)
+
+        eo_block = _m._fetch_governor_eo_context(user_query)
+        if eo_block and eo_block not in seen_docs:
+            seen_docs.add(eo_block)
+            context_blocks.append(eo_block)
 
         if mentioned:
             exact_docs = _m._fetch_bills_by_id(mentioned, session_year)
@@ -343,6 +381,51 @@ def _build_bills_context(
 _POLLS_DB = os.path.join(os.getenv("DATA_DIR", _BASE_DIR), "polls.db")
 
 
+def _fetch_floor_statements(
+    bioguide_id: str,
+    query: str = "",
+    limit: int = 5,
+) -> str:
+    """Return formatted floor statement excerpts from congress_floor_statements."""
+    if not os.path.exists(_POLLS_DB):
+        return ""
+    try:
+        import sqlite3
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+        params: list = [bioguide_id]
+        kw_clause = ""
+        if query:
+            keywords = [w for w in query.lower().split() if len(w) > 3][:5]
+            if keywords:
+                kw_clause = " AND (" + " OR ".join("lower(text) LIKE ? OR lower(title) LIKE ?" for _ in keywords) + ")"
+                for kw in keywords:
+                    params.extend([f"%{kw}%", f"%{kw}%"])
+        rows = conn.execute(
+            f"""SELECT member_name, statement_date, title, SUBSTR(text,1,2000), source_url
+                FROM congress_floor_statements
+                WHERE bioguide_id = ?{kw_clause}
+                ORDER BY statement_date DESC
+                LIMIT ?""",
+            params + [limit],
+        ).fetchall()
+        conn.close()
+        if not rows:
+            return ""
+        blocks = []
+        for row in rows:
+            name, dt, title, excerpt, url = row
+            blocks.append(
+                f"[Floor Statement — {name} | {dt}]\n"
+                f"Title: {title}\n"
+                f"{excerpt.strip()}"
+                + (f"\nSource: {url}" if url else "")
+            )
+        return "\n\n".join(blocks)
+    except Exception:
+        return ""
+
+
 def _fetch_transcript_context(query: str, bill_id: str | None = None,
                                bioguide_ids: list[str] | None = None,
                                limit: int = 5) -> str:
@@ -359,17 +442,21 @@ def _fetch_transcript_context(query: str, bill_id: str | None = None,
         conn.row_factory = sqlite3.Row
 
         # ── hearing_segments ──────────────────────────────────────────────────
+        hs_table = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='hearing_segments'"
+        ).fetchone()
         hs_params: list = []
         hs_clauses: list[str] = []
-        if bill_id:
-            hs_clauses.append("s.bill_id = ?")
-            hs_params.append(bill_id.upper())
-        if keywords:
-            kw_clause = " OR ".join("lower(s.quote) LIKE ?" for _ in keywords)
-            hs_clauses.append(f"({kw_clause})")
-            hs_params.extend(f"%{k}%" for k in keywords)
+        if hs_table:
+            if bill_id:
+                hs_clauses.append("s.bill_id = ?")
+                hs_params.append(bill_id.upper())
+            if keywords:
+                kw_clause = " OR ".join("lower(s.quote) LIKE ?" for _ in keywords)
+                hs_clauses.append(f"({kw_clause})")
+                hs_params.extend(f"%{k}%" for k in keywords)
 
-        if hs_clauses:
+        if hs_table and hs_clauses:
             where = " AND ".join(hs_clauses) if bill_id else " OR ".join(hs_clauses)
             rows = conn.execute(
                 f"""SELECT s.speaker, s.hearing_title, s.hearing_date,
@@ -430,6 +517,40 @@ def _fetch_transcript_context(query: str, bill_id: str | None = None,
                     f"Source: {row['source_url'] or 'congress.gov'}"
                 )
 
+        # ── governor_executive_orders ───────────────────────────────────────
+        eo_table = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='governor_executive_orders'"
+        ).fetchone()
+        if eo_table and keywords:
+            eo_clause = " OR ".join(
+                "(lower(title) LIKE ? OR lower(summary) LIKE ? OR lower(full_text) LIKE ?)"
+                for _ in keywords
+            )
+            eo_params: list = []
+            for k in keywords:
+                eo_params.extend([f"%{k}%", f"%{k}%", f"%{k}%"])
+
+            eo_rows = conn.execute(
+                f"""SELECT order_number, title, signed_date, governor,
+                           summary, full_text, source_url
+                    FROM governor_executive_orders
+                    WHERE {eo_clause}
+                    ORDER BY signed_date DESC
+                    LIMIT ?""",
+                eo_params + [limit],
+            ).fetchall()
+            for row in eo_rows:
+                text_preview = (row["full_text"] or row["summary"] or "")[:1200].strip()
+                blocks.append(
+                    f"[executive_order]\n"
+                    f"Governor: {row['governor'] or 'Unknown'}\n"
+                    f"Order: {row['order_number'] or 'Unknown'}\n"
+                    f"Date: {row['signed_date'] or 'Unknown'}\n"
+                    f"Title: {row['title']}\n"
+                    f"Text: \"{text_preview}\"\n"
+                    f"Source: {row['source_url'] or 'Not available'}"
+                )
+
         conn.close()
     except Exception:
         return ""
@@ -453,7 +574,10 @@ def build_bills_query_context(user_query: str, context: str) -> dict:
         "touches_voting_patterns": touches_voting_patterns,
         "touches_speech_context": any(
             w in q for w in ["speech", "transcript", "said", "statement", "floor", "hearing"]
+        ) or any(
+            w in q for w in ["executive order", "executive orders", "governor order", "eo-"]
         ),
+        "touches_news": any(w in q for w in _NEWS_TERMS),
         "federal_rep_present": "| Federal]" in context,
         "state_rep_present":   "| State]" in context or "HOD" in context or "Senate District" in context,
     }
@@ -476,7 +600,7 @@ def _bills_system_prompt(
         f"AND recent Virginia political news articles (sourced from Virginia news outlets via Gemini extraction). "
         f"Answer the user's question using ONLY the excerpts below — do not rely on your training data. "
         f"Be factual and cite bill numbers when relevant. "
-        f"For federal members (U.S. House/Senate), cite bill type and number (e.g. H.R. 23) and note the source as congress.gov. "
+        f"For federal members (U.S. House/Senate), cite bill type and number (e.g. H.R. 23) and note the source as \"Congress.gov bill record\" for bill details. "
         f"For campaign finance questions, use the CAMPAIGN FINANCE & INDUSTRY CORRELATION excerpt if present and cite \"(FEC data, fec.gov)\".{district_note}{chroma_note}{model_note}"
         f"\n\nFEDERAL BILL EXPLAINER FORMAT — when the user's query starts with \"Explain this federal bill:\" or asks what a specific federal bill (H.R., S., H.J.Res., etc.) does, respond using this structure:\n"
         f"## [Bill ID] — [Short Title]\n"
@@ -485,7 +609,7 @@ def _bills_system_prompt(
         f"**Sponsor:** Name, party, state — from the excerpt only.\n"
         f"**Status:** Current status (introduced, referred to committee, passed chamber, signed, etc.).\n"
         f"**Committee:** Committee of referral — from the excerpt only.\n"
-        f"**Source:** congress.gov\n"
+        f"**Source:** Congress.gov bill record\n"
         f"Do not speculate about passage chances or political prospects. If any field is not in the excerpt, write \"Not available in current dataset.\"\n"
         f"\n\nFEDERAL REP RESPONSE FORMAT — when a [Representative Profile — Name | Federal] excerpt is present, "
         f"respond in the same style as state rep answers: "
@@ -496,7 +620,17 @@ def _bills_system_prompt(
         f"(4) List their committee assignments. "
         f"(5) Close with a note pointing to congress.gov for full detail. "
         f"Use the same plain, civic-report tone as state legislator responses."
+        f"\n\nMIXED FEDERAL/STATE COMPARISON FORMAT — when comparing one federal member with Virginia state legislators, use a markdown table like:\n"
+        f"| | [Federal member] (Federal) | [State senator] (VA Senate) | [Delegate] (VA House) |\n"
+        f"|---|---:|---:|---:|\n"
+        f"| Party | [party] | [party] | [party] |\n"
+        f"| Bills sponsored/patroned | [count or not shown] | [count] | [count] |\n"
+        f"| Bills passed | [count or 'Not shown in current federal dataset'] | [count] | [count] |\n"
+        f"| Vote metric shown | [yes rate or vote count metric] | [party alignment] | [party alignment] |\n"
+        f"| Main topics in retrieved records | [topics] | [topics] | [topics] |\n"
+        f"Only fill cells from retrieved excerpts. If a field is absent, write \"Not shown in current dataset.\" Keep federal yes-rate metrics separate from state party-alignment metrics.\n"
         f"\n\nVOTE INTERPRETATION — apply these rules when reading vote records:\n"
+        f"- When showing votes tied to a bill, statement, donor pattern, or other context, label the section \"Related Vote Record\" and include this note: \"These votes are public-record actions. VoteIQ does not infer motive or reasoning from votes alone.\"\n"
         f"- If a legislator votes YES on passage but NO on concurrence/conference substitute, they likely objected to the amended version, not the bill itself. Say: \"voted against the House-amended version; accepted final compromise.\"\n"
         f"- If a legislator votes YES in committee but NO on floor, they may have had ideological concerns or constituent pressure. Do not assume — say \"voted NO on floor passage after supporting it in committee; dataset does not explain the change.\"\n"
         f"- Always show the SEQUENCE of votes when available, not just the final result. A bill can have 4-8 votes — the pattern matters.\n"
@@ -533,6 +667,7 @@ def _bills_system_prompt(
         f"**[YEAR] Session Voting Record:**\n"
         f"- Overall vote rate: [CONFIRMED — OpenStates] [Y] YES ([X]%), [N] NO out of [N] floor votes\n"
         f"- Party alignment: [CONFIRMED — calculated from vote records] voted with [Party] party majority on [X]% of floor votes\n"
+        f"- Comparison note: if multiple representatives are shown in the current answer, you may say \"[X]% party alignment — the lowest/highest party-alignment rate among the representatives shown here.\" Only compare the representatives actually shown in this answer.\n"
         f"- Caucus read: [copy exactly from excerpt if present; use the plain-language wording, not the old technical faction label]\n"
         f"- Committee votes: [CONFIRMED — OpenStates] [N] total — [Y] YES, [N] NO\n\n"
         f"**Key Votes** (if present in excerpt; put this before aggregate issue stats):\n"
@@ -649,6 +784,10 @@ async def chat(req: ChatRequest):
     news_context    = _m._fetch_relevant_news(last_question, pol_names)
     vote_context    = _m._fetch_vote_context(last_question, bioguide_ids)
     finance_context = _m._fetch_finance_context(bioguide_ids, last_question)
+    governor_context = _m._fetch_governor_action_context(last_question)
+    governor_eo_context = _m._fetch_governor_eo_context(last_question)
+    state_member_context = _m._fetch_va_state_member_context(last_question, hod_info=hod_info, sd_info=sd_info)
+    ie_context = _m._fetch_ie_context(bioguide_ids, last_question)
 
     question_lower = (last_question or "").lower()
     query_context = {
@@ -670,10 +809,20 @@ async def chat(req: ChatRequest):
             word in question_lower
             for word in [
                 "speech", "transcript", "said", "statement", "floor", "hearing",
+                "executive order", "executive orders", "governor order", "eo-",
             ]
         ),
+        "touches_news": any(word in question_lower for word in _NEWS_TERMS),
         "federal_rep_present": bool(bioguide_ids),
         "state_rep_present":   bool(hod_info or sd_info),
+        "touches_ie_spending": any(
+            w in question_lower
+            for w in [
+                "outside money", "super pac", "independent expenditure",
+                "nrcc", "dccc", "club for growth", "outside spending",
+                "who spent money", "outside group", "who ran ads", "attack ad",
+            ]
+        ),
     }
 
     base_prompt = get_system_prompt(voice=req.voice, query_context=query_context)
@@ -701,13 +850,21 @@ Available data for this representative:
 
 {finance_context if finance_context else ""}
 
+{ie_context if ie_context else ""}
+
+{governor_context if governor_context else ""}
+
+{governor_eo_context if governor_eo_context else ""}
+
+{state_member_context if state_member_context else ""}
+
 {f'''
 {news_context}
 
 When answering questions about recent news or current events, cite the article source and author.
 Format citations as: [Outlet — Author](URL) at the end of the relevant sentence.
 If no relevant news is listed above, answer from your training knowledge.
-''' if news_context else ''}
+''' if query_context.get("touches_news") and news_context else ''}
 
 When citing a vote, include the bill name and Yea/Nay. When citing donors or industry contributions, state the dollar amount and add "(FEC data, fec.gov)". For official contact info direct users to house.gov, senate.gov, or virginiageneralassembly.gov. Never express opinions on representatives or tell people how to vote.
 
@@ -733,6 +890,7 @@ async def election_chat(req: ElectionChatRequest):
         "touches_donor_data":      False,
         "touches_voting_patterns": any(w in q for w in ["vote", "votes", "voting", "record", "margin", "turnout"]),
         "touches_speech_context":  False,
+        "touches_news":            any(w in q for w in _NEWS_TERMS),
         "federal_rep_present":     False,
         "state_rep_present":       False,
     }
@@ -817,7 +975,7 @@ async def bills_chat(req: BillsChatRequest):
     if _ck:
         cached = _m._get_cached_reply(_ck, _ck_fb)
         if cached:
-            if not cached.rstrip().endswith("public datasets.*"):
+            if not cached.rstrip().endswith(_SOURCE_LINE.strip()):
                 cached = cached.rstrip() + _SOURCE_LINE
             return ChatResponse(reply=cached)
 
@@ -846,7 +1004,7 @@ async def bills_chat(req: BillsChatRequest):
 
     try:
         reply = _m._claude_reply(system_prompt, req.messages, max_tokens=max_tokens, model=model)
-        if not reply.rstrip().endswith("public datasets.*"):
+        if not reply.rstrip().endswith(_SOURCE_LINE.strip()):
             reply = reply.rstrip() + _SOURCE_LINE
         if _ck:
             _m._set_cached_reply(_ck, reply)
@@ -891,7 +1049,7 @@ async def bills_chat_stream(req: BillsChatRequest):
     if _ck:
         cached = _m._get_cached_reply(_ck, _ck_fb)
         if cached:
-            if not cached.rstrip().endswith("public datasets.*"):
+            if not cached.rstrip().endswith(_SOURCE_LINE.strip()):
                 cached = cached.rstrip() + _SOURCE_LINE
             async def _cached_gen(text=cached):
                 chunk = 24
@@ -938,7 +1096,7 @@ async def bills_chat_stream(req: BillsChatRequest):
                 for text in stream.text_stream:
                     full_reply += text
                     yield f"data: {json.dumps({'token': text})}\n\n"
-            if not full_reply.rstrip().endswith("public datasets.*"):
+            if not full_reply.rstrip().endswith(_SOURCE_LINE.strip()):
                 full_reply = full_reply.rstrip() + _SOURCE_LINE
                 yield f"data: {json.dumps({'token': _SOURCE_LINE})}\n\n"
             if _ck:

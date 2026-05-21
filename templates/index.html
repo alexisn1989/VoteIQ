@@ -507,7 +507,18 @@
         del ? del.delegate : null,
         sen ? sen.senator : null,
       ].filter(Boolean);
-      initViqChat(districtCode, d.locality, del ? del.district_number : null, sen ? sen.district_number : null, repNames);
+      const repData = {
+        congress: [
+          usRep ? { title: 'Rep.', name: usRep.rep, party: usRep.party, district: districtCode } : null,
+          ...usSenators.map(s => ({ title: 'Sen.', name: s.name, party: s.party, district: 'Virginia' }))
+        ].filter(Boolean),
+        assembly: [
+          del ? { title: 'Del.', name: del.delegate, party: del.party, district: 'HD-' + del.district_number } : null,
+          sen ? { title: 'Sen.', name: sen.senator, party: sen.party, district: 'SD-' + sen.district_number } : null,
+        ].filter(Boolean),
+        executive: vaStatewide.filter(r => r.title === 'Governor').map(r => ({ title: 'Gov.', name: r.name, party: r.party, district: 'Virginia' }))
+      };
+      initViqChat(districtCode, d.locality, del ? del.district_number : null, sen ? sen.district_number : null, repNames, repData);
       if (window.viqSaveDistrictContext) {
         window.viqSaveDistrictContext({
           districtCode: districtCode,
@@ -645,7 +656,7 @@
         '<button type="button" onclick="viqClearSavedDistrict()" style="font-family:Barlow Condensed,sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;background:transparent;color:#c8102e;border:1px solid #c8102e;padding:7px 14px;cursor:pointer;">Use a different address</button>' +
         '</div>';
     }
-    window.initViqChat = function (districtCode, locality, hod, sd, repNames) {
+    window.initViqChat = function (districtCode, locality, hod, sd, repNames, repData) {
       viqDistrict = districtCode || 'VA-00';
       viqLocality = locality || '';
       viqHod = hod || null;
@@ -655,9 +666,33 @@
       document.getElementById('viqMsgList').innerHTML = '';
       document.getElementById('viqChips').style.display = 'flex';
       document.getElementById('viqChatPanel').style.display = 'flex';
-      const greeting = repNames && repNames.length
-        ? "Hi! I'm VoteIQ. You're represented by " + repNames.join(', ') + ". Ask me anything about their roles, voting records, or how to contact them."
-        : "Hi! I'm VoteIQ. Enter your address above to find your representatives, then ask me anything about them.";
+      let greeting;
+      if (repData && (repData.congress || repData.assembly || repData.executive)) {
+        const partyAbbr = p => p && p.includes('Republican') ? 'R' : p && p.includes('Democrat') ? 'D' : p ? p[0] : '?';
+        const repLine = r => r.title + ' ' + r.name + ' (' + partyAbbr(r.party) + ') — ' + r.district;
+        const lines = ['**Your Representatives:**\n'];
+        if (repData.congress && repData.congress.length) {
+          lines.push('**🏛️ U.S. Congress**');
+          repData.congress.forEach(r => lines.push(repLine(r)));
+          lines.push('');
+        }
+        if (repData.assembly && repData.assembly.length) {
+          lines.push('**🏛️ Virginia General Assembly**');
+          repData.assembly.forEach(r => lines.push(repLine(r)));
+          lines.push('');
+        }
+        if (repData.executive && repData.executive.length) {
+          lines.push('**🏛️ Executive**');
+          repData.executive.forEach(r => lines.push(repLine(r)));
+          lines.push('');
+        }
+        lines.push('Ask me about any of them.');
+        greeting = lines.join('\n');
+      } else if (repNames && repNames.length) {
+        greeting = "Hi! I'm VoteIQ. You're represented by " + repNames.join(', ') + ". Ask me anything about their roles, voting records, or how to contact them.";
+      } else {
+        greeting = "Hi! I'm VoteIQ. Enter your address above to find your representatives, then ask me anything about them.";
+      }
       viqAddMsg('assistant', greeting);
     };
     document.addEventListener('DOMContentLoaded', () => {

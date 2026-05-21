@@ -1591,8 +1591,8 @@ class ChatRequest(BaseModel):
     locality: str = ""
     hod_district: int | None = None
     sd_district: int | None = None
-    voice: str = "free"
     tier:  str = "free"
+    voice: str = "free"
 
     @field_validator('hod_district', 'sd_district', mode='before')
     @classmethod
@@ -1618,8 +1618,8 @@ class ChatResponse(BaseModel):
 class ElectionChatRequest(BaseModel):
     year: str
     messages: list[ChatMessage]
-    voice: str = "free"
     tier:  str = "free"
+    voice: str = "free"
 
     @field_validator('voice')
     @classmethod
@@ -3406,6 +3406,55 @@ def _fetch_news_context(query: str, politician_name: str = "", limit: int = 4) -
     """Return recent Virginia news articles relevant to the query/politician as a context block."""
     if not os.path.exists(_POLLS_DB):
         return ""
+    q = (query or "").strip()
+    if not q:
+        return ""
+
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+        table = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='news_intelligence'"
+        ).fetchone()
+        if table:
+            like = f"%{q[:80]}%"
+            rows = conn.execute("""
+                SELECT
+                    headline,
+                    source,
+                    published_date,
+                    article_url,
+                    key_facts,
+                    topics,
+                    politicians_mentioned,
+                    bills_mentioned
+                FROM news_intelligence
+                WHERE headline LIKE ?
+                   OR key_facts LIKE ?
+                   OR topics LIKE ?
+                   OR politicians_mentioned LIKE ?
+                   OR bills_mentioned LIKE ?
+                ORDER BY published_date DESC
+                LIMIT ?
+            """, (like, like, like, like, like, limit)).fetchall()
+            conn.close()
+
+            blocks = []
+            for row in rows:
+                blocks.append(
+                    f"[news_article — {row['source']} | {row['published_date']}]\n"
+                    f"Headline: {row['headline']}\n"
+                    f"Topics: {row['topics']}\n"
+                    f"Politicians: {row['politicians_mentioned']}\n"
+                    f"Bills: {row['bills_mentioned']}\n"
+                    f"Key facts: {row['key_facts']}\n"
+                    f"Source: {row['article_url']}"
+                )
+            return "\n\n".join(blocks)
+        conn.close()
+    except Exception as e:
+        return f"[news_error]\nCould not load news context: {e}"
+
     try:
         conn = sqlite3.connect(_POLLS_DB)
         rows = conn.execute(
@@ -3421,37 +3470,326 @@ def _fetch_news_context(query: str, politician_name: str = "", limit: int = 4) -
 
     q_lower = query.lower()
     pol_lower = politician_name.lower()
+    # Build a set of name tokens to match against: full name, last name, first name.
+    # Handles both "Kiggans, Jennifer A." (inverted DB format) and "Jennifer Kiggans".
+    pol_tokens: set[str] = set()
+    if pol_lower:
+        pol_tokens.add(pol_lower)
+        parts = [p.strip(" ,") for p in pol_lower.replace(",", " ").split() if len(p.strip(" ,")) > 2]
+        pol_tokens.update(parts)  # individual name tokens (last, first, middle initial stripped)
+
     scored = []
     for title, source, published_at, gemini_json_str, url in rows:
         try:
             g = json.loads(gemini_json_str or "{}")
         except Exception:
             g = {}
-        politicians = [p.get("name", "").lower() for p in (g.get("politicians") or [])]
-        topics = [t.lower() for t in (g.get("topics") or [])]
+        politicians_mentioned = g.get("politicians") or []
+        politicians = [p.get("name", "").lower() for p in politicians_mentioned]
+        topics = g.get("topics") or []
+        topic_terms = [t.lower() for t in topics]
         summary = (g.get("summary") or "").strip()
+        bills_mentioned = g.get("bills") or g.get("bills_mentioned") or []
+        if not bills_mentioned:
+            bill_text = " ".join([title or "", summary])
+            bills_mentioned = sorted(set(
+                re.findall(r"\b(?:HB|SB|HJ|SJ|HR|H\.R\.|S\.)\s*\.?\s*\d+\b", bill_text, flags=re.I)
+            ))
+        metadata = {
+            "source": "news",
+            "content_type": "article",
+            "outlet": g.get("outlet") or source,
+            "published_date": (g.get("published") or published_at or "")[:10],
+            "url": url,
+            "topics": topics,
+            "politicians": politicians_mentioned,
+            "bills": bills_mentioned,
+        }
 
         score = 0
-        if pol_lower and any(pol_lower in p or p in pol_lower for p in politicians if p):
-            score += 3
-        if any(kw in q_lower for kw in topics):
+        if pol_tokens:
+            combined = " ".join(politicians)
+            if any(tok in combined for tok in pol_tokens if len(tok) > 3):
+                score += 3
+        if any(kw in q_lower for kw in topic_terms):
             score += 2
         if any(kw in (title or "").lower() for kw in q_lower.split() if len(kw) > 4):
             score += 1
         if score > 0:
-            scored.append((score, title, source, published_at, summary, url))
+            scored.append((score, title, source, published_at, summary, url, metadata))
 
     if not scored:
         return ""
 
     scored.sort(key=lambda x: -x[0])
     lines = ["[Virginia News — recent coverage]"]
-    for _, title, source, published_at, summary, url in scored[:limit]:
+    for _, title, source, published_at, summary, url, metadata in scored[:limit]:
         date = (published_at or "")[:10]
         lines.append(f"  • {date} | {source} | {title}")
+        lines.append(f"    Metadata: {json.dumps(metadata, ensure_ascii=False)}")
         if summary:
             lines.append(f"    Summary: {summary}")
     return "\n".join(lines)
+
+
+def _fetch_governor_action_context(query: str, bill_numbers: list[str] | None = None) -> str:
+    """Fetch governor bill actions from legislative_intelligence.db via ATTACH."""
+    leg_db = os.path.join(os.getenv("DATA_DIR", _BASE_DIR), "legislative_intelligence.db")
+    if not os.path.exists(leg_db):
+        return ""
+    blocks: list[str] = []
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+        conn.execute(f"ATTACH DATABASE '{leg_db}' AS leg")
+
+        if bill_numbers:
+            placeholders = ",".join("?" * len(bill_numbers))
+            rows = conn.execute(f"""
+                SELECT bill_number, session, title, action_label, action_date,
+                       governor, sponsor_name, sponsor_party, source_url, raw_status
+                FROM leg.governor_actions
+                WHERE bill_number IN ({placeholders})
+                ORDER BY action_date DESC
+                LIMIT 10
+            """, bill_numbers).fetchall()
+        else:
+            kw = f"%{query[:60]}%"
+            rows = conn.execute("""
+                SELECT bill_number, session, title, action_label, action_date,
+                       governor, sponsor_name, sponsor_party, source_url, raw_status
+                FROM leg.governor_actions
+                WHERE lower(title) LIKE lower(?)
+                   OR lower(raw_status) LIKE lower(?)
+                   OR lower(action_label) LIKE lower(?)
+                ORDER BY action_date DESC
+                LIMIT 10
+            """, (kw, kw, kw)).fetchall()
+
+        conn.close()
+        for row in rows:
+            url_line = f"\nSource: {row['source_url']}" if row['source_url'] else ""
+            blocks.append(
+                f"[Governor Action — {row['governor']} | {row['action_date']}]\n"
+                f"Bill: {row['bill_number']} ({row['session']}) — {row['title']}\n"
+                f"Action: {row['action_label']}\n"
+                f"Sponsor: {row['sponsor_name']} ({row['sponsor_party']})"
+                f"{url_line}"
+            )
+    except Exception:
+        return ""
+
+    return "\n\n".join(blocks)
+
+
+def _fetch_va_state_member_context(
+    query: str,
+    hod_info: dict | None = None,
+    sd_info: dict | None = None,
+) -> str:
+    """Return recent VA state bills introduced by the user's HOD delegate and/or state senator."""
+    if not hod_info and not sd_info:
+        return ""
+    blocks: list[str] = []
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+
+        members_to_fetch: list[tuple[str, str, str]] = []  # (name, chamber_label, lis_id)
+        if hod_info:
+            row = conn.execute(
+                "SELECT lis_id FROM legislators WHERE lower(name) LIKE lower(?)",
+                (f"%{hod_info['delegate'].split('(')[0].strip()}%",),
+            ).fetchone()
+            if row:
+                members_to_fetch.append((hod_info["delegate"], "Delegate", row["lis_id"]))
+        if sd_info:
+            row = conn.execute(
+                "SELECT lis_id FROM legislators WHERE lower(name) LIKE lower(?)",
+                (f"%{sd_info['senator'].split('(')[0].strip()}%",),
+            ).fetchone()
+            if row:
+                members_to_fetch.append((sd_info["senator"], "Senator", row["lis_id"]))
+
+        q_lower = query.lower()
+        keywords = [w for w in q_lower.split() if len(w) > 4]
+
+        for name, chamber_label, lis_id in members_to_fetch:
+            if keywords:
+                kw_conditions = " OR ".join(
+                    ["lower(title) LIKE ? OR lower(subjects) LIKE ?"] * len(keywords)
+                )
+                kw_params: list = []
+                for kw in keywords:
+                    p = f"%{kw}%"
+                    kw_params.extend([p, p])
+                topic_rows = conn.execute(
+                    f"""
+                    SELECT bill_number, session, title, status, introduced_date, subjects
+                    FROM va_bills
+                    WHERE introduced_by = ? AND ({kw_conditions})
+                    ORDER BY session DESC, introduced_date DESC
+                    LIMIT 5
+                    """,
+                    [lis_id] + kw_params,
+                ).fetchall()
+            else:
+                topic_rows = []
+
+            recent_rows = conn.execute(
+                """
+                SELECT bill_number, session, title, status, introduced_date, subjects
+                FROM va_bills
+                WHERE introduced_by = ?
+                ORDER BY session DESC, introduced_date DESC
+                LIMIT 5
+                """,
+                (lis_id,),
+            ).fetchall()
+
+            seen_ids: set[str] = set()
+            combined: list = []
+            for r in list(topic_rows) + list(recent_rows):
+                key = f"{r['bill_number']}|{r['session']}"
+                if key not in seen_ids:
+                    seen_ids.add(key)
+                    combined.append(r)
+                if len(combined) >= 8:
+                    break
+
+            if not combined:
+                continue
+
+            total = conn.execute(
+                "SELECT COUNT(*) FROM va_bills WHERE introduced_by = ?", (lis_id,)
+            ).fetchone()[0]
+
+            lines = [f"[VA {chamber_label} Bills — {name} | {total} total introduced]"]
+            for r in combined:
+                subj = f" [{r['subjects']}]" if r['subjects'] else ""
+                lines.append(
+                    f"  {r['bill_number']} ({r['session']}) — {r['title'][:80]}\n"
+                    f"    Status: {r['status']}{subj}"
+                )
+            blocks.append("\n".join(lines))
+
+        conn.close()
+    except Exception:
+        return ""
+    return "\n\n".join(blocks)
+
+
+def _fetch_governor_eo_context(query: str) -> str:
+    """Fetch Spanberger executive orders relevant to the query from polls.db."""
+    blocks: list[str] = []
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+        keywords = [w for w in query.lower().split() if len(w) > 4][:6]
+        if not keywords:
+            conn.close()
+            return ""
+        conditions = " OR ".join(
+            ["lower(title) LIKE ? OR lower(summary) LIKE ? OR lower(policy_topics) LIKE ?"] * len(keywords)
+        )
+        params = []
+        for kw in keywords:
+            p = f"%{kw}%"
+            params.extend([p, p, p])
+        rows = conn.execute(
+            f"""
+            SELECT order_number, title, governor, signed_date, summary, source_url
+            FROM governor_executive_orders
+            WHERE {conditions}
+            ORDER BY signed_date DESC
+            LIMIT 5
+            """,
+            params,
+        ).fetchall()
+        conn.close()
+        for row in rows:
+            url_line = f"\nSource: {row['source_url']}" if row['source_url'] else ""
+            summary = (row['summary'] or "")[:300]
+            blocks.append(
+                f"[Governor Executive Order — {row['governor']} | {row['signed_date']}]\n"
+                f"Order {row['order_number']}: {row['title']}\n"
+                f"Summary: {summary}"
+                f"{url_line}"
+            )
+    except Exception:
+        return ""
+    return "\n\n".join(blocks)
+
+
+def _fetch_ie_context(bioguide_ids: list[str], question: str) -> str:
+    """Return top independent expenditure spenders for/against the given members."""
+    if not bioguide_ids:
+        return ""
+    q_lower = question.lower()
+    ie_keywords = [
+        "outside spending", "super pac", "independent expenditure", "dark money",
+        "outside group", "who spent", "who ran ads", "ads against", "ads for",
+        "attack ad", "outside money", "nrcc", "dccc", "club for growth",
+        "who spent money",
+    ]
+    if not any(kw in q_lower for kw in ie_keywords):
+        return ""
+    blocks: list[str] = []
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+        # Resolve bioguide -> fec_candidate_id via the member cache
+        fec_ids_by_bgid: dict[str, str] = {}
+        for bgid in bioguide_ids:
+            row = conn.execute(
+                "SELECT fec_candidate_id FROM fec_independent_expenditures WHERE bioguide_id = ? LIMIT 1",
+                (bgid,),
+            ).fetchone()
+            if row and row["fec_candidate_id"]:
+                fec_ids_by_bgid[bgid] = row["fec_candidate_id"]
+        for bgid, fec_cand_id in fec_ids_by_bgid.items():
+            rows = conn.execute("""
+                SELECT committee_name, support_oppose,
+                       SUM(expenditure_amount) as total,
+                       COUNT(*) as count,
+                       MAX(expenditure_date) as latest
+                FROM fec_independent_expenditures
+                WHERE fec_candidate_id = ?
+                GROUP BY committee_name, support_oppose
+                ORDER BY total DESC
+                LIMIT 10
+            """, (fec_cand_id,)).fetchall()
+            if not rows:
+                continue
+            cand_name = conn.execute(
+                "SELECT candidate_name FROM fec_independent_expenditures WHERE fec_candidate_id = ? LIMIT 1",
+                (fec_cand_id,),
+            ).fetchone()
+            cand = (cand_name["candidate_name"] if cand_name else None) or bgid
+            support = [r for r in rows if r["support_oppose"] == "S"]
+            oppose  = [r for r in rows if r["support_oppose"] == "O"]
+            total_s = sum(r["total"] for r in support)
+            total_o = sum(r["total"] for r in oppose)
+            net = abs(total_o - total_s)
+            net_dir = "AGAINST" if total_o > total_s else "FOR"
+            lines = [
+                f"[Outside Spending (IE) — {cand}]",
+                f"Supporting total: ${total_s:,.0f}  |  Opposing total: ${total_o:,.0f}  |  Net: ${net:,.0f} {net_dir}",
+            ]
+            if support:
+                lines.append(f"SUPPORTING (${total_s:,.0f}):")
+                for r in support:
+                    lines.append(f"  {r['committee_name']}: ${r['total']:,.0f} ({r['count']} expenditures, latest {r['latest']})")
+            if oppose:
+                lines.append(f"OPPOSING (${total_o:,.0f}):")
+                for r in oppose:
+                    lines.append(f"  {r['committee_name']}: ${r['total']:,.0f} ({r['count']} expenditures, latest {r['latest']})")
+            lines.append("Source: FEC Schedule E filings. Independent expenditures are not coordinated with campaigns.")
+            blocks.append("\n".join(lines))
+        conn.close()
+    except Exception:
+        return ""
+    return "\n\n".join(blocks)
 
 
 def _fetch_finance_context(bioguide_ids: list[str], question: str) -> str:
@@ -3756,8 +4094,25 @@ def _fetch_relevant_news(question: str, politician_names: list[str] | None = Non
             author = d.get("author") or ""
             summary = d.get("summary") or ""
             pub = (d.get("published") or "")[:10]
+            bills_mentioned = d.get("bills") or d.get("bills_mentioned") or []
+            if not bills_mentioned:
+                bill_text = " ".join([headline, summary])
+                bills_mentioned = sorted(set(
+                    re.findall(r"\b(?:HB|SB|HJ|SJ|HR|H\.R\.|S\.)\s*\.?\s*\d+\b", bill_text, flags=re.I)
+                ))
+            metadata = {
+                "source": "news",
+                "content_type": "article",
+                "outlet": outlet,
+                "published_date": pub,
+                "url": url,
+                "topics": d.get("topics") or [],
+                "politicians": d.get("politicians") or [],
+                "bills": bills_mentioned,
+            }
             byline = outlet + (f" — {author}" if author else "") + (f" ({pub})" if pub else "")
             lines.append(f"- {headline}" + (f" [{byline}]" if byline else ""))
+            lines.append(f"  Metadata: {json.dumps(metadata, ensure_ascii=False)}")
             if summary:
                 lines.append(f"  Summary: {summary}")
             if url:
@@ -3815,8 +4170,8 @@ Additional rules:
     try:
         # Filter messages for valid types
         reply = _gemini_reply(system_prompt, req.messages, max_tokens=max_tokens)
-        if not reply.rstrip().endswith("public datasets.*"):
-            reply = reply.rstrip() + "\n\n---\n*Sources: FEC.gov, OpenStates, and VoteIQ Local Data.*"
+        if not reply.rstrip().endswith(_SOURCE_LINE.strip()):
+            reply = reply.rstrip() + _SOURCE_LINE
         return ChatResponse(reply=reply)
     except Exception as e:
         return ChatResponse(reply=f"Gemini Error: {str(e)}")
@@ -4984,8 +5339,8 @@ class BillsChatRequest(BaseModel):
     locality: str = ""
     hod_district: int | None = None
     sd_district: int | None = None
-    voice: str = "free"
     tier:  str = "free"
+    voice: str = "free"
 
     @field_validator('hod_district', 'sd_district', mode='before')
     @classmethod
@@ -5210,10 +5565,10 @@ def _fetch_races_2026() -> dict:
 
 _SOURCE_LINE = (
     "\n\n---\n"
-    "*Sources: [OpenStates](https://openstates.org/va/) · "
-    "[LIS](https://lis.virginia.gov) · "
+    "*Sources: Congress.gov · Congressional Record/GovInfo where available · "
+    "OpenStates · Virginia LIS · FEC where available. "
     "Data current through May 16, 2026. "
-    "Vote reasons/statements are not available in public datasets.*"
+    "VoteIQ does not infer motive, intent, or causation from votes, donations, or bill activity.*"
 )
 
 

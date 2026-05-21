@@ -120,6 +120,7 @@ When [floor_statement] or [video_transcript] excerpts are present:
 
 - Never infer tone, intent, or sincerity from statements
 - Always note if the statement was made before or after a related vote, if that timing is available in the provided data
+- When showing a related vote, label it "Related Vote Record" and include: "These votes are public-record actions. VoteIQ does not infer motive or reasoning from votes alone."
 - Correlation between statements and votes does not imply causation
 """
 
@@ -555,6 +556,31 @@ VOICE_PROMPTS = {
 }
 
 
+_SECTION_IE_ANALYSIS = """
+## Outside Money (Independent Expenditures) — Analysis Instructions
+
+When IE/outside spending data is present in context, present it as a structured analysis:
+
+**Pro voice — markdown format:**
+> ## Outside Money Analysis
+> **Supporting** ($X total): [top committees with amounts]
+> **Opposing** ($X total): [top committees with amounts]
+> **Net outside spending:** $X [for/against] [candidate name]
+> State the electoral outcome in one sentence if known.
+> *Source: FEC Schedule E filings. Independent expenditures are not coordinated with campaigns.*
+
+**Newsroom voice — add story angle:**
+> Lead with the net figure and who dominated outside spending.
+> Name the top spender on each side, their known affiliation (party super PAC, issue group, etc.).
+> Note if the candidate won despite being outspent by outside groups, or vice versa.
+> Flag any ideologically notable spenders (e.g. Koch network, labor unions, environmental groups).
+> Close with the FEC source line.
+
+Always compute: total supporting, total opposing, net = |opposing - supporting| labeled FOR or AGAINST.
+Never editorialize on whether outside spending is good or bad — report the numbers.
+"""
+
+
 # ── Dynamic prompt assembly ───────────────────────────────────────────────────
 
 def get_system_prompt(voice: str, query_context: dict | None = None) -> str:
@@ -579,5 +605,8 @@ def get_system_prompt(voice: str, query_context: dict | None = None) -> str:
         blocks.append(
             "\nSpeech and transcript context is not available at your current tier."
         )
+
+    if config.get("allow_deep_analysis") and query_context.get("touches_ie_spending"):
+        blocks.append(_SECTION_IE_ANALYSIS)
 
     return "\n".join(blocks)
