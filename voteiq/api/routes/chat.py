@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 import pdfplumber
-from fastapi import APIRouter, File, Form, UploadFile
+from fastapi import APIRouter, File, Form, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
 
@@ -131,6 +131,19 @@ def _build_bills_context(
     query_context = {
         "touches_news": any(w in (user_query or "").lower() for w in _NEWS_TERMS),
     }
+    q_lower = (user_query or "").lower()
+    if any(term in q_lower for term in ("who is the governor", "current governor", "virginia governor", "governor of virginia")):
+        return (
+            "[Virginia Statewide Official]\n"
+            "Office: Governor\n"
+            "Name: Abigail D. Spanberger\n"
+            "Party: Democrat\n"
+            "Jurisdiction: Virginia\n"
+            "Source: https://www.governor.virginia.gov/contact/",
+            "",
+            True,
+            None,
+        )
     mentioned    = _m._extract_bill_numbers(user_query)
     session_year = _m._extract_session_year(user_query)
     cached_bill_context = (
@@ -164,6 +177,18 @@ def _build_bills_context(
     try:
         context_blocks: list[str] = []
         seen_docs: set[str] = set()
+
+        if any(term in q_lower for term in ("who is the governor", "current governor", "virginia governor", "governor of virginia")):
+            statewide_block = (
+                "[Virginia Statewide Official]\n"
+                "Office: Governor\n"
+                "Name: Abigail D. Spanberger\n"
+                "Party: Democrat\n"
+                "Jurisdiction: Virginia\n"
+                "Source: https://www.governor.virginia.gov/contact/"
+            )
+            seen_docs.add(statewide_block)
+            context_blocks.insert(0, statewide_block)
 
         if cached_bill_context:
             for block in cached_bill_context.split("\n\n"):
@@ -277,12 +302,18 @@ def _build_bills_context(
                 seen_docs.add(news_ctx)
                 context_blocks.insert(0, news_ctx)
 
-        gov_block = _m._fetch_governor_action_context(user_query, bill_numbers=mentioned or None)
+        try:
+            gov_block = _m._fetch_governor_action_context(user_query, bill_numbers=mentioned or None)
+        except Exception:
+            gov_block = ""
         if gov_block and gov_block not in seen_docs:
             seen_docs.add(gov_block)
             context_blocks.append(gov_block)
 
-        eo_block = _m._fetch_governor_eo_context(user_query)
+        try:
+            eo_block = _m._fetch_governor_eo_context(user_query)
+        except Exception:
+            eo_block = ""
         if eo_block and eo_block not in seen_docs:
             seen_docs.add(eo_block)
             context_blocks.append(eo_block)
@@ -374,6 +405,66 @@ def _build_bills_context(
         chroma_error = f"Result parsing error: {e}"
 
     return context, exact_lookup_note, use_haiku, chroma_error
+
+
+def _local_bills_fallback_context(_m, req, user_query: str) -> str:
+    """Build a local-only fallback when embedding/Chroma is unavailable."""
+    pieces: list[str] = []
+    try:
+        mentioned = _m._extract_bill_numbers(user_query)
+        leg_name = _m._extract_legislator_name(user_query)
+
+        if mentioned:
+            sqlite_fb = _m._sqlite_bill_lookup(mentioned)
+            os_fb = _m._openstates_vote_lookup(mentioned)
+            for block in (sqlite_fb, os_fb):
+                if block and block not in pieces:
+                    pieces.append(block)
+        elif leg_name:
+            sqlite_fb = _m._sqlite_legislator_votes(leg_name)
+            os_fb = _m._openstates_legislator_lookup(leg_name)
+            for block in (sqlite_fb, os_fb):
+                if block and block not in pieces:
+                    pieces.append(block)
+
+        profiles_fb = _m._request_rep_profiles(req, user_query)
+        if profiles_fb and profiles_fb not in pieces:
+            pieces.append(profiles_fb)
+
+        if req.district and req.district != "VA-00" and _m._profile_question(user_query):
+            dist_rep_name = _m.DISTRICT_CONTEXT.get(req.district, {}).get("rep")
+            fed_member = _m._federal_member_by_name(dist_rep_name or "")
+            if fed_member:
+                fed_fb = _m._fetch_federal_context(fed_member)
+                if fed_fb and fed_fb not in pieces:
+                    pieces.append(fed_fb)
+
+        try:
+            gov_fb = _m._fetch_governor_action_context(user_query)
+            if gov_fb and gov_fb not in pieces:
+                pieces.append(gov_fb)
+        except Exception:
+            pass
+        try:
+            gov_eo_fb = _m._fetch_governor_eo_context(user_query)
+            if gov_eo_fb and gov_eo_fb not in pieces:
+                pieces.append(gov_eo_fb)
+        except Exception:
+            pass
+    except Exception:
+        return "\n\n".join(pieces)
+
+    return "\n\n".join(pieces)
+
+
+def _needs_district_for_my_rep(req, user_query: str) -> bool:
+    q = (user_query or "").lower()
+    return (
+        any(term in q for term in ("my representative", "my rep", "my delegate", "my senator"))
+        and not (req.district and req.district != "VA-00")
+        and not req.hod_district
+        and not req.sd_district
+    )
 
 
 # ── Bills helpers (shared by both bills-chat routes) ─────────────────────────
@@ -597,6 +688,8 @@ def _bills_system_prompt(
         f"roll-call votes and sponsored bills for Virginia's 13 federal representatives (119th Congress) from congress.gov, "
         f"full bill text for 119th Congress federal bills sourced from govinfo.gov (labeled '| FEDERAL' in excerpts), "
         f"FEC campaign finance data showing PAC/industry contributions by sector for Virginia federal members, "
+        f"Governor Spanberger's bill actions (bills signed into law, vetoed, or amended — labeled '[Governor Action]'), "
+        f"Governor Spanberger's executive orders (labeled '[Governor Executive Order]'), "
         f"AND recent Virginia political news articles (sourced from Virginia news outlets via Gemini extraction). "
         f"Answer the user's question using ONLY the excerpts below — do not rely on your training data. "
         f"Be factual and cite bill numbers when relevant. "
@@ -868,6 +961,7 @@ Available data for this representative:
 - Recent votes (with bill name and Yea/Nay)
 - Campaign donors and industry totals (FEC data, fec.gov)
 - Voter registration and civic participation info
+- Governor Spanberger's bill actions (signed, vetoed, amended) and executive orders
 
 {vote_context if vote_context else ""}
 
@@ -884,12 +978,12 @@ Available data for this representative:
 {state_member_context if state_member_context else ""}
 
 {f'''
-{news_context}
+{news_context if news_context else "No matching recent Virginia news article is available in VoteIQ's local news cache for this question."}
 
 When answering questions about recent news or current events, cite the article source and author.
 Format citations as: [Outlet — Author](URL) at the end of the relevant sentence.
-If no relevant news is listed above, answer from your training knowledge.
-''' if query_context.get("touches_news") and news_context else ''}
+If no relevant news is listed above, say VoteIQ does not currently have a matching recent article in its local news cache. Do not invent current-event details from model memory.
+''' if query_context.get("touches_news") else ''}
 
 When citing a vote, include the bill name and Yea/Nay. When citing donors or industry contributions, state the dollar amount and add "(FEC data, fec.gov)". For official contact info direct users to house.gov, senate.gov, or virginiageneralassembly.gov. Never express opinions on representatives or tell people how to vote.
 
@@ -902,6 +996,57 @@ When citing a vote, include the bill name and Yea/Nay. When citing donors or ind
 
 
 # ── /api/election-chat ────────────────────────────────────────────────────────
+
+@router.post("/api/gemini-chat", response_model=ChatResponse)
+async def gemini_chat(request: Request, req: ChatRequest):
+    """Chat with VoteIQ using Gemini, grounded in FEC data and district context."""
+    import main as _m
+
+    ctx = _m.DISTRICT_CONTEXT.get(req.district)
+    if not ctx:
+        return ChatResponse(reply="Unknown district.")
+
+    fec_context = ""
+    if ctx["rep"]:
+        fec_context = _m._get_fec_summary(ctx["rep"])
+
+    district_block = (
+        f"USER'S CONGRESSIONAL DISTRICT: {req.district}\n"
+        f"U.S. Representative: {ctx['rep']} ({ctx['party']})\n"
+        f"Region: {ctx['region']}\n"
+        f"{fec_context}"
+    )
+
+    hod_info = _m.HOD_CONTEXT.get(req.hod_district) if req.hod_district else None
+    if hod_info:
+        district_block += (
+            f"\nVA HOUSE OF DELEGATES DISTRICT: {req.hod_district}\n"
+            f"Delegate: {hod_info['delegate']} ({hod_info['party']})\n"
+        )
+
+    base_prompt = VOICE_PROMPTS.get(req.voice, VOICE_PROMPTS["free"])
+    max_tokens = TIER_MAX_TOKENS.get(req.tier, TIER_MAX_TOKENS["free"])
+
+    system_prompt = f"""{base_prompt}
+
+---
+
+{district_block}
+
+Additional rules:
+- Use FEC finance totals from context when user asks about money or donors.
+- FEC data only covers federal offices - clarify this for state officials.
+- Direct users to FEC.gov or house.gov for official records.
+- Never tell people how to vote or express opinions on representatives."""
+
+    try:
+        reply = _m._gemini_reply(system_prompt, req.messages, max_tokens=max_tokens)
+        if not reply.rstrip().endswith(_SOURCE_LINE.strip()):
+            reply = reply.rstrip() + _SOURCE_LINE
+        return ChatResponse(reply=reply)
+    except Exception as e:
+        return ChatResponse(reply=f"Gemini Error: {str(e)}")
+
 
 @router.post("/api/election-chat", response_model=ChatResponse)
 async def election_chat(req: ElectionChatRequest):
@@ -953,27 +1098,17 @@ async def bills_chat(req: BillsChatRequest):
     context, exact_lookup_note, use_haiku, chroma_error = _build_bills_context(req, user_query)
 
     if not context and chroma_error:
-        sqlite_fallback = ""
-        try:
-            mentioned = _m._extract_bill_numbers(user_query)
-            leg_name  = _m._extract_legislator_name(user_query)
-            if mentioned:
-                sqlite_fallback = _m._sqlite_bill_lookup(mentioned)
-                os_fb = _m._openstates_vote_lookup(mentioned)
-                if os_fb:
-                    sqlite_fallback = (sqlite_fallback + "\n\n" + os_fb).strip()
-            elif leg_name:
-                sqlite_fallback = _m._sqlite_legislator_votes(leg_name)
-                os_fb = _m._openstates_legislator_lookup(leg_name)
-                if os_fb:
-                    sqlite_fallback = (sqlite_fallback + "\n\n" + os_fb).strip()
-            profiles_fb = _m._request_rep_profiles(req, user_query)
-            if profiles_fb:
-                sqlite_fallback = (sqlite_fallback + "\n\n" + profiles_fb).strip()
-        except Exception:
-            pass
+        sqlite_fallback = _local_bills_fallback_context(_m, req, user_query)
         if sqlite_fallback:
             context = sqlite_fallback
+        elif _needs_district_for_my_rep(req, user_query):
+            return ChatResponse(
+                reply=(
+                    "Enter your Virginia address first so I can identify your U.S. House member, "
+                    "state delegate, and state senator. Then I can summarize what your representatives "
+                    "have done from the local records."
+                )
+            )
         else:
             return ChatResponse(
                 reply=(
@@ -1048,13 +1183,26 @@ async def bills_chat_stream(req: BillsChatRequest):
     context, exact_lookup_note, use_haiku, chroma_error = _build_bills_context(req, user_query)
 
     if not context and chroma_error:
-        fallback_msg = (
-            "I'm having trouble connecting to the knowledge base right now. "
-            "Try asking about a specific bill number (e.g. HB9) or a legislator's name."
-        )
-        async def _err():
-            yield f"data: {json.dumps({'token': fallback_msg})}\n\ndata: [DONE]\n\n"
-        return StreamingResponse(_err(), media_type="text/event-stream")
+        local_fallback = _local_bills_fallback_context(_m, req, user_query)
+        if local_fallback:
+            context = local_fallback
+        elif _needs_district_for_my_rep(req, user_query):
+            fallback_msg = (
+                "Enter your Virginia address first so I can identify your U.S. House member, "
+                "state delegate, and state senator. Then I can summarize what your representatives "
+                "have done from the local records."
+            )
+            async def _need_district():
+                yield f"data: {json.dumps({'token': fallback_msg})}\n\ndata: [DONE]\n\n"
+            return StreamingResponse(_need_district(), media_type="text/event-stream")
+        else:
+            fallback_msg = (
+                "I'm having trouble connecting to the knowledge base right now. "
+                "Try asking about a specific bill number (e.g. HB9) or a legislator's name."
+            )
+            async def _err():
+                yield f"data: {json.dumps({'token': fallback_msg})}\n\ndata: [DONE]\n\n"
+            return StreamingResponse(_err(), media_type="text/event-stream")
 
     district_note = ""
     if req.district:

@@ -631,7 +631,7 @@ def _load_votes_cache() -> None:
 
         # Load votes grouped by member
         for row in conn.execute(
-            "SELECT bioguide_id, chamber, vote_number, vote_date, bill, question, member_vote, result "
+            "SELECT bioguide_id, chamber, congress, session, vote_number, vote_date, bill, question, member_vote, result "
             "FROM congress_votes ORDER BY vote_date DESC, vote_number DESC"
         ):
             bgid = row["bioguide_id"]
@@ -3534,7 +3534,7 @@ def _fetch_news_context(query: str, politician_name: str = "", limit: int = 4) -
 
 def _fetch_governor_action_context(query: str, bill_numbers: list[str] | None = None) -> str:
     """Fetch governor bill actions from legislative_intelligence.db via ATTACH."""
-    leg_db = os.path.join(os.getenv("DATA_DIR", _BASE_DIR), "legislative_intelligence.db")
+    leg_db = os.path.join(os.getenv("DATA_DIR", BASE_DIR), "legislative_intelligence.db")
     if not os.path.exists(leg_db):
         return ""
     blocks: list[str] = []
@@ -3554,17 +3554,37 @@ def _fetch_governor_action_context(query: str, bill_numbers: list[str] | None = 
                 LIMIT 10
             """, bill_numbers).fetchall()
         else:
-            kw = f"%{query[:60]}%"
-            rows = conn.execute("""
-                SELECT bill_number, session, title, action_label, action_date,
-                       governor, sponsor_name, sponsor_party, source_url, raw_status
-                FROM leg.governor_actions
-                WHERE lower(title) LIKE lower(?)
-                   OR lower(raw_status) LIKE lower(?)
-                   OR lower(action_label) LIKE lower(?)
-                ORDER BY action_date DESC
-                LIMIT 10
-            """, (kw, kw, kw)).fetchall()
+            _gov_intent = {"governor", "spanberger", "signed", "vetoed", "veto", "executive", "governer"}
+            q_lower = query.lower()
+            is_gov_query = any(w in q_lower for w in _gov_intent)
+            if is_gov_query:
+                rows = conn.execute("""
+                    SELECT bill_number, session, title, action_label, action_date,
+                           governor, sponsor_name, sponsor_party, source_url, raw_status
+                    FROM leg.governor_actions
+                    ORDER BY action_date DESC
+                    LIMIT 10
+                """).fetchall()
+            else:
+                keywords = [w for w in q_lower.split() if len(w) > 3][:6]
+                if not keywords:
+                    rows = []
+                else:
+                    kw_clauses = " OR ".join(
+                        "(lower(title) LIKE ? OR lower(action_label) LIKE ?)" for _ in keywords
+                    )
+                    kw_params: list = []
+                    for kw in keywords:
+                        p = f"%{kw}%"
+                        kw_params.extend([p, p])
+                    rows = conn.execute(f"""
+                        SELECT bill_number, session, title, action_label, action_date,
+                               governor, sponsor_name, sponsor_party, source_url, raw_status
+                        FROM leg.governor_actions
+                        WHERE {kw_clauses}
+                        ORDER BY action_date DESC
+                        LIMIT 10
+                    """, kw_params).fetchall()
 
         conn.close()
         for row in rows:
@@ -4211,7 +4231,8 @@ def _fetch_relevant_news(question: str, politician_names: list[str] | None = Non
             top = scored[:limit]
 
         if not top:
-            return ""
+            fallback_name = (politician_names or [""])[0]
+            return _fetch_news_context(question, politician_name=fallback_name, limit=limit)
 
         lines = ["RECENT VIRGINIA NEWS (use these to answer current-events questions):"]
         for c in top:
@@ -4253,57 +4274,7 @@ def _fetch_relevant_news(question: str, politician_names: list[str] | None = Non
 
 # /chat moved to voteiq/api/routes/chat.py
 
-@app.post("/api/gemini-chat", response_model=ChatResponse)
-@limiter.limit("10/minute")
-async def gemini_chat(request: Request, req: ChatRequest):
-    """Chat with VoteIQ using Gemini, grounded in FEC data and district context."""
-    ctx = DISTRICT_CONTEXT.get(req.district)
-    if not ctx:
-        return ChatResponse(reply="Unknown district.")
-
-    # Build grounded context
-    fec_context = ""
-    if ctx["rep"]:
-        fec_context = _get_fec_summary(ctx["rep"])
-
-    district_block = (
-        f"USER'S CONGRESSIONAL DISTRICT: {req.district}\n"
-        f"U.S. Representative: {ctx['rep']} ({ctx['party']})\n"
-        f"Region: {ctx['region']}\n"
-        f"{fec_context}"
-    )
-
-    # State level context
-    hod_info = HOD_CONTEXT.get(req.hod_district) if req.hod_district else None
-    if hod_info:
-        district_block += (
-            f"\nVA HOUSE OF DELEGATES DISTRICT: {req.hod_district}\n"
-            f"Delegate: {hod_info['delegate']} ({hod_info['party']})\n"
-        )
-
-    base_prompt = VOICE_PROMPTS.get(req.voice, VOICE_PROMPTS["free"])
-    max_tokens  = TIER_MAX_TOKENS.get(req.tier, TIER_MAX_TOKENS["free"])
-
-    system_prompt = f"""{base_prompt}
-
----
-
-{district_block}
-
-Additional rules:
-- Use FEC finance totals from context when user asks about money or donors.
-- FEC data only covers federal offices — clarify this for state officials.
-- Direct users to FEC.gov or house.gov for official records.
-- Never tell people how to vote or express opinions on representatives."""
-
-    try:
-        # Filter messages for valid types
-        reply = _gemini_reply(system_prompt, req.messages, max_tokens=max_tokens)
-        if not reply.rstrip().endswith(_SOURCE_LINE.strip()):
-            reply = reply.rstrip() + _SOURCE_LINE
-        return ChatResponse(reply=reply)
-    except Exception as e:
-        return ChatResponse(reply=f"Gemini Error: {str(e)}")
+# /api/gemini-chat moved to voteiq/api/routes/chat.py
 
 # /past-elections/* routes and data helpers moved to voteiq/api/routes/elections.py
 
