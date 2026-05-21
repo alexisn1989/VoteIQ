@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import io
 import json
 import os
 import re
@@ -29,17 +28,21 @@ from pathlib import Path
 from urllib.parse import quote_plus
 
 import requests
-import pdfplumber
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
+from voteiq.utils import clean_json_text
 
 try:
     from google import genai as _genai
-    from google.genai import types as _gtypes
     _GENAI_AVAILABLE = True
 except ImportError:
     _GENAI_AVAILABLE = False
-    _gtypes = None
+
+try:
+    import voyageai as _voyageai
+    _VOYAGE_AVAILABLE = True
+except ImportError:
+    _VOYAGE_AVAILABLE = False
 
 load_dotenv()
 
@@ -47,9 +50,33 @@ BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "polls.db"
 USER_AGENT = "VoteIQ/1.0 Virginia news ingester (voteiq.io)"
 GEMINI_MODEL = "gemini-2.5-flash"
-PDF_CACHE_DIR = BASE_DIR / ".pdf_cache"
-MAX_PDF_BYTES = 6_000_000
-MAX_PDF_TEXT_CHARS = 5000
+NEWS_EMBED_MODEL = "voyage-3"
+
+_voyage_client = None
+
+
+def _get_voyage_client():
+    global _voyage_client
+    if _voyage_client is None:
+        _voyage_client = _voyageai.Client(api_key=os.getenv("VOYAGE_API_KEY"))
+    return _voyage_client
+
+
+def _embed_article(title: str, gemini_data: dict) -> list[float] | None:
+    """Embed a single article using Voyage AI. Returns None if unavailable."""
+    if not _VOYAGE_AVAILABLE or not os.getenv("VOYAGE_API_KEY"):
+        return None
+    try:
+        d = gemini_data or {}
+        headline = d.get("headline") or title or ""
+        summary = d.get("summary") or ""
+        pols = " ".join(p.get("name", "") for p in (d.get("politicians") or []))
+        topics = " ".join(d.get("topics") or [])
+        text = f"{headline}. {summary} {pols} {topics}".strip()
+        result = _get_voyage_client().embed([text], model=NEWS_EMBED_MODEL, input_type="document")
+        return result.embeddings[0]
+    except Exception:
+        return None
 
 try:
     sys.path.insert(0, str(BASE_DIR))
@@ -161,68 +188,18 @@ def fetch_text(url: str, timeout: int = 20) -> str:
     return resp.text
 
 
-def extract_pdf_text(pdf_bytes: bytes) -> str:
-    """Extract structured text from PDF using pdfplumber (tables first, then prose)."""
-    parts = []
+def fetch_article_text(url: str, timeout: int = 15) -> str:
+    """Fetch a full article page and return clean readable text (up to 5000 chars)."""
     try:
         html = fetch_text(url, timeout=timeout)
         soup = BeautifulSoup(html, "html.parser")
-        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
-            for page in pdf.pages[:8]:
-                # Try table extraction first — preserves rows/columns
-                tables = page.extract_tables()
-                if tables:
-                    for table in tables:
-                        for row in table:
-                            cleaned = [str(cell or "").strip() for cell in row]
-                            if any(cleaned):
-                                parts.append(" | ".join(cleaned))
-                else:
-                    text = page.extract_text() or ""
-                    if text.strip():
-                        parts.append(text.strip())
-    except Exception as exc:
-        return f"[pdfplumber error: {exc}]"
-
-    full = "\n\n".join(parts)
-    return full[:MAX_PDF_TEXT_CHARS] if full else ""
-
-
-def fetch_article_text(url: str, timeout: int = 15) -> tuple[str, bytes | None]:
-    """Fetch a full article page or PDF and return (text, pdf_bytes)."""
-    try:
-        # Handle PDF caching
-        is_pdf = url.lower().split("?", 1)[0].endswith(".pdf")
-        if is_pdf:
-            PDF_CACHE_DIR.mkdir(exist_ok=True)
-            cache_key = hashlib.md5(url.encode()).hexdigest()
-            cache_path = PDF_CACHE_DIR / cache_key
-            if cache_path.exists():
-                print(f"  [cache] {url}")
-                pdf_bytes = cache_path.read_bytes()
-                return extract_pdf_text(pdf_bytes), pdf_bytes
-
-        resp = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=timeout, allow_redirects=True)
-        resp.raise_for_status()
-
-        content_type = resp.headers.get("Content-Type", "").lower()
-        if "pdf" in content_type or is_pdf:
-            pdf_bytes = resp.content
-            if len(pdf_bytes) > MAX_PDF_BYTES:
-                return "[PDF too large to process]", None
-            if is_pdf:
-                cache_key = hashlib.md5(url.encode()).hexdigest()
-                (PDF_CACHE_DIR / cache_key).write_bytes(pdf_bytes)
-            return extract_pdf_text(pdf_bytes), pdf_bytes
-
-        soup = BeautifulSoup(resp.text, "html.parser")
         for tag in soup(["script", "style", "nav", "header", "footer", "aside", "iframe"]):
             tag.decompose()
         body = soup.find("article") or soup.find(id=re.compile(r"content|article|body", re.I))
         raw = (body or soup).get_text(" ", strip=True)
-        return re.sub(r"\s{2,}", " ", raw)[:5000], None
+        return re.sub(r"\s{2,}", " ", raw)[:5000]
     except Exception:
-        return "", None
+        return ""
 
 
 def rss_items(feed_text: str) -> list[dict]:
@@ -272,10 +249,7 @@ def source_name(feed_url: str) -> str:
 
 def _parse_gemini_json(raw: str) -> dict:
     """Robustly extract JSON from a Gemini response that may have surrounding text."""
-    raw = raw.strip()
-    # Strip markdown code fences
-    raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.M)
-    raw = re.sub(r"\s*```\s*$", "", raw, flags=re.M)
+    raw = clean_json_text(raw)
     # Try direct parse first
     try:
         return json.loads(raw)
@@ -291,20 +265,13 @@ def _parse_gemini_json(raw: str) -> dict:
     raise ValueError(f"No valid JSON found in: {raw[:200]}")
 
 
-def gemini_extract(url: str, article_text: str, api_key: str, pdf_bytes: bytes | None = None) -> dict | None:
+def gemini_extract(url: str, article_text: str, api_key: str) -> dict | None:
     """Call Gemini Flash to extract structured political news data."""
-    if not _GENAI_AVAILABLE or not api_key:
-        return None
-    if not article_text.strip() and not pdf_bytes:
+    if not _GENAI_AVAILABLE or not api_key or not article_text.strip():
         return None
     try:
         client = _genai.Client(api_key=api_key)
         prompt = GEMINI_PROMPT.replace("{url}", url).replace("{text}", article_text[:4500])
-        
-        contents = [prompt]
-        if pdf_bytes:
-            contents.append(_gtypes.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf"))
-
         response = client.models.generate_content(
             model=GEMINI_MODEL,
             contents=prompt,
@@ -355,15 +322,14 @@ def ingest(
             print(f"  [{seen}] {item['title'][:70]}")
 
             # Fetch full article and send to Gemini
-            article_text, pdf_bytes = fetch_article_text(url) if url else ("", None)
-            if not article_text.strip() and not pdf_bytes:
+            article_text = fetch_article_text(url) if url else ""
+            if not article_text:
                 article_text = combined  # fall back to RSS summary
 
-            gemini_data = gemini_extract(url, article_text, api_key, pdf_bytes=pdf_bytes)
+            gemini_data = gemini_extract(url, article_text, api_key)
             if gemini_data:
-                pdf_info = f" | PDF attached ({len(pdf_bytes)} bytes)" if pdf_bytes else ""
                 status = "ok" if "_error" not in gemini_data else f"error: {gemini_data['_error']}"
-                print(f"    gemini: {status}{pdf_info} | topics={gemini_data.get('topics')} | politicians={[p.get('name') for p in gemini_data.get('politicians', [])]}")
+                print(f"    gemini: {status} | topics={gemini_data.get('topics')} | politicians={[p.get('name') for p in gemini_data.get('politicians', [])]}")
             else:
                 gemini_data = {}
 
@@ -373,6 +339,7 @@ def ingest(
                 continue
 
             published = parse_date(item.get("published_at", ""))
+            vec = _embed_article(item.get("title", ""), gemini_data or {})
             conn.execute(
                 """
                 INSERT INTO va_news (article_id, source, url, title, published_at, gemini_json, fetched_at)
@@ -391,6 +358,18 @@ def ingest(
                     now_iso(),
                 ),
             )
+            if vec is not None:
+                # Ensure embedding columns exist then store immediately
+                for col in ("embedding TEXT", "embedding_model TEXT"):
+                    try:
+                        conn.execute(f"ALTER TABLE va_news ADD COLUMN {col}")
+                    except Exception:
+                        pass
+                conn.execute(
+                    "UPDATE va_news SET embedding=?, embedding_model=? WHERE article_id=?",
+                    (json.dumps(vec), NEWS_EMBED_MODEL, article_id),
+                )
+                print(f"    embedded with {NEWS_EMBED_MODEL}")
             conn.commit()
             written += 1
             time.sleep(1)  # rate limit: 1 req/s for Gemini free tier
@@ -457,7 +436,6 @@ def monitor_accuracy(
             continue
 
         article_text = fetch_article_text(url)
-        article_text, _ = fetch_article_text(url)
         if not article_text:
             fetch_failures += 1
             if verbose:

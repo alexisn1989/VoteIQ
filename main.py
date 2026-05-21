@@ -4028,57 +4028,51 @@ def _cosine_sim(a: list[float], b: list[float]) -> float:
 
 
 def _ensure_embeddings_column() -> None:
-    """Add embedding column to va_news if missing."""
+    """Add embedding and embedding_model columns to va_news if missing."""
     try:
         conn = sqlite3.connect(_POLLS_DB)
-        conn.execute("ALTER TABLE va_news ADD COLUMN embedding TEXT")
+        for col in ("embedding TEXT", "embedding_model TEXT"):
+            try:
+                conn.execute(f"ALTER TABLE va_news ADD COLUMN {col}")
+            except Exception:
+                pass
         conn.commit()
         conn.close()
     except Exception:
-        pass  # column already exists
+        pass
 
 
-def _embed_texts(texts: list[str]) -> list[list[float]]:
-    """Embed a list of texts using Cohere embed-english-v3.0."""
-    if not _COHERE_AVAILABLE or not texts:
+def _embed_news_texts(texts: list[str]) -> list[list[float]]:
+    """Embed news document texts using Voyage AI voyage-3."""
+    if not texts:
         return []
     try:
-        resp = _COHERE_CLIENT.embed(
-            texts=texts,
-            model="embed-english-v3.0",
-            input_type="search_document",
-            embedding_types=["float"],
-        )
-        return resp.embeddings.float_
+        result = _get_voyage_client().embed(texts, model=_NEWS_MODEL, input_type="document")
+        return result.embeddings
     except Exception:
         return []
 
 
-def _embed_query(question: str) -> list[float]:
-    """Embed a search query using Cohere."""
-    if not _COHERE_AVAILABLE:
-        return []
+def _embed_news_query(question: str) -> list[float]:
+    """Embed a news search query using Voyage AI voyage-3."""
     try:
-        resp = _COHERE_CLIENT.embed(
-            texts=[question],
-            model="embed-english-v3.0",
-            input_type="search_query",
-            embedding_types=["float"],
-        )
-        return resp.embeddings.float_[0]
+        result = _get_voyage_client().embed([question], model=_NEWS_MODEL, input_type="query")
+        return result.embeddings[0]
     except Exception:
         return []
 
 
 def backfill_news_embeddings(batch_size: int = 48) -> int:
-    """Embed all va_news rows that don't have an embedding yet. Returns count embedded."""
-    if not _COHERE_AVAILABLE or not os.path.exists(_POLLS_DB):
+    """Embed va_news rows using Voyage AI voyage-3. Re-embeds any row not yet tagged with the current model."""
+    if not os.getenv("VOYAGE_API_KEY") or not os.path.exists(_POLLS_DB):
         return 0
     _ensure_embeddings_column()
     conn = sqlite3.connect(_POLLS_DB)
     rows = conn.execute(
         "SELECT article_id, title, gemini_json FROM va_news "
-        "WHERE embedding IS NULL AND gemini_json IS NOT NULL"
+        "WHERE (embedding IS NULL OR embedding_model IS NULL OR embedding_model != ?) "
+        "AND gemini_json IS NOT NULL",
+        (_NEWS_MODEL,),
     ).fetchall()
 
     embedded = 0
@@ -4096,13 +4090,13 @@ def backfill_news_embeddings(batch_size: int = 48) -> int:
             except Exception:
                 texts.append(title or "")
 
-        vecs = _embed_texts(texts)
+        vecs = _embed_news_texts(texts)
         if not vecs:
             break
         for (article_id, _, _), vec in zip(batch, vecs):
             conn.execute(
-                "UPDATE va_news SET embedding=? WHERE article_id=?",
-                (json.dumps(vec), article_id)
+                "UPDATE va_news SET embedding=?, embedding_model=? WHERE article_id=?",
+                (json.dumps(vec), _NEWS_MODEL, article_id),
             )
         conn.commit()
         embedded += len(vecs)
@@ -4112,8 +4106,8 @@ def backfill_news_embeddings(batch_size: int = 48) -> int:
 
 
 def _semantic_news_candidates(question: str, limit: int = 20) -> list[dict]:
-    """Return articles ranked by semantic similarity using Cohere embeddings."""
-    q_vec = _embed_query(question)
+    """Return articles ranked by semantic similarity using Voyage AI embeddings."""
+    q_vec = _embed_news_query(question)
     if not q_vec:
         return []
     conn = sqlite3.connect(_POLLS_DB)
@@ -4121,7 +4115,9 @@ def _semantic_news_candidates(question: str, limit: int = 20) -> list[dict]:
     rows = conn.execute(
         "SELECT article_id, url, title, gemini_json, embedding FROM va_news "
         "WHERE embedding IS NOT NULL AND gemini_json IS NOT NULL "
-        "ORDER BY COALESCE(published_at, fetched_at) DESC LIMIT 200"
+        "AND embedding_model = ? "
+        "ORDER BY COALESCE(published_at, fetched_at) DESC LIMIT 200",
+        (_NEWS_MODEL,),
     ).fetchall()
     conn.close()
 
@@ -4181,7 +4177,7 @@ def _fetch_relevant_news(question: str, politician_names: list[str] | None = Non
         if not tbl:
             return ""
 
-        if _COHERE_AVAILABLE:
+        if os.getenv("VOYAGE_API_KEY"):
             # Step 1: semantic search — finds conceptually related articles
             candidates = _semantic_news_candidates(question, limit=20)
 
@@ -4599,6 +4595,7 @@ def _build_election_chat_context(year: str, question: str = "") -> str:
 # ── Bills RAG chat ────────────────────────────────────────────────────────────
 
 _BILLS_MODEL      = "voyage-law-2"
+_NEWS_MODEL       = "voyage-3"
 _BILLS_COLLECTION = "voteiq_bills"
 _vo               = None
 _chroma_collection_id = None
@@ -6289,9 +6286,9 @@ async def _on_startup():
         try:
             n = backfill_news_embeddings()
             if n:
-                print(f"Cohere: embedded {n} new news articles.")
+                print(f"Voyage: embedded {n} news articles.")
         except Exception as exc:
-            print(f"Cohere backfill skipped: {exc}")
+            print(f"Voyage backfill skipped: {exc}")
     threading.Thread(target=_embed_task, daemon=True).start()
 
 
