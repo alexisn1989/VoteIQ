@@ -4196,6 +4196,140 @@ def _fetch_spanberger_finance_context(question: str = "") -> str:
     return _SPANBERGER_FINANCE_CACHE
 
 
+def _fetch_governor_action_money_analyst_context(question: str = "") -> str:
+    """Return structured analyst context for governor actions crossed with sponsor finance."""
+    q = (question or "").lower()
+    if not any(term in q for term in ("analy", "analyst", "pattern", "overlap", "compare", "relationship")):
+        return ""
+    if not any(term in q for term in ("governor", "spanberger", "signed", "veto", "action", "bill outcome")):
+        return ""
+    if not any(term in q for term in ("money", "donor", "finance", "funding", "sector", "contribution", "campaign")):
+        return ""
+
+    try:
+        from voteiq.queries.governor_actions import (
+            get_governor_action_counts,
+            get_governor_action_money_patterns,
+            get_top_sponsors_by_action,
+        )
+        from voteiq.analysis.governor_action_money import (
+            get_governor_action_analysis_guardrails,
+            get_governor_action_voteiq_finding,
+        )
+
+        session = "2026"
+        finance_cycle = "2025" if "2025" in q or "spanberger" in q else "2026"
+        counts = get_governor_action_counts(session=session, governor="Spanberger")
+        money_rows = get_governor_action_money_patterns(
+            session=session,
+            finance_cycle=finance_cycle,
+            governor="Spanberger",
+        )
+        sponsors_by_action = get_top_sponsors_by_action(
+            session=session,
+            governor="Spanberger",
+            finance_cycle=finance_cycle,
+            limit_per_action=5,
+        )
+        guardrails = get_governor_action_analysis_guardrails(
+            session=session,
+            finance_cycle=finance_cycle,
+        )
+        finding = get_governor_action_voteiq_finding(
+            session=session,
+            finance_cycle=finance_cycle,
+        )
+    except Exception:
+        return ""
+
+    if not counts and not money_rows and not sponsors_by_action:
+        return ""
+
+    lines = [
+        "[VoteIQ Analyst Context — Governor Action Money]",
+        f"Governor: Spanberger",
+        f"Legislative session: {session}",
+        f"Finance cycle used for sponsor donor-sector comparison: {finance_cycle}",
+        "Purpose: Analyze public-record overlaps between governor bill outcomes and bill sponsors' donor-sector profiles.",
+        "Required wording: Correlation does not imply causation. Do not infer motive, pressure, reward, influence, or causation.",
+    ]
+
+    if counts:
+        lines.append("Governor action counts:")
+        for row in counts:
+            label = row.get("action_label") or row.get("action") or "Unknown"
+            lines.append(f"- {label}: {row.get('count', 0)}")
+
+    if money_rows:
+        combined: dict[tuple[str, str, str, str], dict] = {}
+        for row in money_rows:
+            label = row.get("action_label") or "Unknown"
+            if not row.get("sector") or row.get("total_amount") is None:
+                continue
+            key = (
+                label,
+                row.get("sponsor_name") or "Unknown sponsor",
+                row.get("sponsor_party") or "",
+                row.get("sector") or "Unknown",
+            )
+            current = combined.setdefault(key, {
+                "action_label": label,
+                "sponsor_name": row.get("sponsor_name") or "Unknown sponsor",
+                "sponsor_party": row.get("sponsor_party") or "",
+                "sector": row.get("sector") or "Unknown",
+                "total_amount": 0.0,
+                "donor_count": 0,
+            })
+            current["total_amount"] += float(row.get("total_amount") or 0)
+            current["donor_count"] += int(row.get("donor_count") or 0)
+
+        grouped: dict[str, list[dict]] = {}
+        for row in combined.values():
+            grouped.setdefault(row["action_label"], []).append(row)
+
+        lines.append("Top sponsor donor-sector patterns by governor outcome:")
+        for label in sorted(grouped):
+            rows = sorted(
+                grouped[label],
+                key=lambda r: float(r.get("total_amount") or 0),
+                reverse=True,
+            )[:6]
+            lines.append(f"{label}:")
+            for row in rows:
+                total = float(row.get("total_amount") or 0)
+                donors = int(row.get("donor_count") or 0)
+                sponsor = row.get("sponsor_name") or "Unknown sponsor"
+                party = row.get("sponsor_party") or ""
+                sector = row.get("sector") or "Unknown"
+                lines.append(
+                    f"- {sponsor}{f' ({party})' if party else ''}: {sector} "
+                    f"${total:,.0f} across {donors:,} donor records"
+                )
+
+    if sponsors_by_action:
+        lines.append("Top bill sponsors by governor outcome:")
+        for action_key, section in sponsors_by_action.items():
+            label = section.get("action_label") or action_key
+            sponsors = section.get("sponsors") or []
+            if not sponsors:
+                continue
+            lines.append(f"{label}:")
+            for sponsor in sponsors[:5]:
+                lines.append(
+                    f"- {sponsor.get('sponsor_name')}: {sponsor.get('bill_count')} bills; "
+                    f"leading donor sector {sponsor.get('sector')}"
+                )
+
+    if finding:
+        lines.append(f"VoteIQ finding: {finding}")
+
+    if guardrails:
+        lines.append("Analyst guardrails:")
+        lines.extend(f"- {rule}" for rule in guardrails)
+
+    return "\n".join(lines)
+
+
 try:
     import cohere as _cohere
     _COHERE_CLIENT = _cohere.ClientV2(api_key=os.getenv("COHERE_API_KEY", ""))
@@ -6474,7 +6608,17 @@ async def _on_startup():
                 print(f"Voyage: embedded {n} news articles.")
         except Exception as exc:
             print(f"Voyage backfill skipped: {exc}")
+
+    def _gov_actions_task():
+        try:
+            import ingest_governor_actions
+            n = ingest_governor_actions.run(sessions=["2025", "2026"])
+            print(f"Governor actions: upserted {n} records into polls.db.")
+        except Exception as exc:
+            print(f"Governor actions ingest skipped: {exc}")
+
     threading.Thread(target=_embed_task, daemon=True).start()
+    threading.Thread(target=_gov_actions_task, daemon=True).start()
 
 
 if __name__ == "__main__":
