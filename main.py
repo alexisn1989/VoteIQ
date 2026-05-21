@@ -3859,13 +3859,13 @@ def _fetch_ie_context(bioguide_ids: list[str], question: str) -> str:
                 """, (fec_cand_id,)).fetchall()
             else:
                 rows = conn.execute("""
-                    SELECT committee_name, support_oppose,
+                    SELECT MAX(committee_name) as committee_name, support_oppose,
                            SUM(expenditure_amount) as total,
                            COUNT(*) as count,
                            MAX(expenditure_date) as latest
                     FROM fec_independent_expenditures
                     WHERE fec_candidate_id = ?
-                    GROUP BY committee_name, support_oppose
+                    GROUP BY committee_id, support_oppose
                     ORDER BY total DESC
                     LIMIT 10
                 """, (fec_cand_id,)).fetchall()
