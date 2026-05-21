@@ -3721,6 +3721,90 @@ def _fetch_governor_eo_context(query: str) -> str:
     return "\n\n".join(blocks)
 
 
+def _fetch_foreign_policy_ie_context(fec_candidate_id: str, cycle: int | None = None) -> str:
+    """
+    Fetch foreign-policy-aligned independent expenditures for a candidate.
+
+    Surfaces U.S. PACs classified as having foreign-policy issue alignment
+    (pro-Israel, India, Taiwan, Ukraine, Armenia, etc.).
+
+    This does not mean foreign government money, foreign national money,
+    coordination, motive, or causation.
+    """
+    if not fec_candidate_id:
+        return ""
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute("""
+            SELECT
+                ie.committee_name,
+                ie.support_oppose,
+                ROUND(SUM(COALESCE(ie.expenditure_amount, 0)), 2) AS total,
+                COUNT(*) AS records,
+                COALESCE(p.ideology, '')          AS ideology,
+                COALESCE(p.network, '')           AS network,
+                COALESCE(p.issue_focus, '')       AS issue_focus,
+                COALESCE(p.foreign_alignment, '') AS foreign_alignment,
+                COALESCE(p.foreign_country, '')   AS foreign_country,
+                COALESCE(p.short_name, '')        AS short_name
+            FROM fec_independent_expenditures ie
+            JOIN pac_ideology p
+                ON lower(p.committee_name) = lower(ie.committee_name)
+                OR (
+                    p.short_name IS NOT NULL
+                    AND LENGTH(TRIM(p.short_name)) >= 4
+                    AND lower(ie.committee_name) LIKE lower('%' || p.short_name || '%')
+                )
+            WHERE ie.fec_candidate_id = ?
+              AND (? IS NULL OR ie.cycle = ?)
+              AND COALESCE(p.foreign_country, '') != ''
+            GROUP BY ie.committee_name, ie.support_oppose,
+                     p.ideology, p.network, p.issue_focus,
+                     p.foreign_alignment, p.foreign_country, p.short_name
+            ORDER BY total DESC
+            LIMIT 10
+        """, (fec_candidate_id, cycle, cycle)).fetchall()
+        conn.close()
+
+        if not rows:
+            return (
+                "[foreign_policy_donors]\n"
+                "No foreign-policy-aligned independent expenditure records found "
+                "for this candidate in the current VoteIQ dataset."
+            )
+
+        blocks = ["[foreign_policy_donors — FEC Schedule E outside spending]"]
+        by_country: dict[str, list] = {}
+        for r in rows:
+            label = r["foreign_alignment"] or r["foreign_country"] or "Foreign-policy issue"
+            by_country.setdefault(label, []).append(r)
+
+        for country, expenditures in by_country.items():
+            total = sum(float(r["total"] or 0) for r in expenditures)
+            blocks.append(f"\n{country.upper()} — ${total:,.0f} total:")
+            for r in expenditures:
+                direction = "Supporting" if r["support_oppose"] == "S" else "Opposing" if r["support_oppose"] == "O" else "Unknown direction"
+                network = r["network"] or r["ideology"] or "classified PAC network"
+                focus = f" | Focus: {r['issue_focus']}" if r["issue_focus"] else ""
+                blocks.append(
+                    f"  {direction}: {r['committee_name']} [{network}]: "
+                    f"${float(r['total'] or 0):,.0f} ({int(r['records'] or 0)} expenditures){focus}"
+                )
+
+        blocks.append(
+            "\nSource: FEC Schedule E filings. "
+            "These are independent expenditures by U.S. committees, not direct campaign donations. "
+            "Foreign-policy alignment classifications are VoteIQ labels based on PAC self-identification, "
+            "committee names, issue focus, and public records. "
+            "This does not mean foreign government funding, foreign national funding, coordination, motive, "
+            "or causation. Correlation does not imply causation."
+        )
+        return "\n".join(blocks)
+    except Exception:
+        return ""
+
+
 def _fetch_ie_context(bioguide_ids: list[str], question: str) -> str:
     """Return top independent expenditure spenders for/against the given members."""
     if not bioguide_ids:

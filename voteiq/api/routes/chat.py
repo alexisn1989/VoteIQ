@@ -789,6 +789,16 @@ async def chat(req: ChatRequest):
     state_member_context = _m._fetch_va_state_member_context(last_question, hod_info=hod_info, sd_info=sd_info)
     ie_context = _m._fetch_ie_context(bioguide_ids, last_question)
 
+    foreign_ie_context = ""
+    if bioguide_ids:
+        from main import VA_MEMBERS as _VA
+        for bgid in bioguide_ids:
+            if bgid in _VA:
+                fec_cand_id = _VA[bgid][1]
+                foreign_ie_context = _m._fetch_foreign_policy_ie_context(fec_cand_id)
+                if foreign_ie_context and "No foreign-policy" not in foreign_ie_context:
+                    break
+
     question_lower = (last_question or "").lower()
     query_context = {
         "touches_donor_data": any(
@@ -864,6 +874,8 @@ Available data for this representative:
 {finance_context if finance_context else ""}
 
 {ie_context if ie_context else ""}
+
+{foreign_ie_context if foreign_ie_context and query_context.get("touches_foreign_policy_donors") else ""}
 
 {governor_context if governor_context else ""}
 
