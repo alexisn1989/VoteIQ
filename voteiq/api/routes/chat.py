@@ -823,6 +823,19 @@ async def chat(req: ChatRequest):
                 "who spent money", "outside group", "who ran ads", "attack ad",
             ]
         ),
+        "touches_foreign_policy_donors": any(
+            w in question_lower
+            for w in [
+                "israel", "aipac", "pro-israel", "dmfi", "j street",
+                "india", "taiwan", "china", "ukraine", "iran",
+                "saudi", "turkey", "armenia", "greece",
+                "foreign policy", "foreign pac", "foreign money",
+                "middle east", "asia policy", "nato",
+                "foreign influence", "outside country",
+                "who funded", "foreign aligned",
+                "udp", "united democracy project",
+            ]
+        ),
     }
 
     base_prompt = get_system_prompt(voice=req.voice, query_context=query_context)

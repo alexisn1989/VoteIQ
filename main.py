@@ -3732,8 +3732,18 @@ def _fetch_ie_context(bioguide_ids: list[str], question: str) -> str:
         "attack ad", "outside money", "nrcc", "dccc", "club for growth",
         "who spent money",
     ]
-    if not any(kw in q_lower for kw in ie_keywords):
+    foreign_keywords = [
+        "israel", "aipac", "pro-israel", "dmfi", "j street",
+        "india", "taiwan", "china", "ukraine", "iran", "saudi", "turkey",
+        "armenia", "greece", "foreign policy", "foreign pac", "foreign money",
+        "middle east", "asia policy", "nato", "foreign influence",
+        "who funded", "foreign aligned", "udp", "united democracy project",
+    ]
+    is_ie_query      = any(kw in q_lower for kw in ie_keywords)
+    is_foreign_query = any(kw in q_lower for kw in foreign_keywords)
+    if not is_ie_query and not is_foreign_query:
         return ""
+    foreign_only = is_foreign_query and not is_ie_query
     blocks: list[str] = []
     try:
         conn = sqlite3.connect(_POLLS_DB)
@@ -3748,17 +3758,33 @@ def _fetch_ie_context(bioguide_ids: list[str], question: str) -> str:
             if row and row["fec_candidate_id"]:
                 fec_ids_by_bgid[bgid] = row["fec_candidate_id"]
         for bgid, fec_cand_id in fec_ids_by_bgid.items():
-            rows = conn.execute("""
-                SELECT committee_name, support_oppose,
-                       SUM(expenditure_amount) as total,
-                       COUNT(*) as count,
-                       MAX(expenditure_date) as latest
-                FROM fec_independent_expenditures
-                WHERE fec_candidate_id = ?
-                GROUP BY committee_name, support_oppose
-                ORDER BY total DESC
-                LIMIT 10
-            """, (fec_cand_id,)).fetchall()
+            if foreign_only:
+                rows = conn.execute("""
+                    SELECT ie.committee_name, ie.support_oppose,
+                           SUM(ie.expenditure_amount) as total,
+                           COUNT(*) as count,
+                           MAX(ie.expenditure_date) as latest
+                    FROM fec_independent_expenditures ie
+                    INNER JOIN pac_ideology pi
+                        ON lower(pi.committee_name) = lower(ie.committee_name)
+                    WHERE ie.fec_candidate_id = ?
+                      AND pi.foreign_alignment IS NOT NULL
+                    GROUP BY ie.committee_name, ie.support_oppose
+                    ORDER BY total DESC
+                    LIMIT 10
+                """, (fec_cand_id,)).fetchall()
+            else:
+                rows = conn.execute("""
+                    SELECT committee_name, support_oppose,
+                           SUM(expenditure_amount) as total,
+                           COUNT(*) as count,
+                           MAX(expenditure_date) as latest
+                    FROM fec_independent_expenditures
+                    WHERE fec_candidate_id = ?
+                    GROUP BY committee_name, support_oppose
+                    ORDER BY total DESC
+                    LIMIT 10
+                """, (fec_cand_id,)).fetchall()
             if not rows:
                 continue
             cand_name = conn.execute(

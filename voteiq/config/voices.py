@@ -606,7 +606,9 @@ def get_system_prompt(voice: str, query_context: dict | None = None) -> str:
             "\nSpeech and transcript context is not available at your current tier."
         )
 
-    if config.get("allow_deep_analysis") and query_context.get("touches_ie_spending"):
+    if config.get("allow_deep_analysis") and (
+        query_context.get("touches_ie_spending") or query_context.get("touches_foreign_policy_donors")
+    ):
         blocks.append(_SECTION_IE_ANALYSIS)
 
     return "\n".join(blocks)
