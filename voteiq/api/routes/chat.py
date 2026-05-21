@@ -8,6 +8,12 @@ from pathlib import Path
 import pdfplumber
 from fastapi import APIRouter, File, Form, Request, UploadFile
 from fastapi.responses import StreamingResponse
+
+from orchestration import (
+    build_bills_context_parallel,
+    build_bills_system_prompt_refactored,
+    is_present,
+)
 from pydantic import BaseModel, field_validator
 
 from voteiq.api.claude import get_claude_client, get_model
@@ -1180,8 +1186,22 @@ async def bills_chat_stream(req: BillsChatRequest):
     import main as _m
 
     user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
-    context, exact_lookup_note, use_haiku, chroma_error = _build_bills_context(req, user_query)
 
+    # ── parallel context assembly ─────────────────────────────────────────────
+    ctx_data = await build_bills_context_parallel(
+        query       = user_query,
+        district    = req.district    or "",
+        hod_district= req.hod_district,
+        sd_district = req.sd_district,
+        locality    = req.locality    or "",
+    )
+
+    context          = ctx_data["context"]
+    exact_lookup_note= ctx_data["exact_lookup_note"]
+    use_haiku        = ctx_data["use_haiku"]
+    chroma_error     = ctx_data["chroma_error"]
+
+    # ── fallback when context is fully empty ──────────────────────────────────
     if not context and chroma_error:
         local_fallback = _local_bills_fallback_context(_m, req, user_query)
         if local_fallback:
@@ -1204,6 +1224,7 @@ async def bills_chat_stream(req: BillsChatRequest):
                 yield f"data: {json.dumps({'token': fallback_msg})}\n\ndata: [DONE]\n\n"
             return StreamingResponse(_err(), media_type="text/event-stream")
 
+    # ── district note + caching ───────────────────────────────────────────────
     district_note = ""
     if req.district:
         parts = [f"Congressional district: {req.district}"]
@@ -1232,29 +1253,42 @@ async def bills_chat_stream(req: BillsChatRequest):
                 yield "data: [DONE]\n\n"
             return StreamingResponse(_cached_gen(), media_type="text/event-stream")
 
+    # ── build system prompt ───────────────────────────────────────────────────
     chroma_note = (
         f"\nNOTE: AI knowledge base unavailable ({chroma_error}). Answering from local database only.\n"
         if chroma_error else ""
     )
-    model_note = "\nMODEL ROUTING: Simple exact bill lookup using cached local bill context; answer briefly.\n" if use_haiku else ""
+    model_note = "\nMODEL ROUTING: Simple exact bill lookup; answer briefly.\n" if use_haiku else ""
 
     query_context = build_bills_query_context(user_query, context)
-    if query_context["touches_speech_context"]:
-        import main as _m2
-        _bill_ids = _m2._extract_bill_numbers(user_query) if hasattr(_m2, "_extract_bill_numbers") else []
+    if query_context["touches_speech_context"] or ctx_data.get("touches_speech"):
         tc = _fetch_transcript_context(
             user_query,
-            bill_id=_bill_ids[0] if _bill_ids else None,
+            bill_id=(ctx_data["mentioned_bills"] or [None])[0],
+            bioguide_ids=(
+                [ctx_data["fed_member"]["bioguide_id"]]
+                if ctx_data.get("fed_member") else None
+            ),
         )
         if tc:
             context = context + "\n\n---\n\n" + tc if context else tc
-    voice_prompt  = get_system_prompt(req.voice, query_context)
-    system_prompt = voice_prompt + "\n\n" + _bills_system_prompt(
-        district_note, chroma_note, model_note, exact_lookup_note, context
+            ctx_data = {**ctx_data, "context": context}
+
+    voice_prompt = get_system_prompt(req.voice, query_context)
+    # Build base rules (no context — orchestration wraps it separately)
+    base_rules = _bills_system_prompt(district_note, chroma_note, model_note, exact_lookup_note, context="")
+    # Strip the dangling "EXCERPTS:" label left by empty context
+    if base_rules.rstrip().endswith("EXCERPTS:"):
+        base_rules = base_rules.rstrip()[:-len("EXCERPTS:")].rstrip()
+    system_prompt = (
+        voice_prompt
+        + "\n\n"
+        + build_bills_system_prompt_refactored(ctx_data, base_rules)
     )
-    model, _      = get_model(req.tier, use_haiku)
-    max_tokens    = 700 if use_haiku else TIER_MAX_TOKENS.get(req.tier, 1800)
-    msgs          = [{"role": m.role, "content": m.content} for m in req.messages]
+
+    model, _   = get_model(req.tier, use_haiku)
+    max_tokens = 700 if use_haiku else TIER_MAX_TOKENS.get(req.tier, 1800)
+    msgs       = [{"role": m.role, "content": m.content} for m in req.messages]
 
     async def _stream_gen():
         full_reply = ""
