@@ -12,7 +12,11 @@ wraps the existing prompt and adds <context> tags for prompt-injection resistanc
 from __future__ import annotations
 
 import asyncio
+import logging
+import time
 from typing import Any, Dict, Optional
+
+log = logging.getLogger("voteiq.orchestration")
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -28,11 +32,16 @@ async def run_sync_source(
     *args: Any,
     **kwargs: Any,
 ) -> tuple[str, Any]:
-    """Run a blocking function off the event loop and tag it with its source name."""
+    """Run a blocking function off the event loop, tag it with its source name, and time it."""
+    t0 = time.perf_counter()
     try:
         result = await asyncio.to_thread(func, *args, **kwargs)
+        elapsed = time.perf_counter() - t0
+        log.debug("source %-30s %.3fs  present=%s", source_name, elapsed, is_present(result))
         return source_name, result
     except Exception as exc:
+        elapsed = time.perf_counter() - t0
+        log.warning("source %-30s %.3fs  ERROR: %s", source_name, elapsed, exc)
         return source_name, exc
 
 
@@ -259,6 +268,8 @@ async def build_bills_context_parallel(
         "nrcc", "dccc", "outside spending", "outside group",
     ))
 
+    _t_start = time.perf_counter()
+
     # ── bill retrieval (may hit Voyage AI — do before parallel phase) ─────────
     cached_bill_context = (
         _m._cached_bill_description_lookup(mentioned, session_year)
@@ -272,7 +283,9 @@ async def build_bills_context_parallel(
     bill_retrieval_method = "keyword cache"
 
     if not (mentioned and cached_bill_context):
+        _t_chroma = time.perf_counter()
         chroma_results, chroma_error = await asyncio.to_thread(_search_chromadb, query)
+        log.debug("chromadb %.3fs  error=%s", time.perf_counter() - _t_chroma, chroma_error)
         bill_retrieval_method = "ChromaDB semantic search" if not chroma_error else f"ChromaDB unavailable ({chroma_error})"
 
     # ── parallel source tasks ──────────────────────────────────────────────────
@@ -303,8 +316,10 @@ async def build_bills_context_parallel(
             "bill lookup", _get_bills_by_number, mentioned, session_year
         ))
 
+    _t_parallel = time.perf_counter()
     completed     = await asyncio.gather(*tasks)
     source_results: Dict[str, Any] = dict(completed)
+    log.debug("parallel gather %.3fs  tasks=%d", time.perf_counter() - _t_parallel, len(tasks))
 
     # ── assemble context blocks ────────────────────────────────────────────────
     context_blocks: list[str] = []
@@ -402,7 +417,7 @@ async def build_bills_context_parallel(
                     f"from embedded sessions: {', '.join(years_found)}.\n"
                 )
 
-    return {
+    result = {
         # consumed by build_bills_system_prompt_refactored
         "context":             context,
         "missing":             missing_sources,
@@ -429,7 +444,19 @@ async def build_bills_context_parallel(
         "touches_speech":      _is_speech,
         "touches_money":       _is_money,
         "touches_news":        _is_news,
+        "timings": {
+            "total_s":    round(time.perf_counter() - _t_start, 3),
+            "parallel_s": round(time.perf_counter() - _t_parallel, 3),
+        },
     }
+    log.info(
+        "build_bills_context_parallel %.3fs  ctx_chars=%d  missing=%s  chroma=%s",
+        result["timings"]["total_s"],
+        len(context),
+        missing_sources or "none",
+        chroma_error or "ok",
+    )
+    return result
 
 
 # ── system prompt wrapper ─────────────────────────────────────────────────────
