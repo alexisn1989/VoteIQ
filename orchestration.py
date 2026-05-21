@@ -14,7 +14,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import Any, Dict, Optional
+from functools import lru_cache
+from typing import Any, Dict, Optional, Tuple
 
 log = logging.getLogger("voteiq.orchestration")
 
@@ -185,13 +186,40 @@ def _get_bills_by_number(
     return exact_docs, os_votes, sqlite_b, fed_b
 
 
+def _normalize_query(query: str) -> str:
+    return " ".join(query.strip().lower().split())
+
+
+@lru_cache(maxsize=256)
+def _cached_voyage_embedding(normalized_query: str) -> Tuple[float, ...]:
+    """
+    In-process LRU cache for Voyage AI embeddings.
+    Key is the normalized (lowercased, whitespace-collapsed) query string.
+    Returns a tuple so the result is hashable and lru_cache can store it.
+    """
+    import main as _m
+    embedding = _m._get_voyage_client().embed(
+        [normalized_query], model=_m._BILLS_MODEL, input_type="query"
+    ).embeddings[0]
+    return tuple(embedding)
+
+
+def _get_embedding(query: str) -> list[float]:
+    """Normalize, check cache, return as list for ChromaDB."""
+    normalized = _normalize_query(query)
+    if not normalized:
+        raise ValueError("Cannot embed an empty query.")
+    return list(_cached_voyage_embedding(normalized))
+
+
 def _search_chromadb(query: str) -> tuple[dict, str | None]:
     import main as _m
     try:
-        vec = _m._get_voyage_client().embed(
-            [query], model=_m._BILLS_MODEL, input_type="query"
-        ).embeddings[0]
+        vec = _get_embedding(query)
         results = _m._query_chroma(vec, n_results=10)
+        info = _cached_voyage_embedding.cache_info()
+        log.debug("embedding cache  hits=%d misses=%d size=%d/%d",
+                  info.hits, info.misses, info.currsize, info.maxsize)
         return results, None
     except Exception as e:
         return {"documents": [[]], "metadatas": [[]]}, str(e)
