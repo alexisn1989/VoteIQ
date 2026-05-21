@@ -3776,14 +3776,31 @@ def _fetch_ie_context(bioguide_ids: list[str], question: str) -> str:
                 f"[Outside Spending (IE) — {cand}]",
                 f"Supporting total: ${total_s:,.0f}  |  Opposing total: ${total_o:,.0f}  |  Net: ${net:,.0f} {net_dir}",
             ]
+            def _ideology_tag(committee_name: str) -> str:
+                row = conn.execute(
+                    "SELECT short_name, network, ideology FROM pac_ideology WHERE lower(committee_name) = lower(?) LIMIT 1",
+                    (committee_name,),
+                ).fetchone()
+                if not row:
+                    row = conn.execute(
+                        "SELECT short_name, network, ideology FROM pac_ideology WHERE lower(committee_name) LIKE lower(?) LIMIT 1",
+                        (f"%{committee_name[:30]}%",),
+                    ).fetchone()
+                if row:
+                    parts = [p for p in [row["short_name"], row["network"], row["ideology"]] if p]
+                    return f" [{', '.join(parts)}]"
+                return ""
+
             if support:
                 lines.append(f"SUPPORTING (${total_s:,.0f}):")
                 for r in support:
-                    lines.append(f"  {r['committee_name']}: ${r['total']:,.0f} ({r['count']} expenditures, latest {r['latest']})")
+                    tag = _ideology_tag(r["committee_name"])
+                    lines.append(f"  {r['committee_name']}{tag}: ${r['total']:,.0f} ({r['count']} expenditures, latest {r['latest']})")
             if oppose:
                 lines.append(f"OPPOSING (${total_o:,.0f}):")
                 for r in oppose:
-                    lines.append(f"  {r['committee_name']}: ${r['total']:,.0f} ({r['count']} expenditures, latest {r['latest']})")
+                    tag = _ideology_tag(r["committee_name"])
+                    lines.append(f"  {r['committee_name']}{tag}: ${r['total']:,.0f} ({r['count']} expenditures, latest {r['latest']})")
             lines.append("Source: FEC Schedule E filings. Independent expenditures are not coordinated with campaigns.")
             blocks.append("\n".join(lines))
         conn.close()
