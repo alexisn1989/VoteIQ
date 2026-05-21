@@ -3778,16 +3778,18 @@ def _fetch_ie_context(bioguide_ids: list[str], question: str) -> str:
             ]
             def _ideology_tag(committee_name: str) -> str:
                 row = conn.execute(
-                    "SELECT short_name, network, ideology FROM pac_ideology WHERE lower(committee_name) = lower(?) LIMIT 1",
+                    "SELECT short_name, network, ideology, foreign_alignment, foreign_country FROM pac_ideology WHERE lower(committee_name) = lower(?) LIMIT 1",
                     (committee_name,),
                 ).fetchone()
                 if not row:
                     row = conn.execute(
-                        "SELECT short_name, network, ideology FROM pac_ideology WHERE lower(committee_name) LIKE lower(?) LIMIT 1",
+                        "SELECT short_name, network, ideology, foreign_alignment, foreign_country FROM pac_ideology WHERE lower(committee_name) LIKE lower(?) LIMIT 1",
                         (f"%{committee_name[:30]}%",),
                     ).fetchone()
                 if row:
                     parts = [p for p in [row["short_name"], row["network"], row["ideology"]] if p]
+                    if row["foreign_alignment"]:
+                        parts.append(f"{row['foreign_alignment']} [{row['foreign_country']}]")
                     return f" [{', '.join(parts)}]"
                 return ""
 
