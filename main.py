@@ -3705,35 +3705,57 @@ def _fetch_governor_eo_context(query: str) -> str:
     try:
         conn = sqlite3.connect(_POLLS_DB)
         conn.row_factory = sqlite3.Row
-        keywords = [w for w in query.lower().split() if len(w) > 4][:6]
-        if not keywords:
-            conn.close()
-            return ""
-        conditions = " OR ".join(
-            ["lower(title) LIKE ? OR lower(summary) LIKE ? OR lower(policy_topics) LIKE ?"] * len(keywords)
-        )
-        params = []
-        for kw in keywords:
-            p = f"%{kw}%"
-            params.extend([p, p, p])
-        rows = conn.execute(
-            f"""
-            SELECT order_number, title, governor, signed_date, summary, source_url
-            FROM governor_executive_orders
-            WHERE {conditions}
-            ORDER BY signed_date DESC
-            LIMIT 5
-            """,
-            params,
-        ).fetchall()
+        q_lower = query.lower()
+        _eo_intent = {"governor", "spanberger", "executive", "signed", "order", "directive", "governer", "eo"}
+        is_gov_query = any(w in q_lower for w in _eo_intent)
+
+        if is_gov_query:
+            rows = conn.execute("""
+                SELECT order_number, title, governor, signed_date, summary, source_url, policy_topics
+                FROM governor_executive_orders
+                ORDER BY signed_date DESC
+                LIMIT 8
+            """).fetchall()
+        else:
+            keywords = [w for w in q_lower.split() if len(w) > 4][:6]
+            if not keywords:
+                conn.close()
+                return ""
+            conditions = " OR ".join(
+                ["lower(title) LIKE ? OR lower(summary) LIKE ? OR lower(policy_topics) LIKE ?"] * len(keywords)
+            )
+            params = []
+            for kw in keywords:
+                p = f"%{kw}%"
+                params.extend([p, p, p])
+            rows = conn.execute(
+                f"""
+                SELECT order_number, title, governor, signed_date, summary, source_url, policy_topics
+                FROM governor_executive_orders
+                WHERE {conditions}
+                ORDER BY signed_date DESC
+                LIMIT 5
+                """,
+                params,
+            ).fetchall()
+
         conn.close()
         for row in rows:
             url_line = f"\nSource: {row['source_url']}" if row['source_url'] else ""
-            summary = (row['summary'] or "")[:300]
+            summary = (row['summary'] or "")[:400]
+            topics_line = ""
+            if row["policy_topics"]:
+                try:
+                    t = json.loads(row["policy_topics"])
+                    if t:
+                        topics_line = f"\nTopics: {', '.join(t[:6])}"
+                except Exception:
+                    pass
             blocks.append(
                 f"[Governor Executive Order — {row['governor']} | {row['signed_date']}]\n"
                 f"Order {row['order_number']}: {row['title']}\n"
                 f"Summary: {summary}"
+                f"{topics_line}"
                 f"{url_line}"
             )
     except Exception:
@@ -4009,6 +4031,156 @@ def _fetch_finance_context(bioguide_ids: list[str], question: str) -> str:
     if not lines:
         return ""
     return "CAMPAIGN FINANCE & INDUSTRY CORRELATION (source: FEC.gov, fec.gov/data):\n" + "\n".join(lines)
+
+
+_SPANBERGER_FINANCE_CACHE: str | None = None
+
+
+def _fetch_spanberger_finance_context(question: str = "") -> str:
+    """Return Governor Spanberger campaign-finance context from local Virginia SBE Schedule A rows."""
+    global _SPANBERGER_FINANCE_CACHE
+    q = (question or "").lower()
+    if not any(
+        term in q
+        for term in (
+            "spanberger", "governor", "campaign finance", "finance", "financial",
+            "donor", "donors", "funding", "money", "contribution", "contributions",
+            "profile", "who funded", "who backs", "who supports",
+        )
+    ):
+        return ""
+    if _SPANBERGER_FINANCE_CACHE is not None:
+        return _SPANBERGER_FINANCE_CACHE
+    if not os.path.exists(_POLLS_DB):
+        return ""
+
+    try:
+        from build_va_state_finance import classify_sector
+
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+        person = conn.execute(
+            """
+            SELECT person_name, office, party, committee_name, finance_url, source_url, fetched_at
+            FROM va_finance_people
+            WHERE lower(person_name) LIKE '%spanberger%'
+            ORDER BY fetched_at DESC
+            LIMIT 1
+            """
+        ).fetchone()
+        rows = conn.execute(
+            """
+            SELECT candidate_name, election_cycle, first_name, last_or_company,
+                   employer, occupation, is_individual, transaction_date, amount
+            FROM va_cf_schedule_a
+            WHERE lower(candidate_name) LIKE '%spanberger%'
+              AND amount > 0
+              AND CAST(election_cycle AS INTEGER) >= 2023
+            """
+        ).fetchall()
+        conn.close()
+    except Exception:
+        return ""
+
+    if not rows:
+        return ""
+
+    by_cycle: dict[str, dict] = {}
+    sector_totals: dict[tuple[str, str], dict] = {}
+    donor_totals: dict[tuple[str, str], dict] = {}
+    latest_date = ""
+
+    for row in rows:
+        cycle = str(row["election_cycle"] or "")
+        if not cycle:
+            continue
+        amount = float(row["amount"] or 0)
+        latest_date = max(latest_date, row["transaction_date"] or "")
+        cycle_stats = by_cycle.setdefault(cycle, {"total": 0.0, "count": 0, "latest": ""})
+        cycle_stats["total"] += amount
+        cycle_stats["count"] += 1
+        cycle_stats["latest"] = max(cycle_stats["latest"], row["transaction_date"] or "")
+
+        sector = classify_sector(
+            row["occupation"] or "",
+            row["employer"] or "",
+            row["last_or_company"] or "" if not row["is_individual"] else "",
+        )
+        sector_key = (cycle, sector)
+        sector_stats = sector_totals.setdefault(sector_key, {"total": 0.0, "count": 0})
+        sector_stats["total"] += amount
+        sector_stats["count"] += 1
+
+        donor_name = (
+            f"{row['first_name'] or ''} {row['last_or_company'] or ''}".strip()
+            if row["is_individual"]
+            else (row["last_or_company"] or "").strip()
+        ) or "Unknown donor"
+        donor_key = (cycle, donor_name)
+        donor_stats = donor_totals.setdefault(donor_key, {
+            "total": 0.0,
+            "count": 0,
+            "sector": sector,
+            "employer": row["employer"] or "",
+            "occupation": row["occupation"] or "",
+        })
+        donor_stats["total"] += amount
+        donor_stats["count"] += 1
+
+    latest_cycle = max(by_cycle, key=lambda c: int(c) if c.isdigit() else 0)
+    latest_total = by_cycle[latest_cycle]["total"]
+    all_total = sum(v["total"] for v in by_cycle.values())
+    all_count = sum(v["count"] for v in by_cycle.values())
+
+    lines = [
+        "[Governor Campaign Finance — Abigail D. Spanberger]",
+        "Office: Governor of Virginia",
+        f"Committee: {(person['committee_name'] if person else '') or 'Spanberger for Governor'}",
+        "Source: Virginia SBE Schedule A campaign finance filings",
+        "Note: These are itemized contribution records from the local SBE import; Virginia has no state contribution limit.",
+        f"Imported cycles covered: {', '.join(sorted(by_cycle))}",
+        f"All covered cycles total: ${all_total:,.0f} from {all_count:,} contribution records",
+        f"Latest cycle in local data: {latest_cycle} — ${latest_total:,.0f} from {by_cycle[latest_cycle]['count']:,} records"
+        + (f", latest transaction {by_cycle[latest_cycle]['latest']}" if by_cycle[latest_cycle]["latest"] else ""),
+    ]
+
+    if person and person["finance_url"]:
+        lines.append(f"VPAP/finance URL: {person['finance_url']}")
+
+    lines.append("Cycle totals:")
+    for cycle in sorted(by_cycle, key=lambda c: int(c) if c.isdigit() else 0, reverse=True):
+        stats = by_cycle[cycle]
+        lines.append(
+            f"- {cycle}: ${stats['total']:,.0f} from {stats['count']:,} records"
+            + (f" (latest {stats['latest']})" if stats["latest"] else "")
+        )
+
+    latest_sectors = sorted(
+        ((sector, stats) for (cycle, sector), stats in sector_totals.items() if cycle == latest_cycle),
+        key=lambda item: item[1]["total"],
+        reverse=True,
+    )[:8]
+    if latest_sectors:
+        lines.append(f"Top sectors in {latest_cycle}:")
+        for sector, stats in latest_sectors:
+            pct = stats["total"] / latest_total * 100 if latest_total else 0
+            lines.append(f"- {sector}: ${stats['total']:,.0f} from {stats['count']:,} records ({pct:.1f}%)")
+
+    latest_donors = sorted(
+        ((donor, stats) for (cycle, donor), stats in donor_totals.items() if cycle == latest_cycle),
+        key=lambda item: item[1]["total"],
+        reverse=True,
+    )[:10]
+    if latest_donors:
+        lines.append(f"Top aggregated donors in {latest_cycle}:")
+        for donor, stats in latest_donors:
+            lines.append(
+                f"- {donor}: ${stats['total']:,.0f} across {stats['count']:,} records"
+                + (f" | sector: {stats['sector']}" if stats.get("sector") else "")
+            )
+
+    _SPANBERGER_FINANCE_CACHE = "\n".join(lines)
+    return _SPANBERGER_FINANCE_CACHE
 
 
 try:
