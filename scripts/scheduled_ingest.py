@@ -10,15 +10,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 STEPS: list[tuple[str, list[str], int]] = [
     # (script, extra_args, timeout_seconds)
-    ("ingest_va_legislators.py",  [],                          120),
-    ("ingest_openstates.py",      [],                          300),
-    ("ingest_bill.py",            [],                          300),
-    ("ingest_va_polls.py",        ["--source", "fivethirtyeight",
-                                   "--source", "votehub",
-                                   "--source", "news"],        180),
-    ("ingest_vpap.py",            [],                          180),
-    ("ingest_va_finance.py",      [],                          300),
-    ("ingest_committees.py",      [],                          120),
+    ("ingest_va_legislators.py",       [],                          120),
+    ("ingest_openstates.py",           [],                          300),
+    ("ingest_bill.py",                 [],                          300),
+    ("ingest_governor_actions.py",     [],                          120),  # must run after openstates
+    ("ingest_va_polls.py",             ["--source", "fivethirtyeight",
+                                        "--source", "votehub",
+                                        "--source", "news"],        180),
+    ("ingest_vpap.py",                 [],                          180),
+    ("ingest_va_finance.py",           [],                          300),
+    ("ingest_committees.py",           [],                          120),
 ]
 
 # Optional heavy steps — only run when env vars are set

@@ -3533,26 +3533,35 @@ def _fetch_news_context(query: str, politician_name: str = "", limit: int = 4) -
 
 
 def _fetch_governor_action_context(query: str, bill_numbers: list[str] | None = None) -> str:
-    """Fetch governor bill actions from legislative_intelligence.db via ATTACH."""
-    leg_db = os.path.join(os.getenv("DATA_DIR", BASE_DIR), "legislative_intelligence.db")
-    if not os.path.exists(leg_db):
+    """Fetch governor bill actions from polls.db governor_actions table."""
+    if not os.path.exists(_POLLS_DB):
         return ""
     blocks: list[str] = []
     try:
         conn = sqlite3.connect(_POLLS_DB)
         conn.row_factory = sqlite3.Row
-        conn.execute(f"ATTACH DATABASE '{leg_db}' AS leg")
+
+        # Confirm the table exists
+        tbl = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='governor_actions'"
+        ).fetchone()
+        if not tbl:
+            conn.close()
+            return ""
 
         if bill_numbers:
             placeholders = ",".join("?" * len(bill_numbers))
-            rows = conn.execute(f"""
+            rows = conn.execute(
+                f"""
                 SELECT bill_number, session, title, action_label, action_date,
                        governor, sponsor_name, sponsor_party, source_url, raw_status
-                FROM leg.governor_actions
+                FROM governor_actions
                 WHERE bill_number IN ({placeholders})
                 ORDER BY action_date DESC
                 LIMIT 10
-            """, bill_numbers).fetchall()
+                """,
+                bill_numbers,
+            ).fetchall()
         else:
             _gov_intent = {"governor", "spanberger", "signed", "vetoed", "veto", "executive", "governer"}
             q_lower = query.lower()
@@ -3561,7 +3570,7 @@ def _fetch_governor_action_context(query: str, bill_numbers: list[str] | None = 
                 rows = conn.execute("""
                     SELECT bill_number, session, title, action_label, action_date,
                            governor, sponsor_name, sponsor_party, source_url, raw_status
-                    FROM leg.governor_actions
+                    FROM governor_actions
                     ORDER BY action_date DESC
                     LIMIT 10
                 """).fetchall()
@@ -3577,23 +3586,27 @@ def _fetch_governor_action_context(query: str, bill_numbers: list[str] | None = 
                     for kw in keywords:
                         p = f"%{kw}%"
                         kw_params.extend([p, p])
-                    rows = conn.execute(f"""
+                    rows = conn.execute(
+                        f"""
                         SELECT bill_number, session, title, action_label, action_date,
                                governor, sponsor_name, sponsor_party, source_url, raw_status
-                        FROM leg.governor_actions
+                        FROM governor_actions
                         WHERE {kw_clauses}
                         ORDER BY action_date DESC
                         LIMIT 10
-                    """, kw_params).fetchall()
+                        """,
+                        kw_params,
+                    ).fetchall()
 
         conn.close()
         for row in rows:
             url_line = f"\nSource: {row['source_url']}" if row['source_url'] else ""
+            party = f" ({row['sponsor_party']})" if row['sponsor_party'] else ""
             blocks.append(
                 f"[Governor Action — {row['governor']} | {row['action_date']}]\n"
                 f"Bill: {row['bill_number']} ({row['session']}) — {row['title']}\n"
                 f"Action: {row['action_label']}\n"
-                f"Sponsor: {row['sponsor_name']} ({row['sponsor_party']})"
+                f"Sponsor: {row['sponsor_name']}{party}"
                 f"{url_line}"
             )
     except Exception:
