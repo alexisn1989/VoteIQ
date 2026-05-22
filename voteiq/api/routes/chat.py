@@ -45,6 +45,20 @@ _SOURCE_LINE = (
 
 # ── Models ────────────────────────────────────────────────────────────────────
 
+def _premium_analyst_enabled(req) -> bool:
+    """Analyst context is reserved for Pro and Newsroom voices/tiers."""
+    voice = str(getattr(req, "voice", "") or "").lower()
+    tier = str(getattr(req, "tier", "") or "").lower()
+    return voice in {"pro", "newsroom"} or tier in {"pro", "newsroom"}
+
+
+def _with_source_line(reply: str) -> str:
+    """Append the standard source footer unless the model already included one."""
+    if "Sources:" in (reply or ""):
+        return reply.rstrip()
+    return reply.rstrip() + _SOURCE_LINE
+
+
 class ChatMessage(BaseModel):
     role: str
     content: str
@@ -138,7 +152,18 @@ def _build_bills_context(
         "touches_news": any(w in (user_query or "").lower() for w in _NEWS_TERMS),
     }
     q_lower = (user_query or "").lower()
-    if any(term in q_lower for term in ("who is the governor", "current governor", "virginia governor", "governor of virginia")):
+    _money_kws = [
+        "fund", "donor", "pac", "money", "contribut", "financ", "pay",
+        "sponsor", "lobbying", "rais", "campaign", "donation", "grassroot",
+        "industry", "who back", "who fund", "who support", "who pay",
+        "corporate", "actblue", "winred", "special interest",
+    ]
+    _is_money_q = any(kw in q_lower for kw in _money_kws)
+    _is_simple_governor_identity_q = (
+        any(term in q_lower for term in ("who is the governor", "current governor", "governor of virginia"))
+        or q_lower.strip() in {"virginia governor", "va governor", "governor"}
+    )
+    if _is_simple_governor_identity_q and not _is_money_q:
         return (
             "[Virginia Statewide Official]\n"
             "Office: Governor\n"
@@ -184,7 +209,7 @@ def _build_bills_context(
         context_blocks: list[str] = []
         seen_docs: set[str] = set()
 
-        if any(term in q_lower for term in ("who is the governor", "current governor", "virginia governor", "governor of virginia")):
+        if _is_simple_governor_identity_q and not _is_money_q:
             statewide_block = (
                 "[Virginia Statewide Official]\n"
                 "Office: Governor\n"
@@ -235,14 +260,36 @@ def _build_bills_context(
                 seen_docs.add(os_leg)
                 context_blocks.insert(0, os_leg)
 
-        _money_kws = [
-            "fund", "donor", "pac", "money", "contribut", "financ", "pay",
-            "sponsor", "lobbying", "rais", "campaign", "donation", "grassroot",
-            "industry", "who back", "who fund", "who support", "who pay",
-            "corporate", "actblue", "winred", "special interest",
-        ]
-        _is_money_q = any(kw in user_query.lower() for kw in _money_kws)
-        if _is_money_q and _m._PAC_CACHE:
+        spanberger_finance = _m._fetch_spanberger_finance_context(user_query)
+        if spanberger_finance and spanberger_finance not in seen_docs:
+            seen_docs.add(spanberger_finance)
+            context_blocks.insert(0, spanberger_finance)
+
+        state_finance_block = _m._fetch_state_campaign_finance_context(
+            user_query,
+            basic=not _premium_analyst_enabled(req),
+        )
+        if state_finance_block and state_finance_block not in seen_docs:
+            seen_docs.add(state_finance_block)
+            context_blocks.insert(0, state_finance_block)
+
+        full_profile_block = _m._full_profiles_for_query(user_query, limit=2 if _premium_analyst_enabled(req) else 1)
+        if full_profile_block and full_profile_block not in seen_docs:
+            seen_docs.add(full_profile_block)
+            context_blocks.insert(0, full_profile_block)
+
+        if _premium_analyst_enabled(req):
+            analyst_context = _m._fetch_governor_action_money_analyst_context(user_query)
+            if analyst_context and analyst_context not in seen_docs:
+                seen_docs.add(analyst_context)
+                context_blocks.insert(0, analyst_context)
+
+            member_analyst_context = _m._fetch_member_analyst_context(user_query)
+            if member_analyst_context and member_analyst_context not in seen_docs:
+                seen_docs.add(member_analyst_context)
+                context_blocks.insert(0, member_analyst_context)
+
+        if _premium_analyst_enabled(req) and _is_money_q and _m._PAC_CACHE:
             _fec_bgids: list[str] = []
             _search_names: list[str] = [leg_name] if leg_name else []
             if req.district and _m.DISTRICT_CONTEXT.get(req.district, {}).get("rep"):
@@ -256,6 +303,14 @@ def _build_bills_context(
                 if fec_block and fec_block not in seen_docs:
                     seen_docs.add(fec_block)
                     context_blocks.insert(0, fec_block)
+
+        pac_block = _m._fetch_pac_context(
+            user_query,
+            basic=not _premium_analyst_enabled(req),
+        )
+        if pac_block and pac_block not in seen_docs:
+            seen_docs.add(pac_block)
+            context_blocks.insert(0, pac_block)
 
         rep_profiles = _m._request_rep_profiles(req, user_query)
         if rep_profiles:
@@ -287,10 +342,19 @@ def _build_bills_context(
                 seen_docs.add(fed_ctx)
                 context_blocks.insert(0, fed_ctx)
             if _is_money_q:
-                fec_block = _m._fetch_finance_context([fed_member["bioguide_id"]], user_query)
-                if fec_block and fec_block not in seen_docs:
-                    seen_docs.add(fec_block)
-                    context_blocks.insert(0, fec_block)
+                if _premium_analyst_enabled(req):
+                    fec_block = _m._fetch_finance_context([fed_member["bioguide_id"]], user_query)
+                    if fec_block and fec_block not in seen_docs:
+                        seen_docs.add(fec_block)
+                        context_blocks.insert(0, fec_block)
+                pac_block = _m._fetch_pac_context(
+                    user_query,
+                    bioguide_ids=[fed_member["bioguide_id"]],
+                    basic=not _premium_analyst_enabled(req),
+                )
+                if pac_block and pac_block not in seen_docs:
+                    seen_docs.add(pac_block)
+                    context_blocks.insert(0, pac_block)
             if _is_speech_q:
                 floor_block = _fetch_floor_statements(
                     bioguide_id=fed_member["bioguide_id"],
@@ -436,6 +500,10 @@ def _local_bills_fallback_context(_m, req, user_query: str) -> str:
         profiles_fb = _m._request_rep_profiles(req, user_query)
         if profiles_fb and profiles_fb not in pieces:
             pieces.append(profiles_fb)
+
+        full_profiles_fb = _m._full_profiles_for_query(user_query, limit=2)
+        if full_profiles_fb and full_profiles_fb not in pieces:
+            pieces.append(full_profiles_fb)
 
         if req.district and req.district != "VA-00" and _m._profile_question(user_query):
             dist_rep_name = _m.DISTRICT_CONTEXT.get(req.district, {}).get("rep")
@@ -700,7 +768,7 @@ def _bills_system_prompt(
         f"Answer the user's question using ONLY the excerpts below — do not rely on your training data. "
         f"Be factual and cite bill numbers when relevant. "
         f"For federal members (U.S. House/Senate), cite bill type and number (e.g. H.R. 23) and note the source as \"Congress.gov bill record\" for bill details. "
-        f"For campaign finance questions, use the CAMPAIGN FINANCE & INDUSTRY CORRELATION excerpt if present and cite \"(FEC data, fec.gov)\".{district_note}{chroma_note}{model_note}"
+        f"For campaign finance questions, use the finance excerpts if present. Cite federal finance as \"(FEC data, fec.gov)\" and Virginia state finance as \"(Virginia SBE campaign finance filings)\".{district_note}{chroma_note}{model_note}"
         f"\n\nFEDERAL BILL EXPLAINER FORMAT — when the user's query starts with \"Explain this federal bill:\" or asks what a specific federal bill (H.R., S., H.J.Res., etc.) does, respond using this structure:\n"
         f"## [Bill ID] — [Short Title]\n"
         f"**What it does:** One or two plain-English sentences. No jargon. Imagine explaining to a neighbor.\n"
@@ -882,7 +950,33 @@ async def chat(req: ChatRequest):
 
     news_context    = _m._fetch_relevant_news(last_question, pol_names)
     vote_context    = _m._fetch_vote_context(last_question, bioguide_ids)
-    finance_context = _m._fetch_finance_context(bioguide_ids, last_question)
+    finance_context = (
+        _m._fetch_finance_context(bioguide_ids, last_question)
+        if _premium_analyst_enabled(req)
+        else ""
+    )
+    spanberger_finance_context = _m._fetch_spanberger_finance_context(last_question)
+    state_finance_context = _m._fetch_state_campaign_finance_context(
+        last_question,
+        state_names=pol_names,
+        basic=not _premium_analyst_enabled(req),
+    )
+    full_profile_context = _m._full_profiles_for_query(
+        last_question,
+        limit=2 if _premium_analyst_enabled(req) else 1,
+    )
+    pac_context = _m._fetch_pac_context(
+        last_question,
+        bioguide_ids=bioguide_ids,
+        state_names=pol_names,
+        basic=not _premium_analyst_enabled(req),
+    )
+    if _premium_analyst_enabled(req):
+        analyst_context = _m._fetch_governor_action_money_analyst_context(last_question)
+        member_analyst_context = _m._fetch_member_analyst_context(last_question)
+    else:
+        analyst_context = ""
+        member_analyst_context = ""
     governor_context = _m._fetch_governor_action_context(last_question)
     governor_eo_context = _m._fetch_governor_eo_context(last_question)
     state_member_context = _m._fetch_va_state_member_context(last_question, hod_info=hod_info, sd_info=sd_info)
@@ -973,6 +1067,18 @@ Available data for this representative:
 
 {finance_context if finance_context else ""}
 
+{spanberger_finance_context if spanberger_finance_context else ""}
+
+{state_finance_context if state_finance_context else ""}
+
+{full_profile_context if full_profile_context else ""}
+
+{pac_context if pac_context else ""}
+
+{analyst_context if analyst_context else ""}
+
+{member_analyst_context if member_analyst_context else ""}
+
 {ie_context if ie_context else ""}
 
 {foreign_ie_context if foreign_ie_context and query_context.get("touches_foreign_policy_donors") else ""}
@@ -991,7 +1097,7 @@ Format citations as: [Outlet — Author](URL) at the end of the relevant sentenc
 If no relevant news is listed above, say VoteIQ does not currently have a matching recent article in its local news cache. Do not invent current-event details from model memory.
 ''' if query_context.get("touches_news") else ''}
 
-When citing a vote, include the bill name and Yea/Nay. When citing donors or industry contributions, state the dollar amount and add "(FEC data, fec.gov)". For official contact info direct users to house.gov, senate.gov, or virginiageneralassembly.gov. Never express opinions on representatives or tell people how to vote.
+When citing a vote, include the bill name and Yea/Nay. When citing donors or industry contributions, state the dollar amount and cite the matching source: "(FEC data, fec.gov)" for federal records or "(Virginia SBE campaign finance filings)" for Virginia state records. For official contact info direct users to house.gov, senate.gov, governor.virginia.gov, or virginiageneralassembly.gov. Never express opinions on representatives or tell people how to vote.
 
 {transcript_context if transcript_context else ""}"""
 
@@ -1047,8 +1153,7 @@ Additional rules:
 
     try:
         reply = _m._gemini_reply(system_prompt, req.messages, max_tokens=max_tokens)
-        if not reply.rstrip().endswith(_SOURCE_LINE.strip()):
-            reply = reply.rstrip() + _SOURCE_LINE
+        reply = _with_source_line(reply)
         return ChatResponse(reply=reply)
     except Exception as e:
         return ChatResponse(reply=f"Gemini Error: {str(e)}")
@@ -1141,8 +1246,7 @@ async def bills_chat(req: BillsChatRequest):
     if _ck:
         cached = _m._get_cached_reply(_ck, _ck_fb)
         if cached:
-            if not cached.rstrip().endswith(_SOURCE_LINE.strip()):
-                cached = cached.rstrip() + _SOURCE_LINE
+            cached = _with_source_line(cached)
             return ChatResponse(reply=cached)
 
     chroma_note = (
@@ -1170,8 +1274,7 @@ async def bills_chat(req: BillsChatRequest):
 
     try:
         reply = _m._claude_reply(system_prompt, req.messages, max_tokens=max_tokens, model=model)
-        if not reply.rstrip().endswith(_SOURCE_LINE.strip()):
-            reply = reply.rstrip() + _SOURCE_LINE
+        reply = _with_source_line(reply)
         if _ck:
             _m._set_cached_reply(_ck, reply)
         return ChatResponse(reply=reply)
@@ -1243,8 +1346,7 @@ async def bills_chat_stream(req: BillsChatRequest):
     if _ck:
         cached = _m._get_cached_reply(_ck, _ck_fb)
         if cached:
-            if not cached.rstrip().endswith(_SOURCE_LINE.strip()):
-                cached = cached.rstrip() + _SOURCE_LINE
+            cached = _with_source_line(cached)
             async def _cached_gen(text=cached):
                 chunk = 24
                 for i in range(0, len(text), chunk):
@@ -1303,7 +1405,7 @@ async def bills_chat_stream(req: BillsChatRequest):
                 for text in stream.text_stream:
                     full_reply += text
                     yield f"data: {json.dumps({'token': text})}\n\n"
-            if not full_reply.rstrip().endswith(_SOURCE_LINE.strip()):
+            if "Sources:" not in full_reply:
                 full_reply = full_reply.rstrip() + _SOURCE_LINE
                 yield f"data: {json.dumps({'token': _SOURCE_LINE})}\n\n"
             if _ck:

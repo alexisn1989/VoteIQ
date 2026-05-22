@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sqlite3
 from collections import defaultdict
 from pathlib import Path
@@ -14,6 +15,87 @@ router = APIRouter(tags=["members"])
 
 _BASE_DIR = str(Path(__file__).resolve().parent.parent.parent.parent)
 _POLLS_DB = os.path.join(os.getenv("DATA_DIR", _BASE_DIR), "polls.db")
+_FULL_PROFILES_JSONL = os.path.join(_BASE_DIR, "va_full_profiles.jsonl")
+_full_profile_cache: list[dict] | None = None
+
+
+def _load_full_profiles() -> list[dict]:
+    global _full_profile_cache
+    if _full_profile_cache is not None:
+        return _full_profile_cache
+    profiles: list[dict] = []
+    if os.path.exists(_FULL_PROFILES_JSONL):
+        with open(_FULL_PROFILES_JSONL, encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    profiles.append(json.loads(line))
+    _full_profile_cache = profiles
+    return profiles
+
+
+def _profile_summary(profile: dict) -> dict:
+    meta = profile.get("metadata") or {}
+    return {
+        "id": profile.get("chunk_id"),
+        "name": meta.get("name", ""),
+        "office": meta.get("office", ""),
+        "district": meta.get("district", ""),
+        "party": meta.get("party", ""),
+        "cycle_start": meta.get("cycle_start", ""),
+        "cycle_end": meta.get("cycle_end", ""),
+        "total_raised": float(meta.get("total_raised") or 0),
+        "records": int(meta.get("records") or 0),
+    }
+
+
+def _split_profile_sections(text: str) -> dict:
+    sections: dict[str, list[str]] = {"Overview": []}
+    current = "Overview"
+    for raw_line in (text or "").splitlines():
+        line = raw_line.rstrip()
+        m = re.match(r"^\[(.+?)\]$", line.strip())
+        if m:
+            current = m.group(1).strip()
+            sections.setdefault(current, [])
+            continue
+        sections.setdefault(current, []).append(line)
+    return {k: "\n".join(v).strip() for k, v in sections.items() if "\n".join(v).strip()}
+
+
+def _normalized_profile_sections(text: str) -> dict:
+    raw = _split_profile_sections(text)
+    normalized = {
+        "Overview": raw.get("Overview", ""),
+        "Campaign Finance by Cycle": raw.get("Campaign finance by cycle", ""),
+        "Top Donor Sectors": raw.get("Top donor sectors", ""),
+        "Top Contributors": raw.get("Top contributors", ""),
+        "PAC / Outside Money": raw.get("Top PAC/committee-style contributors", ""),
+        "Voting Record": raw.get("Current/recent General Assembly record", ""),
+        "Governor Actions": raw.get("Governor action record", ""),
+        "Methodology": raw.get("Methodology", ""),
+    }
+    # Keep any future sections without breaking the stable contract above.
+    used = {
+        "Overview",
+        "Campaign finance by cycle",
+        "Top donor sectors",
+        "Top contributors",
+        "Top PAC/committee-style contributors",
+        "Current/recent General Assembly record",
+        "Governor action record",
+        "Methodology",
+    }
+    for key, value in raw.items():
+        if key not in used:
+            normalized[key] = value
+    return normalized
+
+
+def _profile_detail(profile: dict) -> dict:
+    summary = _profile_summary(profile)
+    text = profile.get("text", "")
+    sections = _normalized_profile_sections(text)
+    return {**summary, "text": text, "sections": sections, "metadata": profile.get("metadata") or {}}
 
 
 @router.get("/federal-profiles", response_class=HTMLResponse)
@@ -26,6 +108,52 @@ def federal_profiles_page(request: Request):
 def representatives_page():
     with open(os.path.join(_BASE_DIR, "templates", "representatives.html"), encoding="utf-8") as f:
         return f.read()
+
+
+@router.get("/politicians", response_class=HTMLResponse)
+def politicians_page():
+    with open(os.path.join(_BASE_DIR, "templates", "politician_profiles.html"), encoding="utf-8") as f:
+        return f.read()
+
+
+@router.get("/profile/{profile_id}", response_class=HTMLResponse)
+def politician_profile_page(profile_id: str):
+    with open(os.path.join(_BASE_DIR, "templates", "politician_profiles.html"), encoding="utf-8") as f:
+        html = f.read()
+    return html.replace("__INITIAL_PROFILE_ID__", profile_id)
+
+
+@router.get("/api/politicians")
+def politician_profiles(q: str = "", office: str = "", limit: int = 0):
+    qn = q.strip().lower()
+    office_norm = office.strip().lower()
+    rows = []
+    for profile in _load_full_profiles():
+        item = _profile_summary(profile)
+        haystack = f"{item['name']} {item['office']} {item['district']} {item['party']}".lower()
+        if qn and qn not in haystack:
+            continue
+        if office_norm and office_norm != str(item["office"]).lower():
+            continue
+        rows.append(item)
+    rows.sort(key=lambda r: (
+        {"Governor": 1, "Lieutenant Governor": 2, "Attorney General": 3, "State Senate": 4, "House of Delegates": 5}.get(r["office"], 9),
+        r["office"],
+        str(r["district"] or "999"),
+        -r["total_raised"],
+        r["name"],
+    ))
+    if limit and limit > 0:
+        rows = rows[: max(1, min(limit, 5000))]
+    return {"profiles": rows, "count": len(rows)}
+
+
+@router.get("/api/politicians/{profile_id}")
+def politician_profile_detail(profile_id: str):
+    for profile in _load_full_profiles():
+        if profile.get("chunk_id") == profile_id:
+            return {"profile": _profile_detail(profile)}
+    return {"profile": None, "error": "profile not found"}
 
 
 @router.get("/api/congress/members")
@@ -95,7 +223,7 @@ def congress_member_votes(bioguide_id: str, limit: int = 50):
     try:
         conn = sqlite3.connect(_POLLS_DB)
         rows = conn.execute("""
-            SELECT vote_number, chamber, vote_date, bill, question, member_vote, result
+            SELECT vote_number, chamber, congress, session, vote_date, bill, question, member_vote, result
             FROM congress_votes
             WHERE bioguide_id = ?
             ORDER BY vote_date DESC, vote_number DESC
@@ -103,8 +231,8 @@ def congress_member_votes(bioguide_id: str, limit: int = 50):
         """, (bioguide_id, limit)).fetchall()
         conn.close()
         return {"votes": [
-            {"vote_number": r[0], "chamber": r[1], "date": r[2], "bill": r[3],
-             "question": r[4], "vote": r[5], "result": r[6]}
+            {"vote_number": r[0], "chamber": r[1], "congress": r[2], "session": r[3],
+             "date": r[4], "bill": r[5], "question": r[6], "vote": r[7], "result": r[8]}
             for r in rows
         ]}
     except Exception as exc:

@@ -3549,6 +3549,12 @@ def _fetch_governor_action_context(query: str, bill_numbers: list[str] | None = 
             conn.close()
             return ""
 
+        q_lower = (query or "").lower()
+        wants_veto = "veto" in q_lower or "vetoed" in q_lower
+        wants_signed = any(w in q_lower for w in ("signed", "signing", "sign into law", "enacted"))
+        wants_amended = any(w in q_lower for w in ("amended", "returned", "recommendation"))
+        wants_spanberger = "spanberger" in q_lower
+
         if bill_numbers:
             placeholders = ",".join("?" * len(bill_numbers))
             rows = conn.execute(
@@ -3564,16 +3570,44 @@ def _fetch_governor_action_context(query: str, bill_numbers: list[str] | None = 
             ).fetchall()
         else:
             _gov_intent = {"governor", "spanberger", "signed", "vetoed", "veto", "executive", "governer"}
-            q_lower = query.lower()
             is_gov_query = any(w in q_lower for w in _gov_intent)
-            if is_gov_query:
-                rows = conn.execute("""
+            action_filters: list[str] = []
+            if wants_veto:
+                action_filters = ["vetoed", "pocket_veto", "veto_sustained", "veto_overridden"]
+            elif wants_signed:
+                action_filters = ["signed"]
+            elif wants_amended:
+                action_filters = ["amended"]
+
+            if is_gov_query and action_filters:
+                placeholders = ",".join("?" * len(action_filters))
+                params: list = action_filters[:]
+                governor_clause = ""
+                if wants_spanberger:
+                    governor_clause = " AND lower(governor) LIKE ?"
+                    params.append("%spanberger%")
+                rows = conn.execute(f"""
                     SELECT bill_number, session, title, action_label, action_date,
                            governor, sponsor_name, sponsor_party, source_url, raw_status
                     FROM governor_actions
+                    WHERE action IN ({placeholders}){governor_clause}
+                    ORDER BY action_date DESC
+                    LIMIT 15
+                """, params).fetchall()
+            elif is_gov_query:
+                params = []
+                governor_clause = ""
+                if wants_spanberger:
+                    governor_clause = "WHERE lower(governor) LIKE ?"
+                    params.append("%spanberger%")
+                rows = conn.execute(f"""
+                    SELECT bill_number, session, title, action_label, action_date,
+                           governor, sponsor_name, sponsor_party, source_url, raw_status
+                    FROM governor_actions
+                    {governor_clause}
                     ORDER BY action_date DESC
                     LIMIT 10
-                """).fetchall()
+                """, params).fetchall()
             else:
                 keywords = [w for w in q_lower.split() if len(w) > 3][:6]
                 if not keywords:
@@ -4330,6 +4364,631 @@ def _fetch_governor_action_money_analyst_context(question: str = "") -> str:
     return "\n".join(lines)
 
 
+_ANALYST_SECTORS = (
+    "Healthcare", "Legal", "Real Estate", "Finance", "Technology", "Energy",
+    "Agriculture", "Education", "Transportation", "Labor/Union", "Defense",
+    "Hospitality", "Manufacturing", "Retail", "Ideological", "Individual/Other",
+)
+
+
+def _requested_analyst_types(question: str) -> set[str]:
+    q = (question or "").lower()
+    if not any(w in q for w in (
+        "analy", "analysis", "analyst", "compare", "pattern", "deep dive",
+        "donor", "finance", "funding", "money", "loyalty", "effectiveness",
+        "network", "geography", "where", "shift", "career arc", "timing",
+    )):
+        return set()
+    types: set[str] = set()
+    if any(w in q for w in ("donor shift", "career arc", "over time", "multi-cycle", "cycle shift")):
+        types.add("donor_shift")
+    if any(w in q for w in ("geography", "where", "city", "cities", "in-state", "out-of-state", "out of state")):
+        types.add("geography")
+    if any(w in q for w in ("network", "industry network", "sector network", "who gets", "which legislators")):
+        types.add("network")
+    if any(w in q for w in ("loyalty", "party line", "party alignment", "breaks from party", "defection")):
+        types.add("loyalty")
+    if any(w in q for w in ("effectiveness", "effective", "passed", "pass rate", "sponsored bills")):
+        types.add("effectiveness")
+    if any(w in q for w in ("timing", "near vote", "before vote", "after vote", "donation timing")):
+        types.add("timing")
+    if any(w in q for w in ("donor", "finance", "funding", "money", "sector", "contribution", "campaign", "triangle")):
+        types.add("triangle")
+    if not types and any(w in q for w in ("analy", "analysis", "analyst", "pattern", "deep dive")):
+        types.update({"triangle", "donor_shift", "geography", "loyalty", "effectiveness"})
+    return types
+
+
+def _query_year(question: str, default: str = "2025") -> str:
+    years = re.findall(r"\b20\d{2}\b", question or "")
+    return years[-1] if years else default
+
+
+def _sector_from_question(question: str, default: str = "Healthcare") -> str:
+    q = (question or "").lower()
+    aliases = {
+        "labor": "Labor/Union",
+        "union": "Labor/Union",
+        "real estate": "Real Estate",
+        "housing": "Real Estate",
+        "health": "Healthcare",
+        "medical": "Healthcare",
+        "finance": "Finance",
+        "bank": "Finance",
+        "energy": "Energy",
+        "utility": "Energy",
+        "education": "Education",
+        "school": "Education",
+        "tech": "Technology",
+        "technology": "Technology",
+        "defense": "Defense",
+        "transportation": "Transportation",
+    }
+    for needle, sector in aliases.items():
+        if needle in q:
+            return sector
+    for sector in _ANALYST_SECTORS:
+        if sector.lower() in q:
+            return sector
+    return default
+
+
+def _state_legislator_for_question(question: str) -> dict | None:
+    name = _extract_legislator_name(question) or ""
+    q = (question or "").lower()
+    if not name:
+        for token in re.findall(r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2}\b", question or ""):
+            if token.lower() not in {"Virginia", "Governor", "Spanberger"}:
+                name = token
+                break
+    try:
+        conn = sqlite3.connect(os.path.join(BASE_DIR, "legislative_intelligence.db"))
+        conn.row_factory = sqlite3.Row
+        row = None
+        if name:
+            parts = [p for p in re.split(r"\s+", name.strip()) if p]
+            if len(parts) >= 2:
+                row = conn.execute(
+                    "SELECT lis_id, name, party, chamber, district FROM legislators "
+                    "WHERE lower(name) LIKE ? AND lower(name) LIKE ? LIMIT 1",
+                    (f"%{parts[0].lower()}%", f"%{parts[-1].lower()}%"),
+                ).fetchone()
+            if not row:
+                row = conn.execute(
+                    "SELECT lis_id, name, party, chamber, district FROM legislators "
+                    "WHERE lower(name) LIKE ? LIMIT 1",
+                    (f"%{name.lower()}%",),
+                ).fetchone()
+        if not row:
+            for candidate in conn.execute("SELECT lis_id, name, party, chamber, district FROM legislators"):
+                lname = (candidate["name"] or "").lower()
+                last = lname.split()[-1] if lname.split() else ""
+                if last and last in q:
+                    row = candidate
+                    break
+        conn.close()
+        return dict(row) if row else None
+    except Exception:
+        return None
+
+
+def _federal_member_for_question(question: str) -> dict | None:
+    member = _federal_member_by_name(question)
+    if member:
+        return member
+    q = (question or "").lower()
+    for bgid, mbr in _MEMBER_CACHE.items():
+        name = (mbr.get("name") or "").lower().replace(",", "")
+        parts = [p for p in re.split(r"\s+", name) if p]
+        searchable = [p.strip(".") for p in parts if len(p.strip(".")) > 2]
+        if searchable and any(p in q for p in searchable):
+            return {"bioguide_id": bgid, **mbr}
+    return None
+
+
+def _fmt_money(value) -> str:
+    return f"${float(value or 0):,.0f}"
+
+
+def _raw_sbe_candidate_rows(candidate_name: str, since_cycle: int = 2020) -> list[sqlite3.Row]:
+    """Fetch raw Virginia SBE contribution rows by candidate first/last name."""
+    parts = [p for p in re.split(r"\s+", candidate_name or "") if p]
+    if not parts:
+        return []
+    first = parts[0].lower()
+    last = parts[-1].lower()
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            """
+            SELECT candidate_name, election_cycle, amount, employer, occupation, first_name,
+                   last_or_company, city, state_code, transaction_date, is_individual
+            FROM va_cf_schedule_a
+            WHERE lower(candidate_name) LIKE ?
+              AND lower(candidate_name) LIKE ?
+              AND CAST(election_cycle AS INTEGER) >= ?
+              AND amount IS NOT NULL
+            """,
+            (f"%{first}%", f"%{last}%", since_cycle),
+        ).fetchall()
+        conn.close()
+        return rows
+    except Exception:
+        return []
+
+
+def _raw_sbe_sector_totals(rows: list[sqlite3.Row], cycle: str | None = None) -> list[dict]:
+    try:
+        from build_va_state_finance import classify_sector
+    except Exception:
+        def classify_sector(occupation: str, employer: str, company: str = "") -> str:
+            return "Individual/Other"
+
+    totals: dict[str, dict] = {}
+    for row in rows:
+        if cycle and str(row["election_cycle"] or "") != str(cycle):
+            continue
+        sector = classify_sector(row["occupation"] or "", row["employer"] or "", row["last_or_company"] or "")
+        bucket = totals.setdefault(sector, {"sector": sector, "total": 0.0, "records": 0})
+        bucket["total"] += float(row["amount"] or 0)
+        bucket["records"] += 1
+    return sorted(totals.values(), key=lambda r: r["total"], reverse=True)
+
+
+def _looks_like_pac_or_committee(row: sqlite3.Row) -> bool:
+    text = " ".join(
+        str(row[key] or "")
+        for key in ("last_or_company", "occupation", "employer")
+        if key in row.keys()
+    ).lower()
+    return bool(
+        row["is_individual"] == 0
+        or any(term in text for term in (" pac", "political action", "committee", "caucus", "party", "victory fund"))
+    )
+
+
+def _fetch_pac_context(
+    question: str = "",
+    bioguide_ids: list[str] | None = None,
+    state_names: list[str] | None = None,
+    basic: bool = False,
+) -> str:
+    """Return direct PAC/committee-style contribution context for chat."""
+    q = (question or "").lower()
+    if not any(
+        term in q
+        for term in (
+            "pac", "committee money", "political action", "special interest",
+            "who funded", "who funds", "who backs", "top donor", "top donors",
+            "campaign finance", "donor", "donors", "funding",
+        )
+    ):
+        return ""
+
+    lines: list[str] = [
+        "[Basic PAC / Committee Context]" if basic else "[PAC / Committee Context]",
+        "PAC/committee contributions are public records; do not infer motive, pressure, reward, or causation.",
+    ]
+    limit = 3 if basic else 10
+
+    # Federal direct PAC-style contributors from FEC industry cache top-donor lists.
+    for bgid in bioguide_ids or []:
+        rows = _PAC_CACHE.get(bgid, [])
+        if not rows:
+            continue
+        member_name = rows[0].get("member_name") or bgid
+        cycle = rows[0].get("cycle") or ""
+        totals: dict[str, dict] = {}
+        for row in rows:
+            industry = row.get("industry") or "Other"
+            for donor in row.get("top_donors") or []:
+                donor_name = str(donor.get("name") or "").strip()
+                if not donor_name:
+                    continue
+                lname = donor_name.lower()
+                if not any(term in lname for term in ("pac", "political action", "committee", "victory", "fund")):
+                    continue
+                amount = float(donor.get("amount") or 0)
+                bucket = totals.setdefault(donor_name, {"name": donor_name, "amount": 0.0, "industries": set()})
+                bucket["amount"] += amount
+                bucket["industries"].add(industry)
+        top = sorted(totals.values(), key=lambda r: r["amount"], reverse=True)[:limit]
+        if top:
+            lines.append(f"Federal PAC-style top donors for {member_name} ({cycle} cycle, FEC):")
+            for donor in top:
+                industries = ", ".join(sorted(donor["industries"]))[:120]
+                lines.append(f"- {donor['name']}: {_fmt_money(donor['amount'])} ({industries})")
+            if basic:
+                lines.append("Free summary: showing top PAC-style contributors only. Pro includes deeper donor/industry analysis.")
+
+    # State candidate PAC/committee-style rows from raw Virginia SBE import.
+    candidates = [n for n in (state_names or []) if n]
+    state_leg = _state_legislator_for_question(question)
+    if state_leg and state_leg.get("name") not in candidates:
+        candidates.append(state_leg["name"])
+    if "spanberger" in q and "Abigail Spanberger" not in candidates:
+        candidates.append("Abigail Spanberger")
+
+    for candidate in candidates:
+        raw_rows = _raw_sbe_candidate_rows(candidate, since_cycle=2020)
+        pac_rows = [r for r in raw_rows if _looks_like_pac_or_committee(r)]
+        if not pac_rows:
+            continue
+        cycles = sorted(
+            {str(r["election_cycle"]) for r in pac_rows if r["election_cycle"]},
+            key=lambda y: int(y) if str(y).isdigit() else 0,
+            reverse=True,
+        )
+        cycle = _query_year(question, default=cycles[0] if cycles else "2025")
+        if cycle not in cycles and cycles:
+            cycle = cycles[0]
+        totals: dict[str, dict] = {}
+        for row in pac_rows:
+            if str(row["election_cycle"] or "") != str(cycle):
+                continue
+            donor_name = str(row["last_or_company"] or "").strip() or "Unknown committee/PAC"
+            bucket = totals.setdefault(donor_name, {"name": donor_name, "amount": 0.0, "records": 0})
+            bucket["amount"] += float(row["amount"] or 0)
+            bucket["records"] += 1
+        top = sorted(totals.values(), key=lambda r: r["amount"], reverse=True)[:limit]
+        if top:
+            lines.append(f"Virginia PAC/committee-style contributors for {candidate} ({cycle}, Virginia SBE):")
+            for donor in top:
+                lines.append(f"- {donor['name']}: {_fmt_money(donor['amount'])} from {int(donor['records']):,} records")
+            lines.append("State note: SBE rows are filtered for non-individual and committee/PAC-style contributors; labels come from filer text.")
+            if basic:
+                lines.append("Free summary: showing top PAC/committee-style contributors only. Pro includes deeper donor geography, sector, and voting context.")
+
+    return "\n".join(lines) if len(lines) > 2 else ""
+
+
+def _fetch_state_campaign_finance_context(
+    question: str = "",
+    state_names: list[str] | None = None,
+    basic: bool = True,
+) -> str:
+    """Return basic raw Virginia SBE campaign finance totals for state candidates."""
+    q = (question or "").lower()
+    if not any(
+        term in q
+        for term in (
+            "campaign finance", "sbe", "donor", "donors", "funding", "money",
+            "contribution", "contributions", "raised", "finance data", "filings",
+        )
+    ):
+        return ""
+
+    candidates = [n for n in (state_names or []) if n]
+    state_leg = _state_legislator_for_question(question)
+    if state_leg and state_leg.get("name") not in candidates:
+        candidates.append(state_leg["name"])
+    if "spanberger" in q and "Abigail Spanberger" not in candidates:
+        candidates.append("Abigail Spanberger")
+    if not candidates:
+        return ""
+
+    limit = 3 if basic else 8
+    lines = [
+        "[Basic Virginia SBE Campaign Finance Context]" if basic else "[Virginia SBE Campaign Finance Context]",
+        "These are raw itemized Virginia SBE contribution records matched by candidate name. Do not infer motive or causation.",
+    ]
+
+    for candidate in candidates:
+        raw_rows = _raw_sbe_candidate_rows(candidate, since_cycle=2020)
+        if not raw_rows:
+            continue
+        cycles = sorted(
+            {str(r["election_cycle"]) for r in raw_rows if r["election_cycle"]},
+            key=lambda y: int(y) if str(y).isdigit() else 0,
+            reverse=True,
+        )
+        cycle = _query_year(question, default=cycles[0] if cycles else "2025")
+        if cycle not in cycles and cycles:
+            cycle = cycles[0]
+        cycle_rows = [r for r in raw_rows if str(r["election_cycle"] or "") == str(cycle)]
+        if not cycle_rows:
+            continue
+
+        total = sum(float(r["amount"] or 0) for r in cycle_rows)
+        lines.append(
+            f"{candidate} campaign finance ({cycle}, Virginia SBE): {_fmt_money(total)} "
+            f"from {len(cycle_rows):,} itemized contribution records."
+        )
+
+        sectors = _raw_sbe_sector_totals(raw_rows, cycle)[:limit]
+        if sectors:
+            lines.append("Top sectors:")
+            for r in sectors:
+                lines.append(f"- {r['sector']}: {_fmt_money(r['total'])} from {int(r['records']):,} records")
+
+        donor_totals: dict[str, dict] = {}
+        for row in cycle_rows:
+            donor = str(row["last_or_company"] or "").strip()
+            if row["first_name"]:
+                donor = f"{str(row['first_name']).strip()} {donor}".strip()
+            donor = donor or "Unknown donor"
+            bucket = donor_totals.setdefault(donor, {"name": donor, "amount": 0.0, "records": 0})
+            bucket["amount"] += float(row["amount"] or 0)
+            bucket["records"] += 1
+        top_donors = sorted(donor_totals.values(), key=lambda r: r["amount"], reverse=True)[:limit]
+        if top_donors:
+            lines.append("Top contributors:")
+            for donor in top_donors:
+                lines.append(f"- {donor['name']}: {_fmt_money(donor['amount'])} from {int(donor['records']):,} records")
+        if basic:
+            lines.append("Free summary: showing basic totals, top sectors, and top contributors. Pro includes deeper geography, cycle shifts, and voting context.")
+
+    return "\n".join(lines) if len(lines) > 2 else ""
+
+
+def _fetch_member_analyst_context(question: str = "") -> str:
+    """Inject grounded analyst data for normal chat: triangle, shift, geography, network, loyalty, effectiveness."""
+    analyst_types = _requested_analyst_types(question)
+    if not analyst_types:
+        return ""
+    q = (question or "").lower()
+    cycle = _query_year(question)
+    sector = _sector_from_question(question)
+    lines = [
+        "[VoteIQ Analyst Context — General Civic Analyst]",
+        "Use this context for analyst-style answers. Do not infer motive, pressure, reward, influence, or causation.",
+        "Use cautious language: public-record overlap, pattern, concentration, or alignment.",
+        "Required wording when relating money to votes or bill outcomes: Correlation does not imply causation.",
+        f"Requested analyst slices: {', '.join(sorted(analyst_types))}",
+    ]
+
+    state_leg = _state_legislator_for_question(question)
+    fed_member = _federal_member_for_question(question)
+
+    # If no explicit member is found, still support network analyst below.
+    if state_leg:
+        lis_id = state_leg["lis_id"]
+        name = state_leg["name"]
+        state_data_added = False
+        state_finance_added = False
+        lines.append(f"State target: {name} ({state_leg.get('party') or ''}), {state_leg.get('chamber') or ''} District {state_leg.get('district') or ''}")
+        try:
+            conn = sqlite3.connect(os.path.join(BASE_DIR, "legislative_intelligence.db"))
+            conn.row_factory = sqlite3.Row
+            latest_cycle = conn.execute(
+                "SELECT MAX(CAST(cycle AS INTEGER)) FROM donor_sector_totals WHERE legislator_id=?",
+                (lis_id,),
+            ).fetchone()[0]
+            state_cycle = str(latest_cycle or cycle)
+            if "triangle" in analyst_types:
+                rows = conn.execute(
+                    """
+                    SELECT sector, total_amount, donor_count,
+                           ROUND(total_amount / NULLIF(donor_count, 0), 2) AS avg_donation
+                    FROM donor_sector_totals
+                    WHERE legislator_id=? AND cycle=?
+                    ORDER BY total_amount DESC LIMIT 8
+                    """,
+                    (lis_id, state_cycle),
+                ).fetchall()
+                if rows:
+                    total = sum(float(r["total_amount"] or 0) for r in rows)
+                    lines.append(f"State funding profile ({state_cycle}, Virginia SBE): top sectors total {_fmt_money(total)}")
+                    for r in rows:
+                        lines.append(f"- {r['sector']}: {_fmt_money(r['total_amount'])} from {int(r['donor_count'] or 0):,} records, avg {_fmt_money(r['avg_donation'])}")
+                    state_data_added = True
+                    state_finance_added = True
+            if "donor_shift" in analyst_types:
+                rows = conn.execute(
+                    """
+                    SELECT cycle, sector, total_amount, donor_count
+                    FROM donor_sector_totals
+                    WHERE legislator_id=?
+                    ORDER BY CAST(cycle AS INTEGER) DESC, total_amount DESC
+                    LIMIT 24
+                    """,
+                    (lis_id,),
+                ).fetchall()
+                if rows:
+                    lines.append("State donor shift / career arc:")
+                    for r in rows:
+                        lines.append(f"- {r['cycle']} {r['sector']}: {_fmt_money(r['total_amount'])} from {int(r['donor_count'] or 0):,} records")
+                    state_data_added = True
+                    state_finance_added = True
+            if "geography" in analyst_types:
+                rows = conn.execute(
+                    """
+                    SELECT city, state, COUNT(*) AS donations, SUM(amount) AS total,
+                           CASE WHEN state != 'VA' THEN 'Out of State' ELSE 'In State' END AS origin
+                    FROM va_sbe_contributions
+                    WHERE legislator_id=? AND cycle=?
+                    GROUP BY city, state, origin
+                    ORDER BY total DESC LIMIT 12
+                    """,
+                    (lis_id, state_cycle),
+                ).fetchall()
+                if rows:
+                    lines.append(f"State donor geography ({state_cycle}):")
+                    for r in rows:
+                        lines.append(f"- {r['city'] or 'Unknown'}, {r['state'] or ''}: {_fmt_money(r['total'])} from {int(r['donations'] or 0):,} records ({r['origin']})")
+                    state_data_added = True
+                    state_finance_added = True
+            if "loyalty" in analyst_types:
+                rows = conn.execute(
+                    """
+                    SELECT session,
+                           COUNT(*) AS total_votes,
+                           SUM(CASE WHEN vote='YES' THEN 1 ELSE 0 END) AS yes_votes,
+                           SUM(CASE WHEN vote='NO' THEN 1 ELSE 0 END) AS no_votes
+                    FROM va_votes v
+                    WHERE legislator_id=?
+                    GROUP BY session
+                    ORDER BY session DESC
+                    """,
+                    (lis_id,),
+                ).fetchall()
+                if rows:
+                    lines.append("State vote summary / loyalty proxy:")
+                    for r in rows:
+                        lines.append(f"- {r['session']}: {int(r['total_votes'] or 0):,} votes, {int(r['yes_votes'] or 0):,} YES, {int(r['no_votes'] or 0):,} NO")
+                    state_data_added = True
+            if "effectiveness" in analyst_types:
+                rows = conn.execute(
+                    """
+                    SELECT introduced_by, COUNT(*) AS bills
+                    FROM va_bills
+                    WHERE introduced_by=? OR lower(introduced_by) LIKE ?
+                    GROUP BY introduced_by
+                    LIMIT 5
+                    """,
+                    (lis_id, f"%{name.lower()}%"),
+                ).fetchall()
+                if rows:
+                    lines.append("State effectiveness proxy:")
+                    for r in rows:
+                        lines.append(f"- Sponsored/introduced bills found: {int(r['bills'] or 0):,} ({r['introduced_by']})")
+                    state_data_added = True
+            conn.close()
+        except Exception:
+            pass
+        if (not state_finance_added) and analyst_types.intersection({"triangle", "donor_shift", "geography"}):
+            raw_rows = _raw_sbe_candidate_rows(name)
+            raw_cycles = sorted(
+                {str(r["election_cycle"]) for r in raw_rows if r["election_cycle"]},
+                key=lambda y: int(y) if str(y).isdigit() else 0,
+                reverse=True,
+            )
+            raw_cycle = cycle if str(cycle) in raw_cycles else (raw_cycles[0] if raw_cycles else cycle)
+            if raw_rows and raw_cycle:
+                lines.append(
+                    f"State raw SBE fallback: finance rows matched by candidate name in va_cf_schedule_a; not LIS-linked ({raw_cycle})."
+                )
+                if "triangle" in analyst_types:
+                    sector_rows = _raw_sbe_sector_totals(raw_rows, raw_cycle)[:8]
+                    total = sum(float(r["total"] or 0) for r in sector_rows)
+                    if sector_rows:
+                        lines.append(f"Raw state funding profile ({raw_cycle}, Virginia SBE): top sectors total {_fmt_money(total)}")
+                        for r in sector_rows:
+                            avg = (float(r["total"] or 0) / int(r["records"] or 1)) if r["records"] else 0
+                            lines.append(f"- {r['sector']}: {_fmt_money(r['total'])} from {int(r['records']):,} records, avg {_fmt_money(avg)}")
+                if "donor_shift" in analyst_types:
+                    lines.append("Raw state donor shift / career arc:")
+                    for raw_year in raw_cycles[:5]:
+                        for r in _raw_sbe_sector_totals(raw_rows, raw_year)[:5]:
+                            lines.append(f"- {raw_year} {r['sector']}: {_fmt_money(r['total'])} from {int(r['records']):,} records")
+                if "geography" in analyst_types:
+                    geo: dict[tuple[str, str], dict] = {}
+                    for row in raw_rows:
+                        if str(row["election_cycle"] or "") != str(raw_cycle):
+                            continue
+                        key = (row["city"] or "Unknown", row["state_code"] or "")
+                        bucket = geo.setdefault(key, {"city": key[0], "state": key[1], "total": 0.0, "records": 0})
+                        bucket["total"] += float(row["amount"] or 0)
+                        bucket["records"] += 1
+                    geo_rows = sorted(geo.values(), key=lambda r: r["total"], reverse=True)[:12]
+                    if geo_rows:
+                        lines.append(f"Raw state donor geography ({raw_cycle}):")
+                        for r in geo_rows:
+                            origin = "Out of State" if r["state"] and r["state"] != "VA" else "In State"
+                            lines.append(f"- {r['city']}, {r['state']}: {_fmt_money(r['total'])} from {int(r['records']):,} records ({origin})")
+
+    if fed_member:
+        bgid = fed_member.get("bioguide_id")
+        name = fed_member.get("name", bgid)
+        lines.append(f"Federal target: {name} ({fed_member.get('party') or ''}), {fed_member.get('chamber') or ''} {fed_member.get('district') or ''}")
+        try:
+            conn = sqlite3.connect(_POLLS_DB)
+            conn.row_factory = sqlite3.Row
+            fec_row = conn.execute("SELECT fec_candidate_id FROM bioguide_fec_bridge WHERE bioguide_id=? LIMIT 1", (bgid,)).fetchone()
+            fec_id = fec_row["fec_candidate_id"] if fec_row else None
+            fed_cycle = int(cycle) if str(cycle).isdigit() else 2026
+            if fec_id and "triangle" in analyst_types:
+                rows = conn.execute(
+                    """
+                    SELECT sector, total_amount, donor_count,
+                           ROUND(total_amount / NULLIF(donor_count, 0), 2) AS avg_donation
+                    FROM candidate_sector_totals
+                    WHERE candidate_id=? AND cycle=?
+                    ORDER BY total_amount DESC LIMIT 8
+                    """,
+                    (fec_id, fed_cycle),
+                ).fetchall()
+                if rows:
+                    lines.append(f"Federal funding profile ({fed_cycle}, FEC):")
+                    for r in rows:
+                        lines.append(f"- {r['sector']}: {_fmt_money(r['total_amount'])} from {int(r['donor_count'] or 0):,} donors, avg {_fmt_money(r['avg_donation'])}")
+            if fec_id and "donor_shift" in analyst_types:
+                rows = conn.execute(
+                    """
+                    SELECT cycle, sector, total_amount, donor_count
+                    FROM candidate_sector_totals
+                    WHERE candidate_id=?
+                    ORDER BY cycle DESC, total_amount DESC LIMIT 24
+                    """,
+                    (fec_id,),
+                ).fetchall()
+                if rows:
+                    lines.append("Federal donor shift:")
+                    for r in rows:
+                        lines.append(f"- {r['cycle']} {r['sector']}: {_fmt_money(r['total_amount'])} from {int(r['donor_count'] or 0):,} donors")
+            if "loyalty" in analyst_types:
+                rows = conn.execute(
+                    """
+                    SELECT congress, COUNT(*) AS total_votes,
+                           SUM(CASE WHEN member_vote IN ('Yea','Aye') THEN 1 ELSE 0 END) AS yea_votes,
+                           SUM(CASE WHEN member_vote IN ('Nay','No') THEN 1 ELSE 0 END) AS nay_votes
+                    FROM congress_votes
+                    WHERE bioguide_id=?
+                    GROUP BY congress
+                    ORDER BY congress DESC
+                    """,
+                    (bgid,),
+                ).fetchall()
+                if rows:
+                    lines.append("Federal vote summary / alignment proxy:")
+                    for r in rows:
+                        lines.append(f"- {r['congress']}th Congress: {r['total_votes']} votes, {r['yea_votes']} Yea/Aye, {r['nay_votes']} Nay/No")
+            if "effectiveness" in analyst_types:
+                rows = conn.execute(
+                    """
+                    SELECT role, COUNT(*) AS bills
+                    FROM congress_bills
+                    WHERE sponsor_id=?
+                    GROUP BY role
+                    """,
+                    (bgid,),
+                ).fetchall()
+                if rows:
+                    lines.append("Federal effectiveness proxy:")
+                    for r in rows:
+                        lines.append(f"- {r['role'] or 'unknown role'}: {int(r['bills'] or 0):,} bill records")
+            conn.close()
+        except Exception:
+            pass
+
+    if "network" in analyst_types:
+        try:
+            conn = sqlite3.connect(os.path.join(BASE_DIR, "legislative_intelligence.db"))
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                """
+                SELECT l.name, l.party, l.chamber, l.district, d.total_amount, d.donor_count
+                FROM donor_sector_totals d
+                JOIN legislators l ON l.lis_id=d.legislator_id
+                WHERE d.sector=? AND d.cycle=?
+                ORDER BY d.total_amount DESC LIMIT 12
+                """,
+                (sector, cycle),
+            ).fetchall()
+            conn.close()
+            if rows:
+                lines.append(f"State industry network ({sector}, {cycle}, Virginia SBE):")
+                for r in rows:
+                    lines.append(f"- {r['name']} ({r['party']}), {r['chamber']} {r['district']}: {_fmt_money(r['total_amount'])} from {int(r['donor_count'] or 0):,} records")
+        except Exception:
+            pass
+
+    if len(lines) <= 5:
+        return ""
+    return "\n".join(lines)
+
+
 try:
     import cohere as _cohere
     _COHERE_CLIENT = _cohere.ClientV2(api_key=os.getenv("COHERE_API_KEY", ""))
@@ -5055,7 +5714,9 @@ _EDUCATION_KEYWORDS = ("education", "school", "teacher", "student", "curriculum"
 
 _VA_LEGIS_DB = os.path.join(BASE_DIR, "virginia_legislature.db")
 _REP_PROFILES_JSONL = os.path.join(BASE_DIR, "va_rep_profiles.jsonl")
+_FULL_PROFILES_JSONL = os.path.join(BASE_DIR, "va_full_profiles.jsonl")
 _rep_profiles_cache = None
+_full_profiles_cache = None
 
 
 def _extract_bill_numbers(text: str) -> list[str]:
@@ -5103,6 +5764,110 @@ def _rep_profile_by_name(name: str, session: str = "2026") -> str:
         return ""
     meta = best.get("metadata") or {}
     return f"[Representative Profile — {meta.get('name', name)} {session}]\n{best.get('text', '')}"
+
+
+def _load_full_profiles() -> list[dict]:
+    global _full_profiles_cache
+    if _full_profiles_cache is not None:
+        return _full_profiles_cache
+    profiles = []
+    if os.path.exists(_FULL_PROFILES_JSONL):
+        try:
+            with open(_FULL_PROFILES_JSONL, encoding="utf-8") as f:
+                for line in f:
+                    if line.strip():
+                        profiles.append(json.loads(line))
+        except Exception as e:
+            print(f"main: could not load full profiles: {e}")
+    _full_profiles_cache = profiles
+    return profiles
+
+
+def _office_hint_from_query(text: str) -> str:
+    q = str(text or "").lower()
+    if "lieutenant" in q or "lt gov" in q or "lt. gov" in q:
+        return "Lieutenant Governor"
+    if "attorney general" in q or re.search(r"\bag\b", q):
+        return "Attorney General"
+    if "governor" in q or "spanberger" in q:
+        return "Governor"
+    if "senate" in q or "senator" in q:
+        return "State Senate"
+    if "house" in q or "delegate" in q:
+        return "House of Delegates"
+    return ""
+
+
+def _full_profile_matches_query(profile: dict, query: str, office_hint: str = "") -> tuple[int, float]:
+    meta = profile.get("metadata") or {}
+    pname = _normalize_person_name(meta.get("name"))
+    if not pname:
+        return (0, 0.0)
+    qnorm = _normalize_person_name(query)
+    qparts = set(qnorm.split())
+    pparts = pname.split()
+    first = pparts[0] if pparts else ""
+    last = pparts[-1] if pparts else ""
+    score = 0
+    if pname and pname in qnorm:
+        score += 100
+    if first and last and {first, last}.issubset(qparts):
+        score += 90
+    elif last and last in qparts:
+        score += 35
+    else:
+        return (0, 0.0)
+    office = str(meta.get("office") or "")
+    if office_hint and office == office_hint:
+        score += 30
+    elif office_hint and office in {"Statewide", "Governor", "Lieutenant Governor", "Attorney General"}:
+        score += 8
+    if any(w in qnorm for w in ("full", "profile", "career", "history", "finance", "funding", "donor", "sbe")):
+        score += 10
+    try:
+        cycle_end = float(meta.get("cycle_end") or 0)
+    except Exception:
+        cycle_end = 0.0
+    try:
+        total = float(meta.get("total_raised") or 0)
+    except Exception:
+        total = 0.0
+    return (score, cycle_end + min(total, 100_000_000) / 100_000_000)
+
+
+def _full_profiles_for_query(query: str, limit: int = 3) -> str:
+    q = str(query or "").lower()
+    if not any(term in q for term in (
+        "full profile", "profile", "career", "history", "campaign finance",
+        "finance", "funding", "donor", "donors", "sbe", "raised",
+        "governor", "lieutenant governor", "attorney general",
+    )):
+        return ""
+    office_hint = _office_hint_from_query(query)
+    scored: list[tuple[int, float, dict]] = []
+    for profile in _load_full_profiles():
+        score, tie = _full_profile_matches_query(profile, query, office_hint)
+        if score > 0:
+            scored.append((score, tie, profile))
+    if not scored:
+        return ""
+    scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    blocks = []
+    seen_keys = set()
+    for _score, _tie, profile in scored:
+        meta = profile.get("metadata") or {}
+        key = (meta.get("name_key"), meta.get("office"), meta.get("district"))
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+        district = f" District {meta.get('district')}" if meta.get("district") else ""
+        blocks.append(
+            f"[Full Virginia Profile â€” {meta.get('name')} | {meta.get('office')}{district}]\n"
+            f"{profile.get('text', '')}"
+        )
+        if len(blocks) >= limit:
+            break
+    return "\n\n".join(blocks)
 
 
 def _profile_question(text: str) -> bool:

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Virginia Politician Profiles - VoteIQ</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root { --navy:#0d1b2a; --red:#c8102e; --light:#f4f1eb; --mid:#ddd8cc; --muted:#7a7468; --dem:#1a52c8; --rep:#c8102e; --green:#2f855a; --gold:#9b6a18; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--light); color:var(--navy); font-family:'Barlow',sans-serif; min-height:100vh; }
+  body::before { content:''; position:fixed; inset:0; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f4f1eb'/%3E%3Crect width='1' height='1' fill='%23e8e4dc' opacity='0.45'/%3E%3C/svg%3E"); pointer-events:none; }
+  .topbar { position:relative; z-index:1; background:var(--navy); color:var(--mid); font-family:'Barlow Condensed',sans-serif; font-size:.72rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase; text-align:center; padding:7px 16px; }
+  .topbar span { color:var(--red); margin:0 6px; }
+  header { position:relative; z-index:1; border-bottom:3px double var(--navy); padding:24px 44px 20px; display:flex; align-items:center; justify-content:space-between; background:var(--light); gap:24px; }
+  .brand { text-decoration:none; color:var(--navy); }
+  .logo { font-family:'Playfair Display',serif; font-size:1.9rem; font-weight:900; letter-spacing:-.03em; }
+  .logo em { color:var(--red); font-style:normal; }
+  .sub { font-family:'Barlow Condensed',sans-serif; font-size:.65rem; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--muted); margin-top:2px; }
+  nav { display:flex; gap:22px; flex-wrap:wrap; justify-content:flex-end; }
+  nav a { font-family:'Barlow Condensed',sans-serif; font-size:.78rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--navy); text-decoration:none; border-bottom:2px solid transparent; padding-bottom:2px; }
+  nav a:hover, nav a.active { color:var(--red); border-bottom-color:var(--red); }
+  main { position:relative; z-index:1; max-width:1280px; margin:0 auto; padding:34px 28px 64px; }
+  .layout { display:grid; grid-template-columns:340px minmax(0,1fr); gap:28px; align-items:start; }
+  .panel { background:#fff; border:1px solid var(--mid); }
+  .search-panel { position:sticky; top:18px; max-height:calc(100vh - 36px); display:flex; flex-direction:column; }
+  .panel-head { padding:18px 18px 14px; border-bottom:1px solid var(--mid); }
+  .eyebrow { font-family:'Barlow Condensed',sans-serif; font-size:.68rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--red); margin-bottom:6px; }
+  h1 { font-family:'Playfair Display',serif; font-size:1.65rem; line-height:1.08; font-weight:900; letter-spacing:-.02em; }
+  .hint { color:var(--muted); font-size:.86rem; line-height:1.45; margin-top:8px; }
+  .controls { padding:14px; border-bottom:1px solid var(--mid); display:grid; gap:10px; }
+  input, select { width:100%; border:1px solid var(--mid); background:#fff; color:var(--navy); font-family:'Barlow',sans-serif; font-size:.92rem; padding:10px 11px; border-radius:0; outline:none; }
+  input:focus, select:focus { border-color:var(--navy); box-shadow:0 0 0 2px rgba(13,27,42,.08); }
+  .list { overflow:auto; padding:8px; }
+  .list-count { font-family:'Barlow Condensed',sans-serif; font-size:.66rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); padding:0 8px 8px; }
+  .person { width:100%; text-align:left; background:#fff; border:1px solid transparent; border-bottom-color:#eee9df; padding:10px; cursor:pointer; display:block; color:var(--navy); }
+  .person:hover, .person.active { border-color:var(--navy); background:#faf9f6; }
+  .person-name { font-weight:700; font-size:.95rem; line-height:1.2; }
+  .person-meta { margin-top:4px; font-family:'Barlow Condensed',sans-serif; font-size:.67rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  .party-dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:6px; vertical-align:middle; background:var(--muted); }
+  .party-dot.dem { background:var(--dem); }
+  .party-dot.rep { background:var(--rep); }
+  .profile { min-height:680px; }
+  .hero { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:24px; padding:26px 28px 22px; border-bottom:1px solid var(--mid); background:linear-gradient(180deg,#fff,#fbfaf7); }
+  .office { font-family:'Barlow Condensed',sans-serif; font-size:.74rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--red); margin-bottom:8px; }
+  .name { font-family:'Playfair Display',serif; font-size:clamp(2rem,4vw,3.3rem); font-weight:900; line-height:1; letter-spacing:-.035em; }
+  .meta-line { margin-top:10px; color:var(--muted); font-size:.95rem; }
+  .stats { display:grid; grid-template-columns:repeat(3, minmax(120px,1fr)); border-top:1px solid var(--mid); border-bottom:1px solid var(--mid); }
+  .stat { padding:16px 18px; border-right:1px solid var(--mid); background:#fff; }
+  .stat:last-child { border-right:none; }
+  .stat-value { font-family:'Barlow Condensed',sans-serif; font-size:1.55rem; font-weight:700; line-height:1; }
+  .stat-label { margin-top:4px; font-family:'Barlow Condensed',sans-serif; font-size:.62rem; letter-spacing:.15em; text-transform:uppercase; color:var(--muted); font-weight:700; }
+  .tabs { display:flex; gap:0; border-bottom:1px solid var(--mid); overflow:auto; background:#fff; }
+  .tab { border:none; border-right:1px solid var(--mid); background:#fff; color:var(--navy); padding:12px 14px; font-family:'Barlow Condensed',sans-serif; font-size:.7rem; font-weight:700; letter-spacing:.13em; text-transform:uppercase; cursor:pointer; white-space:nowrap; }
+  .tab:hover, .tab.active { background:var(--navy); color:#fff; }
+  .content { padding:24px 28px 32px; }
+  .section-title { font-family:'Playfair Display',serif; font-size:1.35rem; font-weight:700; margin-bottom:12px; }
+  .section-body { white-space:pre-wrap; color:#202c38; line-height:1.58; font-size:.94rem; }
+  .section-body a { color:var(--red); }
+  .empty { padding:80px 28px; text-align:center; color:var(--muted); }
+  .method { border-top:1px solid var(--mid); padding:16px 28px; color:var(--muted); font-size:.82rem; line-height:1.45; background:#fbfaf7; }
+  @media(max-width:900px) {
+    header { padding:18px 20px; display:block; }
+    nav { justify-content:flex-start; margin-top:14px; }
+    main { padding:20px 14px 44px; }
+    .layout { grid-template-columns:1fr; }
+    .search-panel { position:relative; top:auto; max-height:none; }
+    .list { max-height:360px; }
+    .hero { grid-template-columns:1fr; }
+    .stats { grid-template-columns:1fr; }
+    .stat { border-right:none; border-bottom:1px solid var(--mid); }
+  }
+</style>
+</head>
+<body>
+<div class="topbar">VoteIQ <span>/</span> Virginia Civic Intelligence</div>
+<header>
+  <a class="brand" href="/">
+    <div class="logo">Vote<em>IQ</em></div>
+    <div class="sub">Profiles & Public Records</div>
+  </a>
+  <nav>
+    <a href="/">Chat</a>
+    <a href="/representatives">Representatives</a>
+    <a class="active" href="/politicians">Profiles</a>
+    <a href="/federal-profiles">Federal</a>
+  </nav>
+</header>
+<main>
+  <div class="layout">
+    <aside class="panel search-panel">
+      <div class="panel-head">
+        <div class="eyebrow">Profile Index</div>
+        <h1>Virginia politicians</h1>
+        <p class="hint">Search House, Senate, Governor, Lieutenant Governor, and Attorney General profiles built from local SBE, OpenStates, LIS, and VoteIQ records.</p>
+      </div>
+      <div class="controls">
+        <input id="search" placeholder="Search by name, office, district"/>
+        <select id="office">
+          <option value="">All offices</option>
+          <option>Governor</option>
+          <option>Lieutenant Governor</option>
+          <option>Attorney General</option>
+          <option>State Senate</option>
+          <option>House of Delegates</option>
+          <option>Statewide</option>
+        </select>
+      </div>
+      <div class="list" id="list">
+        <div class="list-count">Loading profiles...</div>
+      </div>
+    </aside>
+    <section class="panel profile" id="profile">
+      <div class="empty">Choose a profile to view public-record tabs.</div>
+    </section>
+  </div>
+</main>
+<script>
+const INITIAL_PROFILE_ID = "__INITIAL_PROFILE_ID__";
+let profiles = [];
+let activeProfileId = "";
+let activeTab = "Overview";
+
+function money(n) {
+  const v = Number(n || 0);
+  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(v >= 10_000_000 ? 1 : 2)}M`;
+  if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
+  return `$${v.toLocaleString()}`;
+}
+
+function partyClass(p) {
+  const s = String(p || "").toLowerCase();
+  if (s.startsWith("d")) return "dem";
+  if (s.startsWith("r")) return "rep";
+  return "";
+}
+
+function escapeHtml(s) {
+  return String(s || "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function tabLabel(section) {
+  return section === "Campaign Finance by Cycle" ? "Campaign Finance" : section;
+}
+
+function preferredTabs(sections) {
+  const keys = Object.keys(sections || {});
+  const wanted = [
+    "Overview",
+    "Voting Record",
+    "Governor Actions",
+    "Campaign Finance by Cycle",
+    "Top Donor Sectors",
+    "Top Contributors",
+    "PAC / Outside Money",
+    "Top donor geography",
+    "Methodology"
+  ];
+  const ordered = wanted.filter(k => keys.includes(k));
+  keys.forEach(k => { if (!ordered.includes(k)) ordered.push(k); });
+  return ordered;
+}
+
+async function loadProfiles() {
+  const q = document.getElementById("search").value.trim();
+  const office = document.getElementById("office").value;
+  const url = `/api/politicians?q=${encodeURIComponent(q)}&office=${encodeURIComponent(office)}&limit=250`;
+  const res = await fetch(url);
+  const data = await res.json();
+  profiles = data.profiles || [];
+  renderList(data.count || profiles.length);
+  if (INITIAL_PROFILE_ID && INITIAL_PROFILE_ID !== "__INITIAL_PROFILE_ID__" && !activeProfileId) {
+    loadProfile(INITIAL_PROFILE_ID, true);
+  } else if (!activeProfileId && profiles[0]) {
+    loadProfile(profiles[0].id, true);
+  }
+}
+
+function renderList(count) {
+  const list = document.getElementById("list");
+  const items = profiles.map(p => `
+    <button class="person ${p.id === activeProfileId ? "active" : ""}" onclick="loadProfile('${escapeHtml(p.id)}')">
+      <div class="person-name"><span class="party-dot ${partyClass(p.party)}"></span>${escapeHtml(p.name)}</div>
+      <div class="person-meta">${escapeHtml(p.office)}${p.district ? ` ${escapeHtml(p.district)}` : ""} · ${money(p.total_raised)} · ${escapeHtml(p.cycle_start)}-${escapeHtml(p.cycle_end)}</div>
+    </button>
+  `).join("");
+  list.innerHTML = `<div class="list-count">${count.toLocaleString()} matching profiles</div>${items || '<div class="empty">No matching profiles.</div>'}`;
+}
+
+async function loadProfile(id, replace=false) {
+  activeProfileId = id;
+  activeTab = "Overview";
+  renderList(profiles.length);
+  const res = await fetch(`/api/politicians/${encodeURIComponent(id)}`);
+  const data = await res.json();
+  if (!data.profile) {
+    document.getElementById("profile").innerHTML = '<div class="empty">Profile not found.</div>';
+    return;
+  }
+  renderProfile(data.profile);
+  const path = `/profile/${encodeURIComponent(id)}`;
+  if (!replace && location.pathname !== path) history.pushState({id}, "", path);
+}
+
+function renderProfile(p) {
+  const tabs = preferredTabs(p.sections);
+  if (!tabs.includes(activeTab)) activeTab = tabs[0] || "Overview";
+  const district = p.district ? ` District ${escapeHtml(p.district)}` : "";
+  const tabButtons = tabs.map(t => `<button class="tab ${t === activeTab ? "active" : ""}" onclick="setTab('${escapeHtml(t)}')">${escapeHtml(tabLabel(t))}</button>`).join("");
+  const body = escapeHtml(p.sections[activeTab] || "");
+  document.getElementById("profile").innerHTML = `
+    <div class="hero">
+      <div>
+        <div class="office">${escapeHtml(p.office)}${district}</div>
+        <div class="name">${escapeHtml(p.name)}</div>
+        <div class="meta-line">${escapeHtml(p.party || "Party not listed")} · SBE cycles ${escapeHtml(p.cycle_start)}-${escapeHtml(p.cycle_end)}</div>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="stat-value">${money(p.total_raised)}</div><div class="stat-label">Career SBE Total</div></div>
+      <div class="stat"><div class="stat-value">${Number(p.records || 0).toLocaleString()}</div><div class="stat-label">Itemized Records</div></div>
+      <div class="stat"><div class="stat-value">${escapeHtml(p.cycle_start)}-${escapeHtml(p.cycle_end)}</div><div class="stat-label">Cycle Coverage</div></div>
+    </div>
+    <div class="tabs">${tabButtons}</div>
+    <div class="content">
+      <div class="section-title">${escapeHtml(tabLabel(activeTab))}</div>
+      <div class="section-body">${body}</div>
+    </div>
+    <div class="method">VoteIQ profiles use local public records. Campaign finance is from Virginia SBE Schedule A rows; sector labels are keyword classifications. Correlation does not imply causation.</div>
+  `;
+  window.currentProfile = p;
+}
+
+function setTab(tab) {
+  activeTab = tab;
+  renderProfile(window.currentProfile);
+}
+
+let debounce;
+document.getElementById("search").addEventListener("input", () => {
+  clearTimeout(debounce);
+  debounce = setTimeout(() => { activeProfileId = ""; loadProfiles(); }, 180);
+});
+document.getElementById("office").addEventListener("change", () => { activeProfileId = ""; loadProfiles(); });
+window.addEventListener("popstate", e => {
+  const id = e.state && e.state.id;
+  if (id) loadProfile(id, true);
+});
+loadProfiles();
+</script>
+</body>
+</html>
