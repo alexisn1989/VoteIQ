@@ -88,6 +88,27 @@ def _connect(db_key: str) -> sqlite3.Connection | None:
     return conn
 
 
+def query_database(db_key: str, sql: str, params: Iterable | None = None) -> list[sqlite3.Row]:
+    """Query one configured SQLite database, respecting DATA_DIR on Render."""
+    conn = _connect(db_key)
+    if not conn:
+        return []
+    try:
+        return conn.execute(sql, tuple(params or ())).fetchall()
+    finally:
+        conn.close()
+
+
+def query_legislative(sql: str, params: Iterable | None = None) -> list[sqlite3.Row]:
+    """Query legislative_intelligence.db."""
+    return query_database("legislative_intelligence", sql, params)
+
+
+def query_polls(sql: str, params: Iterable | None = None) -> list[sqlite3.Row]:
+    """Query polls.db."""
+    return query_database("polls", sql, params)
+
+
 def _table_exists(conn: sqlite3.Connection, table: str) -> bool:
     return conn.execute(
         "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
