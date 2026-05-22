@@ -557,6 +557,37 @@ def _governor_action_query(user_query: str) -> bool:
 
 _POLLS_DB = os.path.join(os.getenv("DATA_DIR", _BASE_DIR), "polls.db")
 
+SPANBERGER_2026_VETO_FALLBACKS = {
+    "HB1288": ("2026-04-13", "Enforcement of vehicle liens; increases property value."),
+    "SB17": ("2026-04-13", "Enforcement of vehicle liens; increases property value."),
+    "HB86": ("2026-04-13", "Mattress Stewardship Program; established, definitions, report."),
+    "SB764": ("2026-04-13", "Defendant; deferred disposition in a criminal case, license suspension."),
+    "HB637": ("2026-04-14", "Possession of residue of a controlled substance unlawful; penalties exceptions."),
+    "SB23": ("2026-04-13", "Plea agreements and court orders; prohibited provisions."),
+    "SB661": ("2026-04-13", "Va. Small Business Economic Dev. Act; established, regulation and taxation of skill game machines."),
+    "SB756": ("2026-04-11", "Casino gaming; eligible host localities."),
+    "HB61": ("2026-05-19", "Small SWaM Business Procurement Enhancement Program; established, report."),
+    "HB111": ("2026-05-19", "Voter registration; cancellation of registration, sources of data."),
+    "HB246": ("2026-05-19", "Mental illness, neurocognitive disorder, etc.; affirmative defense or reduced penalty."),
+    "SB335": ("2026-05-19", "Mental illness, neurocognitive disorder, etc.; affirmative defense or reduced penalty."),
+    "HB449": ("2026-05-19", "Civil actions filed on behalf of multiple persons; class actions."),
+    "SB229": ("2026-05-19", "Civil actions filed on behalf of multiple persons; class actions."),
+    "HB483": ("2026-05-19", "Prescription Drug Affordability Board; established."),
+    "SB271": ("2026-05-19", "Prescription Drug Affordability Board; established."),
+    "HB642": ("2026-05-19", "Cannabis control; establishes framework for creation of retail marijuana market, penalties, report."),
+    "SB542": ("2026-05-19", "Cannabis control; establishes framework for creation of retail marijuana market, penalties, report."),
+    "HB1173": ("2026-05-19", "Virginia Human Rights Act; reasonable accommodation for known limitations related to menopause."),
+    "SB258": ("2026-05-19", "Virginia Human Rights Act; reasonable accommodation for known limitations related to menopause."),
+    "HB1222": ("2026-05-19", "Social services, local departments of; child abuse and neglect, recorded interviews."),
+    "HB1385": ("2026-05-19", "Higher educational institutions, public; membership of governing boards."),
+    "SB494": ("2026-05-19", "Higher educational institutions, public; membership of governing boards."),
+    "HB1392": ("2026-05-19", "Correctional facilities, local and regional, and courthouse security; powers & duties for operation."),
+    "SB83": ("2026-05-19", "District or circuit court; possession of portable electronic devices."),
+    "SB218": ("2026-05-19", "Inmates; Director of Dept. of Corrections shall continue to accept applications for confinement."),
+    "HB1263": ("2026-05-14", "Public employees; repeals existing prohibition on collective bargaining, etc."),
+    "SB378": ("2026-05-14", "Public employees; repeals existing prohibition on collective bargaining, etc."),
+}
+
 
 def _direct_governor_veto_reply(user_query: str) -> str:
     """Return the full local veto list directly so Claude cannot collapse it."""
@@ -567,28 +598,35 @@ def _direct_governor_veto_reply(user_query: str) -> str:
         return ""
     if "youngkin" in q:
         return ""
-    if not os.path.exists(_POLLS_DB):
-        return ""
-
+    rows = []
     try:
-        conn = sqlite3.connect(_POLLS_DB)
-        conn.row_factory = sqlite3.Row
-        rows = conn.execute(
-            """
-            SELECT bill_number, session, title, action_date, source_url
-            FROM governor_actions
-            WHERE session = '2026'
-              AND lower(governor) LIKE '%spanberger%'
-              AND action IN ('vetoed', 'pocket_veto', 'veto_sustained', 'veto_overridden')
-            ORDER BY action_date DESC, bill_number
-            """
-        ).fetchall()
-        conn.close()
+        if os.path.exists(_POLLS_DB):
+            conn = sqlite3.connect(_POLLS_DB)
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                """
+                SELECT bill_number, session, title, action_date, source_url
+                FROM governor_actions
+                WHERE session = '2026'
+                  AND lower(governor) LIKE '%spanberger%'
+                  AND action IN ('vetoed', 'pocket_veto', 'veto_sustained', 'veto_overridden')
+                ORDER BY action_date DESC, bill_number
+                """
+            ).fetchall()
+            conn.close()
     except Exception:
-        return ""
+        rows = []
 
     if not rows:
-        return ""
+        rows = [
+            {
+                "bill_number": bill,
+                "title": title,
+                "action_date": date,
+                "source_url": "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html",
+            }
+            for bill, (date, title) in SPANBERGER_2026_VETO_FALLBACKS.items()
+        ]
 
     lines = [
         f"Governor Spanberger has {len(rows)} veto records available in the local VoteIQ dataset for the 2026 session:",
