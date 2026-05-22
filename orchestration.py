@@ -27,6 +27,19 @@ def is_present(value: Any) -> bool:
     return not isinstance(value, Exception) and bool(value)
 
 
+# Cap concurrent blocking DB/IO threads across all simultaneous chat requests.
+# Python's default ThreadPoolExecutor is min(32, cpu_count+4) — typically 5-8 on
+# Render free tier. Without this, 3 users firing 15 tasks each = 45 threads
+# competing for 8 slots, causing cascading delays and potential pool exhaustion.
+_SOURCE_SEMAPHORE: Optional[asyncio.Semaphore] = None
+
+def _get_semaphore() -> asyncio.Semaphore:
+    global _SOURCE_SEMAPHORE
+    if _SOURCE_SEMAPHORE is None:
+        _SOURCE_SEMAPHORE = asyncio.Semaphore(8)
+    return _SOURCE_SEMAPHORE
+
+
 async def run_sync_source(
     source_name: str,
     func,
@@ -36,7 +49,8 @@ async def run_sync_source(
     """Run a blocking function off the event loop, tag it with its source name, and time it."""
     t0 = time.perf_counter()
     try:
-        result = await asyncio.to_thread(func, *args, **kwargs)
+        async with _get_semaphore():
+            result = await asyncio.to_thread(func, *args, **kwargs)
         elapsed = time.perf_counter() - t0
         log.debug("source %-30s %.3fs  present=%s", source_name, elapsed, is_present(result))
         return source_name, result
@@ -48,15 +62,33 @@ async def run_sync_source(
 
 # ── thin wrappers around main.py fetch functions ──────────────────────────────
 
-def _get_governor_data(query: str) -> str:
+def _has_governor_intent(query: str) -> bool:
+    q = (query or "").lower()
+    return any(term in q for term in (
+        "governor", "spanberger", "veto", "vetoed", "signed",
+        "signing", "amended", "returned", "executive order",
+        "bill action", "governor action", "she", "her",
+    ))
+
+
+def _get_governor_data(query: str, bill_numbers: list[str] | None = None) -> str:
     import main as _m
+    if not _has_governor_intent(query) and not bill_numbers:
+        return ""
     parts = []
-    gov = _m._fetch_governor_action_context(query)
-    if gov:
-        parts.append(gov)
-    eo = _m._fetch_governor_eo_context(query)
-    if eo:
-        parts.append(eo)
+    try:
+        gov = _m._fetch_governor_action_context(query, bill_numbers=bill_numbers or None)
+        if gov:
+            parts.append(gov)
+    except Exception as exc:
+        log.warning("governor action lookup failed: %s", exc)
+    try:
+        if _has_governor_intent(query):
+            eo = _m._fetch_governor_eo_context(query)
+            if eo:
+                parts.append(eo)
+    except Exception as exc:
+        log.warning("governor executive order lookup failed: %s", exc)
     return "\n\n".join(parts)
 
 
@@ -115,11 +147,33 @@ def _get_finance(bioguide_ids: list[str], query: str) -> str:
 
 
 def _get_pac_data(bioguide_ids: list[str], query: str) -> str:
-    """PAC data is already surfaced inside _fetch_finance_context; stub for source tracking."""
     import main as _m
-    if not bioguide_ids or not _m._PAC_CACHE:
-        return ""
-    return ""  # included in finance block
+    return _m._fetch_pac_context(query, bioguide_ids=bioguide_ids or None, basic=True)
+
+
+def _get_state_campaign_finance(query: str, pol_names: list[str]) -> str:
+    import main as _m
+    return _m._fetch_state_campaign_finance_context(query, state_names=pol_names, basic=True)
+
+
+def _get_spanberger_finance(query: str) -> str:
+    import main as _m
+    return _m._fetch_spanberger_finance_context(query)
+
+
+def _get_full_profiles(query: str) -> str:
+    import main as _m
+    return _m._full_profiles_for_query(query, limit=3)
+
+
+def _get_governor_action_money(query: str) -> str:
+    import main as _m
+    return _m._fetch_governor_action_money_analyst_context(query)
+
+
+def _get_database_context(query: str) -> str:
+    from voteiq.services.database_context import build_database_context
+    return build_database_context(query)
 
 
 def _get_news(query: str, pol_names: list[str]) -> str:
@@ -231,10 +285,26 @@ def _get_bills_by_number(
 ) -> tuple[list[tuple[str, dict]], str | None]:
     """Returns (exact_docs, openstates_votes_text)."""
     import main as _m
-    exact_docs = _m._fetch_bills_by_id(bill_numbers, session_year)
-    os_votes = _m._openstates_vote_lookup(bill_numbers, session_year)
-    sqlite_b = _m._sqlite_bill_lookup(bill_numbers)
-    fed_b = _m._federal_sqlite_bill_lookup(bill_numbers)
+    exact_docs = []
+    os_votes = ""
+    sqlite_b = ""
+    fed_b = ""
+    try:
+        exact_docs = _m._fetch_bills_by_id(bill_numbers, session_year)
+    except Exception as exc:
+        log.warning("exact bill chunk lookup failed for %s: %s", bill_numbers, exc)
+    try:
+        os_votes = _m._openstates_vote_lookup(bill_numbers, session_year)
+    except Exception as exc:
+        log.warning("openstates vote lookup failed for %s: %s", bill_numbers, exc)
+    try:
+        sqlite_b = _m._sqlite_bill_lookup(bill_numbers)
+    except Exception as exc:
+        log.warning("sqlite bill lookup failed for %s: %s", bill_numbers, exc)
+    try:
+        fed_b = _m._federal_sqlite_bill_lookup(bill_numbers)
+    except Exception as exc:
+        log.warning("federal sqlite bill lookup failed for %s: %s", bill_numbers, exc)
     return exact_docs, os_votes, sqlite_b, fed_b
 
 
@@ -297,6 +367,8 @@ async def build_bills_context_parallel(
     # ── serial preprocessing (needed to set up parallel tasks) ────────────────
     mentioned    = _m._extract_bill_numbers(query)
     session_year = _m._extract_session_year(query)
+    if mentioned and not session_year:
+        session_year = "2026"
     leg_name     = _m._extract_legislator_name(query)
     hod_info     = _m.HOD_CONTEXT.get(hod_district) if hod_district else None
     sd_info      = _m.SD_CONTEXT.get(sd_district)  if sd_district  else None
@@ -350,6 +422,16 @@ async def build_bills_context_parallel(
 
     _t_start = time.perf_counter()
 
+    # SQL is the primary retrieval layer. Chroma/RAG is only a fallback when
+    # direct SQLite search does not return usable context for the question.
+    _t_sql = time.perf_counter()
+    database_context = await asyncio.to_thread(_get_database_context, query)
+    log.debug(
+        "sql database context %.3fs  chars=%d",
+        time.perf_counter() - _t_sql,
+        len(database_context or ""),
+    )
+
     # ── bill retrieval (may hit Voyage AI — do before parallel phase) ─────────
     cached_bill_context = (
         _m._cached_bill_description_lookup(mentioned, session_year)
@@ -360,9 +442,9 @@ async def build_bills_context_parallel(
     use_haiku    = _m._simple_bill_lookup_question(query, mentioned, cached_bill_context)
     chroma_error: str | None = None
     chroma_results: dict = {"documents": [[]], "metadatas": [[]]}
-    bill_retrieval_method = "keyword cache"
+    bill_retrieval_method = "SQL database context" if database_context else "keyword cache"
 
-    if not (mentioned and cached_bill_context):
+    if not database_context and not (mentioned and cached_bill_context):
         _t_chroma = time.perf_counter()
         chroma_results, chroma_error = await asyncio.to_thread(_search_chromadb, query)
         log.debug("chromadb %.3fs  error=%s", time.perf_counter() - _t_chroma, chroma_error)
@@ -370,7 +452,8 @@ async def build_bills_context_parallel(
 
     # ── parallel source tasks ──────────────────────────────────────────────────
     tasks = [
-        run_sync_source("governor actions",    _get_governor_data, query),
+        run_sync_source("governor actions",    _get_governor_data, query, mentioned),
+        run_sync_source("full profiles",       _get_full_profiles, query),
         run_sync_source("state rep profile",   _get_state_profiles, hod_info, sd_info, leg_name),
         run_sync_source("state voting record", _get_state_votes, leg_name, mentioned),
     ]
@@ -385,6 +468,14 @@ async def build_bills_context_parallel(
 
     if bioguide_ids and _is_money:
         tasks.append(run_sync_source("campaign finance", _get_finance, bioguide_ids, query))
+        tasks.append(run_sync_source("pac context", _get_pac_data, bioguide_ids, query))
+
+    if _is_money:
+        tasks.append(run_sync_source("state campaign finance", _get_state_campaign_finance, query, pol_names))
+
+    if _is_money and any(term in q_lower for term in ("governor", "spanberger")):
+        tasks.append(run_sync_source("spanberger finance", _get_spanberger_finance, query))
+        tasks.append(run_sync_source("governor action money", _get_governor_action_money, query))
 
     if bioguide_ids and _is_ie:
         tasks.append(run_sync_source("independent expenditures", _get_ie_context, bioguide_ids, query))
@@ -392,7 +483,7 @@ async def build_bills_context_parallel(
     if _is_news:
         tasks.append(run_sync_source("recent news", _get_news, query, pol_names))
 
-    if mentioned:
+    if mentioned and not database_context:
         tasks.append(run_sync_source(
             "bill lookup", _get_bills_by_number, mentioned, session_year
         ))
@@ -414,6 +505,10 @@ async def build_bills_context_parallel(
                 context_blocks.insert(0, block)
             else:
                 context_blocks.append(block)
+
+    # Direct SQL database context always gets first priority.
+    if database_context:
+        _add(database_context, prepend=True)
 
     # bill lookup results
     bill_result = source_results.get("bill lookup")
@@ -439,7 +534,19 @@ async def build_bills_context_parallel(
         _add(block, prepend=True)
 
     # parallel source results (insert high-priority ones at front)
-    _PREPEND_SOURCES = {"federal profile", "state rep profile", "governor actions", "state voting record"}
+    _PREPEND_SOURCES = {
+        "federal profile",
+        "database context",
+        "full profiles",
+        "state rep profile",
+        "governor actions",
+        "state voting record",
+        "campaign finance",
+        "state campaign finance",
+        "spanberger finance",
+        "governor action money",
+        "pac context",
+    }
     for source_name, result in source_results.items():
         if source_name == "bill lookup":
             continue
@@ -468,6 +575,10 @@ async def build_bills_context_parallel(
             f"{meta.get('bill_id','?')} {meta.get('session','?')}{src_tag}]"
         )
         _add(f"{label}\n{doc}")
+
+    if database_context:
+        context_blocks = [b for b in context_blocks if b != database_context]
+        context_blocks.insert(0, database_context)
 
     context = "\n\n---\n\n".join(b for b in context_blocks if b.strip())
 
@@ -517,7 +628,13 @@ async def build_bills_context_parallel(
         "fed_member":          fed_member,
         "pol_names":           pol_names,
         # feature flags for system prompt / query_context
-        "has_finance":         is_present(source_results.get("campaign finance")),
+        "has_finance":         any(is_present(source_results.get(name)) for name in (
+            "campaign finance",
+            "state campaign finance",
+            "spanberger finance",
+            "governor action money",
+            "pac context",
+        )),
         "has_votes":           is_present(source_results.get("voting record")) or is_present(source_results.get("state voting record")),
         "has_news":            is_present(source_results.get("recent news")),
         "has_bills":           bool(context),

@@ -3,10 +3,12 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import sqlite3
 from pathlib import Path
 
 import pdfplumber
 from fastapi import APIRouter, File, Form, Request, UploadFile
+from voteiq.config.rate_limit import limiter
 from fastapi.responses import StreamingResponse
 
 from orchestration import (
@@ -23,6 +25,7 @@ from voteiq.config.voices import (
     VOICE_PROMPTS,
     get_system_prompt,
 )
+from voteiq.services.database_context import build_database_context
 
 router = APIRouter(tags=["chat"])
 
@@ -378,7 +381,7 @@ def _build_bills_context(
             gov_block = ""
         if gov_block and gov_block not in seen_docs:
             seen_docs.add(gov_block)
-            context_blocks.append(gov_block)
+            context_blocks.insert(0, gov_block)
 
         try:
             eo_block = _m._fetch_governor_eo_context(user_query)
@@ -543,7 +546,67 @@ def _needs_district_for_my_rep(req, user_query: str) -> bool:
 
 # ── Bills helpers (shared by both bills-chat routes) ─────────────────────────
 
+def _governor_action_query(user_query: str) -> bool:
+    q = (user_query or "").lower()
+    return any(term in q for term in (
+        "governor", "spanberger", "veto", "vetoed", "signed",
+        "signing", "amended", "returned", "executive order",
+        "bill action", "governor action",
+    ))
+
+
 _POLLS_DB = os.path.join(os.getenv("DATA_DIR", _BASE_DIR), "polls.db")
+
+
+def _direct_governor_veto_reply(user_query: str) -> str:
+    """Return the full local veto list directly so Claude cannot collapse it."""
+    q = (user_query or "").lower()
+    if "veto" not in q and "vetoed" not in q:
+        return ""
+    if not any(term in q for term in ("governor", "spanberger", "she", "her", "veto", "vetoed")):
+        return ""
+    if "youngkin" in q:
+        return ""
+    if not os.path.exists(_POLLS_DB):
+        return ""
+
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            """
+            SELECT bill_number, session, title, action_date, source_url
+            FROM governor_actions
+            WHERE session = '2026'
+              AND lower(governor) LIKE '%spanberger%'
+              AND action IN ('vetoed', 'pocket_veto', 'veto_sustained', 'veto_overridden')
+            ORDER BY action_date DESC, bill_number
+            """
+        ).fetchall()
+        conn.close()
+    except Exception:
+        return ""
+
+    if not rows:
+        return ""
+
+    lines = [
+        f"Governor Spanberger has {len(rows)} veto records available in the local VoteIQ dataset for the 2026 session:",
+        "",
+    ]
+    for row in rows:
+        bill = row["bill_number"]
+        title = row["title"] or "Title not available"
+        url = row["source_url"] or f"https://openstates.org/va/bills/2026/{bill}/"
+        date = row["action_date"] or "date not available"
+        lines.append(f"- [{bill}]({url}) — {title} ({date})")
+
+    lines.extend([
+        "",
+        "Source: VoteIQ `polls.db.governor_actions`, cross-checked against Governor's Office 2026 veto releases where override rows were needed.",
+        "VoteIQ does not infer motive, intent, or causation from bill activity.",
+    ])
+    return "\n".join(lines)
 
 
 def _fetch_floor_statements(
@@ -758,6 +821,7 @@ def _bills_system_prompt(
     return (
         f"You are VoteIQ, a nonpartisan Virginia civic assistant. Today is May 2026. "
         f"You have access to the retrieved excerpts below, which may include Virginia General Assembly bills, "
+        f"direct SQLite database rows labeled '[Database Context]', "
         f"election results, legislator voting records, representative profile summaries from the local 2026 session database, "
         f"roll-call votes and sponsored bills for Virginia's 13 federal representatives (119th Congress) from congress.gov, "
         f"full bill text for 119th Congress federal bills sourced from govinfo.gov (labeled '| FEDERAL' in excerpts), "
@@ -767,8 +831,19 @@ def _bills_system_prompt(
         f"AND recent Virginia political news articles (sourced from Virginia news outlets via Gemini extraction). "
         f"Answer the user's question using ONLY the excerpts below — do not rely on your training data. "
         f"Be factual and cite bill numbers when relevant. "
+        f"If the excerpts include any '[Governor Action' rows, those are confirmed local governor-action records. "
+        f"If the excerpts include '[Database Context]' rows, treat them as direct local database records and use them before guessing. "
+        f"Do not say governor actions returned no data, are unavailable, or cannot be confirmed for this query. "
+        f"For veto questions, list the bills whose Action is 'Vetoed', 'Veto sustained', or 'Veto overridden' from those rows. "
         f"For federal members (U.S. House/Senate), cite bill type and number (e.g. H.R. 23) and note the source as \"Congress.gov bill record\" for bill details. "
         f"For campaign finance questions, use the finance excerpts if present. Cite federal finance as \"(FEC data, fec.gov)\" and Virginia state finance as \"(Virginia SBE campaign finance filings)\".{district_note}{chroma_note}{model_note}"
+        f"\n\nNEWS FOLLOW-UP LINKS — when answering about a news item and suggesting related vote or bill topics, "
+        f"make the follow-ups clickable internal Markdown links. Use this format:\n"
+        f"Related topics:\n"
+        f"- [Handgun storage requirements](/ask?q=How%20did%20my%20representatives%20vote%20on%20handgun%20storage%20requirements%3F)\n"
+        f"- [Firearms in schools](/ask?q=How%20did%20my%20representatives%20vote%20on%20firearms%20in%20schools%3F)\n"
+        f"- [Child safety legislation](/ask?q=How%20did%20my%20representatives%20vote%20on%20child%20safety%20legislation%3F)\n"
+        f"Choose topic labels that match the retrieved article. URL-encode the q= value.\n"
         f"\n\nFEDERAL BILL EXPLAINER FORMAT — when the user's query starts with \"Explain this federal bill:\" or asks what a specific federal bill (H.R., S., H.J.Res., etc.) does, respond using this structure:\n"
         f"## [Bill ID] — [Short Title]\n"
         f"**What it does:** One or two plain-English sentences. No jargon. Imagine explaining to a neighbor.\n"
@@ -798,7 +873,7 @@ def _bills_system_prompt(
         f"Only fill cells from retrieved excerpts. If a field is absent, write \"Not shown in current dataset.\" Keep federal yes-rate metrics separate from state party-alignment metrics.\n"
         f"\n\nVOTE INTERPRETATION — apply these rules when reading vote records:\n"
         f"- When showing votes tied to a bill, statement, donor pattern, or other context, label the section \"Related Vote Record\" and include this note: \"These votes are public-record actions. VoteIQ does not infer motive or reasoning from votes alone.\"\n"
-        f"- If a legislator votes YES on passage but NO on concurrence/conference substitute, they likely objected to the amended version, not the bill itself. Say: \"voted against the House-amended version; accepted final compromise.\"\n"
+        f"- If a legislator votes NO on a House-amended version, do not infer opposition to the original bill concept. Say: \"Correction note: [Name] voted NO on the House-amended version of [Bill ID]. VoteIQ does not infer whether that reflected opposition to the original bill, the amendments, or another reason.\"\n"
         f"- If a legislator votes YES in committee but NO on floor, they may have had ideological concerns or constituent pressure. Do not assume — say \"voted NO on floor passage after supporting it in committee; dataset does not explain the change.\"\n"
         f"- Always show the SEQUENCE of votes when available, not just the final result. A bill can have 4-8 votes — the pattern matters.\n"
         f"- Flag when a NO vote is on a substitute or amendment vs. the original bill. These are different positions.\n"
@@ -863,8 +938,13 @@ def _bills_system_prompt(
         f"\"Breaks from party\" means actual recorded NO votes against the party YES majority. "
         f"Issue-area tags are keyword-based, not official legislative categories.\n\n"
         f"CALL TO ACTION — always end every legislator response with:\n"
-        f"**Want to dig deeper?** Ask me how [Name] voted on [topic1], [topic2], or [topic3]. Or ask about a specific bill by number.\n"
-        f"Use the legislator's actual name and their real top 3 issue areas from the excerpt.\n\n"
+        f"**Want to dig deeper?** I can show you how [Name] voted on related bills this session.\n\n"
+        f"Related topics:\n"
+        f"- [topic1](/ask?q=URL_ENCODED_FOLLOW_UP_QUERY_FOR_TOPIC1)\n"
+        f"- [topic2](/ask?q=URL_ENCODED_FOLLOW_UP_QUERY_FOR_TOPIC2)\n"
+        f"- [topic3](/ask?q=URL_ENCODED_FOLLOW_UP_QUERY_FOR_TOPIC3)\n\n"
+        f"Use the legislator's actual name and their real top 3 issue areas from the excerpt. "
+        f"URL-encode spaces and punctuation in the /ask?q= links. Or tell the user they can ask about a specific bill by number.\n\n"
         f"If any section has no data, write: \"No [section] data available in current dataset.\"{exact_lookup_note}"
         f"\n\nEXCERPTS:\n{context}"
     )
@@ -934,6 +1014,10 @@ async def chat(req: ChatRequest):
         )
 
     last_question  = req.messages[-1].content if req.messages else ""
+    direct_governor_reply = _direct_governor_veto_reply(last_question)
+    if direct_governor_reply:
+        return ChatResponse(reply=direct_governor_reply)
+
     pol_names:      list[str] = []
     bioguide_ids:   list[str] = []
     if ctx and ctx.get("rep"):
@@ -979,6 +1063,7 @@ async def chat(req: ChatRequest):
         member_analyst_context = ""
     governor_context = _m._fetch_governor_action_context(last_question)
     governor_eo_context = _m._fetch_governor_eo_context(last_question)
+    database_context = build_database_context(last_question)
     state_member_context = _m._fetch_va_state_member_context(last_question, hod_info=hod_info, sd_info=sd_info)
     ie_context = _m._fetch_ie_context(bioguide_ids, last_question)
 
@@ -1063,6 +1148,14 @@ Available data for this representative:
 - Voter registration and civic participation info
 - Governor Spanberger's bill actions (signed, vetoed, amended) and executive orders
 
+Governor action rule:
+If the context below includes any "[Governor Action" rows, treat those as confirmed local governor-action records. Do not say governor actions returned no data, are unavailable, or cannot be confirmed for this query. For veto questions, list bills whose Action is "Vetoed", "Veto sustained", or "Veto overridden" from those rows.
+
+Database access rule:
+If the context below includes "[Database Context" rows, treat them as direct local SQLite records from VoteIQ's databases. Use those rows before making any general statement that data is unavailable.
+
+{database_context if database_context else ""}
+
 {vote_context if vote_context else ""}
 
 {finance_context if finance_context else ""}
@@ -1113,6 +1206,11 @@ When citing a vote, include the bill name and Yea/Nay. When citing donors or ind
 async def gemini_chat(request: Request, req: ChatRequest):
     """Chat with VoteIQ using Gemini, grounded in FEC data and district context."""
     import main as _m
+
+    user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
+    direct_governor_reply = _direct_governor_veto_reply(user_query)
+    if direct_governor_reply:
+        return ChatResponse(reply=direct_governor_reply)
 
     ctx = _m.DISTRICT_CONTEXT.get(req.district)
     if not ctx:
@@ -1206,7 +1304,21 @@ async def bills_chat(req: BillsChatRequest):
     import main as _m
 
     user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
-    context, exact_lookup_note, use_haiku, chroma_error = _build_bills_context(req, user_query)
+    direct_governor_reply = _direct_governor_veto_reply(user_query)
+    if direct_governor_reply:
+        return ChatResponse(reply=direct_governor_reply)
+
+    ctx_data = await build_bills_context_parallel(
+        query=user_query,
+        district=req.district or "",
+        hod_district=req.hod_district,
+        sd_district=req.sd_district,
+        locality=req.locality or "",
+    )
+    context = ctx_data["context"]
+    exact_lookup_note = ctx_data["exact_lookup_note"]
+    use_haiku = ctx_data["use_haiku"]
+    chroma_error = ctx_data["chroma_error"]
 
     if not context and chroma_error:
         sqlite_fallback = _local_bills_fallback_context(_m, req, user_query)
@@ -1243,7 +1355,7 @@ async def bills_chat(req: BillsChatRequest):
         if req.hod_district: _sp.append(f"HOD district: {req.hod_district}")
         if req.sd_district:  _sp.append(f"Senate district: {req.sd_district}")
         _ck_fb = _m._cache_key(user_query, f"\nUSER'S DISTRICT CONTEXT: {', '.join(_sp)}\n")
-    if _ck:
+    if _ck and not _governor_action_query(user_query):
         cached = _m._get_cached_reply(_ck, _ck_fb)
         if cached:
             cached = _with_source_line(cached)
@@ -1285,12 +1397,20 @@ async def bills_chat(req: BillsChatRequest):
 # ── /api/bills-chat-stream ────────────────────────────────────────────────────
 
 @router.post("/api/bills-chat-stream")
-async def bills_chat_stream(req: BillsChatRequest):
+@limiter.limit("20/minute;100/hour")
+async def bills_chat_stream(request: Request, req: BillsChatRequest):
     import main as _m
 
     user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
 
     # ── parallel context assembly ─────────────────────────────────────────────
+    direct_governor_reply = _direct_governor_veto_reply(user_query)
+    if direct_governor_reply:
+        async def _direct_gen(text=direct_governor_reply):
+            yield f"data: {json.dumps({'token': text})}\n\n"
+            yield "data: [DONE]\n\n"
+        return StreamingResponse(_direct_gen(), media_type="text/event-stream")
+
     ctx_data = await build_bills_context_parallel(
         query       = user_query,
         district    = req.district    or "",
@@ -1343,7 +1463,7 @@ async def bills_chat_stream(req: BillsChatRequest):
         if req.hod_district: _sp.append(f"HOD district: {req.hod_district}")
         if req.sd_district:  _sp.append(f"Senate district: {req.sd_district}")
         _ck_fb = _m._cache_key(user_query, f"\nUSER'S DISTRICT CONTEXT: {', '.join(_sp)}\n")
-    if _ck:
+    if _ck and not _governor_action_query(user_query):
         cached = _m._get_cached_reply(_ck, _ck_fb)
         if cached:
             cached = _with_source_line(cached)

@@ -32,6 +32,42 @@ ACTION_LABELS = {
 }
 
 
+OFFICIAL_2026_VETO_OVERRIDES = {
+    # April regular-session vetoes already appear correctly in OpenStates latest
+    # snapshots on some builds, but keeping them here makes the outcome stable.
+    "HB1288": ("2026-04-13", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html"),
+    "SB17": ("2026-04-13", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html"),
+    "HB86": ("2026-04-13", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html"),
+    "SB764": ("2026-04-13", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html"),
+    "HB637": ("2026-04-14", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html"),
+    "SB23": ("2026-04-13", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html"),
+    "SB661": ("2026-04-13", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html"),
+    "SB756": ("2026-04-11", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html"),
+
+    # Post-reconvene vetoes in the Governor's May 19, 2026 release.
+    "HB61": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
+    "HB111": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
+    "HB246": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
+    "SB335": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
+    "HB449": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
+    "SB229": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
+    "HB483": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
+    "SB271": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
+    "HB642": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
+    "SB542": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
+    "HB1173": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
+    "SB258": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
+    "HB1222": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
+    "HB1385": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
+    "SB494": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
+    "HB1392": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
+    "SB83": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
+    "SB218": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
+    "HB1263": ("2026-05-14", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
+    "SB378": ("2026-05-14", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
+}
+
+
 def _governor_for_session(session: str) -> str:
     return "Spanberger" if str(session) >= "2026" else "Youngkin"
 
@@ -92,7 +128,90 @@ def _ensure_table(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_gov_action_date
             ON governor_actions(action_date);
     """)
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(governor_actions)").fetchall()}
+    migrations = {
+        "sponsor_lis_id": "ALTER TABLE governor_actions ADD COLUMN sponsor_lis_id TEXT",
+    }
+    for column, ddl in migrations.items():
+        if column not in columns:
+            conn.execute(ddl)
     conn.commit()
+
+
+def _bill_lookup(conn: sqlite3.Connection, bill_number: str, session: str) -> sqlite3.Row | None:
+    try:
+        return conn.execute(
+            """
+            SELECT bill_number, session, title, status, introduced_date
+            FROM va_bills
+            WHERE bill_number = ? AND session = ?
+            LIMIT 1
+            """,
+            (bill_number, session),
+        ).fetchone()
+    except sqlite3.OperationalError:
+        return None
+
+
+def _apply_official_veto_overrides(conn: sqlite3.Connection, sessions: list[str]) -> int:
+    if "2026" not in {str(s) for s in sessions}:
+        return 0
+
+    count = 0
+    conn.row_factory = sqlite3.Row
+    for bill_number, (action_date, source_url) in OFFICIAL_2026_VETO_OVERRIDES.items():
+        bill = _bill_lookup(conn, bill_number, "2026")
+        title = bill["title"] if bill else ""
+        prior_status = bill["status"] if bill else ""
+        existing = conn.execute(
+            """
+            SELECT title, raw_status, source_url
+            FROM governor_actions
+            WHERE bill_number = ? AND session = '2026'
+            LIMIT 1
+            """,
+            (bill_number,),
+        ).fetchone()
+        if existing:
+            title = title or existing["title"] or ""
+            prior_status = prior_status or existing["raw_status"] or ""
+            source_url = existing["source_url"] or source_url
+
+        raw_status = "Vetoed by Governor"
+        if prior_status and "veto" not in prior_status.lower():
+            raw_status = f"Vetoed by Governor; previous status: {prior_status}"
+
+        conn.execute(
+            """
+            INSERT INTO governor_actions (
+                bill_number, session, title, raw_status,
+                action, action_key, action_label, action_date,
+                chapter_number, effective_date, governor,
+                sponsor_name, sponsor_party, source_url, fetched_at
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
+            ON CONFLICT(bill_number, session) DO UPDATE SET
+                title          = COALESCE(NULLIF(excluded.title, ''), governor_actions.title),
+                raw_status     = excluded.raw_status,
+                action         = excluded.action,
+                action_key     = excluded.action_key,
+                action_label   = excluded.action_label,
+                action_date    = excluded.action_date,
+                chapter_number = '',
+                effective_date = '',
+                governor       = excluded.governor,
+                source_url     = excluded.source_url,
+                fetched_at     = datetime('now')
+            """,
+            (
+                bill_number, "2026", title, raw_status,
+                "vetoed", "vetoed", ACTION_LABELS["vetoed"], action_date,
+                "", "", "Spanberger",
+                "", "", source_url,
+            ),
+        )
+        count += 1
+
+    return count
 
 
 def run(sessions: list[str] | None = None) -> int:
@@ -188,9 +307,12 @@ def run(sessions: list[str] | None = None) -> int:
         count += 1
 
     polls_conn.commit()
+    override_count = _apply_official_veto_overrides(polls_conn, sessions)
+    polls_conn.commit()
     polls_conn.close()
+    print(f"Applied {override_count} official 2026 veto overrides")
     print(f"Upserted {count} governor action records into polls.db")
-    return count
+    return count + override_count
 
 
 if __name__ == "__main__":
