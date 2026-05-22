@@ -17,6 +17,7 @@ _BASE_DIR = str(Path(__file__).resolve().parent.parent.parent.parent)
 _POLLS_DB = os.path.join(os.getenv("DATA_DIR", _BASE_DIR), "polls.db")
 _FULL_PROFILES_JSONL = os.path.join(_BASE_DIR, "va_full_profiles.jsonl")
 _full_profile_cache: list[dict] | None = None
+_pac_table_cache: list[dict] | None = None
 
 
 def _load_full_profiles() -> list[dict]:
@@ -98,6 +99,160 @@ def _profile_detail(profile: dict) -> dict:
     return {**summary, "text": text, "sections": sections, "metadata": profile.get("metadata") or {}}
 
 
+def _pac_key(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", str(name or "").lower()).strip()
+
+
+def _looks_like_pac_name(name: str) -> bool:
+    text = str(name or "").lower()
+    return any(
+        term in text
+        for term in (
+            "pac", "political action", "committee", "caucus", "party",
+            "victory", "action fund", "leadership fund", "majority fund",
+        )
+    )
+
+
+def _empty_pac(name: str) -> dict:
+    return {
+        "name": name,
+        "committee_id": "",
+        "short_name": "",
+        "ideology": "",
+        "alignment": "",
+        "network": "",
+        "issue_focus": "",
+        "foreign_alignment": "",
+        "foreign_country": "",
+        "source_url": "",
+        "verified": False,
+        "industry": "",
+        "sbe_direct_total": 0.0,
+        "sbe_records": 0,
+        "fec_direct_total": 0.0,
+        "fec_records": 0,
+        "independent_total": 0.0,
+        "independent_records": 0,
+        "support_total": 0.0,
+        "oppose_total": 0.0,
+        "sources": set(),
+    }
+
+
+def _load_pac_table() -> list[dict]:
+    """Aggregate PAC/committee records across local PAC, FEC, and SBE tables."""
+    global _pac_table_cache
+    if _pac_table_cache is not None:
+        return _pac_table_cache
+    conn = sqlite3.connect(_POLLS_DB)
+    conn.row_factory = sqlite3.Row
+    pacs: dict[str, dict] = {}
+
+    def get(name: str) -> dict:
+        key = _pac_key(name)
+        if not key:
+            key = _pac_key("Unknown PAC")
+        pacs.setdefault(key, _empty_pac(name or "Unknown PAC"))
+        return pacs[key]
+
+    if conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pac_ideology'").fetchone():
+        for row in conn.execute("SELECT * FROM pac_ideology"):
+            item = get(row["committee_name"])
+            item.update({
+                "committee_id": row["committee_id"] or item["committee_id"],
+                "short_name": row["short_name"] or item["short_name"],
+                "ideology": row["ideology"] or item["ideology"],
+                "alignment": row["alignment"] or item["alignment"],
+                "network": row["network"] or item["network"],
+                "issue_focus": row["issue_focus"] or item["issue_focus"],
+                "foreign_alignment": row["foreign_alignment"] or item["foreign_alignment"],
+                "foreign_country": row["foreign_country"] or item["foreign_country"],
+                "source_url": row["source_url"] or item["source_url"],
+                "verified": bool(row["verified"]),
+            })
+            item["sources"].add("pac_ideology")
+
+    if conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pac_name_lookup'").fetchone():
+        for row in conn.execute("SELECT pac_name, industry, confidence FROM pac_name_lookup"):
+            item = get(row["pac_name"])
+            item["industry"] = row["industry"] or item["industry"]
+            item["sources"].add("pac_name_lookup")
+
+    if conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='fec_independent_expenditures'").fetchone():
+        for row in conn.execute(
+            """
+            SELECT committee_id, committee_name, support_oppose,
+                   SUM(expenditure_amount) AS total, COUNT(*) AS records
+            FROM fec_independent_expenditures
+            GROUP BY committee_id, committee_name, support_oppose
+            """
+        ):
+            item = get(row["committee_name"])
+            item["committee_id"] = row["committee_id"] or item["committee_id"]
+            total = float(row["total"] or 0)
+            item["independent_total"] += total
+            item["independent_records"] += int(row["records"] or 0)
+            if str(row["support_oppose"] or "").upper().startswith("S"):
+                item["support_total"] += total
+            elif str(row["support_oppose"] or "").upper().startswith("O"):
+                item["oppose_total"] += total
+            item["sources"].add("fec_independent_expenditures")
+
+    if conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='fec_industry_totals'").fetchone():
+        for row in conn.execute("SELECT top_donors FROM fec_industry_totals WHERE top_donors IS NOT NULL"):
+            try:
+                donors = json.loads(row["top_donors"] or "[]")
+            except Exception:
+                donors = []
+            for donor in donors:
+                name = donor.get("name") or ""
+                if not _looks_like_pac_name(name):
+                    continue
+                item = get(name)
+                item["fec_direct_total"] += float(donor.get("amount") or 0)
+                item["fec_records"] += 1
+                item["sources"].add("fec_industry_totals")
+
+    if conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='va_cf_schedule_a'").fetchone():
+        for row in conn.execute(
+            """
+            SELECT last_or_company, SUM(amount) AS total, COUNT(*) AS records
+            FROM va_cf_schedule_a
+            WHERE amount IS NOT NULL
+              AND (
+                    is_individual = 0
+                 OR lower(last_or_company) LIKE '%pac%'
+                 OR lower(last_or_company) LIKE '%committee%'
+                 OR lower(last_or_company) LIKE '%caucus%'
+                 OR lower(last_or_company) LIKE '%party%'
+                 OR lower(last_or_company) LIKE '%action fund%'
+              )
+            GROUP BY last_or_company
+            HAVING total > 0
+            """
+        ):
+            name = row["last_or_company"] or ""
+            if not name.strip():
+                continue
+            item = get(name)
+            item["sbe_direct_total"] += float(row["total"] or 0)
+            item["sbe_records"] += int(row["records"] or 0)
+            item["sources"].add("virginia_sbe")
+
+    conn.close()
+    rows = []
+    for item in pacs.values():
+        item["sources"] = sorted(item["sources"])
+        item["total_activity"] = (
+            item["sbe_direct_total"] + item["fec_direct_total"] + item["independent_total"]
+        )
+        rows.append(item)
+    rows.sort(key=lambda r: (-(r["total_activity"] or 0), r["name"]))
+    _pac_table_cache = rows
+    return rows
+
+
 @router.get("/federal-profiles", response_class=HTMLResponse)
 def federal_profiles_page(request: Request):
     with open(os.path.join(_BASE_DIR, "templates", "federal_profiles.html"), encoding="utf-8") as f:
@@ -154,6 +309,32 @@ def politician_profile_detail(profile_id: str):
         if profile.get("chunk_id") == profile_id:
             return {"profile": _profile_detail(profile)}
     return {"profile": None, "error": "profile not found"}
+
+
+@router.get("/api/pacs")
+def pac_table(q: str = "", source: str = "", limit: int = 0):
+    qn = q.strip().lower()
+    source_norm = source.strip().lower()
+    rows = []
+    for item in _load_pac_table():
+        haystack = " ".join([
+            item.get("name", ""),
+            item.get("short_name", ""),
+            item.get("ideology", ""),
+            item.get("alignment", ""),
+            item.get("network", ""),
+            item.get("industry", ""),
+            item.get("issue_focus", ""),
+        ]).lower()
+        if qn and qn not in haystack:
+            continue
+        if source_norm and source_norm not in [s.lower() for s in item.get("sources", [])]:
+            continue
+        rows.append(item)
+    count = len(rows)
+    if limit and limit > 0:
+        rows = rows[: max(1, min(limit, 10000))]
+    return {"pacs": rows, "count": count}
 
 
 @router.get("/api/congress/members")

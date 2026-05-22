@@ -29,6 +29,10 @@
   h1 { font-family:'Playfair Display',serif; font-size:1.65rem; line-height:1.08; font-weight:900; letter-spacing:-.02em; }
   .hint { color:var(--muted); font-size:.86rem; line-height:1.45; margin-top:8px; }
   .controls { padding:14px; border-bottom:1px solid var(--mid); display:grid; gap:10px; }
+  .mode { display:grid; grid-template-columns:1fr 1fr; border-bottom:1px solid var(--mid); }
+  .mode button { border:0; border-right:1px solid var(--mid); background:#fff; padding:11px 10px; font-family:'Barlow Condensed',sans-serif; font-size:.7rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--navy); cursor:pointer; }
+  .mode button:last-child { border-right:0; }
+  .mode button.active { background:var(--navy); color:#fff; }
   input, select { width:100%; border:1px solid var(--mid); background:#fff; color:var(--navy); font-family:'Barlow',sans-serif; font-size:.92rem; padding:10px 11px; border-radius:0; outline:none; }
   input:focus, select:focus { border-color:var(--navy); box-shadow:0 0 0 2px rgba(13,27,42,.08); }
   .list { overflow:auto; padding:8px; }
@@ -59,6 +63,13 @@
   .section-body a { color:var(--red); }
   .empty { padding:80px 28px; text-align:center; color:var(--muted); }
   .method { border-top:1px solid var(--mid); padding:16px 28px; color:var(--muted); font-size:.82rem; line-height:1.45; background:#fbfaf7; }
+  .table-wrap { overflow:auto; }
+  table { width:100%; border-collapse:collapse; background:#fff; min-width:980px; }
+  th, td { border-bottom:1px solid var(--mid); padding:10px 12px; vertical-align:top; text-align:left; }
+  th { position:sticky; top:0; background:var(--navy); color:#fff; font-family:'Barlow Condensed',sans-serif; font-size:.66rem; font-weight:700; letter-spacing:.13em; text-transform:uppercase; z-index:1; }
+  td { font-size:.86rem; line-height:1.35; }
+  .num { text-align:right; font-family:'Barlow Condensed',sans-serif; font-weight:700; white-space:nowrap; }
+  .tag { display:inline-block; border:1px solid var(--mid); padding:2px 6px; margin:0 4px 4px 0; font-family:'Barlow Condensed',sans-serif; font-size:.62rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
   @media(max-width:900px) {
     header { padding:18px 20px; display:block; }
     nav { justify-content:flex-start; margin-top:14px; }
@@ -94,6 +105,10 @@
         <h1>Virginia politicians</h1>
         <p class="hint">Search House, Senate, Governor, Lieutenant Governor, and Attorney General profiles built from local SBE, OpenStates, LIS, and VoteIQ records.</p>
       </div>
+      <div class="mode">
+        <button id="modeProfiles" class="active" onclick="setMode('profiles')">Profiles</button>
+        <button id="modePacs" onclick="setMode('pacs')">PACs</button>
+      </div>
       <div class="controls">
         <input id="search" placeholder="Search by name, office, district"/>
         <select id="office">
@@ -104,6 +119,14 @@
           <option>State Senate</option>
           <option>House of Delegates</option>
           <option>Statewide</option>
+        </select>
+        <select id="source" style="display:none;">
+          <option value="">All PAC sources</option>
+          <option value="virginia_sbe">Virginia SBE</option>
+          <option value="fec_industry_totals">FEC direct donors</option>
+          <option value="fec_independent_expenditures">FEC independent expenditures</option>
+          <option value="pac_ideology">PAC ideology</option>
+          <option value="pac_name_lookup">PAC industry lookup</option>
         </select>
       </div>
       <div class="list" id="list">
@@ -118,14 +141,20 @@
 <script>
 const INITIAL_PROFILE_ID = "__INITIAL_PROFILE_ID__";
 let profiles = [];
+let pacs = [];
 let activeProfileId = "";
 let activeTab = "Overview";
+let mode = "profiles";
 
 function money(n) {
   const v = Number(n || 0);
   if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(v >= 10_000_000 ? 1 : 2)}M`;
   if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
   return `$${v.toLocaleString()}`;
+}
+
+function fullMoney(n) {
+  return `$${Number(n || 0).toLocaleString(undefined, {maximumFractionDigits: 0})}`;
 }
 
 function partyClass(p) {
@@ -162,6 +191,7 @@ function preferredTabs(sections) {
 }
 
 async function loadProfiles() {
+  if (mode === "pacs") return loadPacs();
   const q = document.getElementById("search").value.trim();
   const office = document.getElementById("office").value;
   const url = `/api/politicians?q=${encodeURIComponent(q)}&office=${encodeURIComponent(office)}&limit=250`;
@@ -176,6 +206,17 @@ async function loadProfiles() {
   }
 }
 
+async function loadPacs() {
+  const q = document.getElementById("search").value.trim();
+  const source = document.getElementById("source").value;
+  const url = `/api/pacs?q=${encodeURIComponent(q)}&source=${encodeURIComponent(source)}&limit=1000`;
+  const res = await fetch(url);
+  const data = await res.json();
+  pacs = data.pacs || [];
+  renderPacList(data.count || pacs.length);
+  renderPacTable(data.count || pacs.length);
+}
+
 function renderList(count) {
   const list = document.getElementById("list");
   const items = profiles.map(p => `
@@ -185,6 +226,81 @@ function renderList(count) {
     </button>
   `).join("");
   list.innerHTML = `<div class="list-count">${count.toLocaleString()} matching profiles</div>${items || '<div class="empty">No matching profiles.</div>'}`;
+}
+
+function renderPacList(count) {
+  const list = document.getElementById("list");
+  const items = pacs.slice(0, 250).map(p => `
+    <button class="person" onclick="scrollPac('${escapeHtml(_pacDomId(p.name))}')">
+      <div class="person-name">${escapeHtml(p.short_name || p.name)}</div>
+      <div class="person-meta">${escapeHtml(p.alignment || p.industry || 'PAC/committee')} · ${money(p.total_activity)} · ${escapeHtml((p.sources || []).join(', '))}</div>
+    </button>
+  `).join("");
+  list.innerHTML = `<div class="list-count">${count.toLocaleString()} matching PACs</div>${items || '<div class="empty">No matching PACs.</div>'}`;
+}
+
+function _pacDomId(name) {
+  return `pac-${String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+}
+
+function renderPacTable(count) {
+  const rows = pacs.map(p => `
+    <tr id="${escapeHtml(_pacDomId(p.name))}">
+      <td><strong>${escapeHtml(p.name)}</strong>${p.short_name ? `<br><span class="person-meta">${escapeHtml(p.short_name)}</span>` : ''}</td>
+      <td>${escapeHtml(p.alignment || '')}<br><span class="person-meta">${escapeHtml(p.ideology || '')}</span></td>
+      <td>${escapeHtml(p.network || p.industry || '')}</td>
+      <td class="num">${fullMoney(p.sbe_direct_total)}</td>
+      <td class="num">${fullMoney(p.fec_direct_total)}</td>
+      <td class="num">${fullMoney(p.independent_total)}</td>
+      <td class="num">${fullMoney(p.support_total)}</td>
+      <td class="num">${fullMoney(p.oppose_total)}</td>
+      <td>${(p.sources || []).map(s => `<span class="tag">${escapeHtml(s)}</span>`).join('')}</td>
+    </tr>
+  `).join("");
+  document.getElementById("profile").innerHTML = `
+    <div class="hero">
+      <div>
+        <div class="office">PAC / Committee Index</div>
+        <div class="name">PAC Table</div>
+        <div class="meta-line">${count.toLocaleString()} matching PACs and committee-style entities from local VoteIQ data.</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>PAC / Committee</th>
+            <th>Alignment</th>
+            <th>Network / Industry</th>
+            <th>SBE Direct</th>
+            <th>FEC Direct</th>
+            <th>Independent Exp.</th>
+            <th>Support IE</th>
+            <th>Oppose IE</th>
+            <th>Sources</th>
+          </tr>
+        </thead>
+        <tbody>${rows || '<tr><td colspan="9">No PACs found.</td></tr>'}</tbody>
+      </table>
+    </div>
+    <div class="method">PAC table totals combine Virginia SBE committee-style direct contributors, FEC top-donor PAC names, and FEC independent expenditures. These are public records; direct contributions and independent expenditures are separate categories.</div>
+  `;
+}
+
+function scrollPac(id) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function setMode(next) {
+  mode = next;
+  activeProfileId = "";
+  document.getElementById("modeProfiles").classList.toggle("active", mode === "profiles");
+  document.getElementById("modePacs").classList.toggle("active", mode === "pacs");
+  document.getElementById("office").style.display = mode === "profiles" ? "" : "none";
+  document.getElementById("source").style.display = mode === "pacs" ? "" : "none";
+  document.getElementById("search").placeholder = mode === "profiles" ? "Search by name, office, district" : "Search PAC, committee, network, industry";
+  loadProfiles();
 }
 
 async function loadProfile(id, replace=false) {
@@ -242,6 +358,7 @@ document.getElementById("search").addEventListener("input", () => {
   debounce = setTimeout(() => { activeProfileId = ""; loadProfiles(); }, 180);
 });
 document.getElementById("office").addEventListener("change", () => { activeProfileId = ""; loadProfiles(); });
+document.getElementById("source").addEventListener("change", () => { loadPacs(); });
 window.addEventListener("popstate", e => {
   const id = e.state && e.state.id;
   if (id) loadProfile(id, true);
