@@ -171,6 +171,58 @@ def _get_ie_context(bioguide_ids: list[str], query: str) -> str:
     return _m._fetch_ie_context(bioguide_ids, query)
 
 
+def _get_hearings(bioguide_id: str, query: str) -> str:
+    import sqlite3, os
+    from pathlib import Path
+    _BASE = str(Path(__file__).resolve().parent)
+    polls_db = os.path.join(os.getenv("DATA_DIR", _BASE), "polls.db")
+    if not os.path.exists(polls_db):
+        return ""
+    try:
+        conn = sqlite3.connect(polls_db)
+        conn.row_factory = sqlite3.Row
+        tbl = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='congress_hearings'"
+        ).fetchone()
+        if not tbl:
+            conn.close()
+            return ""
+        keywords = [w for w in query.lower().split() if len(w) > 3][:5]
+        kw_clause = ""
+        params: list = [bioguide_id]
+        if keywords:
+            kw_clause = " AND (" + " OR ".join(
+                "lower(title) LIKE ? OR lower(committee) LIKE ? OR lower(text) LIKE ?"
+                for _ in keywords
+            ) + ")"
+            for kw in keywords:
+                params.extend([f"%{kw}%", f"%{kw}%", f"%{kw}%"])
+        rows = conn.execute(
+            f"""SELECT member_name, hearing_date, committee, title,
+                       SUBSTR(text,1,1500), source_url
+                FROM congress_hearings
+                WHERE bioguide_id = ?{kw_clause}
+                ORDER BY hearing_date DESC LIMIT 5""",
+            params,
+        ).fetchall()
+        conn.close()
+        blocks = []
+        for r in rows:
+            name, dt, committee, title, excerpt, url = r
+            committee_line = f"Committee: {committee}\n" if committee else ""
+            excerpt_line = excerpt.strip() + "\n" if excerpt and excerpt.strip() else ""
+            blocks.append(
+                f"[Congressional Hearing — {name} | {dt}]\n"
+                f"Title: {title}\n"
+                f"{committee_line}"
+                f"{excerpt_line}"
+                + (f"Source: {url}" if url else "")
+            )
+        return "\n\n".join(blocks)
+    except Exception:
+        return ""
+
+
 # ── bill retrieval wrappers ────────────────────────────────────────────────────
 
 def _get_bills_by_number(
@@ -329,6 +381,7 @@ async def build_bills_context_parallel(
             tasks.append(run_sync_source("voting record", _get_vote_context, bioguide_ids, query))
         if _is_speech:
             tasks.append(run_sync_source("floor statements", _get_floor_statements, fed_member["bioguide_id"], query))
+            tasks.append(run_sync_source("hearings",         _get_hearings,         fed_member["bioguide_id"], query))
 
     if bioguide_ids and _is_money:
         tasks.append(run_sync_source("campaign finance", _get_finance, bioguide_ids, query))
