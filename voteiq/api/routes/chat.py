@@ -1007,7 +1007,11 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
     latest_cycle = str(cycle_rows[0]["election_cycle"]) if cycle_rows else "not available"
 
     lines = [
-        "**Public-Record Research Brief: Abigail Spanberger as Governor of Virginia**",
+        "**Public Record Research Brief**",
+        "Subject: Abigail Spanberger",
+        "Scope: Governor of Virginia, campaign finance, executive actions, legislative actions",
+        "Sources: Virginia SBE/VPAP, Governor of Virginia, Virginia LIS, local SQL records",
+        "Current through: May 23, 2026",
         "",
         "**Scope And Source Base**",
         "- This brief uses VoteIQ local SQL records first, with source references to Virginia SBE campaign-finance records, VPAP committee records, Virginia Department of Elections results, Governor of Virginia releases, and Virginia legislative/OpenStates-style bill metadata.",
@@ -1393,7 +1397,7 @@ def _bills_system_prompt(
         f"5. Related follow-up questions\n"
         f"- Suggest 3 deeper follow-up queries as internal /ask?q= links.\n\n"
         f"For this overview format, cite sources inline and use a concise, fact-based tone. Do not make uncited claims; if a figure is source-dependent, say so."
-        f"\n\nWhen the user asks for a public-record research brief, open with a brief title and a Scope And Source Base section, label factual sections as Findings, and avoid editorial, persuasive, or opinion-style framing."
+        f"\n\nWhen the user asks for a public-record research brief, open with this header format: Public Record Research Brief; Subject: [name]; Scope: [office/status and requested record areas]; Sources: [official/source types used]; Current through: [date from retrieved context or system date]. Then include a Scope And Source Base section, label factual sections as Findings, and avoid editorial, persuasive, or opinion-style framing."
         f"\n\nRESPONSE FORMAT — use this exact structure for legislator questions:\n\n"
         f"Your [chamber] representative is **[Full Name] ([Party], District [N])**.\n\n"
         f"**[YEAR] Session Voting Record:**\n"
