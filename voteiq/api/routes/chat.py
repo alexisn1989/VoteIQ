@@ -705,6 +705,53 @@ def _direct_governor_veto_reply(user_query: str) -> str:
     return "\n".join(lines)
 
 
+def _direct_voteiq_source_hierarchy_reply(user_query: str) -> str:
+    """Explain VoteIQ's retrieval/source hierarchy for public-record answers."""
+    q = (user_query or "").lower()
+    source_terms = (
+        "source of truth",
+        "source hierarchy",
+        "retrieval hierarchy",
+        "how does voteiq answer",
+        "how voteiq answers",
+        "fec api",
+        "congress api",
+        "govinfo",
+        "opengov",
+        "rag",
+    )
+    if "voteiq" not in q and not any(term in q for term in source_terms[:3]):
+        return ""
+    if not any(term in q for term in source_terms):
+        return ""
+
+    return "\n".join([
+        "**VoteIQ Source Hierarchy**",
+        "",
+        "VoteIQ answers from public-record data first, then uses AI only to explain what those records say.",
+        "",
+        "1. **SQL = source of truth**",
+        "- Local VoteIQ SQL tables are checked first for known structured records, including votes, bills, governor actions, executive orders, campaign finance imports, profiles, and cached summaries.",
+        "",
+        "2. **FEC API = exact money records**",
+        "- Federal campaign-finance facts come from FEC records when available. VoteIQ should report amounts, dates, committees, donors, and filing context as records, not as evidence of motive or influence.",
+        "",
+        "3. **Congress API = exact legislative records**",
+        "- Federal bill, sponsorship, status, and member legislative records should come from Congress.gov/Congress API records when available.",
+        "",
+        "4. **GovInfo/OpenGov = official documents and context**",
+        "- Official bill text, Congressional Record material, PDFs, executive documents, and public government documents provide primary-source context.",
+        "",
+        "5. **RAG = long-text summaries and fallback context**",
+        "- RAG/semantic search helps retrieve long documents, excerpts, news, bill text, and summaries. It supports the answer, but should not override exact SQL/API records.",
+        "",
+        "6. **AI = explanation**",
+        "- AI turns the retrieved records into plain-English explanations. It should not invent facts, fill missing records, infer intent, or claim causation from donations, votes, or official actions.",
+        "",
+        "Data limit: if SQL or official API records are missing, VoteIQ should say what is missing and avoid guessing.",
+    ])
+
+
 def _json_text_list(value: str | None, limit: int = 12) -> list[str]:
     if not value:
         return []
@@ -1306,6 +1353,14 @@ def _bills_system_prompt(
         f"AND recent Virginia political news articles (sourced from Virginia news outlets via Gemini extraction). "
         f"Answer the user's question using ONLY the excerpts below — do not rely on your training data. "
         f"Be factual and cite bill numbers when relevant. "
+        f"\n\nVOTEIQ SOURCE HIERARCHY - apply this order for factual claims: "
+        f"SQL/local VoteIQ tables are the source of truth for records already imported; "
+        f"FEC API/FEC records are exact campaign-finance records; "
+        f"Congress API/Congress.gov records are exact federal legislative records; "
+        f"GovInfo/OpenGov/official government documents provide official document text and context; "
+        f"RAG/semantic search is for long-text summaries, excerpts, and fallback context; "
+        f"AI is for explanation only. Do not let RAG or AI override exact SQL/API records. "
+        f"If exact records are missing, say what is missing instead of guessing.\n\n"
         f"If the excerpts include any '[Governor Action' rows, those are confirmed local governor-action records. "
         f"If the excerpts include '[Database Context]' rows, treat them as direct local database records and use them before guessing. "
         f"Do not say governor actions returned no data, are unavailable, or cannot be confirmed for this query. "
@@ -1503,6 +1558,9 @@ async def chat(req: ChatRequest):
         )
 
     last_question  = req.messages[-1].content if req.messages else ""
+    direct_source_reply = _direct_voteiq_source_hierarchy_reply(last_question)
+    if direct_source_reply:
+        return ChatResponse(reply=direct_source_reply)
     direct_governor_reply = _direct_spanberger_governor_overview_reply(last_question) or _direct_governor_eo_reply(last_question) or _direct_governor_veto_reply(last_question)
     if direct_governor_reply:
         return ChatResponse(reply=direct_governor_reply)
@@ -1700,6 +1758,9 @@ async def gemini_chat(request: Request, req: ChatRequest):
     import main as _m
 
     user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
+    direct_source_reply = _direct_voteiq_source_hierarchy_reply(user_query)
+    if direct_source_reply:
+        return ChatResponse(reply=direct_source_reply)
     direct_governor_reply = _direct_spanberger_governor_overview_reply(user_query) or _direct_governor_eo_reply(user_query) or _direct_governor_veto_reply(user_query)
     if direct_governor_reply:
         return ChatResponse(reply=direct_governor_reply)
@@ -1796,6 +1857,9 @@ async def bills_chat(req: BillsChatRequest):
     import main as _m
 
     user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
+    direct_source_reply = _direct_voteiq_source_hierarchy_reply(user_query)
+    if direct_source_reply:
+        return ChatResponse(reply=direct_source_reply)
     direct_governor_reply = _direct_spanberger_governor_overview_reply(user_query) or _direct_governor_eo_reply(user_query) or _direct_governor_veto_reply(user_query)
     if direct_governor_reply:
         return ChatResponse(reply=direct_governor_reply)
@@ -1896,6 +1960,12 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
     user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
 
     # ── parallel context assembly ─────────────────────────────────────────────
+    direct_source_reply = _direct_voteiq_source_hierarchy_reply(user_query)
+    if direct_source_reply:
+        async def _source_gen(text=direct_source_reply):
+            yield f"data: {json.dumps({'token': text})}\n\n"
+        return StreamingResponse(_source_gen(), media_type="text/event-stream")
+
     direct_governor_reply = _direct_spanberger_governor_overview_reply(user_query) or _direct_governor_eo_reply(user_query) or _direct_governor_veto_reply(user_query)
     if direct_governor_reply:
         async def _direct_gen(text=direct_governor_reply):

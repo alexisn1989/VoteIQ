@@ -688,6 +688,13 @@ def build_bills_system_prompt_refactored(
 
     retrieval_note = (
         f"\nBill retrieval method: {context_data.get('bill_retrieval_method', 'unknown')}\n"
+        "\nVoteIQ source hierarchy:\n"
+        "- SQL/local VoteIQ tables are the source of truth for imported records.\n"
+        "- FEC API/FEC records are exact campaign-finance records.\n"
+        "- Congress API/Congress.gov records are exact federal legislative records.\n"
+        "- GovInfo/OpenGov/official government documents provide official document text and context.\n"
+        "- RAG/semantic search supplies long-text summaries, excerpts, and fallback context.\n"
+        "- AI explains retrieved records; it must not invent facts or override exact SQL/API records.\n"
     )
 
     context_block = f"""
