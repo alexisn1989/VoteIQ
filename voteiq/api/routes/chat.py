@@ -918,12 +918,18 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
     latest_cycle = str(cycle_rows[0]["election_cycle"]) if cycle_rows else "not available"
 
     lines = [
-        "**1. Current office/status**",
+        "**Public-Record Research Brief: Abigail Spanberger as Governor of Virginia**",
+        "",
+        "**Scope And Source Base**",
+        "- This brief uses VoteIQ local SQL records first, with source references to Virginia SBE campaign-finance records, VPAP committee records, Virginia Department of Elections results, Governor of Virginia releases, and Virginia legislative/OpenStates-style bill metadata.",
+        "- The brief reports public records only. It does not infer motive, intent, causation, corruption, or influence from donations, votes, vetoes, bill actions, or executive actions.",
+        "",
+        "**Finding 1: Current Office/Status**",
         f"- Abigail Spanberger is listed in VoteIQ as Governor of Virginia. The Governor's Office published her inaugural address on January 17, 2026, following her swearing-in as the 75th Governor of Virginia ([Governor's Office]({swearing_url})).",
         f"- The relevant statewide general election was November 4, 2025; verify certified returns through the Virginia Department of Elections results portal ([Virginia Department of Elections]({elections_url})).",
-        "- This overview separates official actions from campaign finance records and does not infer motive, intent, causation, or influence.",
+        "- Campaign statements and promises are not treated as official government actions in this brief.",
         "",
-        "**2. Campaign finance**",
+        "**Finding 2: Campaign Finance**",
         f"- Committee shown in local records: {finance_person['committee_name'] if finance_person and finance_person['committee_name'] else 'Spanberger for Governor'} ([VPAP committee page]({committee_url})).",
         f"- VoteIQ local SQL totals from Virginia SBE Schedule A itemized contribution rows, cycles 2023+ total ${all_total:,.0f} across {all_records:,} contribution records. These are candidate-committee receipt records in the local import, not a full accounting of outside spending.",
     ]
@@ -952,7 +958,7 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
     amended_count = governor_counts.get("amended", 0)
     lines.extend([
         "",
-        "**3. Legislative/executive record**",
+        "**Finding 3: Legislative And Executive Record**",
         f"- Governor action records in local SQL for the 2026 session: {signed_count} signed, {veto_count} vetoed, and {amended_count} amended/returned with recommendation. Bill metadata is from Virginia legislative/OpenStates-style records; verify final legal status at Virginia LIS.",
     ])
     if veto_rows:
@@ -960,28 +966,28 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
         for row in veto_rows:
             bill = row["bill_number"]
             url = row["source_url"] or f"https://openstates.org/va/bills/2026/{bill}/"
-            lines.append(f"  - [{bill}]({url}) — {row['title'] or 'Title not available'} ({row['action_date'] or 'date not available'})")
+            lines.append(f"  - [{bill}]({url}) - {row['title'] or 'Title not available'} ({row['action_date'] or 'date not available'})")
     if signed_rows:
         lines.append("- Recent/sample signed bills:")
         for row in signed_rows:
             bill = row["bill_number"]
             url = row["source_url"] or f"https://openstates.org/va/bills/2026/{bill}/"
             chapter = f"; Chapter {row['chapter_number']}" if row["chapter_number"] else ""
-            lines.append(f"  - [{bill}]({url}) — {row['title'] or 'Title not available'} ({row['action_date'] or 'date not available'}{chapter})")
+            lines.append(f"  - [{bill}]({url}) - {row['title'] or 'Title not available'} ({row['action_date'] or 'date not available'}{chapter})")
     if eo_rows:
         lines.append(f"- Executive orders/directives: showing the {len(eo_rows)} most recent records; ask for the full executive-order list for all records.")
         for row in eo_rows:
-            lines.append(f"  - [Order {row['order_number'] or 'number not available'}]({row['source_url'] or 'https://www.governor.virginia.gov/'}) — {row['title'] or 'Title not available'} ({row['signed_date'] or 'date not available'})")
+            lines.append(f"  - [Order {row['order_number'] or 'number not available'}]({row['source_url'] or 'https://www.governor.virginia.gov/'}) - {row['title'] or 'Title not available'} ({row['signed_date'] or 'date not available'})")
 
     lines.extend([
         "",
-        "**4. Data limits**",
+        "**Data Limits**",
         "- Campaign finance totals are source-dependent. VoteIQ's figure above comes from local Virginia SBE Schedule A itemized contribution rows; VPAP totals may differ because of reporting cutoffs, refunds, loans, in-kind treatment, unitemized receipts, transfers, or independent/outside spending methodology.",
         "- The finance section does not treat donations as evidence of motive, influence, corruption, or causation.",
         "- Governor-action rows may lag official LIS/Governor's Office updates; verify final enrolled bill text, chapters, and effective dates at Virginia LIS.",
         "- Executive-order summaries are derived from local records and Governor's Office PDFs; they are summaries, not substitutes for the full order text.",
         "",
-        "**5. Related follow-up questions**",
+        "**Related Follow-Up Questions**",
         "- [Which bills has Governor Spanberger signed or vetoed?](/ask?q=Which%20bills%20has%20Governor%20Spanberger%20signed%20or%20vetoed%3F)",
         "- [What executive orders has Governor Spanberger issued?](/ask?q=What%20executive%20orders%20has%20Governor%20Spanberger%20issued%3F)",
         "- [Who were Abigail Spanberger's largest donors in the 2025 SBE records?](/ask?q=Who%20were%20Abigail%20Spanberger%27s%20largest%20donors%20in%20the%202025%20SBE%20records%3F)",
@@ -1297,6 +1303,7 @@ def _bills_system_prompt(
         f"5. Related follow-up questions\n"
         f"- Suggest 3 deeper follow-up queries as internal /ask?q= links.\n\n"
         f"For this overview format, cite sources inline and use a concise, fact-based tone. Do not make uncited claims; if a figure is source-dependent, say so."
+        f"\n\nWhen the user asks for a public-record research brief, open with a brief title and a Scope And Source Base section, label factual sections as Findings, and avoid editorial, persuasive, or opinion-style framing."
         f"\n\nRESPONSE FORMAT — use this exact structure for legislator questions:\n\n"
         f"Your [chamber] representative is **[Full Name] ([Party], District [N])**.\n\n"
         f"**[YEAR] Session Voting Record:**\n"
