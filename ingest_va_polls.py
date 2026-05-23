@@ -124,7 +124,8 @@ _GENERIC_POLL_CHOICES = {
 
 # Statewide candidates not in the GA member list
 _HARDCODED_VA_POLITICIANS: list[dict] = [
-    {"name": "Abigail Spanberger",  "office": "Governor candidate",          "chamber": "", "party": "Democratic"},
+    {"name": "Abigail Spanberger",  "office": "Governor",                    "chamber": "executive", "party": "Democratic"},
+    {"name": "Abigail D. Spanberger", "office": "Governor",                  "chamber": "executive", "party": "Democratic"},
     {"name": "Winsome Earle-Sears", "office": "Lieutenant Governor",          "chamber": "", "party": "Republican"},
     {"name": "Winsome Sears",       "office": "Lieutenant Governor",          "chamber": "", "party": "Republican"},
     {"name": "Ghazala Hashmi",      "office": "State Senator",                "chamber": "upper", "party": "Democratic"},

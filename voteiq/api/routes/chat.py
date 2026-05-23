@@ -253,7 +253,8 @@ def _build_bills_context(
                         context_blocks.insert(0, block)
 
         leg_name = _m._extract_legislator_name(user_query)
-        if leg_name:
+        leg_scope = _m._classify_legislator(leg_name) if leg_name else None
+        if leg_name and leg_scope != "federal":
             sqlite_leg = _m._sqlite_legislator_votes(leg_name)
             if sqlite_leg and sqlite_leg not in seen_docs:
                 seen_docs.add(sqlite_leg)
@@ -326,7 +327,7 @@ def _build_bills_context(
                     context_blocks.insert(0, pb)
 
         fed_member = _m._federal_member_by_name(user_query)
-        if not fed_member and leg_name:
+        if not fed_member and leg_name and leg_scope != "state":
             fed_member = _m._federal_member_by_name(leg_name)
         if not fed_member and req.district and _m._profile_question(user_query):
             dist_rep_name = _m.DISTRICT_CONTEXT.get(req.district, {}).get("rep")
@@ -641,7 +642,7 @@ def _direct_governor_veto_reply(user_query: str) -> str:
 
     lines.extend([
         "",
-        "Source: VoteIQ `polls.db.governor_actions`, cross-checked against Governor's Office 2026 veto releases where override rows were needed.",
+        "Source: VoteIQ local SQL records, with bill metadata from Virginia legislative records and veto status cross-checked against the Governor's Office.",
         "VoteIQ does not infer motive, intent, or causation from bill activity.",
     ])
     return "\n".join(lines)

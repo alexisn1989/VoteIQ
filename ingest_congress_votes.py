@@ -51,6 +51,27 @@ def _get(url: str, timeout: int = 20) -> bytes | None:
         return None
 
 
+def _normalize_vote_date(value: str) -> str:
+    """Convert common House/Senate roll-call dates to sortable ISO strings."""
+    raw = " ".join((value or "").replace("\xa0", " ").split())
+    if not raw:
+        return ""
+    raw = raw.replace(", ", " ", 1) if raw.count(",") > 1 else raw
+    for fmt in (
+        "%B %d %Y, %I:%M %p",
+        "%B %d, %Y, %I:%M %p",
+        "%B %d, %Y %I:%M %p",
+        "%B %d, %Y",
+        "%d-%b-%Y",
+        "%Y-%m-%d",
+    ):
+        try:
+            return datetime.strptime(raw, fmt).isoformat()
+        except ValueError:
+            continue
+    return value
+
+
 def setup_db(conn: sqlite3.Connection) -> None:
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS congress_votes (
@@ -58,6 +79,7 @@ def setup_db(conn: sqlite3.Connection) -> None:
             bioguide_id  TEXT NOT NULL,
             chamber      TEXT NOT NULL,
             congress     INTEGER NOT NULL,
+            session      INTEGER NOT NULL DEFAULT 1,
             vote_number  INTEGER NOT NULL,
             vote_date    TEXT,
             bill         TEXT,
@@ -65,7 +87,7 @@ def setup_db(conn: sqlite3.Connection) -> None:
             member_vote  TEXT,
             result       TEXT,
             fetched_at   TEXT NOT NULL,
-            UNIQUE(bioguide_id, chamber, congress, vote_number)
+            UNIQUE(bioguide_id, chamber, congress, session, vote_number)
         );
         CREATE INDEX IF NOT EXISTS idx_cv_bioguide ON congress_votes(bioguide_id);
         CREATE INDEX IF NOT EXISTS idx_cv_date     ON congress_votes(vote_date);
@@ -82,13 +104,78 @@ def setup_db(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_cbd_bill
             ON congress_bill_details(congress, bill_type, bill_number);
     """)
+    _migrate_congress_votes_session(conn)
+    _normalize_stored_vote_dates(conn)
     conn.commit()
+
+
+def _migrate_congress_votes_session(conn: sqlite3.Connection) -> None:
+    """Preserve existing 119th/session-1 rows while allowing session-2 vote numbers."""
+    cols = [row[1] for row in conn.execute("PRAGMA table_info(congress_votes)").fetchall()]
+    unique_has_session = False
+    for idx in conn.execute("PRAGMA index_list(congress_votes)").fetchall():
+        if not idx[2]:
+            continue
+        idx_cols = [row[2] for row in conn.execute(f"PRAGMA index_info({idx[1]})").fetchall()]
+        if idx_cols == ["bioguide_id", "chamber", "congress", "session", "vote_number"]:
+            unique_has_session = True
+            break
+
+    if "session" in cols and unique_has_session:
+        return
+
+    conn.executescript("""
+        ALTER TABLE congress_votes RENAME TO congress_votes_old;
+        CREATE TABLE congress_votes (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            bioguide_id  TEXT NOT NULL,
+            chamber      TEXT NOT NULL,
+            congress     INTEGER NOT NULL,
+            session      INTEGER NOT NULL DEFAULT 1,
+            vote_number  INTEGER NOT NULL,
+            vote_date    TEXT,
+            bill         TEXT,
+            question     TEXT,
+            member_vote  TEXT,
+            result       TEXT,
+            fetched_at   TEXT NOT NULL,
+            UNIQUE(bioguide_id, chamber, congress, session, vote_number)
+        );
+    """)
+    old_cols = [row[1] for row in conn.execute("PRAGMA table_info(congress_votes_old)").fetchall()]
+    session_expr = "session" if "session" in old_cols else "1"
+    conn.execute(f"""
+        INSERT OR IGNORE INTO congress_votes
+            (id, bioguide_id, chamber, congress, session, vote_number, vote_date,
+             bill, question, member_vote, result, fetched_at)
+        SELECT id, bioguide_id, chamber, congress, {session_expr}, vote_number, vote_date,
+               bill, question, member_vote, result, fetched_at
+        FROM congress_votes_old
+    """)
+    conn.executescript("""
+        DROP TABLE congress_votes_old;
+        CREATE INDEX IF NOT EXISTS idx_cv_bioguide ON congress_votes(bioguide_id);
+        CREATE INDEX IF NOT EXISTS idx_cv_date     ON congress_votes(vote_date);
+    """)
+
+
+def _normalize_stored_vote_dates(conn: sqlite3.Connection) -> None:
+    rows = conn.execute(
+        "SELECT id, vote_date FROM congress_votes WHERE vote_date IS NOT NULL AND vote_date != ''"
+    ).fetchall()
+    for row_id, vote_date in rows:
+        normalized = _normalize_vote_date(vote_date)
+        if normalized and normalized != vote_date:
+            conn.execute(
+                "UPDATE congress_votes SET vote_date=? WHERE id=?",
+                (normalized, row_id),
+            )
 
 
 def already_stored(conn: sqlite3.Connection, chamber: str, vote_number: int) -> bool:
     row = conn.execute(
-        "SELECT 1 FROM congress_votes WHERE chamber=? AND congress=? AND vote_number=? LIMIT 1",
-        (chamber, CONGRESS, vote_number),
+        "SELECT 1 FROM congress_votes WHERE chamber=? AND congress=? AND session=? AND vote_number=? LIMIT 1",
+        (chamber, CONGRESS, SESSION, vote_number),
     ).fetchone()
     return row is not None
 
@@ -102,7 +189,7 @@ def _parse_house_roll(data: bytes, roll_number: int) -> list[dict]:
 
     question = root.findtext(".//vote-question") or ""
     result   = root.findtext(".//vote-result") or ""
-    date_raw = root.findtext(".//action-date") or ""
+    date_raw = _normalize_vote_date(root.findtext(".//action-date") or "")
     bill     = root.findtext(".//legis-num") or ""
 
     records = []
@@ -117,6 +204,7 @@ def _parse_house_roll(data: bytes, roll_number: int) -> list[dict]:
             "bioguide_id": bgid,
             "chamber":     "house",
             "congress":    CONGRESS,
+            "session":     SESSION,
             "vote_number": roll_number,
             "vote_date":   date_raw,
             "bill":        bill,
@@ -159,12 +247,12 @@ def ingest_house(conn: sqlite3.Connection, limit: int = 150, dry_run: bool = Fal
         for r in records:
             conn.execute(
                 """INSERT INTO congress_votes
-                       (bioguide_id, chamber, congress, vote_number, vote_date,
+                       (bioguide_id, chamber, congress, session, vote_number, vote_date,
                         bill, question, member_vote, result, fetched_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?)
-                   ON CONFLICT(bioguide_id, chamber, congress, vote_number) DO UPDATE SET
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                   ON CONFLICT(bioguide_id, chamber, congress, session, vote_number) DO UPDATE SET
                        member_vote=excluded.member_vote, fetched_at=excluded.fetched_at""",
-                (r["bioguide_id"], r["chamber"], r["congress"], r["vote_number"],
+                (r["bioguide_id"], r["chamber"], r["congress"], r["session"], r["vote_number"],
                  r["vote_date"], r["bill"], r["question"], r["member_vote"],
                  r["result"], now),
             )
@@ -183,7 +271,7 @@ def _parse_senate_vote(data: bytes, vote_number: int) -> list[dict]:
 
     question = root.findtext(".//question") or root.findtext(".//vote_question_text") or ""
     result   = root.findtext(".//vote_result") or root.findtext(".//vote_result_text") or ""
-    date_raw = root.findtext(".//vote_date") or ""
+    date_raw = _normalize_vote_date(root.findtext(".//vote_date") or "")
     doc      = root.find(".//document")
     bill     = ""
     if doc is not None:
@@ -208,6 +296,7 @@ def _parse_senate_vote(data: bytes, vote_number: int) -> list[dict]:
             "bioguide_id": bgid,
             "chamber":     "senate",
             "congress":    CONGRESS,
+            "session":     SESSION,
             "vote_number": vote_number,
             "vote_date":   date_raw,
             "bill":        bill,
@@ -260,12 +349,12 @@ def ingest_senate(conn: sqlite3.Connection, limit: int = 200, dry_run: bool = Fa
         for r in records:
             conn.execute(
                 """INSERT INTO congress_votes
-                       (bioguide_id, chamber, congress, vote_number, vote_date,
+                       (bioguide_id, chamber, congress, session, vote_number, vote_date,
                         bill, question, member_vote, result, fetched_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?)
-                   ON CONFLICT(bioguide_id, chamber, congress, vote_number) DO UPDATE SET
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                   ON CONFLICT(bioguide_id, chamber, congress, session, vote_number) DO UPDATE SET
                        member_vote=excluded.member_vote, fetched_at=excluded.fetched_at""",
-                (r["bioguide_id"], r["chamber"], r["congress"], r["vote_number"],
+                (r["bioguide_id"], r["chamber"], r["congress"], r["session"], r["vote_number"],
                  r["vote_date"], r["bill"], r["question"], r["member_vote"],
                  r["result"], now),
             )
@@ -342,13 +431,22 @@ def enrich_bill_titles(conn: sqlite3.Connection, dry_run: bool = False) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    global CONGRESS, SESSION, YEAR
+
     parser = argparse.ArgumentParser(description="Ingest VA federal delegation roll-call votes")
+    parser.add_argument("--congress", type=int, default=CONGRESS)
+    parser.add_argument("--session", type=int, default=SESSION)
+    parser.add_argument("--year", type=int, default=YEAR)
     parser.add_argument("--house-limit",  type=int, default=150)
     parser.add_argument("--senate-limit", type=int, default=200)
     parser.add_argument("--enrich-titles", action="store_true",
                         help="Fetch bill titles from Congress.gov API (requires CONGRESS_API_KEY)")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
+
+    CONGRESS = args.congress
+    SESSION = args.session
+    YEAR = args.year
 
     conn = sqlite3.connect(DB_PATH)
     setup_db(conn)

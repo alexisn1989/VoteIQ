@@ -13,6 +13,31 @@ import sqlite3
 
 DB = "legislative_intelligence.db"
 
+ACTION_LABELS = {
+    "signed": "Signed into law",
+    "vetoed": "Vetoed",
+    "pocket_veto": "Pocket veto",
+    "amended": "Amended / returned",
+    "veto_overridden": "Veto overridden",
+    "veto_sustained": "Veto sustained",
+    "pending": "Pending governor action",
+}
+
+ACTION_ORDER = [
+    "signed",
+    "amended",
+    "vetoed",
+    "pocket_veto",
+    "veto_overridden",
+    "veto_sustained",
+    "pending",
+]
+
+SUMMARY_LABELS = {
+    **ACTION_LABELS,
+    "pending": "Pending action",
+}
+
 
 # ── GOVERNOR LOOKUP ───────────────────────────────────────────────────────────
 
@@ -34,12 +59,17 @@ def create_governor_actions_table():
             title                TEXT,
             raw_status           TEXT,
             action               TEXT,
+            action_key           TEXT,
+            action_label         TEXT,
+            action_date          TEXT,
             chapter_number       TEXT,
             effective_date       TEXT,
             governor             TEXT,
             sponsor_lis_id       TEXT,
             sponsor_name         TEXT,
             sponsor_party        TEXT,
+            source_url           TEXT,
+            fetched_at           TEXT DEFAULT CURRENT_TIMESTAMP,
             override_attempted   INTEGER DEFAULT 0,
             override_succeeded   INTEGER DEFAULT 0,
             override_vote_house  TEXT,
@@ -55,6 +85,25 @@ def create_governor_actions_table():
         CREATE INDEX IF NOT EXISTS idx_gov_action_sponsor
             ON governor_actions(sponsor_lis_id);
     """)
+
+    columns = {
+        row[1]
+        for row in conn.execute("PRAGMA table_info(governor_actions)").fetchall()
+    }
+    migrations = {
+        "action_label": "ALTER TABLE governor_actions ADD COLUMN action_label TEXT",
+        "action_date": "ALTER TABLE governor_actions ADD COLUMN action_date TEXT",
+        "source_url": "ALTER TABLE governor_actions ADD COLUMN source_url TEXT",
+        "fetched_at": "ALTER TABLE governor_actions ADD COLUMN fetched_at TEXT",
+    }
+    for column, ddl in migrations.items():
+        if column not in columns:
+            conn.execute(ddl)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_gov_action_session_key
+            ON governor_actions(session, action)
+    """)
+
     conn.commit()
     conn.close()
     print("Governor actions table ready")
@@ -117,6 +166,15 @@ def classify_action(status: str) -> str:
     return "other"
 
 
+def action_label(action: str) -> str:
+    return ACTION_LABELS.get(action, "Other governor action")
+
+
+def parse_source_url(description: str) -> str:
+    match = re.search(r"Source:\s*(https?://\S+)", description or "")
+    return match.group(1).rstrip(").,") if match else ""
+
+
 def parse_chapter_number(status: str) -> str:
     match = re.search(r'chapter\s+(\d+)', (status or "").lower())
     return match.group(1) if match else ""
@@ -143,6 +201,8 @@ def load_governor_actions(sessions: list = None) -> int:
             b.bill_number,
             b.session,
             b.title,
+            b.description,
+            b.introduced_date    AS action_date,
             b.status,
             b.introduced_by     AS sponsor_lis_id,
             l.name              AS sponsor_name,
@@ -157,6 +217,9 @@ def load_governor_actions(sessions: list = None) -> int:
             OR LOWER(b.status) LIKE '%override%'
             OR LOWER(b.status) LIKE '%enacted%'
             OR LOWER(b.status) LIKE '%recommendation%'
+            OR LOWER(b.status) LIKE '%sent to governor%'
+            OR LOWER(b.status) LIKE '%enrolled%'
+            OR LOWER(b.status) LIKE '%presented to governor%'
         )
     """, sessions)
 
@@ -165,31 +228,41 @@ def load_governor_actions(sessions: list = None) -> int:
 
     count = 0
     for bill in bills:
-        action    = classify_action(bill["status"])
+        key       = classify_action(bill["status"])
+        label     = action_label(key)
         chapter   = parse_chapter_number(bill["status"])
         eff_date  = parse_effective_date(bill["status"])
         governor  = get_governor_for_session(bill["session"])
+        source_url = parse_source_url(bill["description"])
 
         cur.execute("""
             INSERT INTO governor_actions (
-                bill_number, session, title, raw_status, action,
+                bill_number, session, title, raw_status,
+                action, action_key, action_label, action_date,
                 chapter_number, effective_date, governor,
-                sponsor_lis_id, sponsor_name, sponsor_party
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                sponsor_lis_id, sponsor_name, sponsor_party,
+                source_url, fetched_at
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
             ON CONFLICT(bill_number, session) DO UPDATE SET
                 raw_status     = excluded.raw_status,
                 action         = excluded.action,
+                action_key     = excluded.action_key,
+                action_label   = excluded.action_label,
+                action_date    = excluded.action_date,
                 chapter_number = excluded.chapter_number,
                 effective_date = excluded.effective_date,
                 governor       = excluded.governor,
                 sponsor_lis_id = excluded.sponsor_lis_id,
                 sponsor_name   = excluded.sponsor_name,
                 sponsor_party  = excluded.sponsor_party,
+                source_url     = excluded.source_url,
+                fetched_at     = datetime('now'),
                 created_at     = CURRENT_TIMESTAMP
         """, (
             bill["bill_number"], bill["session"], bill["title"],
-            bill["status"], action, chapter, eff_date, governor,
+            bill["status"], key, key, label, bill["action_date"], chapter, eff_date, governor,
             bill["sponsor_lis_id"], bill["sponsor_name"], bill["sponsor_party"],
+            source_url,
         ))
         count += cur.rowcount
 
@@ -211,25 +284,35 @@ def get_action_summary(sessions: list = None) -> dict:
     ph = ",".join("?" for _ in sessions)
 
     cur.execute(f"""
-        SELECT action, COUNT(*) AS count,
+        SELECT action, action_label, COUNT(*) AS count,
                COUNT(DISTINCT sponsor_lis_id) AS unique_sponsors,
                COUNT(DISTINCT sponsor_party)  AS parties
         FROM governor_actions
         WHERE session IN ({ph})
-        GROUP BY action ORDER BY count DESC
+        GROUP BY action, action_label ORDER BY count DESC
     """, sessions)
-    action_counts = [dict(r) for r in cur.fetchall()]
+    action_count_rows = {r["action"]: dict(r) for r in cur.fetchall()}
+    action_counts = []
+    for action in ACTION_ORDER:
+        row = action_count_rows.get(action, {})
+        action_counts.append({
+            "action": action,
+            "action_label": SUMMARY_LABELS.get(action, action_label(action)),
+            "count": row.get("count", 0),
+            "unique_sponsors": row.get("unique_sponsors", 0),
+            "parties": row.get("parties", 0),
+        })
 
     cur.execute(f"""
-        SELECT sponsor_party, action, COUNT(*) AS count
+        SELECT sponsor_party, action, action_label, COUNT(*) AS count
         FROM governor_actions
         WHERE session IN ({ph}) AND sponsor_party IS NOT NULL
-        GROUP BY sponsor_party, action ORDER BY count DESC
+        GROUP BY sponsor_party, action, action_label ORDER BY count DESC
     """, sessions)
     party_breakdown = [dict(r) for r in cur.fetchall()]
 
     cur.execute(f"""
-        SELECT bill_number, title, action,
+        SELECT bill_number, title, action, action_label,
                override_vote_house, override_vote_senate,
                override_date, sponsor_name, sponsor_party
         FROM governor_actions
@@ -293,7 +376,7 @@ def run_veto_tracker_pipeline(sessions: list = None):
     print("\nSummary:")
     for a in summary["action_counts"]:
         print(
-            f"  {a['action']:<20} "
+            f"  {a['action_label']:<30} "
             f"{a['count']:>4} bills "
             f"({a['unique_sponsors']} sponsors)"
         )

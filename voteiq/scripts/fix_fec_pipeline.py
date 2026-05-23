@@ -249,5 +249,69 @@ def run_full_fec_pipeline(cycle: int = 2024):
     conn.close()
 
 
+def ingest_candidate_fec(
+    candidate_id: str,
+    cycles: list[int],
+    candidate_name: str | None = None,
+) -> dict:
+    """
+    Compatibility wrapper for ingesting one FEC candidate into polls.db.
+
+    Uses the newer fec_employer_pipeline schema:
+    fec_individual_contributions + candidate_sector_totals.
+    """
+    from fec_employer_pipeline import (
+        build_sector_totals,
+        create_tables,
+        fetch_authorized_committees,
+        fetch_schedule_a as fetch_committee_schedule_a,
+        get_db,
+        insert_contributions,
+    )
+
+    if not FEC_API_KEY:
+        raise RuntimeError("FEC_API_KEY environment variable not set")
+
+    candidate_name = candidate_name or candidate_id
+    summary = {
+        "candidate_id": candidate_id,
+        "candidate_name": candidate_name,
+        "cycles": {},
+    }
+
+    conn = get_db()
+    create_tables(conn)
+    try:
+        for cycle in cycles:
+            committees = fetch_authorized_committees(candidate_id, cycle, FEC_API_KEY)
+            cycle_rows = 0
+            for committee in committees:
+                committee_id = committee.get("committee_id")
+                if not committee_id:
+                    continue
+                contributions = fetch_committee_schedule_a(
+                    committee_id=committee_id,
+                    cycle=cycle,
+                    api_key=FEC_API_KEY,
+                )
+                cycle_rows += insert_contributions(
+                    conn=conn,
+                    candidate_name=candidate_name,
+                    candidate_id=candidate_id,
+                    contributions=contributions,
+                    cycle=cycle,
+                )
+            sector_rows = build_sector_totals(conn, candidate_id, candidate_name, cycle)
+            summary["cycles"][cycle] = {
+                "committees": len(committees),
+                "rows_written": cycle_rows,
+                "sector_rows": sector_rows,
+            }
+    finally:
+        conn.close()
+
+    return summary
+
+
 if __name__ == "__main__":
     run_full_fec_pipeline(cycle=2024)

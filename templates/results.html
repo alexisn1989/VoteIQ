@@ -99,6 +99,7 @@
   .viq-chat-bubble { max-width:82%; padding:7px 11px; border-radius:9px; font-size:13px; line-height:1.5; }
   .viq-chat-msg.bot .viq-chat-bubble { background:#fff; border:1px solid #e3e8f0; border-radius:3px 9px 9px 9px; color:var(--navy); }
   .viq-chat-msg.user .viq-chat-bubble { background:var(--navy); color:#fff; border-radius:9px 3px 9px 9px; }
+  .viq-chat-bubble a { color:var(--red); font-weight:700; text-decoration:underline; text-underline-offset:2px; }
   .viq-chat-typing { display:flex; align-items:center; gap:3px; padding:7px 11px; }
   .viq-chat-dot { width:5px; height:5px; border-radius:50%; background:#aaa; animation:viqBounce 1.2s infinite; }
   .viq-chat-dot:nth-child(2) { animation-delay:.2s; }
@@ -558,6 +559,16 @@ if (document.getElementById('viqInput')) {
         ? "Hi! I'm VoteIQ. The April 21 referendum results are in — ask me what the Yes result means, how Virginia voted, or anything about the election."
         : "Hi! I'm your VoteIQ assistant for "+code+". Ask me how your area voted, what the outcome means, or about your representative.");
     };
+    function viqEscapeHtml(value){
+      return String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    }
+    function viqRenderMarkdown(md){
+      return viqEscapeHtml(md)
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\[([^\]]+)\]\((\/ask\?q=[^)]+)\)/g, '<a href="$2" class="viq-followup-link">$1</a>')
+        .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+        .replace(/\n/g, '<br>');
+    }
     function viqAddMsg(role,text,isTyping){
       const list=document.getElementById('viqMsgList');
       const wrap=document.createElement('div'); wrap.className='viq-chat-msg '+(role==='user'?'user':'bot');
@@ -567,7 +578,8 @@ if (document.getElementById('viqInput')) {
       if(isTyping){
         bubble.innerHTML='<div class="viq-chat-typing"><div class="viq-chat-dot"></div><div class="viq-chat-dot"></div><div class="viq-chat-dot"></div></div>';
       } else {
-        bubble.textContent=text;
+        if(role==='assistant') bubble.innerHTML=viqRenderMarkdown(text);
+        else bubble.textContent=text;
         if(role==='assistant') viqMsgs.push({role:'assistant',content:text});
       }
       wrap.appendChild(av); wrap.appendChild(bubble); list.appendChild(wrap);
@@ -592,6 +604,13 @@ if (document.getElementById('viqInput')) {
     window.viqSendChip=t=>viqSendMessage(t);
     window.viqSendMessage=viqSendMessage;
     document.getElementById('viqInput').addEventListener('keydown',e=>{ if(e.key==='Enter') viqSendMessage(); });
+    document.getElementById('viqMsgList').addEventListener('click', e => {
+      const link=e.target.closest('a.viq-followup-link');
+      if(!link) return;
+      e.preventDefault();
+      const query=new URL(link.href, window.location.origin).searchParams.get('q') || link.textContent;
+      viqSendMessage(query);
+    });
   })();
 }
 </script>

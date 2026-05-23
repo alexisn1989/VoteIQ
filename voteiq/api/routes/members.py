@@ -156,91 +156,97 @@ def _load_pac_table() -> list[dict]:
         pacs.setdefault(key, _empty_pac(name or "Unknown PAC"))
         return pacs[key]
 
-    if conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pac_ideology'").fetchone():
-        for row in conn.execute("SELECT * FROM pac_ideology"):
-            item = get(row["committee_name"])
-            item.update({
-                "committee_id": row["committee_id"] or item["committee_id"],
-                "short_name": row["short_name"] or item["short_name"],
-                "ideology": row["ideology"] or item["ideology"],
-                "alignment": row["alignment"] or item["alignment"],
-                "network": row["network"] or item["network"],
-                "issue_focus": row["issue_focus"] or item["issue_focus"],
-                "foreign_alignment": row["foreign_alignment"] or item["foreign_alignment"],
-                "foreign_country": row["foreign_country"] or item["foreign_country"],
-                "source_url": row["source_url"] or item["source_url"],
-                "verified": bool(row["verified"]),
-            })
-            item["sources"].add("pac_ideology")
+    try:
+        if conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pac_ideology'").fetchone():
+            for row in conn.execute("SELECT * FROM pac_ideology"):
+                item = get(row["committee_name"])
+                item.update({
+                    "committee_id": row["committee_id"] or item["committee_id"],
+                    "short_name": row["short_name"] or item["short_name"],
+                    "ideology": row["ideology"] or item["ideology"],
+                    "alignment": row["alignment"] or item["alignment"],
+                    "network": row["network"] or item["network"],
+                    "issue_focus": row["issue_focus"] or item["issue_focus"],
+                    "foreign_alignment": row["foreign_alignment"] or item["foreign_alignment"],
+                    "foreign_country": row["foreign_country"] or item["foreign_country"],
+                    "source_url": row["source_url"] or item["source_url"],
+                    "verified": bool(row["verified"]),
+                })
+                item["sources"].add("pac_ideology")
 
-    if conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pac_name_lookup'").fetchone():
-        for row in conn.execute("SELECT pac_name, industry, confidence FROM pac_name_lookup"):
-            item = get(row["pac_name"])
-            item["industry"] = row["industry"] or item["industry"]
-            item["sources"].add("pac_name_lookup")
+        if conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pac_name_lookup'").fetchone():
+            for row in conn.execute("SELECT pac_name, industry, confidence FROM pac_name_lookup"):
+                item = get(row["pac_name"])
+                item["industry"] = row["industry"] or item["industry"]
+                item["sources"].add("pac_name_lookup")
 
-    if conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='fec_independent_expenditures'").fetchone():
-        for row in conn.execute(
-            """
-            SELECT committee_id, committee_name, support_oppose,
-                   SUM(expenditure_amount) AS total, COUNT(*) AS records
-            FROM fec_independent_expenditures
-            GROUP BY committee_id, committee_name, support_oppose
-            """
-        ):
-            item = get(row["committee_name"])
-            item["committee_id"] = row["committee_id"] or item["committee_id"]
-            total = float(row["total"] or 0)
-            item["independent_total"] += total
-            item["independent_records"] += int(row["records"] or 0)
-            if str(row["support_oppose"] or "").upper().startswith("S"):
-                item["support_total"] += total
-            elif str(row["support_oppose"] or "").upper().startswith("O"):
-                item["oppose_total"] += total
-            item["sources"].add("fec_independent_expenditures")
+        if conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='fec_independent_expenditures'").fetchone():
+            for row in conn.execute(
+                """
+                SELECT committee_id, committee_name, support_oppose,
+                       SUM(expenditure_amount) AS total, COUNT(*) AS records
+                FROM fec_independent_expenditures
+                GROUP BY committee_id, committee_name, support_oppose
+                """
+            ):
+                item = get(row["committee_name"])
+                item["committee_id"] = row["committee_id"] or item["committee_id"]
+                total = float(row["total"] or 0)
+                item["independent_total"] += total
+                item["independent_records"] += int(row["records"] or 0)
+                if str(row["support_oppose"] or "").upper().startswith("S"):
+                    item["support_total"] += total
+                elif str(row["support_oppose"] or "").upper().startswith("O"):
+                    item["oppose_total"] += total
+                item["sources"].add("fec_independent_expenditures")
 
-    if conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='fec_industry_totals'").fetchone():
-        for row in conn.execute("SELECT top_donors FROM fec_industry_totals WHERE top_donors IS NOT NULL"):
-            try:
-                donors = json.loads(row["top_donors"] or "[]")
-            except Exception:
-                donors = []
-            for donor in donors:
-                name = donor.get("name") or ""
-                if not _looks_like_pac_name(name):
+        if conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='fec_industry_totals'").fetchone():
+            for row in conn.execute("SELECT top_donors FROM fec_industry_totals WHERE top_donors IS NOT NULL"):
+                try:
+                    donors = json.loads(row["top_donors"] or "[]")
+                except Exception:
+                    donors = []
+                for donor in donors:
+                    name = donor.get("name") or ""
+                    if not _looks_like_pac_name(name):
+                        continue
+                    item = get(name)
+                    item["fec_direct_total"] += float(donor.get("amount") or 0)
+                    item["fec_records"] += 1
+                    item["sources"].add("fec_industry_totals")
+
+        if conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='va_cf_schedule_a'").fetchone():
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_sca_company_individual "
+                "ON va_cf_schedule_a(is_individual, last_or_company, amount)"
+            )
+            for row in conn.execute(
+                """
+                SELECT last_or_company, SUM(amount) AS total, COUNT(*) AS records
+                FROM va_cf_schedule_a
+                WHERE amount IS NOT NULL
+                  AND (
+                        is_individual = 0
+                     OR lower(last_or_company) LIKE '%pac%'
+                     OR lower(last_or_company) LIKE '%committee%'
+                     OR lower(last_or_company) LIKE '%caucus%'
+                     OR lower(last_or_company) LIKE '%party%'
+                     OR lower(last_or_company) LIKE '%action fund%'
+                  )
+                GROUP BY last_or_company
+                HAVING total > 0
+                """
+            ):
+                name = row["last_or_company"] or ""
+                if not name.strip():
                     continue
                 item = get(name)
-                item["fec_direct_total"] += float(donor.get("amount") or 0)
-                item["fec_records"] += 1
-                item["sources"].add("fec_industry_totals")
+                item["sbe_direct_total"] += float(row["total"] or 0)
+                item["sbe_records"] += int(row["records"] or 0)
+                item["sources"].add("virginia_sbe")
+    finally:
+        conn.close()
 
-    if conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='va_cf_schedule_a'").fetchone():
-        for row in conn.execute(
-            """
-            SELECT last_or_company, SUM(amount) AS total, COUNT(*) AS records
-            FROM va_cf_schedule_a
-            WHERE amount IS NOT NULL
-              AND (
-                    is_individual = 0
-                 OR lower(last_or_company) LIKE '%pac%'
-                 OR lower(last_or_company) LIKE '%committee%'
-                 OR lower(last_or_company) LIKE '%caucus%'
-                 OR lower(last_or_company) LIKE '%party%'
-                 OR lower(last_or_company) LIKE '%action fund%'
-              )
-            GROUP BY last_or_company
-            HAVING total > 0
-            """
-        ):
-            name = row["last_or_company"] or ""
-            if not name.strip():
-                continue
-            item = get(name)
-            item["sbe_direct_total"] += float(row["total"] or 0)
-            item["sbe_records"] += int(row["records"] or 0)
-            item["sources"].add("virginia_sbe")
-
-    conn.close()
     rows = []
     for item in pacs.values():
         item["sources"] = sorted(item["sources"])
@@ -339,14 +345,13 @@ def pac_table(q: str = "", source: str = "", limit: int = 0):
 
 @router.get("/api/congress/members")
 def congress_members():
+    conn = sqlite3.connect(_POLLS_DB)
     try:
-        conn = sqlite3.connect(_POLLS_DB)
         rows = conn.execute("""
             SELECT bioguide_id, name, party, chamber, district, website
             FROM congress_members
             ORDER BY chamber DESC, CAST(district AS INTEGER)
         """).fetchall()
-        conn.close()
         return {"members": [
             {"bioguide_id": r[0], "name": r[1], "party": r[2],
              "chamber": r[3], "district": r[4], "website": r[5]}
@@ -354,18 +359,19 @@ def congress_members():
         ]}
     except Exception as exc:
         return {"members": [], "error": str(exc)}
+    finally:
+        conn.close()
 
 
 @router.get("/api/congress/member/{bioguide_id}")
 def congress_member_detail(bioguide_id: str):
+    conn = sqlite3.connect(_POLLS_DB)
     try:
-        conn = sqlite3.connect(_POLLS_DB)
         row = conn.execute(
             "SELECT bioguide_id, name, party, chamber, state, district, website "
             "FROM congress_members WHERE bioguide_id = ?",
             (bioguide_id,)
         ).fetchone()
-        conn.close()
         if not row:
             return {"member": None, "error": "not found"}
         return {"member": {
@@ -374,12 +380,14 @@ def congress_member_detail(bioguide_id: str):
         }}
     except Exception as exc:
         return {"member": None, "error": str(exc)}
+    finally:
+        conn.close()
 
 
 @router.get("/api/congress/bills/{bioguide_id}")
 def congress_member_bills(bioguide_id: str, role: str = "sponsored", limit: int = 20):
+    conn = sqlite3.connect(_POLLS_DB)
     try:
-        conn = sqlite3.connect(_POLLS_DB)
         rows = conn.execute("""
             SELECT b.bill_type, b.bill_number, b.title, b.introduced_date,
                    b.policy_area, b.latest_action, b.latest_action_date, b.role
@@ -388,7 +396,6 @@ def congress_member_bills(bioguide_id: str, role: str = "sponsored", limit: int 
             ORDER BY b.introduced_date DESC
             LIMIT ?
         """, (bioguide_id, role, role, limit)).fetchall()
-        conn.close()
         return {"bills": [
             {"type": r[0], "number": r[1], "title": r[2], "introduced": r[3],
              "policy_area": r[4], "latest_action": r[5], "latest_action_date": r[6], "role": r[7]}
@@ -396,13 +403,15 @@ def congress_member_bills(bioguide_id: str, role: str = "sponsored", limit: int 
         ]}
     except Exception as exc:
         return {"bills": [], "error": str(exc)}
+    finally:
+        conn.close()
 
 
 @router.get("/api/congress/votes/{bioguide_id}")
 def congress_member_votes(bioguide_id: str, limit: int = 50):
     """Return recent roll-call votes for a VA member."""
+    conn = sqlite3.connect(_POLLS_DB)
     try:
-        conn = sqlite3.connect(_POLLS_DB)
         rows = conn.execute("""
             SELECT vote_number, chamber, congress, session, vote_date, bill, question, member_vote, result
             FROM congress_votes
@@ -410,7 +419,6 @@ def congress_member_votes(bioguide_id: str, limit: int = 50):
             ORDER BY vote_date DESC, vote_number DESC
             LIMIT ?
         """, (bioguide_id, limit)).fetchall()
-        conn.close()
         return {"votes": [
             {"vote_number": r[0], "chamber": r[1], "congress": r[2], "session": r[3],
              "date": r[4], "bill": r[5], "question": r[6], "vote": r[7], "result": r[8]}
@@ -418,20 +426,21 @@ def congress_member_votes(bioguide_id: str, limit: int = 50):
         ]}
     except Exception as exc:
         return {"votes": [], "error": str(exc)}
+    finally:
+        conn.close()
 
 
 @router.get("/api/congress/votes/{bioguide_id}/summary")
 def congress_member_vote_summary(bioguide_id: str):
     """Return Yea/Nay/Not Voting counts and party-line stats for a member."""
+    conn = sqlite3.connect(_POLLS_DB)
     try:
-        conn = sqlite3.connect(_POLLS_DB)
         rows = conn.execute("""
             SELECT member_vote, COUNT(*) as cnt
             FROM congress_votes
             WHERE bioguide_id = ?
             GROUP BY member_vote
         """, (bioguide_id,)).fetchall()
-        conn.close()
         summary = {r[0]: r[1] for r in rows}
         total = sum(summary.values())
         return {
@@ -443,12 +452,14 @@ def congress_member_vote_summary(bioguide_id: str):
         }
     except Exception as exc:
         return {"total": 0, "error": str(exc)}
+    finally:
+        conn.close()
 
 
 @router.get("/api/congress/bills")
 def congress_bills_search(policy_area: str = "", limit: int = 50):
+    conn = sqlite3.connect(_POLLS_DB)
     try:
-        conn = sqlite3.connect(_POLLS_DB)
         rows = conn.execute("""
             SELECT b.bill_type, b.bill_number, b.title, b.introduced_date,
                    b.policy_area, b.latest_action, b.latest_action_date,
@@ -460,7 +471,6 @@ def congress_bills_search(policy_area: str = "", limit: int = 50):
             ORDER BY b.introduced_date DESC
             LIMIT ?
         """, (policy_area, policy_area, limit)).fetchall()
-        conn.close()
         return {"bills": [
             {"type": r[0], "number": r[1], "title": r[2], "introduced": r[3],
              "policy_area": r[4], "latest_action": r[5], "latest_action_date": r[6],
@@ -469,21 +479,21 @@ def congress_bills_search(policy_area: str = "", limit: int = 50):
         ]}
     except Exception as exc:
         return {"bills": [], "error": str(exc)}
+    finally:
+        conn.close()
 
 
 @router.get("/api/congress/profile/{bioguide_id}")
 def congress_member_profile(bioguide_id: str):
     """Full profile: member info + committees + FEC donors + vote stats + party alignment."""
+    conn = sqlite3.connect(_POLLS_DB)
+    conn.row_factory = sqlite3.Row
     try:
-        conn = sqlite3.connect(_POLLS_DB)
-        conn.row_factory = sqlite3.Row
-
         member = conn.execute(
             "SELECT bioguide_id, name, party, chamber, state, district, website "
             "FROM congress_members WHERE bioguide_id = ?", (bioguide_id,)
         ).fetchone()
         if not member:
-            conn.close()
             return {"error": "member not found"}
 
         committees = conn.execute(
@@ -565,7 +575,6 @@ def congress_member_profile(bioguide_id: str):
                )
                ORDER BY total_amount DESC""", (bioguide_id, bioguide_id)
         ).fetchall()
-        conn.close()
 
         photo_letter = bioguide_id[0].upper()
         photo_url = f"https://bioguide.congress.gov/bioguide/photo/{photo_letter}/{bioguide_id}.jpg"
@@ -607,12 +616,14 @@ def congress_member_profile(bioguide_id: str):
         }
     except Exception as exc:
         return {"error": str(exc)}
+    finally:
+        conn.close()
 
 
 @router.get("/api/va-officials")
 def va_officials(office: str = "", limit: int = 200):
+    conn = sqlite3.connect(_POLLS_DB)
     try:
-        conn = sqlite3.connect(_POLLS_DB)
         rows = conn.execute("""
             SELECT person_name, office, district, party, role,
                    incumbent, finance_url, source_url, data_confidence
@@ -630,7 +641,6 @@ def va_officials(office: str = "", limit: int = 200):
                 CAST(district AS INTEGER)
             LIMIT ?
         """, (office, office, limit)).fetchall()
-        conn.close()
         return {"officials": [
             {"name": r[0], "office": r[1], "district": r[2], "party": r[3],
              "role": r[4], "incumbent": bool(r[5]), "finance_url": r[6],
@@ -639,6 +649,8 @@ def va_officials(office: str = "", limit: int = 200):
         ]}
     except Exception as exc:
         return {"officials": [], "error": str(exc)}
+    finally:
+        conn.close()
 
 
 @router.get("/api/congress/pac-summary/{bioguide_id}")
@@ -717,9 +729,9 @@ def candidate_donors(
     """Paginated donor list for a FEC candidate ID."""
     if not os.path.exists(_POLLS_DB):
         return {"error": "polls.db missing"}
+    conn = sqlite3.connect(_POLLS_DB)
+    conn.row_factory = sqlite3.Row
     try:
-        conn = sqlite3.connect(_POLLS_DB)
-        conn.row_factory = sqlite3.Row
         tbl = conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='fec_individual_contributions'"
         ).fetchone()
@@ -749,7 +761,6 @@ def candidate_donors(
                GROUP BY employer_sector ORDER BY total DESC""",
             [candidate_id, cycle],
         ).fetchall()
-        conn.close()
         return {
             "candidate_id": candidate_id, "cycle": cycle,
             "total_donors": total, "limit": limit, "offset": offset,
@@ -768,3 +779,5 @@ def candidate_donors(
         }
     except Exception as exc:
         return {"error": str(exc)}
+    finally:
+        conn.close()

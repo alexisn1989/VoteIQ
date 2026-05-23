@@ -1,5 +1,12 @@
 import sqlite3
 from voteiq.db import federal, virginia
+from voteiq.analysis.governor_action_money import (
+    get_governor_action_analysis_guardrails,
+    get_governor_action_money_patterns,
+    get_governor_action_sector_totals,
+    get_governor_action_top_sponsors,
+    get_governor_action_voteiq_finding,
+)
 
 
 def get_federal_sector_totals(candidate_id: str, cycle: int = 2024) -> list:
@@ -13,6 +20,65 @@ def get_federal_sector_totals(candidate_id: str, cycle: int = 2024) -> list:
           AND cycle = ?
         ORDER BY total_amount DESC
     """, (candidate_id, cycle))
+
+
+def get_sector_totals(candidate_id: str, cycle: int = 2024) -> list:
+    """Compatibility alias for federal candidate sector totals."""
+    return get_federal_sector_totals(candidate_id, cycle)
+
+
+def get_shared_donors_named(
+    candidate_ids: list[str],
+    cycle: int = 2024,
+    min_candidates: int = 2,
+) -> list:
+    """
+    Return donors shared across multiple federal FEC candidate IDs.
+
+    This is candidate-ID based, so it works for presidential candidates that
+    do not have a bioguide bridge row.
+    """
+    if not candidate_ids or len(candidate_ids) < 2:
+        return []
+
+    candidate_ids = list(dict.fromkeys(candidate_ids))
+    min_candidates = max(2, min(int(min_candidates), len(candidate_ids)))
+    placeholders = ",".join("?" for _ in candidate_ids)
+
+    return federal.query(f"""
+        SELECT
+            UPPER(TRIM(contributor_name)) AS donor_key,
+            MIN(contributor_name) AS contributor_name,
+            UPPER(TRIM(COALESCE(contributor_employer, ''))) AS employer_key,
+            MIN(contributor_employer) AS contributor_employer,
+            COALESCE(employer_sector, 'Unclassified') AS employer_sector,
+            ROUND(SUM(amount), 2) AS total_given,
+            COUNT(DISTINCT candidate_id) AS candidates_funded,
+            GROUP_CONCAT(DISTINCT candidate_id) AS candidates,
+            ROUND(AVG(amount), 2) AS avg_donation,
+            COUNT(*) AS total_transactions,
+            MIN(contribution_date) AS first_contribution,
+            MAX(contribution_date) AS last_contribution,
+            CASE
+                WHEN COUNT(DISTINCT candidate_id) = ?
+                    THEN 'Network donor across all'
+                WHEN COUNT(DISTINCT candidate_id) >= 3
+                    THEN 'High-overlap donor'
+                WHEN COUNT(DISTINCT candidate_id) = 2
+                    THEN 'Shared donor'
+            END AS overlap_type
+        FROM fec_individual_contributions
+        WHERE candidate_id IN ({placeholders})
+          AND cycle = ?
+          AND contributor_name IS NOT NULL
+          AND TRIM(contributor_name) != ''
+        GROUP BY
+            donor_key,
+            employer_key,
+            COALESCE(employer_sector, 'Unclassified')
+        HAVING COUNT(DISTINCT candidate_id) >= ?
+        ORDER BY candidates_funded DESC, total_given DESC
+    """, (len(candidate_ids), *candidate_ids, cycle, min_candidates))
 
 
 def get_state_sector_totals(lis_id: str, cycle: str = "2023") -> list:

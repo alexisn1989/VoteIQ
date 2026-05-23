@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
 from voteiq.api.dependencies import require_admin_token
+from voteiq.utils import clean_json_text
 
 router = APIRouter(tags=["news"])
 
@@ -55,7 +56,7 @@ def va_news(limit: int = 30, topic: str | None = None, politician: str | None = 
         for row in rows:
             item = dict(row)
             gj = item.pop("gemini_json", None)
-            item["data"] = json.loads(gj) if gj else {}
+            item["data"] = json.loads(clean_json_text(gj)) if gj else {}
             if topic:
                 topics = item["data"].get("topics") or []
                 if not any(topic.lower() in t.lower() for t in topics):

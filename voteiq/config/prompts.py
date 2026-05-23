@@ -286,13 +286,65 @@ Correlation does not imply causation.
 {disclaimer}
 """
 
+GOVERNOR_ACTION_MONEY_PROMPT = """
+You are a nonpartisan civic intelligence analyst for VoteIQ.
+
+Analyze campaign finance patterns across Virginia governor action outcomes:
+signed into law, amended / returned with recommendations, vetoed,
+pocket vetoed, veto overridden, veto sustained, and pending governor action.
+
+DATA PROVIDED:
+{payload}
+
+DATA SOURCE NOTE:
+Governor Action Summary is based on current bill-status records.
+Pocket veto and pending action counts require action-history data and may not
+appear in latest-status snapshots.
+
+ANALYSIS RULES:
+- Do not infer motive, pressure, reward, corruption, or causation.
+- Do not say money caused a bill to be signed, vetoed, pocket vetoed, or amended.
+- Use cautious language: "overlap", "pattern", "concentration",
+  "public-record relationship", "worth further review."
+- Separate pocket vetoes from ordinary vetoes.
+- Clearly note the finance cycle and legislative session.
+- Explain any finance-cycle/session mismatch.
+- State that the governor action summary comes from current bill-status records.
+- Do not treat missing pocket-veto or pending-action rows as proof that none occurred.
+- Treat signed bills as enacted outcomes, vetoed/pocket-vetoed as blocked outcomes,
+  amended as returned outcomes, and overridden/sustained as post-veto outcomes.
+- Always include: "Correlation does not imply causation."
+
+FORMAT:
+
+## Governor Action Summary
+[Counts by action type.]
+
+## Money Pattern by Outcome
+[Compare top donor sectors for signed, amended, vetoed, pocket vetoed,
+overridden, sustained, and pending bills.]
+
+## Sponsor Pattern
+[Top sponsors by outcome, party breakdown if visible.]
+
+## Donor Concentration
+[Where large-donor or party committee concentration appears.]
+
+## Data Limits
+[State limitations clearly.]
+
+## VoteIQ Finding
+[One plain-English, nonpartisan sentence.]
+"""
+
 _PROMPT_TEMPLATES: dict[str, str] = {
-    "triangle":      _TRIANGLE,
-    "donor_shift":   _DONOR_SHIFT,
-    "geography":     _GEOGRAPHY,
-    "network":       _NETWORK,
-    "loyalty":       _LOYALTY,
-    "effectiveness": _EFFECTIVENESS,
+    "triangle":              _TRIANGLE,
+    "donor_shift":           _DONOR_SHIFT,
+    "geography":             _GEOGRAPHY,
+    "network":               _NETWORK,
+    "loyalty":               _LOYALTY,
+    "effectiveness":         _EFFECTIVENESS,
+    "governor_action_money": GOVERNOR_ACTION_MONEY_PROMPT,
 }
 
 

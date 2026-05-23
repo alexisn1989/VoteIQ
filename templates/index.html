@@ -525,7 +525,8 @@
           locality: d.locality || '',
           hod: del ? del.district_number : null,
           sd: sen ? sen.district_number : null,
-          repNames: repNames
+          repNames: repNames,
+          repData: repData
         });
       }
       document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -689,7 +690,7 @@
         lines.push('Ask me about any of them.');
         greeting = lines.join('\n');
       } else if (repNames && repNames.length) {
-        greeting = "Hi! I'm VoteIQ. You're represented by " + repNames.join(', ') + ". Ask me anything about their roles, voting records, or how to contact them.";
+        greeting = "Hi! I'm VoteIQ. You're represented by " + repNames.join(', ') + ". Your U.S. senators are Mark Warner and Tim Kaine, and Virginia's governor is Abigail D. Spanberger. Ask me anything about their roles, voting records, executive actions, or how to contact them.";
       } else {
         greeting = "Hi! I'm VoteIQ. Enter your address above to find your representatives, then ask me anything about them.";
       }
@@ -698,7 +699,7 @@
     document.addEventListener('DOMContentLoaded', () => {
       const saved = viqLoadDistrictContext();
       if (saved) {
-        initViqChat(saved.districtCode, saved.locality, saved.hod, saved.sd, saved.repNames || []);
+        initViqChat(saved.districtCode, saved.locality, saved.hod, saved.sd, saved.repNames || [], saved.repData || null);
         viqSavedDistrictNotice(saved);
         const panel = document.getElementById('viqChatPanel');
         if (panel) setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);

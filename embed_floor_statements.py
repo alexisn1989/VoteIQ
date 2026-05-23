@@ -100,6 +100,16 @@ def make_chunk_id(granule_id: str, bioguide_id: str, title: str, stmt_date: str,
     return f"floor_{bioguide_id}_{digest}_chunk{idx}"
 
 
+def normalize_chamber(chamber: str | None) -> str:
+    chamber = (chamber or "").strip()
+    low = chamber.lower()
+    if "house" in low:
+        return "House"
+    if "senate" in low:
+        return "Senate"
+    return chamber
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Embed floor statements into voteiq_bills ChromaDB collection."
@@ -117,6 +127,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--max-text", type=int, default=8000,
         help="Truncate statement text to N chars before chunking (default: 8000)"
+    )
+    parser.add_argument(
+        "--max-chunks", type=int, default=8000,
+        help="Maximum floor-statement chunks to embed/upsert (default: 8000)"
     )
     parser.add_argument("--dry-run", action="store_true", help="Count chunks without embedding")
     args = parser.parse_args(argv)
@@ -152,22 +166,31 @@ def main(argv: list[str] | None = None) -> int:
         header = f"{member_name} — {title} ({stmt_date})\n\n" if title else f"{member_name} ({stmt_date})\n\n"
         text_to_embed = text[:args.max_text]
         for idx, chunk in enumerate(chunk_text(text_to_embed)):
+            if args.max_chunks and len(all_chunks) >= args.max_chunks:
+                break
             doc = (header + chunk) if idx == 0 else chunk
             all_chunks.append({
                 "id": make_chunk_id(granule_id or "", bioguide_id, title or "", stmt_date or "", idx),
                 "text": doc,
                 "metadata": {
+                    "source":       "floor_statement",
+                    "chunk_type":   "floor_statement",
+                    "jurisdiction": "federal",
+                    "record_source": "GovInfo / Congressional Record",
                     "bioguide_id":  bioguide_id,
                     "member_name":  member_name or "",
-                    "chamber":      chamber or "",
+                    "congress":     119,
+                    "chamber":      normalize_chamber(chamber),
                     "statement_date": stmt_date or "",
                     "title":        (title or "")[:200],
                     "source_url":   source_url or "",
-                    "chunk_type":   "floor_statement",
-                    "source":       "floor_statement",
+                    "speaker_verified": True,
                     "session":      (stmt_date or "")[:4],
+                    "year":         (stmt_date or "")[:4],
                 },
             })
+        if args.max_chunks and len(all_chunks) >= args.max_chunks:
+            break
 
     print(f"[floor] {len(all_chunks)} chunks from {len(rows)} statements", flush=True)
 

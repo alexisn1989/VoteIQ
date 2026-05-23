@@ -9,21 +9,15 @@ They do NOT show coordination, influence, motive, reward,
 or causation — only timing overlap in public records.
 
 Date format note:
-  va_sbe_contributions.transaction_date  MM/DD/YYYY
+  va_sbe_contributions.transaction_date  YYYY-MM-DD (ISO — stored by build pipeline)
   va_votes.vote_date                     YYYY-MM-DD (ISO)
-  julianday() requires ISO, so transaction_date is
-  converted inline via substr() before comparison.
+  Both are ISO so julianday() works directly.
 """
 import sqlite3
 from voteiq.db import virginia
 
-# Inline SQLite expression that converts MM/DD/YYYY -> YYYY-MM-DD
-# so julianday() can parse it correctly.
-_ISO_DATE = (
-    "substr(c.transaction_date,7,4)||'-'"
-    "||substr(c.transaction_date,1,2)||'-'"
-    "||substr(c.transaction_date,4,2)"
-)
+# transaction_date is stored as ISO (YYYY-MM-DD) by build_va_state_finance.py
+_ISO_DATE = "c.transaction_date"
 
 
 def get_donation_timing(
@@ -206,3 +200,72 @@ def get_timing_summary(
         "same_day":    same_day,
         "days_window": days_window,
     }
+
+
+def get_governor_action_timing_overlap(
+    session: str = "2026",
+    cycle: str = "2026",
+    days_window: int = 30,
+) -> list:
+    """
+    Return donations within +/- days_window of a governor action date.
+
+    This shows timing overlap in public records only.
+    Correlation does not imply causation.
+
+    Rows: (action_label, action, bill_number, action_date, sponsor_name,
+           sponsor_party, sector, total_amount, donor_count, timing_window)
+    """
+    days_window = max(1, min(int(days_window), 180))
+
+    sql = f"""
+        SELECT
+            ga.action_label,
+            ga.action,
+            ga.bill_number,
+            ga.action_date,
+            ga.sponsor_name,
+            ga.sponsor_party,
+            COALESCE(c.sector, 'Unclassified') AS sector,
+            ROUND(SUM(c.amount), 2) AS total_amount,
+            COUNT(*) AS donor_count,
+            CASE
+                WHEN julianday(c.transaction_date) - julianday(ga.action_date)
+                     BETWEEN -? AND -1
+                    THEN 'Pre-action donation'
+                WHEN julianday(c.transaction_date) - julianday(ga.action_date)
+                     BETWEEN 1 AND ?
+                    THEN 'Post-action donation'
+                ELSE 'Same-day donation'
+            END AS timing_window
+        FROM governor_actions ga
+        JOIN va_sbe_contributions c
+            ON c.legislator_id = ga.sponsor_lis_id
+        WHERE ga.session = ?
+          AND c.cycle = ?
+          AND ga.action_date IS NOT NULL
+          AND ga.action_date != ''
+          AND c.transaction_date IS NOT NULL
+          AND ABS(julianday(c.transaction_date) - julianday(ga.action_date)) <= ?
+        GROUP BY
+            ga.action_label,
+            ga.action,
+            ga.bill_number,
+            ga.action_date,
+            ga.sponsor_name,
+            ga.sponsor_party,
+            sector,
+            timing_window
+        ORDER BY ga.action_label, ABS(julianday(MAX(c.transaction_date)) - julianday(ga.action_date)), total_amount DESC
+    """
+
+    try:
+        return virginia.query(sql, (
+            days_window,
+            days_window,
+            session,
+            cycle,
+            days_window,
+        ))
+    except sqlite3.OperationalError:
+        return []

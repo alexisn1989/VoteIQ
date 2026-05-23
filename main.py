@@ -7,10 +7,10 @@ from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, field_validator
 from dotenv import load_dotenv
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 from slowapi.middleware import SlowAPIMiddleware
+from voteiq.config.rate_limit import limiter
 import threading
 import uvicorn
 import folium
@@ -53,7 +53,6 @@ def _require_admin(
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = FastAPI()
-limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
@@ -305,15 +304,13 @@ def _get_fec_summary(name: str) -> str:
     """Fetch a grounded FEC context string for a candidate name."""
     if not os.path.exists(_FEC_DB):
         return ""
+    conn = sqlite3.connect(_FEC_DB)
+    conn.row_factory = sqlite3.Row
     try:
-        conn = sqlite3.connect(_FEC_DB)
-        conn.row_factory = sqlite3.Row
-        # Search for candidate by name in the finance table
         row = conn.execute(
             "SELECT * FROM va_candidate_finance WHERE name LIKE ? ORDER BY cycle DESC LIMIT 1",
             (f"%{name}%",)
         ).fetchone()
-        conn.close()
         if row:
             return (
                 f"\nFEC CAMPAIGN FINANCE GROUNDING ({row['cycle']}):\n"
@@ -326,6 +323,8 @@ def _get_fec_summary(name: str) -> str:
             )
     except Exception as e:
         print(f"FEC lookup error: {e}")
+    finally:
+        conn.close()
     return ""
 
 _GEMINI_MODEL = "gemini-2.5-flash"
@@ -646,6 +645,62 @@ def _load_votes_cache() -> None:
         print(f"Vote cache skipped: {exc}")
 
 _load_votes_cache()
+
+
+# ── Legislator name index — federal vs state ──────────────────────────────────
+# Built once from _MEMBER_CACHE (federal) and legislative_intelligence.db (state)
+# so _classify_legislator() can route queries without hitting the wrong DB.
+
+_FEDERAL_LAST_NAMES: set[str] = set()  # lowercase last names of VA federal members
+_STATE_LAST_NAMES:   set[str] = set()  # lowercase last names of VA state legislators
+
+
+def _build_legislator_name_index() -> None:
+    global _FEDERAL_LAST_NAMES, _STATE_LAST_NAMES
+    # Federal: derive from congress_members already loaded into _MEMBER_CACHE
+    # Name format is "Last, First M." so split on comma
+    for mbr in _MEMBER_CACHE.values():
+        last = mbr.get("name", "").split(",")[0].strip().lower()
+        if last:
+            _FEDERAL_LAST_NAMES.add(last)
+    # State: load from legislative_intelligence.db.legislators
+    # Name format is "First Last" so take the final word
+    _li_db = os.path.join(BASE_DIR, "legislative_intelligence.db")
+    if os.path.exists(_li_db):
+        try:
+            conn = sqlite3.connect(_li_db)
+            for row in conn.execute("SELECT name FROM legislators WHERE active=1"):
+                parts = (row[0] or "").strip().split()
+                if parts:
+                    _STATE_LAST_NAMES.add(parts[-1].lower())
+            conn.close()
+        except Exception as exc:
+            print(f"State legislator name index skipped: {exc}")
+    print(
+        f"Legislator name index: {len(_FEDERAL_LAST_NAMES)} federal, "
+        f"{len(_STATE_LAST_NAMES)} state last names."
+    )
+
+
+_build_legislator_name_index()
+
+
+def _classify_legislator(name: str) -> str | None:
+    """
+    Return 'federal', 'state', or None based on last-name index.
+    'federal' → query polls.db (congress_members, congress_votes, etc.)
+    'state'   → query legislative_intelligence.db / openstates_va.db
+    None      → unknown; caller should try both.
+    """
+    if not name:
+        return None
+    words = name.strip().lower().split()
+    last = words[-1] if words else ""
+    if last in _FEDERAL_LAST_NAMES:
+        return "federal"
+    if last in _STATE_LAST_NAMES:
+        return "state"
+    return None
 
 
 # ── FEC industry PAC cache — loaded once at startup ───────────────────────────
@@ -3554,6 +3609,8 @@ def _fetch_governor_action_context(query: str, bill_numbers: list[str] | None = 
         wants_signed = any(w in q_lower for w in ("signed", "signing", "sign into law", "enacted"))
         wants_amended = any(w in q_lower for w in ("amended", "returned", "recommendation"))
         wants_spanberger = "spanberger" in q_lower
+        wants_youngkin = "youngkin" in q_lower
+        years = set(re.findall(r"\b20\d{2}\b", q_lower))
 
         if bill_numbers:
             placeholders = ",".join("?" * len(bill_numbers))
@@ -3583,17 +3640,22 @@ def _fetch_governor_action_context(query: str, bill_numbers: list[str] | None = 
                 placeholders = ",".join("?" * len(action_filters))
                 params: list = action_filters[:]
                 governor_clause = ""
-                if wants_spanberger:
+                if wants_spanberger or (
+                    wants_veto
+                    and not wants_youngkin
+                    and (("she" in q_lower) or ("her" in q_lower) or not years or "2026" in years)
+                ):
                     governor_clause = " AND lower(governor) LIKE ?"
                     params.append("%spanberger%")
+                limit = 60 if wants_veto else 15
                 rows = conn.execute(f"""
                     SELECT bill_number, session, title, action_label, action_date,
                            governor, sponsor_name, sponsor_party, source_url, raw_status
                     FROM governor_actions
                     WHERE action IN ({placeholders}){governor_clause}
                     ORDER BY action_date DESC
-                    LIMIT 15
-                """, params).fetchall()
+                    LIMIT ?
+                """, [*params, limit]).fetchall()
             elif is_gov_query:
                 params = []
                 governor_clause = ""
@@ -7382,8 +7444,17 @@ async def _on_startup():
         except Exception as exc:
             print(f"Governor actions ingest skipped: {exc}")
 
+    def _pac_cache_task():
+        try:
+            from voteiq.api.routes.members import _load_pac_table
+            rows = _load_pac_table()
+            print(f"PAC cache warmed: {len(rows):,} entries.")
+        except Exception as exc:
+            print(f"PAC cache warm skipped: {exc}")
+
     threading.Thread(target=_embed_task, daemon=True).start()
     threading.Thread(target=_gov_actions_task, daemon=True).start()
+    threading.Thread(target=_pac_cache_task, daemon=True).start()
 
 
 if __name__ == "__main__":

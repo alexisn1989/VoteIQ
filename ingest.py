@@ -362,6 +362,14 @@ def ingest_jsonl(filepath: str, reset: bool = False):
     metadatas = []
     for r in rows:
         meta = {
+            "source": r.get("source", ""),
+            "content_type": r.get("content_type", ""),
+            "outlet": r.get("outlet", ""),
+            "published_date": r.get("published_date", ""),
+            "url": r.get("url", ""),
+            "topics": r.get("topics", ""),
+            "politicians": r.get("politicians", ""),
+            "bills": r.get("bills", ""),
             "bill_id": r.get("bill_id", ""),
             "session_id": r.get("session_id", ""),
             "state": r.get("state", ""),

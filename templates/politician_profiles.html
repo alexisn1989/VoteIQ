@@ -168,6 +168,14 @@ function escapeHtml(s) {
   return String(s || "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+function linkify(s) {
+  const escaped = escapeHtml(s);
+  return escaped.replace(
+    /(https?:\/\/[^\s&<>"']+)/g,
+    u => `<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`
+  );
+}
+
 function tabLabel(section) {
   return section === "Campaign Finance by Cycle" ? "Campaign Finance" : section;
 }
@@ -209,9 +217,19 @@ async function loadProfiles() {
 async function loadPacs() {
   const q = document.getElementById("search").value.trim();
   const source = document.getElementById("source").value;
+  document.getElementById("profile").innerHTML = `<div style="padding:2rem;color:#888;font-size:0.95rem;">Loading PAC data…</div>`;
+  document.getElementById("list").innerHTML = `<div class="list-count">Loading…</div>`;
   const url = `/api/pacs?q=${encodeURIComponent(q)}&source=${encodeURIComponent(source)}&limit=1000`;
-  const res = await fetch(url);
-  const data = await res.json();
+  let data;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    data = await res.json();
+  } catch (err) {
+    document.getElementById("profile").innerHTML = `<div style="padding:2rem;color:#c00;">Failed to load PAC data: ${escapeHtml(String(err))}</div>`;
+    document.getElementById("list").innerHTML = `<div class="list-count">Error</div>`;
+    return;
+  }
   pacs = data.pacs || [];
   renderPacList(data.count || pacs.length);
   renderPacTable(data.count || pacs.length);
@@ -307,8 +325,20 @@ async function loadProfile(id, replace=false) {
   activeProfileId = id;
   activeTab = "Overview";
   renderList(profiles.length);
-  const res = await fetch(`/api/politicians/${encodeURIComponent(id)}`);
-  const data = await res.json();
+  document.getElementById("profile").innerHTML = '<div class="empty">Loading…</div>';
+  let data;
+  try {
+    const res = await fetch(`/api/politicians/${encodeURIComponent(id)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    data = await res.json();
+  } catch (err) {
+    document.getElementById("profile").innerHTML = `
+      <div class="empty">
+        Failed to load profile.<br>
+        <button onclick="loadProfile('${escapeHtml(id)}')" style="margin-top:.75rem;padding:.3rem .8rem;cursor:pointer;">Retry</button>
+      </div>`;
+    return;
+  }
   if (!data.profile) {
     document.getElementById("profile").innerHTML = '<div class="empty">Profile not found.</div>';
     return;
@@ -318,12 +348,21 @@ async function loadProfile(id, replace=false) {
   if (!replace && location.pathname !== path) history.pushState({id}, "", path);
 }
 
+function _topIndustry(sections) {
+  const text = sections["Top Donor Sectors"] || "";
+  const m = text.match(/^\s*([^\n:$0-9][^\n]{2,40})/m);
+  return m ? m[1].trim() : "";
+}
+
 function renderProfile(p) {
   const tabs = preferredTabs(p.sections);
   if (!tabs.includes(activeTab)) activeTab = tabs[0] || "Overview";
   const district = p.district ? ` District ${escapeHtml(p.district)}` : "";
   const tabButtons = tabs.map(t => `<button class="tab ${t === activeTab ? "active" : ""}" onclick="setTab('${escapeHtml(t)}')">${escapeHtml(tabLabel(t))}</button>`).join("");
-  const body = escapeHtml(p.sections[activeTab] || "");
+  const topIndustry = _topIndustry(p.sections);
+  const fecStat = topIndustry
+    ? `<div class="stat"><div class="stat-value" style="font-size:.9rem">${escapeHtml(topIndustry)}</div><div class="stat-label">Top FEC Industry</div></div>`
+    : "";
   document.getElementById("profile").innerHTML = `
     <div class="hero">
       <div>
@@ -336,11 +375,12 @@ function renderProfile(p) {
       <div class="stat"><div class="stat-value">${money(p.total_raised)}</div><div class="stat-label">Career SBE Total</div></div>
       <div class="stat"><div class="stat-value">${Number(p.records || 0).toLocaleString()}</div><div class="stat-label">Itemized Records</div></div>
       <div class="stat"><div class="stat-value">${escapeHtml(p.cycle_start)}-${escapeHtml(p.cycle_end)}</div><div class="stat-label">Cycle Coverage</div></div>
+      ${fecStat}
     </div>
-    <div class="tabs">${tabButtons}</div>
-    <div class="content">
+    <div class="tabs" id="profile-tabs">${tabButtons}</div>
+    <div class="content" id="profile-content">
       <div class="section-title">${escapeHtml(tabLabel(activeTab))}</div>
-      <div class="section-body">${body}</div>
+      <div class="section-body">${linkify(p.sections[activeTab] || "")}</div>
     </div>
     <div class="method">VoteIQ profiles use local public records. Campaign finance is from Virginia SBE Schedule A rows; sector labels are keyword classifications. Correlation does not imply causation.</div>
   `;
@@ -349,7 +389,18 @@ function renderProfile(p) {
 
 function setTab(tab) {
   activeTab = tab;
-  renderProfile(window.currentProfile);
+  const p = window.currentProfile;
+  if (!p) return;
+  const content = document.getElementById("profile-content");
+  if (content) {
+    content.innerHTML = `
+      <div class="section-title">${escapeHtml(tabLabel(tab))}</div>
+      <div class="section-body">${linkify(p.sections[tab] || "")}</div>
+    `;
+  }
+  document.querySelectorAll("#profile-tabs .tab").forEach(btn => {
+    btn.classList.toggle("active", btn.textContent === tabLabel(tab));
+  });
 }
 
 let debounce;

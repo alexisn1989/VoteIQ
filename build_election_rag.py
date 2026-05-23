@@ -35,17 +35,28 @@ def member_chunks(members: list[dict]) -> list[dict]:
     for m in members:
         name    = m["name"]
         party   = m["party"]
-        chamber = "House of Delegates" if "lower" in m["chamber"] else "Senate"
+        chamber_key = (m.get("chamber") or "").lower()
+        chamber = (
+            "Executive Branch" if "executive" in chamber_key
+            else "House of Delegates" if "lower" in chamber_key
+            else "Senate"
+        )
         dist    = m["district"]
         title   = m["title"]
         url     = m.get("url", "")
 
+        heading = (
+            f"{name} — Virginia {title}"
+            if "executive" in chamber_key
+            else f"{name} — Virginia {chamber}, District {dist}"
+        )
         lines = [
-            f"{name} — Virginia {chamber}, District {dist}",
+            heading,
             f"Party: {party}",
             f"Title: {title}",
-            f"District: {dist}",
         ]
+        if "executive" not in chamber_key:
+            lines.append(f"District: {dist}")
         if url:
             lines.append(f"Profile: {url}")
 
