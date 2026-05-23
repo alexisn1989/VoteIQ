@@ -130,6 +130,10 @@
   .viq-chat-send:hover { background: #c8102e; }
   .viq-chat-send:disabled { opacity: 0.4; cursor: default; }
   .viq-chat-footer { font-size: 11px; color: #8892a4; text-align: center; padding: 6px 16px 10px; background: #fff; font-family: 'Barlow', sans-serif; }
+  .viq-chat-disclaimer { font-size: 11px; line-height: 1.45; color: #667085; padding: 10px 16px 14px; background: #fff; border-top: 1px solid #eaecf4; font-family: 'Barlow', sans-serif; }
+  .viq-chat-disclaimer strong { color: #0d1b2a; font-weight: 700; }
+  .viq-chat-disclaimer p { margin: 0 0 7px; }
+  .viq-chat-disclaimer p:last-child { margin-bottom: 0; }
   .viq-voice-bar { display: flex; padding: 6px 16px 8px; background: #fff; border-top: 1px solid #eaecf4; gap: 0; }
   .viq-voice-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 14px; border: 1px solid #c8d0e0; background: transparent; color: #8892a4; cursor: pointer; transition: all 0.15s; }
   .viq-voice-btn:first-child { border-radius: 4px 0 0 4px; }
@@ -241,6 +245,10 @@
       </div>
     </div>
     <div class="viq-chat-footer">Powered by VoteIQ · Verify important info at elections.virginia.gov</div>
+    <div class="viq-chat-disclaimer">
+      <p><strong>Source hierarchy:</strong> VoteIQ uses structured public records first. For exact facts like votes, donations, bill actions, executive orders, and dates, VoteIQ queries SQL tables or official APIs. For long documents like bill text, meeting minutes, PDFs, and press releases, VoteIQ uses retrieval over source documents. The AI explains records but is not the source of truth.</p>
+      <p><strong>Disclaimer:</strong> VoteIQ summarizes public records for informational and civic research purposes only. It does not infer motive, intent, corruption, influence, causation, or policy effectiveness. Records may be incomplete, delayed, amended, or unavailable. Verify important conclusions against linked official records.</p>
+    </div>
   </div>
 
   <iframe id="map" style="width:100%; height:400px; border:none; border-radius:6px; margin-top:20px; margin-bottom:8px; display:none;"></iframe>
