@@ -3,8 +3,10 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import sqlite3
 from pathlib import Path
+from urllib.parse import quote
 
 import pdfplumber
 from fastapi import APIRouter, File, Form, Request, UploadFile
@@ -703,6 +705,81 @@ def _direct_governor_veto_reply(user_query: str) -> str:
     return "\n".join(lines)
 
 
+def _json_text_list(value: str | None, limit: int = 12) -> list[str]:
+    if not value:
+        return []
+    try:
+        parsed = json.loads(value)
+    except Exception:
+        parsed = None
+    if isinstance(parsed, list):
+        return [str(item).strip() for item in parsed if str(item).strip()][:limit]
+    return [part.strip() for part in str(value).split(";") if part.strip()][:limit]
+
+
+def _requested_eo_number(query: str) -> str:
+    q = (query or "").lower()
+    match = re.search(r"(?:executive\s+order|governor\s+order|order|eo)[^\d]{0,20}(\d{1,3})", q)
+    return match.group(1) if match else ""
+
+
+def _eo_chat_read_url(order_number: str | None) -> str:
+    label = order_number or ""
+    query = f"Read Executive Order {label} from the VoteIQ database".strip()
+    return f"/ask?q={quote(query)}"
+
+
+def _format_governor_eo_detail(row: sqlite3.Row) -> str:
+    order_number = row["order_number"] or "number not available"
+    title = row["title"] or "Title not available"
+    signed_date = row["signed_date"] or "date not available"
+    effective_date = row["effective_date"] or "not listed"
+    source_type = row["source_type"] or "executive order"
+    source_url = row["source_url"] or "https://www.governor.virginia.gov/"
+    summary = " ".join((row["summary"] or "No summary available in local SQL.").split())
+    topics = _json_text_list(row["policy_topics"], limit=10)
+    agencies = _json_text_list(row["agencies"], limit=10)
+    actions = _json_text_list(row["actions_required"], limit=20)
+    full_text = " ".join((row["full_text"] or "").split())
+    excerpt = full_text[:1800].rstrip()
+    if full_text and len(full_text) > len(excerpt):
+        excerpt += "..."
+
+    lines = [
+        f"**Executive Order {order_number}: {title}**",
+        "",
+        "**VoteIQ Database Record**",
+        f"- Governor: {row['governor'] or 'not listed'}",
+        f"- Signed date: {signed_date}",
+        f"- Effective date: {effective_date}",
+        f"- Source type: {source_type}",
+        f"- Official source PDF: [Governor's Office]({source_url})",
+        "",
+        "**Summary From Local SQL**",
+        f"- {summary}",
+    ]
+    if topics:
+        lines.extend(["", "**Policy Topics**"])
+        lines.extend(f"- {topic}" for topic in topics)
+    if agencies:
+        lines.extend(["", "**Agencies/Entities Named**"])
+        lines.extend(f"- {agency}" for agency in agencies)
+    if actions:
+        lines.extend(["", "**Actions Required**"])
+        lines.extend(f"- {action}" for action in actions)
+    if excerpt:
+        lines.extend([
+            "",
+            "**Full Text Excerpt From Database**",
+            excerpt,
+        ])
+    lines.extend([
+        "",
+        "Source: VoteIQ local SQL record from polls.db.governor_executive_orders. VoteIQ does not infer motive, intent, or causation from executive actions.",
+    ])
+    return "\n".join(lines)
+
+
 def _direct_governor_eo_reply(user_query: str) -> str:
     """Return Spanberger executive orders directly from local SQL."""
     q = (user_query or "").lower()
@@ -727,8 +804,9 @@ def _direct_governor_eo_reply(user_query: str) -> str:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 """
-                SELECT order_number, title, governor, signed_date, summary,
-                       policy_topics, source_url, source_type
+                SELECT id, order_number, title, governor, signed_date, summary,
+                       policy_topics, agencies, actions_required, effective_date,
+                       source_url, source_type, full_text
                 FROM governor_executive_orders
                 WHERE lower(governor) LIKE '%spanberger%'
                 ORDER BY signed_date DESC, order_number DESC
@@ -741,6 +819,17 @@ def _direct_governor_eo_reply(user_query: str) -> str:
     if not rows:
         return ""
 
+    requested_number = _requested_eo_number(user_query)
+    wants_database_read = any(
+        term in q
+        for term in ("read", "database", "db", "full text", "details", "detail", "open")
+    )
+    if requested_number and wants_database_read:
+        for row in rows:
+            row_number = str(row["order_number"] or "")
+            if re.match(rf"^\s*{re.escape(requested_number)}\b", row_number):
+                return _format_governor_eo_detail(row)
+
     lines = [
         f"Governor Spanberger has {len(rows)} executive-order/directive records in VoteIQ local SQL:",
         "",
@@ -749,12 +838,12 @@ def _direct_governor_eo_reply(user_query: str) -> str:
         order_number = row["order_number"] or "number not available"
         title = row["title"] or "Title not available"
         date = row["signed_date"] or "date not available"
-        url = row["source_url"] or "https://www.governor.virginia.gov/"
+        url = _eo_chat_read_url(order_number)
         source_type = row["source_type"] or "executive order"
         summary = " ".join((row["summary"] or "").split())
         if len(summary) > 280:
             summary = summary[:280].rstrip() + "..."
-        lines.append(f"- [Order {order_number}]({url}) — {title} ({date}; {source_type})")
+        lines.append(f"- [Order {order_number}]({url}) - {title} ({date}; {source_type})")
         if summary:
             lines.append(f"  - Summary: {summary}")
 
@@ -977,7 +1066,8 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
     if eo_rows:
         lines.append(f"- Executive orders/directives: showing the {len(eo_rows)} most recent records; ask for the full executive-order list for all records.")
         for row in eo_rows:
-            lines.append(f"  - [Order {row['order_number'] or 'number not available'}]({row['source_url'] or 'https://www.governor.virginia.gov/'}) - {row['title'] or 'Title not available'} ({row['signed_date'] or 'date not available'})")
+            order_number = row["order_number"] or "number not available"
+            lines.append(f"  - [Order {order_number}]({_eo_chat_read_url(order_number)}) - {row['title'] or 'Title not available'} ({row['signed_date'] or 'date not available'})")
 
     lines.extend([
         "",
