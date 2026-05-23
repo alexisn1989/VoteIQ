@@ -23,6 +23,7 @@ import hashlib
 import sqlite3
 import asyncio
 from html import escape
+from urllib.parse import quote
 import requests
 import anthropic
 import google.genai as genai
@@ -5825,8 +5826,19 @@ def _rep_profile_by_name(name: str, session: str = "2026") -> str:
     if not best:
         return ""
     meta = best.get("metadata") or {}
-    return f"[Representative Profile — {meta.get('name', name)} {session}]\n{best.get('text', '')}"
-
+    profile_name = meta.get("name", name)
+    profile_text = best.get("text", "")
+    office_hint = (
+        "House of Delegates" if "House of Delegates" in profile_text else
+        "State Senate" if "State Senate" in profile_text or "Virginia Senate" in profile_text else ""
+    )
+    profile_url = _full_profile_url_for_name(profile_name, office_hint=office_hint)
+    profile_link = (
+        f"Profile URL: {profile_url}\n"
+        f"Profile Markdown Link: [{profile_name}]({profile_url})\n"
+        if profile_url else ""
+    )
+    return f"[Representative Profile — {profile_name} {session}]\n{profile_link}{profile_text}"
 
 def _load_full_profiles() -> list[dict]:
     global _full_profiles_cache
@@ -5843,6 +5855,54 @@ def _load_full_profiles() -> list[dict]:
             print(f"main: could not load full profiles: {e}")
     _full_profiles_cache = profiles
     return profiles
+
+
+def _profile_url_for_profile(profile: dict) -> str:
+    profile_id = str(profile.get("chunk_id") or "").strip()
+    if not profile_id:
+        return ""
+    return f"/profile/{quote(profile_id, safe='')}"
+
+
+def _full_profile_url_for_name(name: str, office_hint: str = "", district_hint: str = "") -> str:
+    target = _normalize_person_name(name)
+    if not target:
+        return ""
+    target_parts = set(target.split())
+    best: tuple[int, float, dict] | None = None
+    for profile in _load_full_profiles():
+        meta = profile.get("metadata") or {}
+        profile_name = _normalize_person_name(meta.get("name"))
+        if not profile_name:
+            continue
+
+        score = 0
+        profile_parts = profile_name.split()
+        target_last = target.split()[-1] if target.split() else ""
+        if profile_name == target:
+            score += 100
+        elif target_parts and target_parts.issubset(set(profile_parts)):
+            score += 70
+        elif target_last and target_last == (profile_parts[-1] if profile_parts else ""):
+            score += 35
+        else:
+            continue
+
+        if office_hint and str(meta.get("office") or "").lower() == office_hint.lower():
+            score += 20
+        if district_hint and str(meta.get("district") or "") == str(district_hint):
+            score += 10
+
+        try:
+            recency = float(meta.get("cycle_end") or 0)
+        except Exception:
+            recency = 0.0
+
+        candidate = (score, recency, profile)
+        if best is None or candidate[:2] > best[:2]:
+            best = candidate
+
+    return _profile_url_for_profile(best[2]) if best else ""
 
 
 def _office_hint_from_query(text: str) -> str:
@@ -5923,8 +5983,15 @@ def _full_profiles_for_query(query: str, limit: int = 3) -> str:
             continue
         seen_keys.add(key)
         district = f" District {meta.get('district')}" if meta.get("district") else ""
+        profile_url = _profile_url_for_profile(profile)
+        profile_link = (
+            f"Profile URL: {profile_url}\n"
+            f"Profile Markdown Link: [{meta.get('name')}]({profile_url})\n"
+            if profile_url else ""
+        )
         blocks.append(
             f"[Full Virginia Profile â€” {meta.get('name')} | {meta.get('office')}{district}]\n"
+            f"{profile_link}"
             f"{profile.get('text', '')}"
         )
         if len(blocks) >= limit:

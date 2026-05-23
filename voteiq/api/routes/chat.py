@@ -942,7 +942,8 @@ def _bills_system_prompt(
         f"- Vote count if available (e.g. \"passed 32-8 according to OpenStates\")\n"
         f"- Source database (LIS or OpenStates)\n"
         f"- Date if relevant\n"
-        f"- Legislator names as clickable links if the profile excerpt provides a URL for them"
+        f"- Legislator names as clickable links if the profile excerpt provides a URL for them\n"
+        f"- If a profile excerpt includes \"Profile Markdown Link\", use that exact Markdown link the first time you name that person"
         f"\n\nRESPONSE FORMAT — use this exact structure for legislator questions:\n\n"
         f"Your [chamber] representative is **[Full Name] ([Party], District [N])**.\n\n"
         f"**[YEAR] Session Voting Record:**\n"
@@ -1192,6 +1193,9 @@ If the context below includes any "[Governor Action" rows, treat those as confir
 
 Database access rule:
 If the context below includes "[Database Context" rows, treat them as direct local SQLite records from VoteIQ's databases. Use those rows before making any general statement that data is unavailable.
+
+Profile linking rule:
+If the context below includes "Profile Markdown Link", use that exact Markdown link the first time you name that person.
 
 {database_context if database_context else ""}
 
