@@ -6877,8 +6877,7 @@ def _fetch_races_2026() -> dict:
 
 _SOURCE_LINE = (
     "\n\n---\n"
-    "*Sources: Congress.gov · Congressional Record/GovInfo where available · "
-    "OpenStates · Virginia LIS · FEC where available. "
+    "*Sources: Virginia LIS · FEC · Congress.gov · VPAP · Governor of Virginia. "
     "Data current through May 16, 2026. "
     "VoteIQ does not infer motive, intent, or causation from votes, donations, or bill activity.*"
 )

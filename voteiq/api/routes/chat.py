@@ -41,8 +41,7 @@ _NEWS_TERMS = (
 
 _SOURCE_LINE = (
     "\n\n---\n"
-    "*Sources: Congress.gov · Congressional Record/GovInfo where available · "
-    "OpenStates · Virginia LIS · FEC where available. "
+    "*Sources: Virginia LIS · FEC · Congress.gov · VPAP · Governor of Virginia. "
     "Data current through May 16, 2026. "
     "Data limits: records may be incomplete, delayed, amended, or unavailable. "
     "VoteIQ does not infer motive, intent, corruption, influence, causation, or policy effectiveness.*"
