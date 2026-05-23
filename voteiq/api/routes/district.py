@@ -179,10 +179,19 @@ def virginia_map_page(layer: str = "counties", embed: bool = False):
 
 # ── / ─────────────────────────────────────────────────────────────────────────
 
-@router.get("/", response_class=HTMLResponse)
-def home():
+def _index_html() -> str:
     with (_TEMPLATE_DIR / "index.html").open("r", encoding="utf-8") as f:
         return f.read()
+
+
+@router.get("/", response_class=HTMLResponse)
+def home():
+    return _index_html()
+
+
+@router.get("/ask", response_class=HTMLResponse)
+def ask_page():
+    return _index_html()
 
 
 # ── /api/lookup ───────────────────────────────────────────────────────────────

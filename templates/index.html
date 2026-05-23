@@ -698,6 +698,7 @@
     };
     document.addEventListener('DOMContentLoaded', () => {
       const saved = viqLoadDistrictContext();
+      const pendingAskQuery = new URLSearchParams(window.location.search).get('q') || '';
       if (saved) {
         initViqChat(saved.districtCode, saved.locality, saved.hod, saved.sd, saved.repNames || [], saved.repData || null);
         viqSavedDistrictNotice(saved);
@@ -705,6 +706,9 @@
         if (panel) setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
       } else {
         initViqChat('VA-00');
+      }
+      if (pendingAskQuery) {
+        setTimeout(() => viqSendMessage(pendingAskQuery), 250);
       }
     });
     // Configure marked: all links open in new tab by default (overridden per-link below)
@@ -767,15 +771,40 @@
     }
     const _billUrlRe     = /openstates\.org\/va\/bills\/\d+\/([A-Z]+\d+)\/?/i;
     const _personUrlRe   = /openstates\.org\/person\//i;
+    function viqAskQueryFromHref(href) {
+      try {
+        const url = new URL(href, window.location.origin);
+        if (url.origin === window.location.origin && url.pathname === '/ask') {
+          return url.searchParams.get('q') || '';
+        }
+      } catch (e) {}
+      return '';
+    }
     function viqAttachLinkBehavior(bubble) {
       bubble.querySelectorAll('a').forEach(function(a) {
         const href = a.getAttribute('href') || '';
         const billMatch = href.match(_billUrlRe);
         const isPerson  = _personUrlRe.test(href);
+        const askQuery  = viqAskQueryFromHref(href);
 
-        if (href.startsWith('#ask:')) {
+        if (askQuery) {
+          // Follow-up link -> ask in this chat instead of navigating to /ask
+          if (a.dataset.viqLinkBound === '1') return;
+          a.dataset.viqLinkBound = '1';
+          a.removeAttribute('target');
+          a.removeAttribute('rel');
+          a.title = askQuery;
+          a.style.cursor = 'pointer';
+          a.addEventListener('click', function(e) {
+            e.preventDefault();
+            viqSendMessage(askQuery);
+          });
+
+        } else if (href.startsWith('#ask:')) {
           // Topic suggestion link → fire the embedded query
           const query = decodeURIComponent(href.slice(5));
+          if (a.dataset.viqLinkBound === '1') return;
+          a.dataset.viqLinkBound = '1';
           a.removeAttribute('target');
           a.removeAttribute('rel');
           a.title = query;
@@ -788,6 +817,8 @@
         } else if (billMatch) {
           // Bill link → ask VoteIQ about that bill
           const billId = billMatch[1].toUpperCase();
+          if (a.dataset.viqLinkBound === '1') return;
+          a.dataset.viqLinkBound = '1';
           a.removeAttribute('target');
           a.removeAttribute('rel');
           a.title = 'Ask VoteIQ about ' + billId;
@@ -799,6 +830,8 @@
         } else if (isPerson) {
           // Legislator profile link → ask VoteIQ using the link text as the name
           const legName = a.textContent.trim();
+          if (a.dataset.viqLinkBound === '1') return;
+          a.dataset.viqLinkBound = '1';
           a.removeAttribute('target');
           a.removeAttribute('rel');
           a.title = 'Ask VoteIQ about ' + legName;
@@ -820,9 +853,12 @@
     function viqUpdateChips(bubble) {
       const chipsEl = document.getElementById('viqChips');
       const chips = [];
-      // Pull #ask: topic links from the CTA section
-      bubble.querySelectorAll('a[href^="#ask:"]').forEach(function(a) {
-        const query = decodeURIComponent(a.getAttribute('href').slice(5));
+      // Pull topic links from the CTA section
+      bubble.querySelectorAll('a').forEach(function(a) {
+        const href = a.getAttribute('href') || '';
+        const query = href.startsWith('#ask:')
+          ? decodeURIComponent(href.slice(5))
+          : viqAskQueryFromHref(href);
         const text = a.textContent.trim();
         if (!text || !query) return;
         // Format chip label as "Name on topic" when possible
