@@ -43,7 +43,7 @@ _SOURCE_LINE = (
     "\n\n---\n"
     "*Sources: Virginia LIS · FEC · Congress.gov · VPAP · Governor of Virginia. "
     "Data current through May 16, 2026. "
-    "Data limits: records may be incomplete, delayed, amended, or unavailable. "
+    "Data limits: This answer depends on available public records and may not include late filings, amended records, or records not yet digitized. "
     "VoteIQ does not infer motive, intent, corruption, influence, causation, or policy effectiveness.*"
 )
 
