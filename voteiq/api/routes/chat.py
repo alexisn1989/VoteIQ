@@ -766,6 +766,229 @@ def _direct_governor_eo_reply(user_query: str) -> str:
     return "\n".join(lines)
 
 
+def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
+    """Return a neutral SQL-first public-record overview for Governor Spanberger."""
+    q = (user_query or "").lower()
+    if "spanberger" not in q or "governor" not in q:
+        return ""
+    if not any(term in q for term in ("overview", "public-record", "public record", "profile", "campaign finance", "major donors")):
+        return ""
+    if "youngkin" in q:
+        return ""
+
+    finance_person = None
+    cycle_rows = []
+    donor_rows = []
+    governor_counts: dict[str, int] = {}
+    veto_rows = []
+    signed_rows = []
+    eo_rows = []
+    sector_totals: dict[str, dict[str, float | int]] = {}
+
+    try:
+        if not os.path.exists(_POLLS_DB):
+            return ""
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+
+        finance_person = conn.execute(
+            """
+            SELECT person_name, office, party, committee_name, finance_url, source_url, fetched_at
+            FROM va_finance_people
+            WHERE lower(person_name) LIKE '%spanberger%'
+            ORDER BY fetched_at DESC
+            LIMIT 1
+            """
+        ).fetchone()
+        cycle_rows = conn.execute(
+            """
+            SELECT election_cycle, ROUND(SUM(amount), 2) AS total,
+                   COUNT(*) AS records, MAX(transaction_date) AS latest
+            FROM va_cf_schedule_a
+            WHERE lower(candidate_name) LIKE '%spanberger%'
+              AND amount > 0
+              AND CAST(election_cycle AS INTEGER) >= 2023
+            GROUP BY election_cycle
+            ORDER BY CAST(election_cycle AS INTEGER) DESC
+            """
+        ).fetchall()
+        donor_rows = conn.execute(
+            """
+            SELECT
+                CASE
+                    WHEN is_individual = 1 THEN TRIM(COALESCE(first_name, '') || ' ' || COALESCE(last_or_company, ''))
+                    ELSE COALESCE(last_or_company, '')
+                END AS donor_name,
+                COALESCE(employer, '') AS employer,
+                COALESCE(occupation, '') AS occupation,
+                ROUND(SUM(amount), 2) AS total,
+                COUNT(*) AS records
+            FROM va_cf_schedule_a
+            WHERE lower(candidate_name) LIKE '%spanberger%'
+              AND amount > 0
+              AND election_cycle = '2025'
+            GROUP BY donor_name, employer, occupation
+            HAVING donor_name != ''
+            ORDER BY total DESC
+            LIMIT 10
+            """
+        ).fetchall()
+
+        try:
+            from build_va_state_finance import classify_sector
+
+            finance_rows = conn.execute(
+                """
+                SELECT occupation, employer, last_or_company, is_individual, amount
+                FROM va_cf_schedule_a
+                WHERE lower(candidate_name) LIKE '%spanberger%'
+                  AND amount > 0
+                  AND election_cycle = '2025'
+                """
+            ).fetchall()
+            for row in finance_rows:
+                sector = classify_sector(
+                    row["occupation"] or "",
+                    row["employer"] or "",
+                    row["last_or_company"] or "" if not row["is_individual"] else "",
+                )
+                stats = sector_totals.setdefault(sector, {"total": 0.0, "records": 0})
+                stats["total"] = float(stats["total"]) + float(row["amount"] or 0)
+                stats["records"] = int(stats["records"]) + 1
+        except Exception:
+            sector_totals = {}
+
+        governor_counts = {
+            row["action"]: int(row["count"])
+            for row in conn.execute(
+                """
+                SELECT action, COUNT(*) AS count
+                FROM governor_actions
+                WHERE session = '2026'
+                  AND lower(governor) LIKE '%spanberger%'
+                GROUP BY action
+                """
+            ).fetchall()
+        }
+        veto_rows = conn.execute(
+            """
+            SELECT bill_number, title, action_date, source_url
+            FROM governor_actions
+            WHERE session = '2026'
+              AND lower(governor) LIKE '%spanberger%'
+              AND action IN ('vetoed', 'pocket_veto', 'veto_sustained', 'veto_overridden')
+            ORDER BY action_date DESC, bill_number
+            LIMIT 8
+            """
+        ).fetchall()
+        signed_rows = conn.execute(
+            """
+            SELECT bill_number, title, action_date, chapter_number, source_url
+            FROM governor_actions
+            WHERE session = '2026'
+              AND lower(governor) LIKE '%spanberger%'
+              AND action = 'signed'
+            ORDER BY action_date DESC, bill_number
+            LIMIT 8
+            """
+        ).fetchall()
+        eo_rows = conn.execute(
+            """
+            SELECT order_number, title, signed_date, source_url
+            FROM governor_executive_orders
+            WHERE lower(governor) LIKE '%spanberger%'
+            ORDER BY signed_date DESC, order_number DESC
+            LIMIT 8
+            """
+        ).fetchall()
+        conn.close()
+    except Exception:
+        return ""
+
+    swearing_url = "https://www.governor.virginia.gov/newsroom/news-releases/2026/january-releases/name-1111196-en.html"
+    elections_url = "https://www.elections.virginia.gov/results/"
+    committee_url = (
+        finance_person["finance_url"]
+        if finance_person and finance_person["finance_url"]
+        else "https://www.vpap.org/"
+    )
+
+    all_total = sum(float(row["total"] or 0) for row in cycle_rows)
+    all_records = sum(int(row["records"] or 0) for row in cycle_rows)
+    latest_cycle = str(cycle_rows[0]["election_cycle"]) if cycle_rows else "not available"
+
+    lines = [
+        "**1. Current office/status**",
+        f"- Abigail Spanberger is listed in VoteIQ as Governor of Virginia. The Governor's Office published her inaugural address on January 17, 2026, following her swearing-in as the 75th Governor of Virginia ([Governor's Office]({swearing_url})).",
+        f"- The relevant statewide general election was November 4, 2025; verify certified returns through the Virginia Department of Elections results portal ([Virginia Department of Elections]({elections_url})).",
+        "- This overview separates official actions from campaign finance records and does not infer motive, intent, causation, or influence.",
+        "",
+        "**2. Campaign finance**",
+        f"- Committee shown in local records: {finance_person['committee_name'] if finance_person and finance_person['committee_name'] else 'Spanberger for Governor'} ([VPAP committee page]({committee_url})).",
+        f"- VoteIQ local SQL totals from Virginia SBE Schedule A itemized contribution rows, cycles 2023+ total ${all_total:,.0f} across {all_records:,} contribution records. These are candidate-committee receipt records in the local import, not a full accounting of outside spending.",
+    ]
+    if cycle_rows:
+        lines.append("- Cycle totals from local SBE import:")
+        for row in cycle_rows:
+            latest = f", latest transaction {row['latest']}" if row["latest"] else ""
+            lines.append(f"  - {row['election_cycle']}: ${float(row['total'] or 0):,.0f} from {int(row['records'] or 0):,} records{latest}")
+
+    if sector_totals:
+        latest_total = next((float(row["total"] or 0) for row in cycle_rows if str(row["election_cycle"]) == "2025"), 0.0)
+        lines.append(f"- Major donor sectors in {latest_cycle} from keyword classification of SBE rows:")
+        for sector, stats in sorted(sector_totals.items(), key=lambda item: float(item[1]["total"]), reverse=True)[:8]:
+            pct = float(stats["total"]) / latest_total * 100 if latest_total else 0
+            lines.append(f"  - {sector}: ${float(stats['total']):,.0f} ({pct:.1f}%)")
+
+    if donor_rows:
+        lines.append("- Notable large aggregated donors in the 2025 SBE rows:")
+        for row in donor_rows:
+            donor = row["donor_name"] or "Unknown donor"
+            details = ", ".join(part for part in (row["employer"], row["occupation"]) if part)
+            lines.append(f"  - {donor}: ${float(row['total'] or 0):,.0f} across {int(row['records'] or 0):,} records" + (f" ({details})" if details else ""))
+
+    signed_count = governor_counts.get("signed", 0)
+    veto_count = sum(governor_counts.get(key, 0) for key in ("vetoed", "pocket_veto", "veto_sustained", "veto_overridden"))
+    amended_count = governor_counts.get("amended", 0)
+    lines.extend([
+        "",
+        "**3. Legislative/executive record**",
+        f"- Governor action records in local SQL for the 2026 session: {signed_count} signed, {veto_count} vetoed, and {amended_count} amended/returned with recommendation. Bill metadata is from Virginia legislative/OpenStates-style records; verify final legal status at Virginia LIS.",
+    ])
+    if veto_rows:
+        lines.append("- Recent/sample vetoed bills:")
+        for row in veto_rows:
+            bill = row["bill_number"]
+            url = row["source_url"] or f"https://openstates.org/va/bills/2026/{bill}/"
+            lines.append(f"  - [{bill}]({url}) — {row['title'] or 'Title not available'} ({row['action_date'] or 'date not available'})")
+    if signed_rows:
+        lines.append("- Recent/sample signed bills:")
+        for row in signed_rows:
+            bill = row["bill_number"]
+            url = row["source_url"] or f"https://openstates.org/va/bills/2026/{bill}/"
+            chapter = f"; Chapter {row['chapter_number']}" if row["chapter_number"] else ""
+            lines.append(f"  - [{bill}]({url}) — {row['title'] or 'Title not available'} ({row['action_date'] or 'date not available'}{chapter})")
+    if eo_rows:
+        lines.append(f"- Executive orders/directives: showing the {len(eo_rows)} most recent records; ask for the full executive-order list for all records.")
+        for row in eo_rows:
+            lines.append(f"  - [Order {row['order_number'] or 'number not available'}]({row['source_url'] or 'https://www.governor.virginia.gov/'}) — {row['title'] or 'Title not available'} ({row['signed_date'] or 'date not available'})")
+
+    lines.extend([
+        "",
+        "**4. Data limits**",
+        "- Campaign finance totals are source-dependent. VoteIQ's figure above comes from local Virginia SBE Schedule A itemized contribution rows; VPAP totals may differ because of reporting cutoffs, refunds, loans, in-kind treatment, unitemized receipts, transfers, or independent/outside spending methodology.",
+        "- The finance section does not treat donations as evidence of motive, influence, corruption, or causation.",
+        "- Governor-action rows may lag official LIS/Governor's Office updates; verify final enrolled bill text, chapters, and effective dates at Virginia LIS.",
+        "- Executive-order summaries are derived from local records and Governor's Office PDFs; they are summaries, not substitutes for the full order text.",
+        "",
+        "**5. Related follow-up questions**",
+        "- [Which bills has Governor Spanberger signed or vetoed?](/ask?q=Which%20bills%20has%20Governor%20Spanberger%20signed%20or%20vetoed%3F)",
+        "- [What executive orders has Governor Spanberger issued?](/ask?q=What%20executive%20orders%20has%20Governor%20Spanberger%20issued%3F)",
+        "- [Who were Abigail Spanberger's largest donors in the 2025 SBE records?](/ask?q=Who%20were%20Abigail%20Spanberger%27s%20largest%20donors%20in%20the%202025%20SBE%20records%3F)",
+    ])
+    return "\n".join(lines)
+
+
 def _fetch_floor_statements(
     bioguide_id: str,
     query: str = "",
@@ -1184,7 +1407,7 @@ async def chat(req: ChatRequest):
         )
 
     last_question  = req.messages[-1].content if req.messages else ""
-    direct_governor_reply = _direct_governor_eo_reply(last_question) or _direct_governor_veto_reply(last_question)
+    direct_governor_reply = _direct_spanberger_governor_overview_reply(last_question) or _direct_governor_eo_reply(last_question) or _direct_governor_veto_reply(last_question)
     if direct_governor_reply:
         return ChatResponse(reply=direct_governor_reply)
 
@@ -1381,7 +1604,7 @@ async def gemini_chat(request: Request, req: ChatRequest):
     import main as _m
 
     user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
-    direct_governor_reply = _direct_governor_eo_reply(user_query) or _direct_governor_veto_reply(user_query)
+    direct_governor_reply = _direct_spanberger_governor_overview_reply(user_query) or _direct_governor_eo_reply(user_query) or _direct_governor_veto_reply(user_query)
     if direct_governor_reply:
         return ChatResponse(reply=direct_governor_reply)
 
@@ -1477,7 +1700,7 @@ async def bills_chat(req: BillsChatRequest):
     import main as _m
 
     user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
-    direct_governor_reply = _direct_governor_eo_reply(user_query) or _direct_governor_veto_reply(user_query)
+    direct_governor_reply = _direct_spanberger_governor_overview_reply(user_query) or _direct_governor_eo_reply(user_query) or _direct_governor_veto_reply(user_query)
     if direct_governor_reply:
         return ChatResponse(reply=direct_governor_reply)
 
@@ -1577,7 +1800,7 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
     user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
 
     # ── parallel context assembly ─────────────────────────────────────────────
-    direct_governor_reply = _direct_governor_eo_reply(user_query) or _direct_governor_veto_reply(user_query)
+    direct_governor_reply = _direct_spanberger_governor_overview_reply(user_query) or _direct_governor_eo_reply(user_query) or _direct_governor_veto_reply(user_query)
     if direct_governor_reply:
         async def _direct_gen(text=direct_governor_reply):
             yield f"data: {json.dumps({'token': text})}\n\n"
