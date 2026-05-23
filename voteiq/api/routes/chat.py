@@ -58,11 +58,44 @@ def _premium_analyst_enabled(req) -> bool:
     return voice in {"pro", "newsroom"} or tier in {"pro", "newsroom"}
 
 
-def _with_source_line(reply: str) -> str:
+def _source_line(answer_type: str | None = None) -> str:
+    if not answer_type:
+        return _SOURCE_LINE
+    return _SOURCE_LINE.replace("*Sources:", f"*Answer type: {answer_type}. Sources:", 1)
+
+
+def _with_source_line(reply: str, answer_type: str | None = None) -> str:
     """Append the standard source footer unless the model already included one."""
     if "Sources:" in (reply or ""):
         return reply.rstrip()
-    return reply.rstrip() + _SOURCE_LINE
+    return reply.rstrip() + _source_line(answer_type)
+
+
+def _answer_type_from_context(context: str, chroma_error: str | None = None) -> str:
+    """Describe the evidence mix used for a chat answer."""
+    text = context or ""
+    has_sql = "[Database Context" in text or any(
+        marker in text for marker in (
+            "[Governor Action",
+            "[Governor Executive Order",
+            "[Virginia Statewide Official]",
+            "[Finance",
+            "[PAC",
+        )
+    )
+    labels = re.findall(r"\[[^\]\n]+\]", text)
+    has_docs = not chroma_error and any(
+        not label.lower().startswith("[database context")
+        and re.search(r"(bill|text|document|chunk|federal|virginia)", label, re.I)
+        for label in labels
+    )
+    if has_sql and has_docs:
+        return "Mixed SQL + document context"
+    if has_sql:
+        return "Structured SQL context"
+    if has_docs:
+        return "Document/RAG context"
+    return "AI explanation from retrieved context"
 
 
 class ChatMessage(BaseModel):
@@ -2147,7 +2180,7 @@ async def bills_chat(req: BillsChatRequest):
     if _ck and not _governor_action_query(user_query):
         cached = _m._get_cached_reply(_ck, _ck_fb)
         if cached:
-            cached = _with_source_line(cached)
+            cached = _with_source_line(cached, _answer_type_from_context(context, chroma_error))
             return ChatResponse(reply=cached)
 
     chroma_note = (
@@ -2166,6 +2199,7 @@ async def bills_chat(req: BillsChatRequest):
         )
         if tc:
             context = context + "\n\n---\n\n" + tc if context else tc
+    answer_type = _answer_type_from_context(context, chroma_error)
     voice_prompt  = get_system_prompt(req.voice, query_context)
     system_prompt = voice_prompt + "\n\n" + _bills_system_prompt(
         district_note, chroma_note, model_note, exact_lookup_note, context
@@ -2175,7 +2209,7 @@ async def bills_chat(req: BillsChatRequest):
 
     try:
         reply = _m._claude_reply(system_prompt, req.messages, max_tokens=max_tokens, model=model)
-        reply = _with_source_line(reply)
+        reply = _with_source_line(reply, answer_type)
         if _ck:
             _m._set_cached_reply(_ck, reply)
         return ChatResponse(reply=reply)
@@ -2267,7 +2301,7 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
     if _ck and not _governor_action_query(user_query):
         cached = _m._get_cached_reply(_ck, _ck_fb)
         if cached:
-            cached = _with_source_line(cached)
+            cached = _with_source_line(cached, _answer_type_from_context(context, chroma_error))
             async def _cached_gen(text=cached):
                 chunk = 24
                 for i in range(0, len(text), chunk):
@@ -2296,6 +2330,7 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
         if tc:
             context = context + "\n\n---\n\n" + tc if context else tc
             ctx_data = {**ctx_data, "context": context}
+    answer_type = _answer_type_from_context(context, chroma_error)
 
     voice_prompt = get_system_prompt(req.voice, query_context)
     # Build base rules (no context — orchestration wraps it separately)
@@ -2327,8 +2362,9 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
                     full_reply += text
                     yield f"data: {json.dumps({'token': text})}\n\n"
             if "Sources:" not in full_reply:
-                full_reply = full_reply.rstrip() + _SOURCE_LINE
-                yield f"data: {json.dumps({'token': _SOURCE_LINE})}\n\n"
+                source_footer = _source_line(answer_type)
+                full_reply = full_reply.rstrip() + source_footer
+                yield f"data: {json.dumps({'token': source_footer})}\n\n"
             if _ck:
                 _m._set_cached_reply(_ck, full_reply)
         except Exception as e:
