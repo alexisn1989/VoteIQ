@@ -736,6 +736,7 @@ def _format_governor_eo_detail(row: sqlite3.Row) -> str:
     effective_date = row["effective_date"] or "not listed"
     source_type = row["source_type"] or "executive order"
     source_url = row["source_url"] or "https://www.governor.virginia.gov/"
+    database_url = _eo_chat_read_url(order_number)
     summary = " ".join((row["summary"] or "No summary available in local SQL.").split())
     topics = _json_text_list(row["policy_topics"], limit=10)
     agencies = _json_text_list(row["agencies"], limit=10)
@@ -748,16 +749,26 @@ def _format_governor_eo_detail(row: sqlite3.Row) -> str:
     lines = [
         f"**Executive Order {order_number}: {title}**",
         "",
+        "**Plain-English Explanation**",
+        f"- This {source_type} was signed on {signed_date}. In VoteIQ's local database, it is summarized as follows: {summary}",
+    ]
+    if actions:
+        lines.extend([
+            f"- In practical terms, the order directs or requires {len(actions)} listed action item{'s' if len(actions) != 1 else ''} in the database. The first few are:",
+            *[f"  - {action}" for action in actions[:3]],
+        ])
+    lines.extend([
+        "",
+        "**Read The Record**",
+        f"- VoteIQ database chat view: [Executive Order {order_number}]({database_url})",
+        f"- Official source PDF: [Governor's Office]({source_url})",
+        "",
         "**VoteIQ Database Record**",
         f"- Governor: {row['governor'] or 'not listed'}",
         f"- Signed date: {signed_date}",
         f"- Effective date: {effective_date}",
         f"- Source type: {source_type}",
-        f"- Official source PDF: [Governor's Office]({source_url})",
-        "",
-        "**Summary From Local SQL**",
-        f"- {summary}",
-    ]
+    ])
     if topics:
         lines.extend(["", "**Policy Topics**"])
         lines.extend(f"- {topic}" for topic in topics)
@@ -846,6 +857,7 @@ def _direct_governor_eo_reply(user_query: str) -> str:
         lines.append(f"- [Order {order_number}]({url}) - {title} ({date}; {source_type})")
         if summary:
             lines.append(f"  - Summary: {summary}")
+            lines.append("  - Click the order link to read VoteIQ's plain-English explanation and database record.")
 
     lines.extend([
         "",
