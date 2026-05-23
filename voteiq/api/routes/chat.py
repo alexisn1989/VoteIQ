@@ -734,59 +734,42 @@ def _format_governor_eo_detail(row: sqlite3.Row) -> str:
     title = row["title"] or "Title not available"
     signed_date = row["signed_date"] or "date not available"
     effective_date = row["effective_date"] or "not listed"
-    source_type = row["source_type"] or "executive order"
     source_url = row["source_url"] or "https://www.governor.virginia.gov/"
     database_url = _eo_chat_read_url(order_number)
     summary = " ".join((row["summary"] or "No summary available in local SQL.").split())
-    topics = _json_text_list(row["policy_topics"], limit=10)
     agencies = _json_text_list(row["agencies"], limit=10)
     actions = _json_text_list(row["actions_required"], limit=20)
-    full_text = " ".join((row["full_text"] or "").split())
-    excerpt = full_text[:1800].rstrip()
-    if full_text and len(full_text) > len(excerpt):
-        excerpt += "..."
 
     lines = [
-        f"**Executive Order {order_number}: {title}**",
+        "**Executive Order Record**",
         "",
-        "**Plain-English Explanation**",
-        f"- This {source_type} was signed on {signed_date}. In VoteIQ's local database, it is summarized as follows: {summary}",
+        f"Order: Executive Order {order_number}",
+        f"Title: {title}",
+        f"Governor: {row['governor'] or 'not listed'}",
+        f"Date issued: {signed_date}",
+        f"Effective date: {effective_date}",
+        "",
+        "**Summary:**",
+        summary,
     ]
-    if actions:
-        lines.extend([
-            f"- In practical terms, the order directs or requires {len(actions)} listed action item{'s' if len(actions) != 1 else ''} in the database. The first few are:",
-            *[f"  - {action}" for action in actions[:3]],
-        ])
-    lines.extend([
-        "",
-        "**Read The Record**",
-        f"- VoteIQ database chat view: [Executive Order {order_number}]({database_url})",
-        f"- Official source PDF: [Governor's Office]({source_url})",
-        "",
-        "**VoteIQ Database Record**",
-        f"- Governor: {row['governor'] or 'not listed'}",
-        f"- Signed date: {signed_date}",
-        f"- Effective date: {effective_date}",
-        f"- Source type: {source_type}",
-    ])
-    if topics:
-        lines.extend(["", "**Policy Topics**"])
-        lines.extend(f"- {topic}" for topic in topics)
     if agencies:
-        lines.extend(["", "**Agencies/Entities Named**"])
+        lines.extend(["", "**Agencies involved:**"])
         lines.extend(f"- {agency}" for agency in agencies)
+    else:
+        lines.extend(["", "**Agencies involved:**", "- Not listed in local SQL record"])
     if actions:
-        lines.extend(["", "**Actions Required**"])
+        lines.extend(["", "**Actions required:**"])
         lines.extend(f"- {action}" for action in actions)
-    if excerpt:
-        lines.extend([
-            "",
-            "**Full Text Excerpt From Database**",
-            excerpt,
-        ])
+    else:
+        lines.extend(["", "**Actions required:**", "- Not listed in local SQL record"])
     lines.extend([
         "",
-        "Source: VoteIQ local SQL record from polls.db.governor_executive_orders. VoteIQ does not infer motive, intent, or causation from executive actions.",
+        "**Source:**",
+        f"- [VoteIQ database record]({database_url})",
+        f"- [Official Governor source/PDF]({source_url})",
+        "",
+        "**Data limits:**",
+        "VoteIQ summarizes public executive-order records. This page does not infer motive, policy effectiveness, or political intent.",
     ])
     return "\n".join(lines)
 
