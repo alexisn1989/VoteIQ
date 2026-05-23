@@ -695,6 +695,7 @@ def build_bills_system_prompt_refactored(
         "- GovInfo/OpenGov/official government documents provide official document text and context.\n"
         "- RAG/semantic search supplies long-text summaries, excerpts, and fallback context.\n"
         "- AI explains retrieved records; it must not invent facts or override exact SQL/API records.\n"
+        "- Person identity should preserve FEC candidate_id, FEC committee_id, bioguide_id, Congress.gov member ID, OpenStates/person ID if state overlap exists, name aliases, and party/state/district.\n"
     )
 
     context_block = f"""

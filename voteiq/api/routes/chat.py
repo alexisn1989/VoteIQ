@@ -748,8 +748,239 @@ def _direct_voteiq_source_hierarchy_reply(user_query: str) -> str:
         "6. **AI = explanation**",
         "- AI turns the retrieved records into plain-English explanations. It should not invent facts, fill missing records, infer intent, or claim causation from donations, votes, or official actions.",
         "",
+        "**Identity crosswalk**",
+        "- For person lookups, VoteIQ should preserve FEC candidate_id, FEC committee_id, bioguide_id, Congress.gov member ID, OpenStates/person ID if state overlap exists, name aliases, and party/state/district.",
+        "",
         "Data limit: if SQL or official API records are missing, VoteIQ should say what is missing and avoid guessing.",
     ])
+
+
+def _identity_query(user_query: str) -> bool:
+    q = (user_query or "").lower()
+    return any(term in q for term in (
+        "candidate_id", "candidate id", "committee_id", "committee id",
+        "bioguide", "congress.gov member", "congress member id",
+        "openstates", "person id", "person_id", "identity", "crosswalk",
+        "name alias", "name aliases", "aliases",
+    ))
+
+
+def _name_tokens(value: str) -> set[str]:
+    return {
+        token.lower()
+        for token in re.findall(r"[A-Za-z][A-Za-z.'-]{1,}", value or "")
+        if token.lower() not in {
+            "fec", "api", "candidate", "candidate_id", "committee", "committee_id",
+            "bioguide", "congress", "gov", "member", "openstates", "person",
+            "identity", "crosswalk", "aliases", "alias", "party", "state",
+            "district", "id", "ids", "show", "give", "tell", "what", "for",
+        }
+    }
+
+
+def _find_identity_name(user_query: str) -> str:
+    query_tokens = _name_tokens(user_query)
+    if not query_tokens or not os.path.exists(_POLLS_DB):
+        return ""
+    names: set[str] = set()
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        for table, column in (
+            ("congress_members", "name"),
+            ("va_finance_people", "person_name"),
+            ("legislators", "name"),
+            ("candidate_registry", "name"),
+        ):
+            try:
+                names.update(
+                    str(row[0])
+                    for row in conn.execute(f"SELECT DISTINCT {column} FROM {table} WHERE {column} IS NOT NULL")
+                    if row[0]
+                )
+            except Exception:
+                continue
+        conn.close()
+    except Exception:
+        return ""
+
+    best_name = ""
+    best_score = 0
+    for name in names:
+        tokens = _name_tokens(name.replace(",", " "))
+        if not tokens:
+            continue
+        score = len(tokens & query_tokens)
+        if score > best_score and (score >= 2 or any(token in query_tokens for token in tokens)):
+            best_name = name
+            best_score = score
+    return best_name
+
+
+def _direct_identity_crosswalk_reply(user_query: str) -> str:
+    """Return SQL-backed identity IDs for a candidate/member/person."""
+    if not _identity_query(user_query):
+        return ""
+
+    name = _find_identity_name(user_query)
+    if not name:
+        return "\n".join([
+            "**VoteIQ Identity Crosswalk Fields**",
+            "",
+            "For each person, VoteIQ should try to keep these identifiers together:",
+            "- FEC candidate_id",
+            "- FEC committee_id",
+            "- bioguide_id",
+            "- Congress.gov member ID",
+            "- OpenStates/person ID, if state overlap exists",
+            "- name aliases",
+            "- party/state/district",
+            "",
+            "Ask for a specific person, for example: `Show identity IDs for Jennifer McClellan`.",
+        ])
+
+    rows: dict[str, list[sqlite3.Row]] = {}
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+        name_like = f"%{name.replace(',', '').split()[-1].lower()}%"
+        rows["congress_members"] = conn.execute(
+            """
+            SELECT bioguide_id, name, party, chamber, state, district, website
+            FROM congress_members
+            WHERE lower(name) LIKE ? OR lower(replace(name, ',', '')) LIKE ?
+            LIMIT 5
+            """,
+            (name_like, f"%{name.lower().replace(',', '')}%"),
+        ).fetchall()
+        bioguide_ids = [row["bioguide_id"] for row in rows["congress_members"] if row["bioguide_id"]]
+        candidate_ids: set[str] = set()
+
+        if bioguide_ids:
+            placeholders = ",".join("?" for _ in bioguide_ids)
+            rows["bridge"] = conn.execute(
+                f"SELECT bioguide_id, fec_candidate_id FROM bioguide_fec_bridge WHERE bioguide_id IN ({placeholders})",
+                bioguide_ids,
+            ).fetchall()
+            candidate_ids.update(row["fec_candidate_id"] for row in rows["bridge"] if row["fec_candidate_id"])
+        else:
+            rows["bridge"] = []
+
+        rows["registry"] = conn.execute(
+            """
+            SELECT candidate_key, fec_candidate_id, bioguide_id, lis_id, name, party, level, office, state, cycle
+            FROM candidate_registry
+            WHERE lower(name) LIKE ? OR lower(replace(name, '.', '')) LIKE ?
+            LIMIT 5
+            """,
+            (name_like, f"%{name.lower().replace('.', '')}%"),
+        ).fetchall()
+        candidate_ids.update(row["fec_candidate_id"] for row in rows["registry"] if row["fec_candidate_id"])
+        bioguide_ids.extend(row["bioguide_id"] for row in rows["registry"] if row["bioguide_id"] and row["bioguide_id"] not in bioguide_ids)
+
+        rows["fec_contrib"] = conn.execute(
+            """
+            SELECT candidate_id, candidate_name, bioguide_id, COUNT(*) AS records
+            FROM fec_individual_contributions
+            WHERE lower(candidate_name) LIKE ?
+               OR bioguide_id IN (SELECT bioguide_id FROM congress_members WHERE lower(name) LIKE ?)
+            GROUP BY candidate_id, candidate_name, bioguide_id
+            LIMIT 8
+            """,
+            (name_like, name_like),
+        ).fetchall()
+        candidate_ids.update(row["candidate_id"] for row in rows["fec_contrib"] if row["candidate_id"])
+
+        rows["fec_ie"] = conn.execute(
+            """
+            SELECT fec_candidate_id, candidate_name, bioguide_id, committee_id, committee_name, COUNT(*) AS records
+            FROM fec_independent_expenditures
+            WHERE lower(candidate_name) LIKE ?
+               OR bioguide_id IN (SELECT bioguide_id FROM congress_members WHERE lower(name) LIKE ?)
+            GROUP BY fec_candidate_id, candidate_name, bioguide_id, committee_id, committee_name
+            ORDER BY records DESC
+            LIMIT 12
+            """,
+            (name_like, name_like),
+        ).fetchall()
+        candidate_ids.update(row["fec_candidate_id"] for row in rows["fec_ie"] if row["fec_candidate_id"])
+
+        rows["va_people"] = conn.execute(
+            """
+            SELECT person_name, office, district, party, committee_name, finance_url, source_url
+            FROM va_finance_people
+            WHERE lower(person_name) LIKE ?
+            LIMIT 5
+            """,
+            (name_like,),
+        ).fetchall()
+        rows["legislators"] = conn.execute(
+            """
+            SELECT id, lis_id, name, party, chamber, district, active
+            FROM legislators
+            WHERE lower(name) LIKE ?
+            LIMIT 5
+            """,
+            (name_like,),
+        ).fetchall()
+        conn.close()
+    except Exception:
+        return ""
+
+    aliases: set[str] = {name}
+    for key in ("congress_members", "registry", "fec_contrib", "fec_ie", "va_people", "legislators"):
+        for row in rows.get(key, []):
+            for column in ("name", "candidate_name", "person_name"):
+                if column in row.keys() and row[column]:
+                    aliases.add(str(row[column]))
+
+    fec_candidate_ids = sorted({
+        *(row["fec_candidate_id"] for row in rows.get("bridge", []) if row["fec_candidate_id"]),
+        *(row["fec_candidate_id"] for row in rows.get("registry", []) if row["fec_candidate_id"]),
+        *(row["candidate_id"] for row in rows.get("fec_contrib", []) if row["candidate_id"]),
+        *(row["fec_candidate_id"] for row in rows.get("fec_ie", []) if row["fec_candidate_id"]),
+    })
+    fec_committee_ids = sorted({row["committee_id"] for row in rows.get("fec_ie", []) if row["committee_id"]})
+    bioguide_ids = sorted({
+        *(row["bioguide_id"] for row in rows.get("congress_members", []) if row["bioguide_id"]),
+        *(row["bioguide_id"] for row in rows.get("bridge", []) if row["bioguide_id"]),
+        *(row["bioguide_id"] for row in rows.get("registry", []) if row["bioguide_id"]),
+        *(row["bioguide_id"] for row in rows.get("fec_contrib", []) if row["bioguide_id"]),
+        *(row["bioguide_id"] for row in rows.get("fec_ie", []) if row["bioguide_id"]),
+    })
+    lis_ids = sorted({
+        *(row["lis_id"] for row in rows.get("registry", []) if row["lis_id"]),
+        *(row["lis_id"] for row in rows.get("legislators", []) if row["lis_id"]),
+    })
+
+    party_state_district: list[str] = []
+    for row in rows.get("congress_members", []):
+        party_state_district.append(
+            f"{row['party'] or 'party not listed'} / {row['state'] or 'state not listed'} / {row['district'] or 'statewide'}"
+        )
+    for row in rows.get("va_people", []):
+        party_state_district.append(
+            f"{row['party'] or 'party not listed'} / Virginia / {row['district'] or row['office'] or 'statewide'}"
+        )
+    for row in rows.get("legislators", []):
+        party_state_district.append(
+            f"{row['party'] or 'party not listed'} / Virginia / {row['chamber'] or 'chamber not listed'} District {row['district'] or 'not listed'}"
+        )
+
+    lines = [
+        "**VoteIQ Identity Crosswalk**",
+        f"Subject: {name}",
+        "",
+        f"- FEC candidate_id: {', '.join(fec_candidate_ids) if fec_candidate_ids else 'Not found in local SQL'}",
+        f"- FEC committee_id: {', '.join(fec_committee_ids) if fec_committee_ids else 'Not found in local SQL'}",
+        f"- bioguide_id: {', '.join(bioguide_ids) if bioguide_ids else 'Not found in local SQL'}",
+        f"- Congress.gov member ID: {', '.join(bioguide_ids) if bioguide_ids else 'Not found in local SQL; VoteIQ treats bioguide_id as the Congress member key when present'}",
+        f"- OpenStates/person ID if state overlap exists: {', '.join(lis_ids) + ' (local LIS/state person key; separate OpenStates person ID not stored)' if lis_ids else 'Not found in local SQL'}",
+        f"- name aliases: {', '.join(sorted(aliases))}",
+        f"- party/state/district: {'; '.join(dict.fromkeys(party_state_district)) if party_state_district else 'Not found in local SQL'}",
+        "",
+        "Source: VoteIQ local SQL identity records from polls.db. Exact IDs are reported as database records; VoteIQ does not infer identity matches when no matching row exists.",
+    ]
+    return "\n".join(lines)
 
 
 def _json_text_list(value: str | None, limit: int = 12) -> list[str]:
@@ -1360,7 +1591,8 @@ def _bills_system_prompt(
         f"GovInfo/OpenGov/official government documents provide official document text and context; "
         f"RAG/semantic search is for long-text summaries, excerpts, and fallback context; "
         f"AI is for explanation only. Do not let RAG or AI override exact SQL/API records. "
-        f"If exact records are missing, say what is missing instead of guessing.\n\n"
+        f"If exact records are missing, say what is missing instead of guessing. "
+        f"For person identity, preserve FEC candidate_id, FEC committee_id, bioguide_id, Congress.gov member ID, OpenStates/person ID if state overlap exists, name aliases, and party/state/district.\n\n"
         f"If the excerpts include any '[Governor Action' rows, those are confirmed local governor-action records. "
         f"If the excerpts include '[Database Context]' rows, treat them as direct local database records and use them before guessing. "
         f"Do not say governor actions returned no data, are unavailable, or cannot be confirmed for this query. "
@@ -1558,6 +1790,9 @@ async def chat(req: ChatRequest):
         )
 
     last_question  = req.messages[-1].content if req.messages else ""
+    direct_identity_reply = _direct_identity_crosswalk_reply(last_question)
+    if direct_identity_reply:
+        return ChatResponse(reply=direct_identity_reply)
     direct_source_reply = _direct_voteiq_source_hierarchy_reply(last_question)
     if direct_source_reply:
         return ChatResponse(reply=direct_source_reply)
@@ -1758,6 +1993,9 @@ async def gemini_chat(request: Request, req: ChatRequest):
     import main as _m
 
     user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
+    direct_identity_reply = _direct_identity_crosswalk_reply(user_query)
+    if direct_identity_reply:
+        return ChatResponse(reply=direct_identity_reply)
     direct_source_reply = _direct_voteiq_source_hierarchy_reply(user_query)
     if direct_source_reply:
         return ChatResponse(reply=direct_source_reply)
@@ -1857,6 +2095,9 @@ async def bills_chat(req: BillsChatRequest):
     import main as _m
 
     user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
+    direct_identity_reply = _direct_identity_crosswalk_reply(user_query)
+    if direct_identity_reply:
+        return ChatResponse(reply=direct_identity_reply)
     direct_source_reply = _direct_voteiq_source_hierarchy_reply(user_query)
     if direct_source_reply:
         return ChatResponse(reply=direct_source_reply)
@@ -1960,6 +2201,12 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
     user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
 
     # ── parallel context assembly ─────────────────────────────────────────────
+    direct_identity_reply = _direct_identity_crosswalk_reply(user_query)
+    if direct_identity_reply:
+        async def _identity_gen(text=direct_identity_reply):
+            yield f"data: {json.dumps({'token': text})}\n\n"
+        return StreamingResponse(_identity_gen(), media_type="text/event-stream")
+
     direct_source_reply = _direct_voteiq_source_hierarchy_reply(user_query)
     if direct_source_reply:
         async def _source_gen(text=direct_source_reply):
