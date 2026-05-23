@@ -591,20 +591,36 @@ SPANBERGER_2026_VETO_FALLBACKS = {
 
 
 def _direct_governor_veto_reply(user_query: str) -> str:
-    """Return the full local veto list directly so Claude cannot collapse it."""
+    """Return common Spanberger governor-action lists directly so Claude cannot collapse them."""
     q = (user_query or "").lower()
-    if "veto" not in q and "vetoed" not in q:
+    wants_vetoes = "veto" in q or "vetoed" in q
+    wants_signed = "signed" in q or "signing" in q or "signed into law" in q
+    if not wants_vetoes and not wants_signed:
         return ""
-    if not any(term in q for term in ("governor", "spanberger", "she", "her", "veto", "vetoed")):
+    if not any(term in q for term in ("governor", "spanberger", "she", "her", "veto", "vetoed", "signed")):
         return ""
     if "youngkin" in q:
         return ""
-    rows = []
+    veto_rows = []
+    signed_rows = []
+    action_counts: dict[str, int] = {}
     try:
         if os.path.exists(_POLLS_DB):
             conn = sqlite3.connect(_POLLS_DB)
             conn.row_factory = sqlite3.Row
-            rows = conn.execute(
+            action_counts = {
+                row["action"]: int(row["count"])
+                for row in conn.execute(
+                    """
+                    SELECT action, COUNT(*) AS count
+                    FROM governor_actions
+                    WHERE session = '2026'
+                      AND lower(governor) LIKE '%spanberger%'
+                    GROUP BY action
+                    """
+                ).fetchall()
+            }
+            veto_rows = conn.execute(
                 """
                 SELECT bill_number, session, title, action_date, source_url
                 FROM governor_actions
@@ -614,12 +630,24 @@ def _direct_governor_veto_reply(user_query: str) -> str:
                 ORDER BY action_date DESC, bill_number
                 """
             ).fetchall()
+            signed_rows = conn.execute(
+                """
+                SELECT bill_number, session, title, action_date, chapter_number, effective_date, source_url
+                FROM governor_actions
+                WHERE session = '2026'
+                  AND lower(governor) LIKE '%spanberger%'
+                  AND action = 'signed'
+                ORDER BY action_date DESC, bill_number
+                LIMIT 30
+                """
+            ).fetchall()
             conn.close()
     except Exception:
-        rows = []
+        veto_rows = []
+        signed_rows = []
 
-    if not rows:
-        rows = [
+    if wants_vetoes and not veto_rows:
+        veto_rows = [
             {
                 "bill_number": bill,
                 "title": title,
@@ -628,17 +656,44 @@ def _direct_governor_veto_reply(user_query: str) -> str:
             }
             for bill, (date, title) in SPANBERGER_2026_VETO_FALLBACKS.items()
         ]
+        action_counts.setdefault("vetoed", len(veto_rows))
 
     lines = [
-        f"Governor Spanberger has {len(rows)} veto records available in the local VoteIQ dataset for the 2026 session:",
+        "Governor Spanberger's 2026 bill-action records in VoteIQ local SQL:",
         "",
     ]
-    for row in rows:
-        bill = row["bill_number"]
-        title = row["title"] or "Title not available"
-        url = row["source_url"] or f"https://openstates.org/va/bills/2026/{bill}/"
-        date = row["action_date"] or "date not available"
-        lines.append(f"- [{bill}]({url}) — {title} ({date})")
+    if action_counts:
+        signed_count = action_counts.get("signed", 0)
+        veto_count = sum(action_counts.get(key, 0) for key in ("vetoed", "pocket_veto", "veto_sustained", "veto_overridden"))
+        amended_count = action_counts.get("amended", 0)
+        lines.append(f"- Signed: {signed_count}")
+        lines.append(f"- Vetoed: {veto_count}")
+        lines.append(f"- Amended/returned with recommendation: {amended_count}")
+        lines.append("")
+
+    if wants_vetoes:
+        lines.append(f"**Vetoed bills ({len(veto_rows)}):**")
+        for row in veto_rows:
+            bill = row["bill_number"]
+            title = row["title"] or "Title not available"
+            url = row["source_url"] or f"https://openstates.org/va/bills/2026/{bill}/"
+            date = row["action_date"] or "date not available"
+            lines.append(f"- [{bill}]({url}) — {title} ({date})")
+        lines.append("")
+
+    if wants_signed:
+        signed_total = action_counts.get("signed", len(signed_rows))
+        if signed_rows:
+            lines.append(f"**Signed bills:** VoteIQ has {signed_total} signed records. Showing the 30 most recent:")
+            for row in signed_rows:
+                bill = row["bill_number"]
+                title = row["title"] or "Title not available"
+                url = row["source_url"] or f"https://openstates.org/va/bills/2026/{bill}/"
+                date = row["action_date"] or "date not available"
+                chapter = f"; Chapter {row['chapter_number']}" if row["chapter_number"] else ""
+                lines.append(f"- [{bill}]({url}) — {title} ({date}{chapter})")
+        elif not wants_vetoes:
+            return ""
 
     lines.extend([
         "",
