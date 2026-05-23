@@ -761,6 +761,8 @@ def _direct_voteiq_source_hierarchy_reply(user_query: str) -> str:
     return "\n".join([
         "**VoteIQ Source Hierarchy**",
         "",
+        "VoteIQ uses structured SQL records first for exact facts, official APIs second for verification and fresh records, RAG/source documents third for long-text context, and AI last to explain what the records say. Data limits are always shown.",
+        "",
         "1. **Structured records first**",
         "- SQL / structured public-record tables are used for exact facts: donations, votes, bills, executive orders, dates, amounts, officials, committees.",
         "",
