@@ -703,6 +703,69 @@ def _direct_governor_veto_reply(user_query: str) -> str:
     return "\n".join(lines)
 
 
+def _direct_governor_eo_reply(user_query: str) -> str:
+    """Return Spanberger executive orders directly from local SQL."""
+    q = (user_query or "").lower()
+    wants_eos = (
+        "executive order" in q
+        or "executive orders" in q
+        or "governor order" in q
+        or "eo-" in q
+        or ("order" in q and "executive" in q)
+    )
+    if not wants_eos:
+        return ""
+    if not any(term in q for term in ("governor", "spanberger", "she", "her", "executive order", "eo-")):
+        return ""
+    if "youngkin" in q:
+        return ""
+
+    rows = []
+    try:
+        if os.path.exists(_POLLS_DB):
+            conn = sqlite3.connect(_POLLS_DB)
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                """
+                SELECT order_number, title, governor, signed_date, summary,
+                       policy_topics, source_url, source_type
+                FROM governor_executive_orders
+                WHERE lower(governor) LIKE '%spanberger%'
+                ORDER BY signed_date DESC, order_number DESC
+                """
+            ).fetchall()
+            conn.close()
+    except Exception:
+        rows = []
+
+    if not rows:
+        return ""
+
+    lines = [
+        f"Governor Spanberger has {len(rows)} executive-order/directive records in VoteIQ local SQL:",
+        "",
+    ]
+    for row in rows:
+        order_number = row["order_number"] or "number not available"
+        title = row["title"] or "Title not available"
+        date = row["signed_date"] or "date not available"
+        url = row["source_url"] or "https://www.governor.virginia.gov/"
+        source_type = row["source_type"] or "executive order"
+        summary = " ".join((row["summary"] or "").split())
+        if len(summary) > 280:
+            summary = summary[:280].rstrip() + "..."
+        lines.append(f"- [Order {order_number}]({url}) — {title} ({date}; {source_type})")
+        if summary:
+            lines.append(f"  - Summary: {summary}")
+
+    lines.extend([
+        "",
+        "Source: VoteIQ local SQL records from polls.db.governor_executive_orders, with source links from the Virginia Governor's Office.",
+        "VoteIQ does not infer motive, intent, or causation from executive actions.",
+    ])
+    return "\n".join(lines)
+
+
 def _fetch_floor_statements(
     bioguide_id: str,
     query: str = "",
@@ -1109,7 +1172,7 @@ async def chat(req: ChatRequest):
         )
 
     last_question  = req.messages[-1].content if req.messages else ""
-    direct_governor_reply = _direct_governor_veto_reply(last_question)
+    direct_governor_reply = _direct_governor_eo_reply(last_question) or _direct_governor_veto_reply(last_question)
     if direct_governor_reply:
         return ChatResponse(reply=direct_governor_reply)
 
@@ -1306,7 +1369,7 @@ async def gemini_chat(request: Request, req: ChatRequest):
     import main as _m
 
     user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
-    direct_governor_reply = _direct_governor_veto_reply(user_query)
+    direct_governor_reply = _direct_governor_eo_reply(user_query) or _direct_governor_veto_reply(user_query)
     if direct_governor_reply:
         return ChatResponse(reply=direct_governor_reply)
 
@@ -1402,7 +1465,7 @@ async def bills_chat(req: BillsChatRequest):
     import main as _m
 
     user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
-    direct_governor_reply = _direct_governor_veto_reply(user_query)
+    direct_governor_reply = _direct_governor_eo_reply(user_query) or _direct_governor_veto_reply(user_query)
     if direct_governor_reply:
         return ChatResponse(reply=direct_governor_reply)
 
@@ -1502,7 +1565,7 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
     user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
 
     # ── parallel context assembly ─────────────────────────────────────────────
-    direct_governor_reply = _direct_governor_veto_reply(user_query)
+    direct_governor_reply = _direct_governor_eo_reply(user_query) or _direct_governor_veto_reply(user_query)
     if direct_governor_reply:
         async def _direct_gen(text=direct_governor_reply):
             yield f"data: {json.dumps({'token': text})}\n\n"
