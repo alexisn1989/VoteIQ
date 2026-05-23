@@ -406,6 +406,8 @@ async def build_bills_context_parallel(
     _is_money  = any(kw in q_lower for kw in (
         "fund", "donor", "pac", "money", "contribut", "financ",
         "campaign", "donation", "grassroot", "industry", "lobbying",
+        "outside spending", "outside money", "super pac",
+        "independent expenditure",
     ))
     _is_speech = any(kw in q_lower for kw in (
         "said", "speech", "floor", "statement", "spoke", "remarks",
@@ -468,6 +470,8 @@ async def build_bills_context_parallel(
 
     if bioguide_ids and _is_money:
         tasks.append(run_sync_source("campaign finance", _get_finance, bioguide_ids, query))
+
+    if _is_money:
         tasks.append(run_sync_source("pac context", _get_pac_data, bioguide_ids, query))
 
     if _is_money:

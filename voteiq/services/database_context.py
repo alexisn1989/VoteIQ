@@ -305,6 +305,102 @@ def _add_keyword_context(blocks: list[str], query: str, terms: list[str], sessio
         conn.close()
 
 
+def _add_pac_context(blocks: list[str], query: str, terms: list[str]) -> None:
+    q_lower = (query or "").lower()
+    if not any(term in q_lower for term in (
+        "pac", "political action", "committee money", "outside money",
+        "outside spending", "independent expenditure", "super pac",
+        "who funds", "who funded", "who backs", "special interest",
+    )):
+        return
+
+    conn = _connect("polls")
+    if not conn:
+        return
+
+    generic = {
+        "pac", "pacs", "political", "action", "committee", "committees",
+        "money", "outside", "spending", "independent", "expenditure",
+        "super", "funds", "funded", "backs", "special", "interest",
+        "show", "list", "table", "tables", "database", "databases",
+        "which", "what", "have",
+    }
+    pac_terms = [term for term in terms if term not in generic]
+
+    if pac_terms:
+        clause, params = _like_any_clause(
+            [
+                "committee_name", "short_name", "ideology", "alignment",
+                "network", "issue_focus", "description", "foreign_country",
+            ],
+            pac_terms[:5],
+        )
+        _query_rows(conn, f"""
+            SELECT committee_id, committee_name, short_name, ideology, alignment,
+                   network, issue_focus, description, source_url, verified,
+                   foreign_alignment, foreign_country
+            FROM pac_ideology
+            WHERE {clause}
+            ORDER BY committee_name
+            LIMIT 10
+        """, params, "polls.pac_ideology keyword", blocks, limit=10)
+
+        clause, params = _like_any_clause(["pac_name", "industry", "source"], pac_terms[:5])
+        _query_rows(conn, f"""
+            SELECT pac_name, industry, source, confidence, created_at
+            FROM pac_name_lookup
+            WHERE {clause}
+            ORDER BY confidence DESC, pac_name
+            LIMIT 10
+        """, params, "polls.pac_name_lookup keyword", blocks, limit=10)
+
+        clause, params = _like_any_clause(["committee_name", "candidate_name", "office", "support_oppose"], pac_terms[:5])
+        _query_rows(conn, f"""
+            SELECT candidate_name, committee_name, support_oppose,
+                   expenditure_amount, expenditure_date, cycle, office, state
+            FROM fec_independent_expenditures
+            WHERE {clause}
+            ORDER BY expenditure_date DESC, expenditure_amount DESC
+            LIMIT 12
+        """, params, "polls.fec_independent_expenditures keyword", blocks, limit=12)
+
+        clause, params = _like_any_clause(["member_name", "industry", "top_donors"], pac_terms[:5])
+        _query_rows(conn, f"""
+            SELECT member_name, cycle, industry, total_amount,
+                   contributor_count, top_donors
+            FROM fec_industry_totals
+            WHERE {clause}
+            ORDER BY cycle DESC, total_amount DESC
+            LIMIT 12
+        """, params, "polls.fec_industry_totals PAC keyword", blocks, limit=12)
+    else:
+        _query_rows(conn, """
+            SELECT committee_id, committee_name, short_name, ideology, alignment,
+                   network, issue_focus, source_url, verified,
+                   foreign_alignment, foreign_country
+            FROM pac_ideology
+            ORDER BY committee_name
+            LIMIT 15
+        """, (), "polls.pac_ideology sample", blocks, limit=15)
+
+        _query_rows(conn, """
+            SELECT pac_name, industry, source, confidence, created_at
+            FROM pac_name_lookup
+            ORDER BY confidence DESC, pac_name
+            LIMIT 15
+        """, (), "polls.pac_name_lookup sample", blocks, limit=15)
+
+        _query_rows(conn, """
+            SELECT candidate_name, committee_name, support_oppose,
+                   expenditure_amount, expenditure_date, cycle, office, state
+            FROM fec_independent_expenditures
+            ORDER BY expenditure_date DESC, expenditure_amount DESC
+            LIMIT 15
+        """, (), "polls.fec_independent_expenditures sample", blocks, limit=15)
+
+    conn.close()
+
+
 def _add_schema_summary(blocks: list[str]) -> None:
     lines = ["[Database Inventory]"]
     for db_key in DB_PATHS:
@@ -340,6 +436,7 @@ def build_database_context(query: str, max_chars: int = 22000) -> str:
     bills = _bill_numbers(q)
     session = _session_year(q)
     _add_bill_context(blocks, bills, session)
+    _add_pac_context(blocks, q, _keywords(q))
     _add_keyword_context(blocks, q, _keywords(q), session)
 
     context = "\n\n---\n\n".join(blocks)
