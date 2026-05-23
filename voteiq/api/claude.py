@@ -57,6 +57,7 @@ async def stream_claude(
     with client.messages.stream(
         model=model,
         max_tokens=max_tokens,
+        cache_control={"type": "ephemeral"},
         system=cached_system_prompt(system),
         messages=messages,
     ) as stream:
@@ -78,6 +79,7 @@ async def call_claude(
     response = client.messages.create(
         model=model,
         max_tokens=max_tokens,
+        cache_control={"type": "ephemeral"},
         system=cached_system_prompt(system),
         messages=messages,
     )

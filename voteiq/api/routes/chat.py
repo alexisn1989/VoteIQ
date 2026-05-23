@@ -2356,6 +2356,7 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
             with claude_client.messages.stream(
                 model=model,
                 max_tokens=max_tokens,
+                cache_control={"type": "ephemeral"},
                 system=cached_system_prompt(system_prompt),
                 messages=msgs,
             ) as stream:

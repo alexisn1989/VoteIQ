@@ -1216,6 +1216,8 @@ _CLAUDE_HAIKU_MODEL = os.getenv("CLAUDE_HAIKU_MODEL", "claude-haiku-4-5-20251001
 
 
 def _claude_reply(system_prompt, messages, max_tokens, model: str | None = None):
+    from voteiq.api.claude import cached_system_prompt
+
     model_name = model or _CLAUDE_SONNET_MODEL
     last_error = None
     for attempt in range(3):
@@ -1223,7 +1225,8 @@ def _claude_reply(system_prompt, messages, max_tokens, model: str | None = None)
             response = client.messages.create(
                 model=model_name,
                 max_tokens=max_tokens,
-                system=system_prompt,
+                cache_control={"type": "ephemeral"},
+                system=cached_system_prompt(system_prompt),
                 messages=[{"role": m.role, "content": m.content} for m in messages],
             )
             return response.content[0].text
