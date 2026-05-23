@@ -5836,6 +5836,7 @@ def _rep_profile_by_name(name: str, session: str = "2026") -> str:
     profile_link = (
         f"Profile URL: {profile_url}\n"
         f"Profile Markdown Link: [{profile_name}]({profile_url})\n"
+        f"Profile View Link: [View Profile]({profile_url})\n"
         if profile_url else ""
     )
     return f"[Representative Profile — {profile_name} {session}]\n{profile_link}{profile_text}"
@@ -5987,6 +5988,7 @@ def _full_profiles_for_query(query: str, limit: int = 3) -> str:
         profile_link = (
             f"Profile URL: {profile_url}\n"
             f"Profile Markdown Link: [{meta.get('name')}]({profile_url})\n"
+            f"Profile View Link: [View Profile]({profile_url})\n"
             if profile_url else ""
         )
         blocks.append(
