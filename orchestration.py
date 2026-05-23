@@ -689,12 +689,11 @@ def build_bills_system_prompt_refactored(
     retrieval_note = (
         f"\nBill retrieval method: {context_data.get('bill_retrieval_method', 'unknown')}\n"
         "\nVoteIQ source hierarchy:\n"
-        "- SQL/local VoteIQ tables are the source of truth for imported records.\n"
-        "- FEC API/FEC records are exact campaign-finance records.\n"
-        "- Congress API/Congress.gov records are exact federal legislative records.\n"
-        "- GovInfo/OpenGov/official government documents provide official document text and context.\n"
-        "- RAG/semantic search supplies long-text summaries, excerpts, and fallback context.\n"
-        "- AI explains retrieved records; it must not invent facts or override exact SQL/API records.\n"
+        "1. SQL / structured public-record tables: exact facts such as donations, votes, bills, executive orders, dates, amounts, officials, and committees.\n"
+        "2. Official APIs and official government sources: refresh or verify structured records from FEC, Congress API, Virginia LIS, Governor's Office, and state/local portals.\n"
+        "3. RAG / document retrieval: long-text context such as bill text, PDFs, meeting minutes, press releases, reports, and transcripts.\n"
+        "4. News and secondary sources: context only when official records are incomplete or when describing public coverage.\n"
+        "5. AI explanation: summarize and explain; AI is not the source of truth.\n"
         "- Person identity should preserve FEC candidate_id, FEC committee_id, bioguide_id, Congress.gov member ID, OpenStates/person ID if state overlap exists, name aliases, and party/state/district.\n"
     )
 
