@@ -44,7 +44,8 @@ _SOURCE_LINE = (
     "*Sources: Congress.gov · Congressional Record/GovInfo where available · "
     "OpenStates · Virginia LIS · FEC where available. "
     "Data current through May 16, 2026. "
-    "VoteIQ does not infer motive, intent, or causation from votes, donations, or bill activity.*"
+    "Data limits: records may be incomplete, delayed, amended, or unavailable. "
+    "VoteIQ does not infer motive, intent, corruption, influence, causation, or policy effectiveness.*"
 )
 
 
@@ -728,25 +729,23 @@ def _direct_voteiq_source_hierarchy_reply(user_query: str) -> str:
     return "\n".join([
         "**VoteIQ Source Hierarchy**",
         "",
-        "1. **SQL / structured public-record tables**",
-        "- Used for exact facts: donations, votes, bills, executive orders, dates, amounts, officials, committees.",
+        "1. **Structured records first**",
+        "- SQL / structured public-record tables are used for exact facts: donations, votes, bills, executive orders, dates, amounts, officials, committees.",
         "",
-        "2. **Official APIs and official government sources**",
-        "- Used to refresh or verify structured records: FEC, Congress API, Virginia LIS, Governor's Office, state/local portals.",
+        "2. **Official APIs second**",
+        "- Official APIs and government sources are used to refresh or verify structured records: FEC, Congress API, Virginia LIS, Governor's Office, state/local portals.",
         "",
-        "3. **RAG / document retrieval**",
-        "- Used for long-text context: bill text, PDFs, meeting minutes, press releases, reports, transcripts.",
+        "3. **Source documents/RAG third**",
+        "- Source documents and RAG are used for long-text context: bill text, PDFs, meeting minutes, press releases, reports, transcripts.",
         "",
-        "4. **News and secondary sources**",
-        "- Used only for context when official records are incomplete or when describing public coverage.",
+        "4. **AI explanation last**",
+        "- AI is used to summarize and explain. AI is not treated as the source of truth.",
         "",
-        "5. **AI explanation**",
-        "- Used to summarize and explain. AI is not treated as the source of truth.",
+        "5. **Data limits always shown**",
+        "- If records are missing, incomplete, stale, or unavailable, VoteIQ should say so and avoid guessing.",
         "",
         "**Identity crosswalk**",
         "- For person lookups, VoteIQ should preserve FEC candidate_id, FEC committee_id, bioguide_id, Congress.gov member ID, OpenStates/person ID if state overlap exists, name aliases, and party/state/district.",
-        "",
-        "Data limit: if SQL or official records are missing, VoteIQ should say what is missing and avoid guessing.",
     ])
 
 
@@ -1580,12 +1579,11 @@ def _bills_system_prompt(
         f"Answer the user's question using ONLY the excerpts below — do not rely on your training data. "
         f"Be factual and cite bill numbers when relevant. "
         f"\n\nVOTEIQ SOURCE HIERARCHY - apply this order for factual claims: "
-        f"1. SQL / structured public-record tables are used for exact facts: donations, votes, bills, executive orders, dates, amounts, officials, committees. "
-        f"2. Official APIs and official government sources are used to refresh or verify structured records: FEC, Congress API, Virginia LIS, Governor's Office, state/local portals. "
-        f"3. RAG / document retrieval is used for long-text context: bill text, PDFs, meeting minutes, press releases, reports, transcripts. "
-        f"4. News and secondary sources are used only for context when official records are incomplete or when describing public coverage. "
-        f"5. AI explanation is used to summarize and explain. AI is not treated as the source of truth. "
-        f"If SQL or official records are missing, say what is missing instead of guessing. "
+        f"1. Structured records first: SQL / structured public-record tables are used for exact facts such as donations, votes, bills, executive orders, dates, amounts, officials, and committees. "
+        f"2. Official APIs second: official APIs and government sources are used to refresh or verify structured records, including FEC, Congress API, Virginia LIS, Governor's Office, and state/local portals. "
+        f"3. Source documents/RAG third: source documents and RAG are used for long-text context such as bill text, PDFs, meeting minutes, press releases, reports, and transcripts. "
+        f"4. AI explanation last: AI is used to summarize and explain. AI is not treated as the source of truth. "
+        f"5. Data limits always shown: if records are missing, incomplete, stale, or unavailable, say so and avoid guessing. "
         f"For person identity, preserve FEC candidate_id, FEC committee_id, bioguide_id, Congress.gov member ID, OpenStates/person ID if state overlap exists, name aliases, and party/state/district.\n\n"
         f"If the excerpts include any '[Governor Action' rows, those are confirmed local governor-action records. "
         f"If the excerpts include '[Database Context]' rows, treat them as direct local database records and use them before guessing. "
