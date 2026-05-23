@@ -17,6 +17,17 @@ def get_claude_client() -> anthropic.Anthropic:
     return anthropic.Anthropic(api_key=api_key)
 
 
+def cached_system_prompt(system: str) -> list[dict]:
+    """Wrap a system prompt as an Anthropic cacheable text block."""
+    return [
+        {
+            "type": "text",
+            "text": system,
+            "cache_control": {"type": "ephemeral"},
+        }
+    ]
+
+
 def get_model(tier: str, use_haiku: bool = False) -> tuple[str, int]:
     """
     Returns (model_string, max_tokens) for the given tier.
@@ -46,7 +57,7 @@ async def stream_claude(
     with client.messages.stream(
         model=model,
         max_tokens=max_tokens,
-        system=system,
+        system=cached_system_prompt(system),
         messages=messages,
     ) as stream:
         for text in stream.text_stream:
@@ -67,7 +78,7 @@ async def call_claude(
     response = client.messages.create(
         model=model,
         max_tokens=max_tokens,
-        system=system,
+        system=cached_system_prompt(system),
         messages=messages,
     )
     return response.content[0].text

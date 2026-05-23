@@ -20,7 +20,7 @@ from orchestration import (
 )
 from pydantic import BaseModel, field_validator
 
-from voteiq.api.claude import get_claude_client, get_model
+from voteiq.api.claude import cached_system_prompt, get_claude_client, get_model
 from voteiq.config.voices import (
     TIER_MAX_TOKENS,
     TIER_VOICE_MAP,  # unused until Supabase auth lands — re-enable tier gate then
@@ -2356,7 +2356,7 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
             with claude_client.messages.stream(
                 model=model,
                 max_tokens=max_tokens,
-                system=system_prompt,
+                system=cached_system_prompt(system_prompt),
                 messages=msgs,
             ) as stream:
                 for text in stream.text_stream:
