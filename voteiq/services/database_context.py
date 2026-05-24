@@ -169,12 +169,13 @@ def _campaign_finance_terms(query: str, terms: list[str]) -> list[str]:
         "fundraiser", "raised", "donor", "donors", "money", "contribution",
         "contributions", "record", "records", "filing", "filings", "sbe",
         "vpap", "funding", "funded", "public", "source", "sources",
-        "research", "overview", "with", "why", "return", "returned", "data",
+        "research", "report", "overview", "with", "why", "return", "returned", "data",
         "issue", "problem", "lookup", "retrieval", "debug", "debugger",
         "bill", "bills", "action", "actions", "veto", "vetoes", "vetoed",
         "signed", "amended", "governor", "correlation", "correlate",
         "correlated", "relationship", "align", "alignment", "state",
-        "virginia", "office", "candidate", "committee",
+        "virginia", "office", "candidate", "committee", "vote", "votes",
+        "voted", "voting", "record", "records",
     }
     names = [term for term in terms if term not in generic]
     q_lower = (query or "").lower()
@@ -749,7 +750,9 @@ def _person_terms(terms: list[str]) -> list[str]:
         "vote", "votes", "voted", "voting", "record", "records", "bill", "bills",
         "legislator", "legislators", "delegate", "senator", "representative",
         "official", "officials", "member", "members", "show", "tell", "list",
-        "public", "search",
+        "public", "search", "research", "report", "overview", "profile",
+        "office", "status", "finance", "financial", "campaign", "donor",
+        "donors", "money", "contribution", "contributions", "voteiq",
     }
     return [term for term in terms if term not in generic]
 
@@ -758,17 +761,49 @@ def _add_person_vote_context(blocks: list[str], query: str, terms: list[str], se
     q_lower = (query or "").lower()
     if _known_federal_person(query) and _is_explicit_federal_vote_query(query):
         return
-    has_vote_term = any(term in q_lower for term in ("vote", "votes", "voted", "voting"))
-    has_record_term = "record" in q_lower and not _is_campaign_finance_query(query)
-    if not (has_vote_term or has_record_term):
-        return
-
     people = _person_terms(terms)
     if not people:
+        return
+    has_vote_term = any(term in q_lower for term in ("vote", "votes", "voted", "voting"))
+    has_record_term = "record" in q_lower and not _is_campaign_finance_query(query)
+    has_person_context_term = any(
+        term in q_lower
+        for term in (
+            "research", "overview", "profile", "public record", "report",
+            "office", "status", "who is",
+        )
+    )
+    has_name_only_query = len(people) >= 2 and len(terms) <= 3
+    if not (has_vote_term or has_record_term or has_person_context_term or has_name_only_query):
         return
 
     conn = _connect("openstates")
     if conn:
+        if _table_exists(conn, "legislators"):
+            columns = _table_columns(conn, "legislators")
+            search_cols = [
+                col for col in (
+                    "name", "full_name", "sort_name", "given_name", "family_name",
+                    "party", "district", "chamber",
+                )
+                if col in columns
+            ]
+            select_cols = [
+                col for col in (
+                    "id", "name", "full_name", "party", "chamber", "district",
+                    "email", "openstates_url",
+                )
+                if col in columns
+            ]
+            if search_cols and select_cols:
+                clause, params = _like_all_text_clause(search_cols, people[:3])
+                _query_rows(conn, f"""
+                    SELECT {', '.join(_quote_identifier(col) for col in select_cols)}
+                    FROM legislators
+                    WHERE {clause}
+                    LIMIT 8
+                """, params, "openstates.legislators person", blocks, limit=8)
+
         clause, params = _like_any_clause(["voter_name", "party", "district"], people[:4])
         _query_rows(conn, f"""
             SELECT bill_id, session, vote_date, chamber, motion, result,

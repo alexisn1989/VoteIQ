@@ -10,15 +10,28 @@ class GovernorActionContextTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         self.db_path = Path(self.tmp.name) / "polls.db"
+        self.openstates_path = Path(self.tmp.name) / "openstates_va.db"
         self.original_polls_path = dc.DB_PATHS["polls"]
+        self.original_openstates_path = dc.DB_PATHS["openstates"]
         dc.DB_PATHS["polls"] = self.db_path
+        dc.DB_PATHS["openstates"] = self.openstates_path
 
     def tearDown(self):
         dc.DB_PATHS["polls"] = self.original_polls_path
+        dc.DB_PATHS["openstates"] = self.original_openstates_path
         self.tmp.cleanup()
 
     def _exec(self, *statements):
         conn = sqlite3.connect(self.db_path)
+        try:
+            for statement in statements:
+                conn.execute(statement)
+            conn.commit()
+        finally:
+            conn.close()
+
+    def _exec_openstates(self, *statements):
+        conn = sqlite3.connect(self.openstates_path)
         try:
             for statement in statements:
                 conn.execute(statement)
@@ -365,6 +378,114 @@ class GovernorActionContextTests(unittest.TestCase):
         self.assertIn("yea_votes=1", context)
         self.assertIn("nay_votes=1", context)
         self.assertIn("congress_votes recent", context)
+
+    def test_person_research_report_query_returns_state_legislator_votes(self):
+        self._exec_openstates(
+            """
+            CREATE TABLE legislators (
+                id TEXT, name TEXT, party TEXT, chamber TEXT, district TEXT,
+                openstates_url TEXT
+            )
+            """,
+            """
+            INSERT INTO legislators VALUES (
+                'ocd-person/rouse', 'Aaron R. Rouse', 'Democratic',
+                'Senate', '22', 'https://openstates.org/person/rouse/'
+            )
+            """,
+            """
+            CREATE TABLE votes (
+                bill_id TEXT, session TEXT, vote_date TEXT, chamber TEXT,
+                motion TEXT, result TEXT, voter_name TEXT, option TEXT,
+                party TEXT, district TEXT
+            )
+            """,
+            """
+            INSERT INTO votes VALUES (
+                'SB764', '2026', '2026-03-14', 'Senate',
+                'Adopt Conference Committee Report', 'pass',
+                'Aaron R. Rouse', 'yes', 'Democratic', '22'
+            )
+            """,
+            """
+            CREATE TABLE bills (
+                bill_id TEXT, session TEXT, title TEXT, sponsors TEXT,
+                latest_action TEXT, latest_date TEXT, result TEXT,
+                openstates_url TEXT
+            )
+            """,
+        )
+
+        context = dc.build_database_context("Aaron Rouse research report")
+
+        self.assertIn("openstates.legislators person", context)
+        self.assertIn("name=Aaron R. Rouse", context)
+        self.assertIn("openstates.votes person", context)
+        self.assertIn("bill_id=SB764", context)
+
+    def test_rouse_voting_and_campaign_finance_ignores_voting_as_name_term(self):
+        self._exec(
+            """
+            CREATE TABLE va_finance_people (
+                person_name TEXT, office TEXT, district TEXT, party TEXT,
+                role TEXT, committee_name TEXT, finance_url TEXT,
+                source_url TEXT, data_confidence TEXT, fetched_at TEXT
+            )
+            """,
+            """
+            INSERT INTO va_finance_people VALUES (
+                'Aaron Rouse', 'State Senate', '22', 'Democratic',
+                'officeholder', NULL, NULL, NULL, 'high',
+                '2026-05-17T19:20:27+00:00'
+            )
+            """,
+            """
+            CREATE TABLE va_cf_schedule_a (
+                candidate_name TEXT, election_cycle TEXT, first_name TEXT,
+                last_or_company TEXT, employer TEXT, occupation TEXT,
+                is_individual INTEGER, transaction_date TEXT, amount REAL
+            )
+            """,
+            """
+            INSERT INTO va_cf_schedule_a VALUES (
+                'Mr. Aaron Roosevelt Rouse', '2018', '',
+                'Health Care Services of Hampton Roads, Inc.', '',
+                'Healthcare', 0, '2018-04-05', 250
+            )
+            """,
+        )
+        self._exec_openstates(
+            """
+            CREATE TABLE votes (
+                bill_id TEXT, session TEXT, vote_date TEXT, chamber TEXT,
+                motion TEXT, result TEXT, voter_name TEXT, option TEXT,
+                party TEXT, district TEXT
+            )
+            """,
+            """
+            INSERT INTO votes VALUES (
+                'SB764', '2026', '2026-03-14', 'Senate',
+                'Adopt Conference Committee Report', 'pass',
+                'Aaron R. Rouse', 'yes', 'Democratic', '22'
+            )
+            """,
+            """
+            CREATE TABLE bills (
+                bill_id TEXT, session TEXT, title TEXT, sponsors TEXT,
+                latest_action TEXT, latest_date TEXT, result TEXT,
+                openstates_url TEXT
+            )
+            """,
+        )
+
+        context = dc.build_database_context("Aaron Rouse voting record and campaign finance")
+
+        self.assertIn("polls.va_finance_people campaign finance profile", context)
+        self.assertIn("person_name=Aaron Rouse", context)
+        self.assertIn("polls.va_cf_schedule_a campaign finance totals", context)
+        self.assertIn("total_amount=250.0", context)
+        self.assertIn("openstates.votes person", context)
+        self.assertNotIn("searched_terms=aaron, rouse, voting", context)
 
 
 if __name__ == "__main__":
