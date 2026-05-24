@@ -11,7 +11,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 import pdfplumber
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from voteiq.config.rate_limit import limiter
 from fastapi.responses import HTMLResponse, StreamingResponse
 
@@ -414,6 +414,18 @@ class AdminChatRequest(BaseModel):
     question: str = ""
     retrieved_records: str = ""
     model: str = ""
+    max_tokens: int = 1200
+
+    @field_validator("max_tokens")
+    @classmethod
+    def clamp_max_tokens(cls, v):
+        return max(200, min(int(v or 1200), 4000))
+
+
+class AdminDashboardChatRequest(BaseModel):
+    mode: str = "analyst"
+    query: str = ""
+    retrieved_records: str = ""
     max_tokens: int = 1200
 
     @field_validator("max_tokens")
@@ -1121,21 +1133,30 @@ async def admin_chat(req: AdminChatRequest, _: None = Depends(require_admin_toke
 
 @router.post("/admin/chat")
 async def admin_dashboard_chat(
-    mode: str = Query("analyst"),
-    query: str = Query(""),
-    max_tokens: int = Query(1200, ge=200, le=4000),
+    req: AdminDashboardChatRequest | None = Body(None),
+    mode: str | None = Query(None),
+    query: str | None = Query(None),
+    max_tokens: int | None = Query(None, ge=200, le=4000),
     _: None = Depends(require_admin_token),
 ):
-    question = (query or "").strip()
+    body = req or AdminDashboardChatRequest()
+    selected_mode = (mode or body.mode or "analyst").strip()
+    question = (query if query is not None else body.query or "").strip()
+    token_limit = max_tokens or body.max_tokens
     if not question:
         raise HTTPException(status_code=400, detail="query is required")
-    if mode not in _ADMIN_AGENT_REGISTRY:
-        raise HTTPException(status_code=404, detail=f"Unknown admin mode: {mode}")
-    response_text = _run_admin_agent(mode, question, max_tokens=max_tokens)
+    if selected_mode not in _ADMIN_AGENT_REGISTRY:
+        raise HTTPException(status_code=404, detail=f"Unknown admin mode: {selected_mode}")
+    response_text = _run_admin_agent(
+        selected_mode,
+        question,
+        retrieved_records=body.retrieved_records,
+        max_tokens=token_limit,
+    )
     return {
         "status": "success",
-        "mode": mode,
-        "agent": _ADMIN_AGENT_REGISTRY[mode]["name"],
+        "mode": selected_mode,
+        "agent": _ADMIN_AGENT_REGISTRY[selected_mode]["name"],
         "query": question,
         "response": response_text,
         "timestamp": _admin_now(),
