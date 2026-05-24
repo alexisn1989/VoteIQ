@@ -242,6 +242,46 @@ class GovernorActionContextTests(unittest.TestCase):
         self.assertIn("polls.va_cf_schedule_a campaign finance totals", context)
         self.assertIn("total_amount=500000.0", context)
 
+    def test_finance_debug_query_without_entity_returns_table_inventory(self):
+        self._exec(
+            """
+            CREATE TABLE va_cf_schedule_a (
+                candidate_name TEXT, election_cycle TEXT, amount REAL
+            )
+            """,
+            """
+            INSERT INTO va_cf_schedule_a VALUES (
+                'Abigail  Spanberger', '2025', 500000
+            )
+            """
+        )
+
+        context = dc.build_database_context("why did financial records return no data")
+
+        self.assertIn("lookup_status=needs_entity", context)
+        self.assertIn("Campaign finance query needs a candidate", context)
+        self.assertIn("- va_cf_schedule_a: rows=1", context)
+
+    def test_finance_zero_match_returns_table_inventory_not_empty_context(self):
+        self._exec(
+            """
+            CREATE TABLE va_cf_schedule_a (
+                candidate_name TEXT, election_cycle TEXT, amount REAL
+            )
+            """,
+            """
+            INSERT INTO va_cf_schedule_a VALUES (
+                'Abigail  Spanberger', '2025', 500000
+            )
+            """
+        )
+
+        context = dc.build_database_context("Does Jane Example have campaign finance records?")
+
+        self.assertIn("lookup_status=zero_records", context)
+        self.assertIn("No rows matched searched_terms=jane, example", context)
+        self.assertIn("- va_cf_schedule_a: rows=1", context)
+
 
 if __name__ == "__main__":
     unittest.main()

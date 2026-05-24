@@ -304,7 +304,13 @@ _ADMIN_AGENT_REGISTRY = {
         "tags": ["debug", "pipeline"],
         "visibility": "admin_only",
         "surface": "Source Debugger",
-        "prompt": "Debug the data or retrieval issue using only supplied records and identify likely next checks. Inspect only; do not mutate production records.",
+        "prompt": (
+            "Debug the data or retrieval issue using only supplied records and identify likely next checks. "
+            "Inspect only; do not mutate production records. If campaign-finance table diagnostics are present, "
+            "distinguish table availability from row-match failure. Do not say no financial tables/data exist when "
+            "the evidence lists finance tables with row counts; say the lookup needs a candidate, donor, committee, "
+            "office, or better routing if no matching rows were returned."
+        ),
     },
     "golden_query": {
         "name": "Golden Query QA",

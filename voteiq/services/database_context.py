@@ -160,7 +160,10 @@ def _campaign_finance_terms(query: str, terms: list[str]) -> list[str]:
         "fundraiser", "raised", "donor", "donors", "money", "contribution",
         "contributions", "record", "records", "filing", "filings", "sbe",
         "vpap", "funding", "funded", "public", "source", "sources",
-        "research", "overview", "with",
+        "research", "overview", "with", "why", "return", "returned", "data",
+        "issue", "problem", "lookup", "retrieval", "debug", "debugger",
+        "bill", "bills", "action", "actions", "veto", "vetoes", "vetoed",
+        "signed", "amended", "governor",
     }
     names = [term for term in terms if term not in generic]
     q_lower = (query or "").lower()
@@ -209,8 +212,6 @@ def _add_campaign_finance_context(blocks: list[str], query: str, terms: list[str
 
     q_lower = (query or "").lower()
     finance_terms = _campaign_finance_terms(query, terms)
-    if not finance_terms:
-        return
 
     conn = _connect("polls")
     if not conn:
@@ -221,7 +222,18 @@ def _add_campaign_finance_context(blocks: list[str], query: str, terms: list[str
         )
         return
 
+    if not finance_terms:
+        _append_campaign_finance_inventory(
+            blocks,
+            conn,
+            status="needs_entity",
+            detail="Campaign finance query needs a candidate, donor, committee, or office name before row lookup can run.",
+        )
+        conn.close()
+        return
+
     found_any = False
+    lookup_failed = False
     searched_tables: list[str] = []
 
     try:
@@ -237,7 +249,7 @@ def _add_campaign_finance_context(blocks: list[str], query: str, terms: list[str
                 if col in columns
             ]
             if search_cols and select_cols:
-                clause, params = _like_any_text_clause(search_cols, finance_terms)
+                clause, params = _like_all_text_clause(search_cols, finance_terms)
                 rows = conn.execute(f"""
                     SELECT {', '.join(_quote_identifier(col) for col in select_cols)}
                     FROM candidate_registry
@@ -267,7 +279,7 @@ def _add_campaign_finance_context(blocks: list[str], query: str, terms: list[str
                 if col in columns
             ]
             if search_cols and select_cols:
-                clause, params = _like_any_text_clause(search_cols, finance_terms)
+                clause, params = _like_all_text_clause(search_cols, finance_terms)
                 rows = conn.execute(f"""
                     SELECT {', '.join(_quote_identifier(col) for col in select_cols)}
                     FROM va_finance_people
@@ -299,7 +311,7 @@ def _add_campaign_finance_context(blocks: list[str], query: str, terms: list[str
                 if col in columns
             ]
             if search_cols and select_cols:
-                clause, params = _like_any_text_clause(search_cols, finance_terms)
+                clause, params = _like_all_text_clause(search_cols, finance_terms)
                 where_parts = [f"({clause})"]
                 if "CommitteeType" in columns and "inaugural" not in q_lower:
                     where_parts.append("lower(CAST(\"CommitteeType\" AS TEXT)) NOT LIKE '%inaugural%'")
@@ -323,15 +335,17 @@ def _add_campaign_finance_context(blocks: list[str], query: str, terms: list[str
             columns = _table_columns(conn, "va_cf_schedule_a")
             required = {"candidate_name", "election_cycle", "amount"}
             if required.issubset(columns):
-                clause, params = _like_any_text_clause(["candidate_name"], finance_terms)
+                clause, params = _like_all_text_clause(["candidate_name"], finance_terms)
+                first_date_expr = "MIN(transaction_date)" if "transaction_date" in columns else "''"
+                latest_date_expr = "MAX(transaction_date)" if "transaction_date" in columns else "''"
                 rows = conn.execute(f"""
                     SELECT
                         candidate_name,
                         election_cycle,
                         COUNT(*) AS contribution_records,
                         ROUND(SUM(amount), 2) AS total_amount,
-                        MIN(transaction_date) AS first_transaction_date,
-                        MAX(transaction_date) AS latest_transaction_date
+                        {first_date_expr} AS first_transaction_date,
+                        {latest_date_expr} AS latest_transaction_date
                     FROM va_cf_schedule_a
                     WHERE ({clause})
                       AND amount > 0
@@ -384,6 +398,7 @@ def _add_campaign_finance_context(blocks: list[str], query: str, terms: list[str
                     lines.extend(f"- {_row_to_line(row)}" for row in rows)
                     blocks.append("\n".join(lines))
     except Exception as exc:
+        lookup_failed = True
         blocks.append(
             "[Database Context - campaign finance lookup]\n"
             "lookup_status=lookup_error\n"
@@ -393,13 +408,62 @@ def _add_campaign_finance_context(blocks: list[str], query: str, terms: list[str
     finally:
         conn.close()
 
-    if not found_any:
-        blocks.append(
-            "[Database Context - campaign finance lookup]\n"
-            "lookup_status=zero_records\n"
-            f"searched_terms={', '.join(finance_terms)}\n"
-            f"searched_tables={', '.join(searched_tables) if searched_tables else 'none'}"
+    if not found_any and not lookup_failed:
+        detail = (
+            f"No rows matched searched_terms={', '.join(finance_terms)}. "
+            "Finance tables may still exist; inspect table counts below."
         )
+        _append_campaign_finance_inventory(blocks, conn=None, status="zero_records", detail=detail)
+
+
+def _append_campaign_finance_inventory(
+    blocks: list[str],
+    conn: sqlite3.Connection | None,
+    *,
+    status: str,
+    detail: str,
+) -> None:
+    lines = ["[Database Context - campaign finance lookup]"]
+    lines.append(f"lookup_status={status}")
+    lines.append(f"detail={detail}")
+    finance_tables = [
+        "candidate_registry",
+        "va_finance_people",
+        "va_cf_reports",
+        "va_cf_schedule_a",
+        "campaign_finance_summary",
+        "candidate_finance_reports",
+        "candidate_sector_totals",
+        "fec_individual_contributions",
+        "fec_industry_totals",
+        "fec_independent_expenditures",
+    ]
+    if conn is None:
+        conn = _connect("polls")
+        close_conn = True
+    else:
+        close_conn = False
+    try:
+        if not conn:
+            lines.append("finance_tables_available=unknown; polls.db unavailable")
+        else:
+            for table in finance_tables:
+                if not _table_exists(conn, table):
+                    lines.append(f"- {table}: table_missing")
+                    continue
+                try:
+                    count = conn.execute(f"SELECT COUNT(*) FROM {_quote_identifier(table)}").fetchone()[0]
+                except Exception as exc:
+                    count = f"count_error:{type(exc).__name__}"
+                columns = sorted(_table_columns(conn, table))
+                lines.append(
+                    f"- {table}: rows={count}; columns={', '.join(columns[:12])}"
+                    + ("..." if len(columns) > 12 else "")
+                )
+    finally:
+        if close_conn and conn:
+            conn.close()
+    blocks.append("\n".join(lines))
 
 
 def _quote_identifier(name: str) -> str:
@@ -488,23 +552,23 @@ def _add_keyword_context(blocks: list[str], query: str, terms: list[str], sessio
 
     conn = _connect("polls")
     if conn and is_finance:
-        finance_generic = {"campaign", "finance", "financial", "donor", "donors", "money", "contribution", "contributions", "pac"}
-        finance_terms = [term for term in terms if term not in finance_generic] or terms[:4]
-        clause, params = _like_any_clause(["person_name", "committee_name", "office", "party"], finance_terms[:4])
-        _query_rows(conn, f"""
-            SELECT person_name, office, district, party, committee_name, finance_url, source_url
-            FROM va_finance_people
-            WHERE {clause}
-            LIMIT 8
-        """, params, "polls.va_finance_people keyword", blocks, limit=8)
-        clause, params = _like_any_clause(["candidate_name", "sector"], finance_terms[:4])
-        _query_rows(conn, f"""
-            SELECT candidate_name, sector, total_amount, donor_count, cycle
-            FROM candidate_sector_totals
-            WHERE {clause}
-            ORDER BY total_amount DESC
-            LIMIT 8
-        """, params, "polls.candidate_sector_totals keyword", blocks, limit=8)
+        finance_terms = _campaign_finance_terms(query, terms)
+        if finance_terms:
+            clause, params = _like_clause(["person_name", "committee_name", "office", "party"], finance_terms[:4])
+            _query_rows(conn, f"""
+                SELECT person_name, office, district, party, committee_name, finance_url, source_url
+                FROM va_finance_people
+                WHERE {clause}
+                LIMIT 8
+            """, params, "polls.va_finance_people keyword", blocks, limit=8)
+            clause, params = _like_clause(["candidate_name", "sector"], finance_terms[:4])
+            _query_rows(conn, f"""
+                SELECT candidate_name, sector, total_amount, donor_count, cycle
+                FROM candidate_sector_totals
+                WHERE {clause}
+                ORDER BY total_amount DESC
+                LIMIT 8
+            """, params, "polls.candidate_sector_totals keyword", blocks, limit=8)
         conn.close()
 
     if is_finance and not any(term in q_lower for term in ("bill", "hb", "sb", "legislation", "veto", "signed")):
@@ -662,7 +726,9 @@ def _person_terms(terms: list[str]) -> list[str]:
 
 def _add_person_vote_context(blocks: list[str], query: str, terms: list[str], session: str) -> None:
     q_lower = (query or "").lower()
-    if not any(term in q_lower for term in ("vote", "votes", "voted", "voting", "record")):
+    has_vote_term = any(term in q_lower for term in ("vote", "votes", "voted", "voting"))
+    has_record_term = "record" in q_lower and not _is_campaign_finance_query(query)
+    if not (has_vote_term or has_record_term):
         return
 
     people = _person_terms(terms)
@@ -829,6 +895,18 @@ def _like_any_text_clause(columns: list[str], terms: list[str]) -> tuple[str, li
             clauses.append(f"lower(CAST({_quote_identifier(col)} AS TEXT)) LIKE ?")
             params.append(f"%{term.lower()}%")
     return " OR ".join(clauses), params
+
+
+def _like_all_text_clause(columns: list[str], terms: list[str]) -> tuple[str, list[str]]:
+    clauses = []
+    params: list[str] = []
+    for term in terms:
+        term_clauses = []
+        for col in columns:
+            term_clauses.append(f"lower(CAST({_quote_identifier(col)} AS TEXT)) LIKE ?")
+            params.append(f"%{term.lower()}%")
+        clauses.append("(" + " OR ".join(term_clauses) + ")")
+    return " AND ".join(clauses), params
 
 
 def _append_governor_action_lookup_block(
