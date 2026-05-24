@@ -21,6 +21,7 @@ class ScopeLimitFooterTests(unittest.TestCase):
     def setUp(self):
         self.source_line = _function_source("_source_line")
         self.polling_reply = _function_source("_scope_limit_polling_reply")
+        self.external_polling_reply = _function_source("_external_polling_reply")
         self.polling_detector = _function_source("_is_public_opinion_polling_scope_limit_query")
 
     def test_polling_scope_limit_answer_type_is_defined(self):
@@ -35,6 +36,18 @@ class ScopeLimitFooterTests(unittest.TestCase):
         self.assertIn("Data limits: {limit}", self.source_line)
         self.assertIn("SCOPE_LIMIT_ANSWER_TYPE", self.source_line)
         self.assertIn("POLLING_DATA_LIMIT", self.polling_reply)
+
+    def test_external_polling_context_footer_is_defined(self):
+        self.assertIn('EXTERNAL_POLLING_ANSWER_TYPE = "External polling context"', CHAT_SOURCE)
+        self.assertIn("Sources used: Polling source records / news feed / Gemini extraction", self.source_line)
+        self.assertIn("Polls are not official public records", CHAT_SOURCE)
+        self.assertIn("Verify against the original poll release", CHAT_SOURCE)
+
+    def test_polling_query_checks_poll_tables_before_scope_limit(self):
+        self.assertIn("polls p", self.external_polling_reply)
+        self.assertIn("poll_results pr", self.external_polling_reply)
+        self.assertIn("poll_articles", self.external_polling_reply)
+        self.assertIn("external_reply = _external_polling_reply(query)", self.polling_reply)
 
     def test_polling_scope_limit_footer_avoids_generic_record_sources(self):
         scope_branch = self.source_line.split("if sources_used:", 1)[0]

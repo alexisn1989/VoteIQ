@@ -57,6 +57,11 @@ POLLING_DATA_LIMIT = (
     "VoteIQ can help with voting records, bill sponsorships, campaign finance records, "
     "governor actions, executive orders, and legislator profiles."
 )
+EXTERNAL_POLLING_ANSWER_TYPE = "External polling context"
+EXTERNAL_POLLING_DATA_LIMIT = (
+    "Polls are not official public records. Polling results vary by pollster, sponsor, "
+    "sample, field dates, methodology, and margin of error. Verify against the original poll release."
+)
 
 VOTEIQ_ADMIN_SYSTEM_PROMPT = """
 You are VoteIQ, a neutral civic intelligence assistant.
@@ -110,6 +115,14 @@ def _source_line(
             "Sources used: none.\n"
             f"Data limits: {limit}"
         )
+    if answer_type == EXTERNAL_POLLING_ANSWER_TYPE:
+        limit = data_limits or EXTERNAL_POLLING_DATA_LIMIT
+        return (
+            "\n\n---\n"
+            f"Answer type: {EXTERNAL_POLLING_ANSWER_TYPE}.\n"
+            "Sources used: Polling source records / news feed / Gemini extraction.\n"
+            f"Data limits: {limit}"
+        )
     if sources_used:
         source_text = " · ".join(sorted(sources_used))
         prefix = f"*Answer type: {answer_type}. Sources:" if answer_type else "*Sources:"
@@ -152,9 +165,168 @@ def _is_public_opinion_polling_scope_limit_query(query: str) -> bool:
     ))
 
 
+def _polling_office_filter(query: str) -> str | None:
+    q = (query or "").lower()
+    if "governor" in q or "spanberger" in q:
+        return "governor"
+    if "senate" in q or "senator" in q:
+        return "senate"
+    if "house" in q or "congress" in q or "representative" in q:
+        return "house"
+    return None
+
+
+def _polling_name_terms(query: str) -> list[str]:
+    words = re.findall(r"[A-Za-z][A-Za-z'-]{3,}", query or "")
+    generic = {
+        "what", "poll", "polls", "polling", "data", "latest", "approval",
+        "rating", "ratings", "favorability", "survey", "surveys", "virginia",
+        "governor", "senate", "house", "race", "races", "about",
+    }
+    terms: list[str] = []
+    seen: set[str] = set()
+    for word in words:
+        low = word.lower().strip("'")
+        if low in generic or low in seen:
+            continue
+        seen.add(low)
+        terms.append(low)
+    return terms[:4]
+
+
+def _polling_tables_available(conn: sqlite3.Connection) -> bool:
+    rows = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('polls', 'poll_results')"
+    ).fetchall()
+    return {row[0] for row in rows} == {"polls", "poll_results"}
+
+
+def _polling_articles_available(conn: sqlite3.Connection) -> bool:
+    row = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='poll_articles'"
+    ).fetchone()
+    return row is not None
+
+
+def _external_polling_reply(query: str) -> str | None:
+    if not _is_public_opinion_polling_scope_limit_query(query):
+        return None
+    if not os.path.exists(_POLLS_DB):
+        return None
+
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+        if not _polling_tables_available(conn):
+            conn.close()
+            return None
+
+        where = ["LOWER(COALESCE(p.state, '')) = 'virginia'"]
+        params: list[object] = []
+        office = _polling_office_filter(query)
+        if office:
+            where.append("LOWER(COALESCE(p.office_type, '')) LIKE ?")
+            params.append(f"%{office}%")
+
+        name_terms = _polling_name_terms(query)
+        if name_terms:
+            term_clauses = []
+            for term in name_terms:
+                term_clauses.append(
+                    "(LOWER(COALESCE(pr.candidate_name, '')) LIKE ? "
+                    "OR LOWER(COALESCE(pr.answer, '')) LIKE ? "
+                    "OR LOWER(COALESCE(p.seat_name, '')) LIKE ?)"
+                )
+                like = f"%{term}%"
+                params.extend([like, like, like])
+            where.append("(" + " OR ".join(term_clauses) + ")")
+
+        rows = conn.execute(
+            f"""
+            SELECT p.source_record_id, p.source, p.cycle, p.office_type, p.seat_name,
+                   p.pollster, p.sponsor, p.sample_size, p.population, p.methodology,
+                   p.start_date, p.end_date, p.url, p.notes,
+                   pr.answer, pr.candidate_name, pr.candidate_party, pr.pct
+            FROM polls p
+            LEFT JOIN poll_results pr ON pr.source_record_id = p.source_record_id
+            WHERE {' AND '.join(where)}
+            ORDER BY COALESCE(p.end_date, p.start_date, p.created_at, p.fetched_at) DESC,
+                     p.source_record_id,
+                     pr.pct DESC
+            LIMIT 18
+            """,
+            params,
+        ).fetchall()
+
+        article_rows: list[sqlite3.Row] = []
+        if _polling_articles_available(conn):
+            article_rows = conn.execute(
+                """
+                SELECT source, title, summary, published_at, url, matched_terms
+                FROM poll_articles
+                ORDER BY COALESCE(published_at, fetched_at) DESC
+                LIMIT 3
+                """
+            ).fetchall()
+        conn.close()
+    except Exception:
+        return None
+
+    if not rows and not article_rows:
+        return None
+
+    polls: dict[str, dict] = {}
+    order: list[str] = []
+    for row in rows:
+        rid = row["source_record_id"] or f"{row['pollster']}-{row['end_date']}"
+        if rid not in polls:
+            order.append(rid)
+            date_range = row["end_date"] or row["start_date"] or "date not available"
+            pollster = row["pollster"] or row["sponsor"] or row["source"] or "Unknown pollster"
+            sample = f"; n={row['sample_size']}" if row["sample_size"] else ""
+            population = f"; {row['population']}" if row["population"] else ""
+            method = f"; {row['methodology']}" if row["methodology"] else ""
+            polls[rid] = {
+                "header": f"{pollster} ({date_range}{sample}{population}{method})",
+                "url": row["url"],
+                "results": [],
+            }
+        label = row["candidate_name"] or row["answer"]
+        if label and row["pct"] is not None:
+            polls[rid]["results"].append(f"{label}: {row['pct']}%")
+
+    lines = ["Polling context from VoteIQ's external polling feed:"]
+    for rid in order[:5]:
+        poll = polls[rid]
+        result_text = "; ".join(poll["results"][:6]) if poll["results"] else "results not itemized"
+        url = f" [{poll['url']}]" if poll["url"] else ""
+        lines.append(f"- {poll['header']}: {result_text}.{url}")
+
+    if article_rows:
+        lines.append("\nRelated poll-news records:")
+        for row in article_rows[:3]:
+            source = row["source"] or "news feed"
+            title = row["title"] or "Untitled"
+            published = f" ({row['published_at']})" if row["published_at"] else ""
+            url = f" [{row['url']}]" if row["url"] else ""
+            lines.append(f"- {source}: {title}{published}.{url}")
+
+    body = "\n".join(lines)
+    return _with_source_line(
+        body,
+        answer_type=EXTERNAL_POLLING_ANSWER_TYPE,
+        sources_used=set(),
+        data_limits=EXTERNAL_POLLING_DATA_LIMIT,
+    )
+
+
 def _scope_limit_polling_reply(query: str) -> str | None:
     if not _is_public_opinion_polling_scope_limit_query(query):
         return None
+
+    external_reply = _external_polling_reply(query)
+    if external_reply:
+        return external_reply
 
     body = (
         "VoteIQ does not currently have public-opinion polling data in its public-record dataset.\n\n"
