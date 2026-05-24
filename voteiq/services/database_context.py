@@ -401,6 +401,61 @@ def _add_pac_context(blocks: list[str], query: str, terms: list[str]) -> None:
     conn.close()
 
 
+def _person_terms(terms: list[str]) -> list[str]:
+    generic = {
+        "vote", "votes", "voted", "voting", "record", "records", "bill", "bills",
+        "legislator", "legislators", "delegate", "senator", "representative",
+        "official", "officials", "member", "members", "show", "tell", "list",
+        "public", "search",
+    }
+    return [term for term in terms if term not in generic]
+
+
+def _add_person_vote_context(blocks: list[str], query: str, terms: list[str], session: str) -> None:
+    q_lower = (query or "").lower()
+    if not any(term in q_lower for term in ("vote", "votes", "voted", "voting", "record")):
+        return
+
+    people = _person_terms(terms)
+    if not people:
+        return
+
+    conn = _connect("openstates")
+    if conn:
+        clause, params = _like_any_clause(["voter_name", "party", "district"], people[:4])
+        _query_rows(conn, f"""
+            SELECT bill_id, session, vote_date, chamber, motion, result,
+                   voter_name, option, party, district
+            FROM votes
+            WHERE session=? AND ({clause})
+            ORDER BY vote_date DESC
+            LIMIT 40
+        """, [session, *params], "openstates.votes person", blocks, limit=40)
+
+        clause, params = _like_any_clause(["sponsors"], people[:4])
+        _query_rows(conn, f"""
+            SELECT bill_id, session, title, sponsors, latest_action, latest_date,
+                   result, openstates_url
+            FROM bills
+            WHERE session=? AND ({clause})
+            ORDER BY latest_date DESC
+            LIMIT 12
+        """, [session, *params], "openstates.bills sponsored by person", blocks, limit=12)
+        conn.close()
+
+    conn = _connect("legislative_intelligence")
+    if conn:
+        clause, params = _like_any_clause(["legislator_id", "bill_number", "vote"], people[:4])
+        _query_rows(conn, f"""
+            SELECT bill_number, session, legislator_id, vote, vote_date
+            FROM va_votes
+            WHERE session=? AND ({clause})
+            ORDER BY vote_date DESC
+            LIMIT 40
+        """, [session, *params], "legislative_intelligence.va_votes person", blocks, limit=40)
+        conn.close()
+
+
 def _add_schema_summary(blocks: list[str]) -> None:
     lines = ["[Database Inventory]"]
     for db_key in DB_PATHS:
@@ -437,6 +492,7 @@ def build_database_context(query: str, max_chars: int = 22000) -> str:
     session = _session_year(q)
     _add_bill_context(blocks, bills, session)
     _add_pac_context(blocks, q, _keywords(q))
+    _add_person_vote_context(blocks, q, _keywords(q), session)
     _add_keyword_context(blocks, q, _keywords(q), session)
 
     context = "\n\n---\n\n".join(blocks)
