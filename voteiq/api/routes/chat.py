@@ -51,6 +51,9 @@ _SOURCE_LINE = (
     "VoteIQ does not infer motive, intent, corruption, influence, causation, or policy effectiveness.*"
 )
 
+SCOPE_LIMIT_ANSWER_TYPE = "Scope / dataset limitation"
+POLLING_DATA_LIMIT = "Polling data is not currently included in VoteIQ's public-record dataset."
+
 VOTEIQ_ADMIN_SYSTEM_PROMPT = """
 You are VoteIQ, a neutral civic intelligence assistant.
 
@@ -90,7 +93,19 @@ def _premium_analyst_enabled(req) -> bool:
     return voice in {"pro", "newsroom"} or tier in {"pro", "newsroom"}
 
 
-def _source_line(answer_type: str | None = None, sources_used: set[str] | None = None) -> str:
+def _source_line(
+    answer_type: str | None = None,
+    sources_used: set[str] | None = None,
+    data_limits: str | None = None,
+) -> str:
+    if answer_type == SCOPE_LIMIT_ANSWER_TYPE and not sources_used:
+        limit = data_limits or "This question is outside the currently available VoteIQ dataset."
+        return (
+            "\n\n---\n"
+            f"*Answer type: {SCOPE_LIMIT_ANSWER_TYPE}. Sources used: none. "
+            f"Data limits: {limit} "
+            "VoteIQ does not infer motive, intent, corruption, influence, causation, or policy effectiveness.*"
+        )
     if sources_used:
         source_text = " · ".join(sorted(sources_used))
         prefix = f"*Answer type: {answer_type}. Sources:" if answer_type else "*Sources:"
@@ -109,12 +124,47 @@ def _with_source_line(
     reply: str,
     answer_type: str | None = None,
     sources_used: set[str] | None = None,
+    data_limits: str | None = None,
 ) -> str:
     """Append the standard source footer unless the model already included one."""
     reply = _sanitize_voting_record_language(reply)
     if "Sources:" in (reply or ""):
         return reply.rstrip()
-    return reply.rstrip() + _source_line(answer_type, sources_used)
+    return reply.rstrip() + _source_line(answer_type, sources_used, data_limits)
+
+
+def _is_public_opinion_polling_scope_limit_query(query: str) -> bool:
+    """Detect public-opinion/election polling asks, not polling-place questions."""
+    q = (query or "").lower()
+    if not any(term in q for term in ("poll", "polls", "polling", "approval rating", "favorability")):
+        return False
+    if any(term in q for term in ("polling place", "polling location", "where do i vote", "precinct")):
+        return False
+    return any(term in q for term in (
+        "approval", "favorability", "favorability rating", "horse race",
+        "survey", "surveys", "public opinion", "vcu", "wilder", "wason",
+        "realclearpolitics", "fivethirtyeight", "538", "polling data",
+        "latest poll", "latest polls", "what do polls say",
+    ))
+
+
+def _scope_limit_polling_reply(query: str) -> str | None:
+    if not _is_public_opinion_polling_scope_limit_query(query):
+        return None
+
+    body = (
+        "VoteIQ does not currently have public-opinion polling data in its public-record dataset.\n\n"
+        "External places to check: VCU Wilder School, CNU Wason Center, RealClearPolitics, FiveThirtyEight.\n\n"
+        "Those are external suggestions, not VoteIQ sources for this answer.\n\n"
+        "Is there something specific you're trying to understand about your representatives or a bill? "
+        "I may be able to help with the public-record side of that question."
+    )
+    return _with_source_line(
+        body,
+        answer_type=SCOPE_LIMIT_ANSWER_TYPE,
+        sources_used=set(),
+        data_limits=POLLING_DATA_LIMIT,
+    )
 
 
 def _sanitize_voting_record_language(reply: str) -> str:
@@ -2822,6 +2872,10 @@ async def chat(req: ChatRequest):
 
     last_question  = req.messages[-1].content if req.messages else ""
 
+    scope_limit_reply = _scope_limit_polling_reply(last_question)
+    if scope_limit_reply:
+        return ChatResponse(reply=scope_limit_reply)
+
     # Detect query scope to guide source selection
     from voteiq.helpers import get_scope_aware_analyst
     analyst_helper = get_scope_aware_analyst()
@@ -3204,6 +3258,9 @@ async def bills_chat(req: BillsChatRequest):
     import main as _m
 
     user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
+    scope_limit_reply = _scope_limit_polling_reply(user_query)
+    if scope_limit_reply:
+        return ChatResponse(reply=scope_limit_reply)
     direct_identity_reply = _direct_identity_crosswalk_reply(user_query)
     if direct_identity_reply:
         return ChatResponse(reply=direct_identity_reply)
@@ -3312,6 +3369,12 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
     import main as _m
 
     user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
+    scope_limit_reply = _scope_limit_polling_reply(user_query)
+    if scope_limit_reply:
+        async def _scope_limit_gen(text=scope_limit_reply):
+            yield f"data: {json.dumps({'token': text})}\n\n"
+            yield "data: [DONE]\n\n"
+        return StreamingResponse(_scope_limit_gen(), media_type="text/event-stream")
 
     # ── parallel context assembly ─────────────────────────────────────────────
     direct_identity_reply = _direct_identity_crosswalk_reply(user_query)
@@ -3537,6 +3600,9 @@ async def analyst_chat(req: BillsChatRequest):
     from voteiq.config.scope_policy import QueryScope
 
     user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
+    scope_limit_reply = _scope_limit_polling_reply(user_query)
+    if scope_limit_reply:
+        return ChatResponse(reply=scope_limit_reply)
     analyst_helper = get_scope_aware_analyst()
 
     # Detect query scope and get scope context
