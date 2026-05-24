@@ -247,6 +247,15 @@ _ADMIN_AGENT_REGISTRY = {
         "tags": ["analysis", "records"],
         "prompt": "Analyze the supplied records without inferring motive, causation, corruption, influence, or effectiveness.",
     },
+    "deep_researcher": {
+        "name": "Deep Researcher",
+        "env": "VOTEIQ_DEEP_RESEARCHER_AGENT_ID",
+        "tags": ["research", "primary-sources", "synthesis"],
+        "prompt": (
+            "Conduct multi-step civic research. Break the question into sub-questions, use structured SQL and official sources first, "
+            "separate facts from interpretation, cite source tiers, state confidence and data gaps, and keep all outputs draft/read-only."
+        ),
+    },
     "support_drafts": {
         "name": "Support Drafts",
         "env": "VOTEIQ_SUPPORT_DRAFTS_AGENT_ID",
@@ -4179,7 +4188,8 @@ Respond as JSON."""
     response = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=2000,
-        messages=[{"role": "user", "content": prompt}]
+        messages=[{"role": "user", "content": prompt}],
+        cache_control={"type": "ephemeral", "ttl": "1h"}
     )
 
     # Parse response (would be JSON in production)
