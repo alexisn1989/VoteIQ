@@ -1358,6 +1358,8 @@ async def admin_dashboard_chat(
         "output_mode": selected_output_mode or "standard",
         "agent": _ADMIN_AGENT_REGISTRY[selected_mode]["name"],
         "agent_id": agent_id,
+        "visibility": _ADMIN_AGENT_REGISTRY[selected_mode].get("visibility", "admin_only"),
+        "surface": _ADMIN_AGENT_REGISTRY[selected_mode].get("surface", _ADMIN_AGENT_REGISTRY[selected_mode]["name"]),
         "query": question,
         "query_hash": audit_record["query_hash"],
         "response": response_text,
@@ -1378,7 +1380,8 @@ async def admin_agents(_: None = Depends(require_admin_token)):
             "total_agents": len(agents),
             "deployed": deployed,
             "missing": len(agents) - deployed,
-            "public_facing": len(public_agents),
+            "public_facing": len(_PUBLIC_FACING_FLOWS),
+            "public_facing_agents": len(public_agents),
             "admin_only": len(admin_agents_only),
         },
         "public_facing": [
@@ -2742,6 +2745,12 @@ async def chat(req: ChatRequest):
         )
 
     last_question  = req.messages[-1].content if req.messages else ""
+
+    # Detect query scope to guide source selection
+    from voteiq.helpers import get_scope_aware_analyst
+    analyst_helper = get_scope_aware_analyst()
+    scope_context = analyst_helper.analyze_query(last_question)
+
     direct_identity_reply = _direct_identity_crosswalk_reply(last_question)
     if direct_identity_reply:
         return ChatResponse(reply=direct_identity_reply)
@@ -2889,6 +2898,11 @@ async def chat(req: ChatRequest):
         ),
     }
 
+    # Prepend scope guidance if query scope is unclear
+    scope_prefix = ""
+    if scope_context["scope_confidence"] < 0.7:
+        scope_prefix = f"Query Scope Guidance: This query is unclear about scope ({scope_context['scope_explanation']}). {scope_context['scope_notes']}\n\n"
+
     base_prompt = get_system_prompt(voice=req.voice, query_context=query_context)
     max_tokens  = TIER_MAX_TOKENS.get(req.tier, TIER_MAX_TOKENS["free"])
 
@@ -2898,7 +2912,7 @@ async def chat(req: ChatRequest):
             last_question, bioguide_ids=bioguide_ids or None
         )
 
-    system_prompt = f"""{base_prompt}
+    system_prompt = f"""{scope_prefix}{base_prompt}
 
 ---
 
@@ -3438,12 +3452,24 @@ async def pdf_chat(
 @router.post("/api/analyst-chat", response_model=ChatResponse)
 async def analyst_chat(req: BillsChatRequest):
     """
-    Public Record Analyst mode: structured fact-based answers with sources, limits, and no inference.
+    Public Record Analyst mode: structured fact-based answers with scope-aware source selection.
+    Detects query scope (local, state, federal, mixed) and filters sources accordingly.
     Returns: Answer, Record Type, Answer Type, Sources Used, Current Through, Data Quality, Data Limits, Inference Flag.
     """
     import main as _m
+    from voteiq.helpers import get_scope_aware_analyst
+    from voteiq.config.scope_policy import QueryScope
 
     user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
+    analyst_helper = get_scope_aware_analyst()
+
+    # Detect query scope and get scope context
+    scope_context = analyst_helper.analyze_query(user_query)
+    detected_scope = QueryScope(scope_context["detected_scope"])
+    allowed_sources = scope_context["allowed_sources"]
+    blocked_sources = scope_context["blocked_sources"]
+    scope_explanation = scope_context["scope_explanation"]
+    scope_notes = scope_context["scope_notes"]
 
     # Build context using same approach as bills-chat but with analyst framing
     ctx_data = await build_bills_context_parallel(
@@ -3455,12 +3481,33 @@ async def analyst_chat(req: BillsChatRequest):
     )
 
     context = ctx_data["context"]
-    sources_used = _track_sources(context)
+    sources_from_context = _track_sources(context)
 
-    # Analyst system prompt: structured, fact-based, no inference
+    # Filter sources based on detected scope
+    sources_used, blocked_found = analyst_helper.filter_sources_in_response(
+        sources_from_context, detected_scope
+    )
+
+    # Analyst system prompt: structured, fact-based, no inference, with scope guidance
     analyst_system_prompt = f"""You are VoteIQ's public-record analyst.
 
 Your role is to return facts from structured records, official APIs, and source documents only.
+
+## SCOPE CONTEXT FOR THIS QUERY
+
+**Query Scope:** {detected_scope.value}
+**Why:** {scope_explanation}
+**Confidence:** {scope_context['scope_confidence']:.0%}
+
+**Allowed Sources (use only these):**
+{chr(10).join(['- ' + s for s in allowed_sources])}
+
+**Blocked Sources (do NOT use):**
+{chr(10).join(['- ' + s for s in blocked_sources]) if blocked_sources else '(none)'}
+
+**Important:** Only cite sources from the Allowed Sources list above.
+
+## YOUR ROLE
 
 DO:
 - Return exact facts from records with sources cited.
@@ -3473,6 +3520,7 @@ DO NOT:
 - Fill gaps with logic, assumptions, or model memory.
 - Offer policy recommendations.
 - Make legal conclusions.
+- Use blocked sources (those listed above).
 
 ANSWER FORMAT:
 **Answer:** [fact or "record not found"]
@@ -3493,6 +3541,22 @@ Retrieved context:
 
     try:
         reply = _m._claude_reply(analyst_system_prompt, req.messages, max_tokens=1200, cache_ttl=cache_ttl)
+
+        # Validate response sources and add warnings if blocked sources are mentioned
+        validation = analyst_helper.validate_response_sources(reply, detected_scope, sources_used)
+        if validation["blocked_sources_found"]:
+            warning = f"\n\n[System Note: Response mentioned blocked sources for this scope: {', '.join(validation['blocked_sources_found'])}]"
+            reply = reply + warning
+
+        # Add dynamic footer with only sources actually used
+        dynamic_footer = analyst_helper.generate_dynamic_footer(sources_used, user_query)
+        if dynamic_footer:
+            reply = reply + f"\n\n{dynamic_footer}"
+
+        # Add scope note if confidence is low
+        if scope_context["scope_confidence"] < 0.7:
+            reply = reply + f"\n\n[Scope Note: {scope_notes}]"
+
         return ChatResponse(reply=reply)
     except Exception as e:
         return ChatResponse(reply=_m._friendly_claude_error(e))
@@ -4080,6 +4144,7 @@ class FieldMonitorRequest(BaseModel):
         "competitors"
     ]
     output_mode: str = "draft"  # draft or publish (v1: draft only)
+    include_federal: bool = False  # Explicitly opt-in to federal Congress/elections content
 
 
 class FieldMonitorDraft(BaseModel):
@@ -4089,6 +4154,8 @@ class FieldMonitorDraft(BaseModel):
     grant_opportunities: list[dict]
     research_to_watch: list[str]
     questions_for_leadership: list[str]
+    scope_note: str = ""  # Scope policy note
+    federal_available: str = ""  # Message about federal content availability
     slack_draft: dict
     notion_draft: dict
     github_issues_draft: list[dict]
@@ -4098,6 +4165,13 @@ class FieldMonitorDraft(BaseModel):
 async def field_monitor(req: FieldMonitorRequest):
     """
     VoteIQ Civic Field Monitor
+
+    DEFAULT SCOPE: Virginia state and Hampton Roads local only
+    FEDERAL CONTENT: Excluded by default
+
+    To include federal Congress, elections, or federal-level trends:
+    - Set include_federal=true in request, OR
+    - Include "federal" or "congressional" in focus_areas
 
     Tracks meaningful changes in civic tech, election data standards, campaign finance,
     public media partnerships, and competitor moves that affect VoteIQ's product roadmap,
@@ -4113,14 +4187,25 @@ async def field_monitor(req: FieldMonitorRequest):
     """
     client = get_claude_client()
 
-    # Build search queries based on focus areas
-    search_queries = _build_field_monitor_queries(req.focus_areas)
+    # Build search queries based on focus areas (now includes scope filtering)
+    search_queries = _build_field_monitor_queries(
+        req.focus_areas,
+        include_federal=req.include_federal
+    )
+
+    # Check if federal was requested vs default
+    requested_federal = search_queries.get("requested_federal", False)
 
     # Gather intelligence via web search
     findings = await _gather_field_intelligence(search_queries, req.lookback_days)
 
     # Analyze and structure findings using Claude
     report = await _analyze_field_findings(findings, req.focus_areas, client)
+
+    # Add scope note to report
+    if not requested_federal:
+        report["scope_note"] = "Federal content excluded per scope policy (Virginia state and local only)"
+        report["federal_available"] = "To include federal Congress trends, set include_federal=true or add 'federal' to focus_areas"
 
     # Generate drafts
     slack_draft = _draft_slack_field_monitor(report)
@@ -4134,49 +4219,63 @@ async def field_monitor(req: FieldMonitorRequest):
         grant_opportunities=report.get("grant_opportunities", []),
         research_to_watch=report.get("research_to_watch", []),
         questions_for_leadership=report.get("questions_for_leadership", []),
+        scope_note=report.get("scope_note", ""),
+        federal_available=report.get("federal_available", ""),
         slack_draft=slack_draft,
         notion_draft=notion_draft,
         github_issues_draft=github_draft
     )
 
 
-def _build_field_monitor_queries(focus_areas: list[str]) -> dict[str, list[str]]:
-    """Build search queries for field monitoring based on focus areas."""
+def _build_field_monitor_queries(focus_areas: list[str], include_federal: bool = False) -> dict[str, list[str]]:
+    """
+    Build search queries for field monitoring based on focus areas.
+
+    By default, excludes federal Congress and federal elections.
+    Include federal content only if include_federal=True or if focus_areas explicitly mentions "federal"
+    """
+
+    # Check if user explicitly asked for federal
+    requested_federal = include_federal or any(
+        area.lower() in ["federal", "congressional", "congress", "u.s. congress"]
+        for area in focus_areas
+    )
 
     queries = {
+        # Virginia state civic tech (always included)
         "election_tech": [
             "Legistar API changes 2026",
             "VPAP campaign finance updates",
-            "FEC filing requirements changes 2026",
             "election technology new features",
-            "voting system transparency"
+            "voting system transparency",
+            "Virginia election system updates"
         ],
         "campaign_finance": [
-            "campaign finance transparency 2026",
-            "FEC donation reporting rules",
-            "dark money disclosure requirements",
-            "campaign contribution limits changes",
-            "OpenSecrets MAPLight feature launches"
+            "Virginia campaign finance transparency 2026",
+            "Virginia donation reporting rules",
+            "Virginia campaign contribution limits",
+            "VPAP Virginia statewide fundraising",
+            "Virginia state legislative campaigns"
         ],
         "data_standards": [
             "Virginia SBE election data standards",
             "municipal API changes Hampton Roads",
             "Census data format updates",
-            "NIST election standards recommendations",
+            "Virginia election data transparency",
             "government data transparency initiatives"
         ],
         "competitors": [
-            "Ballotpedia new features 2026",
-            "Votersedge expansion",
-            "Countable product launches",
-            "OpenSecrets updates",
-            "civic tech startups funding"
+            "Ballotpedia Virginia features",
+            "Votersedge Virginia expansion",
+            "civic tech startups serving Virginia",
+            "Virginia civic tech funding",
+            "local Virginia tech platforms"
         ],
         "partnerships": [
             "WHRO public media partnerships",
-            "NPR election coverage initiatives",
-            "PBS NewsHour data partnerships",
-            "local news civic tech collaborations"
+            "Virginia election partnerships",
+            "local news civic tech collaborations",
+            "Virginia civic engagement initiatives"
         ],
         "grants": [
             "Knight Foundation news technology grants 2026",
@@ -4187,13 +4286,38 @@ def _build_field_monitor_queries(focus_areas: list[str]) -> dict[str, list[str]]
         ]
     }
 
+    # ONLY add federal queries if explicitly requested
+    if requested_federal:
+        queries.update({
+            "federal_congress": [
+                "U.S. Congress bills 2026",
+                "Congressional voting records Virginia delegation",
+                "House of Representatives 2026",
+                "U.S. Senate 2026"
+            ],
+            "federal_elections": [
+                "2026 federal elections Virginia",
+                "Congressional elections Virginia"
+            ],
+            "federal_campaign_finance": [
+                "FEC federal campaign finance 2026",
+                "Virginia congressional campaign donations",
+                "Federal PAC contributions Virginia",
+                "FEC filing requirements changes"
+            ]
+        })
+
     # Build combined query list
     all_queries = []
     for area in focus_areas:
         if area in queries:
             all_queries.extend(queries[area])
 
-    return {"queries": all_queries, "focus_areas": focus_areas}
+    # Add note to response if federal content was excluded
+    if not requested_federal:
+        all_queries.append("[SCOPE NOTE: Federal content excluded (default scope: Virginia state and local only)]")
+
+    return {"queries": all_queries, "focus_areas": focus_areas, "requested_federal": requested_federal}
 
 
 async def _gather_field_intelligence(queries_dict: dict, lookback_days: int) -> dict:
@@ -4590,3 +4714,336 @@ def _draft_github_field_monitor(report: dict) -> list[dict]:
         })
 
     return issues
+
+
+# ── /api/structured-extractor (Data Extraction) ─────────────────────────────
+
+class StructuredExtractorRequest(BaseModel):
+    raw_text: str
+    extraction_type: str  # "bill", "vote", "donation", "official", "meeting"
+    schema_name: str = "default"  # or pass full schema
+    source_url: str = ""
+    source_label: str = ""
+    output_mode: str = "draft"
+
+
+class ExtractionValidation(BaseModel):
+    valid: bool
+    errors: list[str] = []
+
+
+class ConfidenceSummary(BaseModel):
+    high: int = 0
+    medium: int = 0
+    low: int = 0
+    total: int = 0
+
+
+class StructuredExtractorResponse(BaseModel):
+    status: str  # "success", "validation_failed", "parse_failed"
+    extraction_type: str
+    records: dict | list | None
+    validation: ExtractionValidation
+    confidence_summary: ConfidenceSummary
+    source_url: str
+    notes: list[str] = []
+
+
+# Standard schemas for common extraction types
+EXTRACTION_SCHEMAS = {
+    "vote": {
+        "type": "object",
+        "properties": {
+            "bill_id": {"type": "string"},
+            "official_name": {"type": "string"},
+            "vote": {"enum": ["yes", "no", "abstain", "present"]},
+            "vote_date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+            "council_or_legislature": {"type": "string"},
+            "legistar_url": {"type": ["string", "null"]},
+            "_source_url": {"type": "string"},
+            "_confidence": {"enum": ["high", "medium", "low"]},
+            "_extraction_notes": {"type": ["string", "null"]}
+        },
+        "required": ["bill_id", "official_name", "vote", "vote_date"]
+    },
+    "donation": {
+        "type": "object",
+        "properties": {
+            "donor_name": {"type": "string"},
+            "recipient_name": {"type": "string"},
+            "recipient_office": {"type": ["string", "null"]},
+            "amount": {"type": ["number", "null"]},
+            "currency": {"type": "string"},
+            "donation_date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+            "donation_type": {"enum": ["contribution", "in-kind", "loan"]},
+            "source": {"enum": ["VPAP", "FEC", "local_filing", "news_report"]},
+            "source_url": {"type": ["string", "null"]},
+            "_source_url": {"type": "string"},
+            "_confidence": {"enum": ["high", "medium", "low"]},
+            "_extraction_notes": {"type": ["string", "null"]}
+        },
+        "required": ["donor_name", "recipient_name", "amount", "donation_date"]
+    },
+    "bill": {
+        "type": "object",
+        "properties": {
+            "bill_id": {"type": "string"},
+            "title": {"type": ["string", "null"]},
+            "council_or_legislature": {"type": "string"},
+            "year": {"type": "integer"},
+            "status": {"enum": ["introduced", "passed", "vetoed", "withdrawn", "signed"]},
+            "introduced_date": {"type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$|^$|^null$"},
+            "vote_date": {"type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$|^$|^null$"},
+            "sponsor": {"type": ["string", "null"]},
+            "summary": {"type": ["string", "null"]},
+            "legistar_url": {"type": ["string", "null"]},
+            "_source_url": {"type": "string"},
+            "_confidence": {"enum": ["high", "medium", "low"]},
+            "_extraction_notes": {"type": ["string", "null"]}
+        },
+        "required": ["bill_id"]
+    },
+    "official": {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "office": {"type": "string"},
+            "council_or_legislature": {"type": "string"},
+            "term_start": {"type": ["string", "null"]},
+            "term_end": {"type": ["string", "null"]},
+            "party": {"enum": ["Democrat", "Republican", "Independent", "unknown"]},
+            "email": {"type": ["string", "null"]},
+            "phone": {"type": ["string", "null"]},
+            "legistar_url": {"type": ["string", "null"]},
+            "_source_url": {"type": "string"},
+            "_confidence": {"enum": ["high", "medium", "low"]},
+            "_extraction_notes": {"type": ["string", "null"]}
+        },
+        "required": ["name", "office", "council_or_legislature"]
+    }
+}
+
+
+STRUCTURED_EXTRACTOR_SYSTEM_PROMPT = """You are VoteIQ's Structured Data Extractor.
+
+You parse unstructured civic text (emails, PDFs, meeting minutes, news articles, transcripts) into typed JSON schemas.
+
+## YOUR JOB
+
+Given:
+1. Raw unstructured text
+2. Target JSON schema
+3. Extraction type (bill, vote, donation, official, meeting)
+
+You will:
+1. Extract structured data matching the schema
+2. Normalize civic data (bill IDs, dates, votes, amounts, status codes, names)
+3. Score confidence (HIGH/MEDIUM/LOW) based on source quality and ambiguities
+4. Note all ambiguities in _extraction_notes
+5. Return pure JSON only (no prose, no markdown)
+
+## NORMALIZATION RULES
+
+**Bill IDs:** "HB123" → "HB 123", "Senate Bill 456" → "SB 456"
+**Dates:** "May 22, 2026" → "2026-05-22", "May 22" (no year) → infer year from context, "1/2/23" (ambiguous) → interpret based on context, note ambiguity
+**Currency:** "$5,000" / "5K" → amount: 5000, currency: "USD"
+**Votes:** "Yea/Aye/Yes/For" → "yes", "Nay/No/Against" → "no", "Abstain" → "abstain", "Present" → "present"
+**Status:** "Introduced/Filed" → "introduced", "Passed/Approved" → "passed", "Vetoed" → "vetoed", "Signed" → "signed", "Withdrawn" → "withdrawn"
+**Names:** Preserve full name, note variations in _extraction_notes if ambiguous
+**Office:** "Councilmember/Councilor" → "Council Member", "District 3/D3/Dist. 3" → "District 3"
+
+## CONFIDENCE SCORING
+
+**HIGH:** Official source (Legistar, VPAP, FEC, city website), direct extraction, no ambiguities, exact match to canonical form
+**MEDIUM:** Secondary source (news article) OR minor inference (year inferred from context) OR minor name variation OR one field uncertain
+**LOW:** Unreliable source (social media, blog) OR multiple ambiguities OR required field missing/guessed OR significant inference
+
+## REQUIRED FIELDS
+
+Check schema for required fields. If genuinely missing from source:
+- Use null (not guessed value)
+- Set _confidence to "low"
+- Note in _extraction_notes
+
+## AMBIGUITIES
+
+If ambiguous:
+1. Choose most reliable interpretation
+2. Set _confidence based on certainty
+3. Note ambiguity in _extraction_notes
+4. Example: "Year inferred from email date (2026); could be 2025 if historical."
+
+## MULTIPLE RECORDS
+
+If input contains multiple records (meeting minutes with 10 votes):
+- Return JSON array
+- One object per record
+- Each has _source_url, _confidence, _extraction_notes
+
+## VALIDATION
+
+Before emitting JSON:
+- Check all required fields present (or null if schema allows)
+- Check all emitted keys are in schema
+- Check enum values match exactly (case-sensitive)
+- Check dates are ISO 8601 (YYYY-MM-DD)
+
+## OUTPUT
+
+Emit ONLY the JSON object or array. No prose. No markdown. No explanations.
+
+Example (single vote record):
+```json
+{
+  "bill_id": "HB 123",
+  "official_name": "John Smith",
+  "vote": "yes",
+  "vote_date": "2026-05-22",
+  "council_or_legislature": "Newport News City Council",
+  "_source_url": "Email: City Council Minutes May 22",
+  "_confidence": "high",
+  "_extraction_notes": null
+}
+```
+
+Example (multiple vote records):
+```json
+[
+  {"bill_id": "HB 123", "official_name": "Smith", "vote": "yes", ...},
+  {"bill_id": "HB 123", "official_name": "Jones", "vote": "no", ...}
+]
+```
+
+NOW: Extract the provided text into structured JSON matching the schema. Emit ONLY the JSON."""
+
+
+@router.post("/api/structured-extractor")
+async def structured_extractor(req: StructuredExtractorRequest):
+    """
+    Structured Data Extractor
+
+    Parses unstructured civic text into typed JSON schemas with confidence scoring
+    and validation. No data is written to production databases — all output is draft only.
+    """
+    from jsonschema import Draft7Validator, ValidationError
+    import main as _m
+
+    client = get_claude_client()
+
+    # Get schema
+    schema = EXTRACTION_SCHEMAS.get(req.extraction_type, EXTRACTION_SCHEMAS["bill"])
+
+    # Build prompt
+    extraction_prompt = f"""Extract structured {req.extraction_type} data from this text.
+
+Schema (required fields marked with *):
+{json.dumps(schema, indent=2)}
+
+Text:
+{req.raw_text}
+
+Emit only JSON (object or array of objects). No prose."""
+
+    # Call Claude
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=2000,
+            messages=[
+                {"role": "user", "content": extraction_prompt}
+            ],
+            system=STRUCTURED_EXTRACTOR_SYSTEM_PROMPT,
+            cache_control={"type": "ephemeral", "ttl": "5m"}
+        )
+        response_text = response.content[0].text.strip()
+    except Exception as e:
+        return StructuredExtractorResponse(
+            status="parse_failed",
+            extraction_type=req.extraction_type,
+            records=None,
+            validation=ExtractionValidation(valid=False, errors=[str(e)]),
+            confidence_summary=ConfidenceSummary(),
+            source_url=req.source_url,
+            notes=[f"Claude API error: {str(e)}"]
+        )
+
+    # Parse JSON
+    try:
+        # Remove markdown code blocks if present
+        if response_text.startswith("```"):
+            response_text = response_text.split("```")[1]
+            if response_text.startswith("json"):
+                response_text = response_text[4:]
+
+        records = json.loads(response_text)
+    except json.JSONDecodeError as e:
+        return StructuredExtractorResponse(
+            status="parse_failed",
+            extraction_type=req.extraction_type,
+            records=None,
+            validation=ExtractionValidation(
+                valid=False,
+                errors=[f"Failed to parse JSON: {str(e)}", f"Response: {response_text[:200]}..."]
+            ),
+            confidence_summary=ConfidenceSummary(),
+            source_url=req.source_url,
+            notes=["Claude returned invalid JSON"]
+        )
+
+    # Normalize to list for processing
+    is_single = not isinstance(records, list)
+    records_list = [records] if is_single else records
+
+    # Validate each record against schema
+    validator = Draft7Validator(schema)
+    validation_errors = []
+    confidence_counts = {"high": 0, "medium": 0, "low": 0}
+
+    for i, record in enumerate(records_list):
+        # Validate
+        for error in validator.iter_errors(record):
+            validation_errors.append(f"Record {i}: {error.message} at {'.'.join(str(p) for p in error.path)}")
+
+        # Count confidence
+        if isinstance(record, dict):
+            conf = record.get("_confidence", "medium")
+            if conf in confidence_counts:
+                confidence_counts[conf] += 1
+
+    # Add source_url to records if not present
+    for record in records_list:
+        if isinstance(record, dict) and "_source_url" not in record:
+            record["_source_url"] = req.source_url or req.source_label or "unknown"
+
+    # Determine status
+    status = "success" if not validation_errors else "validation_failed"
+
+    # Build confidence summary
+    confidence_summary = ConfidenceSummary(
+        high=confidence_counts["high"],
+        medium=confidence_counts["medium"],
+        low=confidence_counts["low"],
+        total=len(records_list)
+    )
+
+    # Build notes
+    notes = []
+    if confidence_counts["low"] > 0:
+        notes.append(f"⚠️ {confidence_counts['low']} record(s) with LOW confidence — requires human review")
+    if confidence_counts["medium"] > 0:
+        notes.append(f"ℹ️ {confidence_counts['medium']} record(s) with MEDIUM confidence — verify against official source")
+    if validation_errors:
+        notes.append(f"❌ {len(validation_errors)} validation error(s) found")
+
+    return StructuredExtractorResponse(
+        status=status,
+        extraction_type=req.extraction_type,
+        records=records if not is_single else records_list[0] if records_list else None,
+        validation=ExtractionValidation(
+            valid=len(validation_errors) == 0,
+            errors=validation_errors
+        ),
+        confidence_summary=confidence_summary,
+        source_url=req.source_url or req.source_label or "unknown",
+        notes=notes
+    )
