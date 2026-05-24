@@ -456,6 +456,43 @@ def _add_person_vote_context(blocks: list[str], query: str, terms: list[str], se
         conn.close()
 
 
+def _add_governor_action_context(blocks: list[str], query: str, terms: list[str], session: str) -> None:
+    q_lower = (query or "").lower()
+    if not any(term in q_lower for term in ("governor", "spanberger", "veto", "vetoed", "vetoes", "signed", "amended")):
+        return
+
+    conn = _connect("polls")
+    if not conn:
+        return
+
+    action_terms = [
+        term for term in terms
+        if term not in {"public", "record", "records", "search", "source", "sources"}
+    ]
+    if "veto" in q_lower:
+        action_terms.append("veto")
+    if "sign" in q_lower:
+        action_terms.append("sign")
+    if "amend" in q_lower:
+        action_terms.append("amend")
+    if not action_terms:
+        action_terms = ["spanberger", "governor"]
+
+    clause, params = _like_any_clause(
+        ["governor", "action_label", "raw_status", "title", "bill_number", "sponsor_name"],
+        action_terms[:6],
+    )
+    _query_rows(conn, f"""
+        SELECT bill_number, session, title, action_label, raw_status,
+               action_date, governor, sponsor_name, source_url
+        FROM governor_actions
+        WHERE session=? AND ({clause})
+        ORDER BY action_date DESC, bill_number
+        LIMIT 40
+    """, [session, *params], "polls.governor_actions keyword", blocks, limit=40)
+    conn.close()
+
+
 def _add_schema_summary(blocks: list[str]) -> None:
     lines = ["[Database Inventory]"]
     for db_key in DB_PATHS:
@@ -493,6 +530,7 @@ def build_database_context(query: str, max_chars: int = 22000) -> str:
     _add_bill_context(blocks, bills, session)
     _add_pac_context(blocks, q, _keywords(q))
     _add_person_vote_context(blocks, q, _keywords(q), session)
+    _add_governor_action_context(blocks, q, _keywords(q), session)
     _add_keyword_context(blocks, q, _keywords(q), session)
 
     context = "\n\n---\n\n".join(blocks)
