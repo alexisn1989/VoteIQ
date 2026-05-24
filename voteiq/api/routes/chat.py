@@ -270,6 +270,16 @@ _ADMIN_AGENT_REGISTRY = {
         "tags": ["support", "communication"],
         "prompt": "Draft a concise support response. Say what was checked, what is missing, and the next action.",
     },
+    "sprint_retro": {
+        "name": "Sprint Retro Facilitator",
+        "env": "VOTEIQ_SPRINT_RETRO_AGENT_ID",
+        "tags": ["internal", "retro", "process"],
+        "prompt": (
+            "Prepare internal VoteIQ sprint retrospectives from Linear, Slack, GitHub, and supplied context. "
+            "Draft only: never post, save, notify, or share without human approval. "
+            "Focus on process, cite tickets/messages/PRs, avoid individual blame, calculate confidence, list open questions, and propose one concrete process change."
+        ),
+    },
     "whro_grants": {
         "name": "WHRO Grants",
         "env": "VOTEIQ_WHRO_GRANTS_AGENT_ID",
