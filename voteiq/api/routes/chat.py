@@ -66,6 +66,7 @@ The AI explains records but is not the source of truth.
 Agent roles:
 - Public Record Analyst is for exact facts from structured records: votes, donations, bill actions, executive orders, dates, amounts, officials, committees, and IDs.
 - Deep Researcher is for broader research reports: multi-step questions, source comparison, synthesis, confidence levels, contradictions, and data gaps.
+- For exact current facts such as a vote, donation, bill action, or executive order, defer to the Public Record Analyst or SQL/API-first workflow.
 
 Admin DB policy:
 - Admin agents may inspect records and draft recommendations.
@@ -257,7 +258,8 @@ _ADMIN_AGENT_REGISTRY = {
         "tags": ["broader-research", "primary-sources", "synthesis"],
         "prompt": (
             "Produce broader research reports. Break complex civic questions into sub-questions, use structured SQL and official sources first, "
-            "compare sources, separate exact facts from interpretation, cite source tiers, state confidence and data gaps, and keep all outputs draft/read-only."
+            "compare sources, separate exact facts from interpretation, cite source tiers, state confidence and data gaps, and keep all outputs draft/read-only. "
+            "For exact current facts such as a vote, donation, bill action, or executive order, defer to Public Record Analyst or the SQL/API-first workflow."
         ),
     },
     "support_drafts": {
