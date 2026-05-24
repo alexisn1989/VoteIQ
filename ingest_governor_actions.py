@@ -18,8 +18,9 @@ import sqlite3
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
-OPENSTATES_DB = os.environ.get("OPENSTATES_DB", str(BASE_DIR / "openstates_va.db"))
-POLLS_DB = os.environ.get("POLLS_DB", str(BASE_DIR / "polls.db"))
+DATA_DIR = Path(os.environ["DATA_DIR"]) if os.environ.get("DATA_DIR") else BASE_DIR
+OPENSTATES_DB = os.environ.get("OPENSTATES_DB", str(DATA_DIR / "openstates_va.db"))
+POLLS_DB = os.environ.get("POLLS_DB", str(DATA_DIR / "polls.db"))
 
 ACTION_LABELS = {
     "signed":          "Signed into law",
@@ -218,9 +219,16 @@ def run(sessions: list[str] | None = None) -> int:
     if sessions is None:
         sessions = ["2025", "2026"]
 
+    polls_conn = sqlite3.connect(POLLS_DB)
+    _ensure_table(polls_conn)
+
     if not os.path.exists(OPENSTATES_DB):
         print(f"[skip] openstates_va.db not found at {OPENSTATES_DB}")
-        return 0
+        override_count = _apply_official_veto_overrides(polls_conn, sessions)
+        polls_conn.commit()
+        polls_conn.close()
+        print(f"Applied {override_count} official 2026 veto overrides")
+        return override_count
 
     os_conn = sqlite3.connect(OPENSTATES_DB)
     os_conn.row_factory = sqlite3.Row
@@ -245,9 +253,6 @@ def run(sessions: list[str] | None = None) -> int:
     os_conn.close()
 
     print(f"Found {len(rows)} bills with governor actions in openstates_va.db")
-
-    polls_conn = sqlite3.connect(POLLS_DB)
-    _ensure_table(polls_conn)
 
     # Build a party lookup from openstates legislators table if available
     party_map: dict[str, str] = {}
