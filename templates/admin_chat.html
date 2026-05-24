@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VoteIQ Admin Chat</title>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --navy:#0d1b2a; --red:#c8102e; --light:#f7f4ee; --mid:#d9d2c4; --muted:#667085; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--light); color:var(--navy); font-family:'Barlow',sans-serif; }
+    header { padding:22px 28px; border-bottom:3px double var(--navy); display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    h1 { margin:0; font-family:'Barlow Condensed',sans-serif; font-size:1.2rem; letter-spacing:.14em; text-transform:uppercase; }
+    .wrap { max-width:1120px; margin:0 auto; padding:28px; display:grid; grid-template-columns:minmax(0, 1fr) 340px; gap:18px; }
+    .panel { background:#fff; border:1px solid var(--mid); border-radius:6px; overflow:hidden; }
+    .panel h2 { margin:0; padding:12px 14px; background:var(--navy); color:white; font-family:'Barlow Condensed',sans-serif; font-size:.82rem; letter-spacing:.12em; text-transform:uppercase; }
+    .messages { min-height:430px; max-height:62vh; overflow:auto; padding:16px; display:flex; flex-direction:column; gap:12px; background:#fbfcff; }
+    .msg { max-width:86%; padding:10px 12px; border-radius:5px; line-height:1.5; white-space:pre-wrap; font-size:.94rem; }
+    .msg.user { align-self:flex-end; background:var(--navy); color:#fff; }
+    .msg.assistant { align-self:flex-start; background:#fff; border:1px solid #e3e8f0; }
+    .input { display:grid; grid-template-columns:1fr auto; gap:8px; padding:12px; border-top:1px solid #e3e8f0; }
+    input, textarea, select { width:100%; border:1px solid #c8d0e0; border-radius:5px; padding:10px 11px; font:inherit; color:var(--navy); background:#fff; }
+    textarea { min-height:210px; resize:vertical; line-height:1.45; }
+    button { border:0; border-radius:5px; background:var(--navy); color:white; padding:0 18px; font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; }
+    button:hover { background:var(--red); }
+    button:disabled { opacity:.45; cursor:default; }
+    .side { display:flex; flex-direction:column; gap:14px; }
+    label { display:block; margin:0 0 6px; font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:.08em; text-transform:uppercase; font-size:.75rem; color:var(--muted); }
+    .hint { color:var(--muted); font-size:.82rem; line-height:1.45; margin:0; }
+    .row { padding:14px; border-bottom:1px solid #edf0f5; }
+    .row:last-child { border-bottom:0; }
+    .clear { background:#fff; color:var(--navy); border:1px solid var(--navy); height:36px; }
+    @media (max-width:860px) { .wrap { grid-template-columns:1fr; padding:16px; } header { padding:18px 16px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>VoteIQ Admin Chat</h1>
+    <button class="clear" type="button" onclick="clearChat()">Clear</button>
+  </header>
+
+  <main class="wrap">
+    <section class="panel">
+      <h2>Separate Admin Conversation</h2>
+      <div class="messages" id="messages">
+        <div class="msg assistant">Admin chat is separate from public VoteIQ chat. Add optional retrieved records, or leave evidence blank to pull local SQL context for the question.</div>
+      </div>
+      <div class="input">
+        <input id="question" placeholder="Ask an admin research question..." autocomplete="off" />
+        <button id="send" type="button" onclick="sendAdminChat()">Send</button>
+      </div>
+    </section>
+
+    <aside class="panel side">
+      <h2>Evidence</h2>
+      <div class="row">
+        <label for="records">Retrieved records</label>
+        <textarea id="records" placeholder="Optional. Paste SQL/API/RAG evidence here. If blank, VoteIQ queries local SQL context for the question."></textarea>
+      </div>
+      <div class="row">
+        <label for="model">Model</label>
+        <input id="model" placeholder="default: ANTHROPIC_ADMIN_MODEL or ANTHROPIC_MODEL" />
+      </div>
+      <div class="row">
+        <label for="maxTokens">Max tokens</label>
+        <input id="maxTokens" type="number" min="200" max="4000" value="1200" />
+      </div>
+      <div class="row">
+        <p class="hint">Protected by ADMIN_TOKEN. Use <code>?token=...</code> in the page URL or set an Authorization bearer token for direct API calls.</p>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    const history = [];
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token') || '';
+
+    function addMsg(role, text) {
+      const box = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.className = 'msg ' + role;
+      div.textContent = text;
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+      return div;
+    }
+
+    function clearChat() {
+      history.length = 0;
+      document.getElementById('messages').innerHTML = '<div class="msg assistant">Admin chat cleared.</div>';
+    }
+
+    async function sendAdminChat() {
+      const input = document.getElementById('question');
+      const send = document.getElementById('send');
+      const question = input.value.trim();
+      if (!question) return;
+      input.value = '';
+      addMsg('user', question);
+      history.push({ role: 'user', content: question });
+      const thinking = addMsg('assistant', 'Thinking...');
+      send.disabled = true;
+      try {
+        const url = '/api/admin/chat' + (token ? ('?token=' + encodeURIComponent(token)) : '');
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question,
+            messages: history.slice(-8),
+            retrieved_records: document.getElementById('records').value,
+            model: document.getElementById('model').value,
+            max_tokens: Number(document.getElementById('maxTokens').value || 1200)
+          })
+        });
+        const data = await res.json();
+        const reply = data.reply || data.detail || 'No response.';
+        thinking.textContent = reply;
+        history.push({ role: 'assistant', content: reply });
+      } catch (err) {
+        thinking.textContent = 'Admin chat error: ' + err.message;
+      } finally {
+        send.disabled = false;
+        input.focus();
+      }
+    }
+
+    document.getElementById('question').addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') sendAdminChat();
+    });
+  </script>
+</body>
+</html>

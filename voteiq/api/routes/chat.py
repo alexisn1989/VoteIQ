@@ -9,17 +9,18 @@ from pathlib import Path
 from urllib.parse import quote
 
 import pdfplumber
-from fastapi import APIRouter, File, Form, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from voteiq.config.rate_limit import limiter
-from fastapi.responses import StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 
 from orchestration import (
     build_bills_context_parallel,
     build_bills_system_prompt_refactored,
     is_present,
 )
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
+from voteiq.api.dependencies import require_admin_token
 from voteiq.api.claude import cached_system_prompt, get_claude_client, get_model
 from voteiq.config.voices import (
     TIER_MAX_TOKENS,
@@ -46,6 +47,22 @@ _SOURCE_LINE = (
     "Data limits: This answer depends on available public records and may not include late filings, amended records, or records not yet digitized. "
     "VoteIQ does not infer motive, intent, corruption, influence, causation, or policy effectiveness.*"
 )
+
+VOTEIQ_ADMIN_SYSTEM_PROMPT = """
+You are VoteIQ, a neutral civic intelligence assistant.
+
+VoteIQ source hierarchy:
+1. Structured records first
+2. Official APIs second
+3. Source documents/RAG third
+4. AI explanation last
+5. Data limits always shown
+
+The AI explains records but is not the source of truth.
+
+VoteIQ summarizes public records and does not infer motive, intent,
+corruption, influence, causation, or policy effectiveness.
+"""
 
 
 # ── Models ────────────────────────────────────────────────────────────────────
@@ -155,6 +172,28 @@ def _answer_type_from_context(context: str, chroma_error: str | None = None) -> 
     return "AI explanation from retrieved context"
 
 
+def _build_voteiq_admin_messages(
+    user_question: str,
+    recent_history: list[ChatMessage],
+    retrieved_records: str,
+) -> list[dict]:
+    evidence_block = f"""Retrieved public-record evidence for this question:
+
+{retrieved_records}
+
+Use only this evidence for factual claims. If the evidence is incomplete,
+say so. Do not fill gaps from memory."""
+
+    messages = [
+        {"role": m.role, "content": m.content}
+        for m in recent_history[-8:]
+        if m.role in {"user", "assistant"} and m.content
+    ]
+    messages.append({"role": "user", "content": evidence_block})
+    messages.append({"role": "user", "content": user_question})
+    return messages
+
+
 class ChatMessage(BaseModel):
     role: str
     content: str
@@ -216,6 +255,19 @@ class BillsChatRequest(BaseModel):
         # Tier gate disabled until auth is wired
         # Re-enable after Supabase auth lands
         return v
+
+
+class AdminChatRequest(BaseModel):
+    messages: list[ChatMessage] = Field(default_factory=list)
+    question: str = ""
+    retrieved_records: str = ""
+    model: str = ""
+    max_tokens: int = 1200
+
+    @field_validator("max_tokens")
+    @classmethod
+    def clamp_max_tokens(cls, v):
+        return max(200, min(int(v or 1200), 4000))
 
 
 class ElectionChatRequest(BaseModel):
@@ -869,6 +921,50 @@ def _direct_voteiq_source_hierarchy_reply(user_query: str) -> str:
         "**Identity crosswalk**",
         "- For person lookups, VoteIQ should preserve FEC candidate_id, FEC committee_id, bioguide_id, Congress.gov member ID, OpenStates/person ID if state overlap exists, name aliases, and party/state/district.",
     ])
+
+
+@router.get("/admin/chat", response_class=HTMLResponse)
+def admin_chat_page(_: None = Depends(require_admin_token)):
+    with open(os.path.join(_BASE_DIR, "templates", "admin_chat.html"), encoding="utf-8") as f:
+        return f.read()
+
+
+@router.post("/api/admin/chat", response_model=ChatResponse)
+async def admin_chat(req: AdminChatRequest, _: None = Depends(require_admin_token)):
+    user_question = (req.question or "").strip()
+    history = list(req.messages or [])
+    if not user_question:
+        for message in reversed(history):
+            if message.role == "user" and message.content.strip():
+                user_question = message.content.strip()
+                history = history[:-1]
+                break
+    elif history and history[-1].role == "user" and history[-1].content.strip() == user_question:
+        history = history[:-1]
+
+    if not user_question:
+        return ChatResponse(reply="Enter an admin question to run against VoteIQ records.")
+
+    retrieved_records = (req.retrieved_records or "").strip()
+    if not retrieved_records:
+        retrieved_records = build_database_context(user_question) or "No matching local SQL records were found for this question."
+
+    messages = _build_voteiq_admin_messages(user_question, history, retrieved_records)
+    model = (req.model or os.getenv("ANTHROPIC_ADMIN_MODEL") or os.getenv("ANTHROPIC_MODEL") or "claude-sonnet-4-6").strip()
+
+    try:
+        client = get_claude_client()
+        response = client.messages.create(
+            model=model,
+            max_tokens=req.max_tokens,
+            cache_control={"type": "ephemeral"},
+            system=cached_system_prompt(VOTEIQ_ADMIN_SYSTEM_PROMPT),
+            messages=messages,
+        )
+        return ChatResponse(reply=response.content[0].text)
+    except Exception as e:
+        import main as _m
+        return ChatResponse(reply=_m._friendly_claude_error(e))
 
 
 def _identity_query(user_query: str) -> bool:
