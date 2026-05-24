@@ -31,7 +31,7 @@ from voteiq.config.voices import (
     VOICE_PROMPTS,
     get_system_prompt,
 )
-from voteiq.services.database_context import build_database_context
+from voteiq.services.database_context import build_admin_database_context, build_database_context
 
 router = APIRouter(tags=["chat"])
 
@@ -564,7 +564,7 @@ def _run_admin_agent(
     if mode not in _ADMIN_AGENT_REGISTRY:
         modes = ", ".join(sorted(_ADMIN_AGENT_REGISTRY))
         return f"Unknown admin mode '{mode}'. Available modes: {modes}."
-    records = (retrieved_records or "").strip() or build_database_context(query) or "No matching local SQL records were found for this query."
+    records = (retrieved_records or "").strip() or build_admin_database_context(query) or "No matching local SQL records were found for this query."
     spec = _ADMIN_AGENT_REGISTRY[mode]
     messages = _build_voteiq_admin_messages(
         query,
@@ -1360,7 +1360,7 @@ async def admin_chat(req: AdminChatRequest, _: None = Depends(require_admin_toke
 
     retrieved_records = (req.retrieved_records or "").strip()
     if not retrieved_records:
-        retrieved_records = build_database_context(user_question) or "No matching local SQL records were found for this question."
+        retrieved_records = build_admin_database_context(user_question) or "No matching local SQL records were found for this question."
 
     messages = _build_voteiq_admin_messages(user_question, history, retrieved_records)
     model = (req.model or os.getenv("ANTHROPIC_ADMIN_MODEL") or os.getenv("ANTHROPIC_MODEL") or "claude-sonnet-4-6").strip()

@@ -11,14 +11,22 @@ class GovernorActionContextTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         self.db_path = Path(self.tmp.name) / "polls.db"
         self.openstates_path = Path(self.tmp.name) / "openstates_va.db"
+        self.legislative_path = Path(self.tmp.name) / "legislative_intelligence.db"
+        self.virginia_legislature_path = Path(self.tmp.name) / "virginia_legislature.db"
         self.original_polls_path = dc.DB_PATHS["polls"]
         self.original_openstates_path = dc.DB_PATHS["openstates"]
+        self.original_legislative_path = dc.DB_PATHS["legislative_intelligence"]
+        self.original_virginia_legislature_path = dc.DB_PATHS["virginia_legislature"]
         dc.DB_PATHS["polls"] = self.db_path
         dc.DB_PATHS["openstates"] = self.openstates_path
+        dc.DB_PATHS["legislative_intelligence"] = self.legislative_path
+        dc.DB_PATHS["virginia_legislature"] = self.virginia_legislature_path
 
     def tearDown(self):
         dc.DB_PATHS["polls"] = self.original_polls_path
         dc.DB_PATHS["openstates"] = self.original_openstates_path
+        dc.DB_PATHS["legislative_intelligence"] = self.original_legislative_path
+        dc.DB_PATHS["virginia_legislature"] = self.original_virginia_legislature_path
         self.tmp.cleanup()
 
     def _exec(self, *statements):
@@ -32,6 +40,15 @@ class GovernorActionContextTests(unittest.TestCase):
 
     def _exec_openstates(self, *statements):
         conn = sqlite3.connect(self.openstates_path)
+        try:
+            for statement in statements:
+                conn.execute(statement)
+            conn.commit()
+        finally:
+            conn.close()
+
+    def _exec_db(self, db_path, *statements):
+        conn = sqlite3.connect(db_path)
         try:
             for statement in statements:
                 conn.execute(statement)
@@ -528,6 +545,46 @@ class GovernorActionContextTests(unittest.TestCase):
         self.assertIn("total_amount=250.0", context)
         self.assertIn("openstates.votes person", context)
         self.assertNotIn("searched_terms=aaron, rouse, voting", context)
+
+    def test_admin_context_inventories_and_searches_uncoded_sql_tables(self):
+        self._exec(
+            """
+            CREATE TABLE odd_public_records (
+                id INTEGER PRIMARY KEY,
+                entity_name TEXT,
+                note TEXT
+            )
+            """,
+            """
+            INSERT INTO odd_public_records VALUES (
+                1, 'Example Entity', 'Unique civic audit phrase'
+            )
+            """,
+        )
+        self._exec_db(
+            self.legislative_path,
+            """
+            CREATE TABLE custom_legislative_notes (
+                note_id TEXT,
+                body TEXT
+            )
+            """,
+            """
+            INSERT INTO custom_legislative_notes VALUES (
+                'n1', 'Unique civic audit phrase from legislative DB'
+            )
+            """,
+        )
+
+        context = dc.build_admin_database_context("Unique civic audit phrase")
+
+        self.assertIn("Admin SQL Coverage - all configured SQLite DBs", context)
+        self.assertIn("odd_public_records", context)
+        self.assertIn("custom_legislative_notes", context)
+        self.assertIn("Admin SQL Generic Search - read-only all-table scan", context)
+        self.assertIn("polls.odd_public_records", context)
+        self.assertIn("legislative_intelligence.custom_legislative_notes", context)
+        self.assertIn("Unique civic audit phrase", context)
 
 
 if __name__ == "__main__":

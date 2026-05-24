@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from enum import Enum
 from anthropic import Anthropic
-from voteiq.services.database_context import build_database_context
+from voteiq.services.database_context import build_admin_database_context
 
 router = APIRouter()
 
@@ -141,7 +141,7 @@ async def admin_chat(req: AdminChatRequest) -> AdminChatResponse:
 
         retrieved_records = (
             (req.retrieved_records or "").strip()
-            or build_database_context(req.query)
+            or build_admin_database_context(req.query)
             or "No matching local SQL records were found for this query."
         )
         agent_prompt = (

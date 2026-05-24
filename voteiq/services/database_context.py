@@ -132,6 +132,24 @@ def _table_columns(conn: sqlite3.Connection, table: str) -> set[str]:
         return set()
 
 
+def _table_column_info(conn: sqlite3.Connection, table: str) -> list[sqlite3.Row]:
+    try:
+        return conn.execute(f"PRAGMA table_info({_quote_identifier(table)})").fetchall()
+    except Exception:
+        return []
+
+
+def _is_internal_table(name: str) -> bool:
+    return (
+        name.startswith("sqlite_")
+        or name.endswith("_data")
+        or name.endswith("_idx")
+        or name.endswith("_docsize")
+        or name.endswith("_config")
+        or name.endswith("_content")
+    )
+
+
 def _query_rows(
     conn: sqlite3.Connection,
     sql: str,
@@ -1187,15 +1205,166 @@ def _add_schema_summary(blocks: list[str]) -> None:
         tables = []
         for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"):
             name = row[0]
-            if name.startswith("sqlite_") or name.endswith("_data") or name.endswith("_idx"):
+            if _is_internal_table(name):
                 continue
             try:
-                count = conn.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0]
+                count = conn.execute(f"SELECT COUNT(*) FROM {_quote_identifier(name)}").fetchone()[0]
             except Exception:
                 count = "?"
             tables.append(f"{name}({count})")
         conn.close()
         lines.append(f"- {db_key}: {', '.join(tables[:28])}")
+    blocks.append("\n".join(lines))
+
+
+def _add_full_schema_summary(blocks: list[str]) -> None:
+    lines = ["[Admin SQL Inventory - all configured SQLite tables]"]
+    for db_key in DB_PATHS:
+        conn = _connect(db_key)
+        if not conn:
+            lines.append(f"- {db_key}: database_unavailable")
+            continue
+        lines.append(f"- {db_key}:")
+        try:
+            table_rows = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+            ).fetchall()
+            for row in table_rows:
+                table = row[0]
+                if _is_internal_table(table):
+                    continue
+                try:
+                    count = conn.execute(
+                        f"SELECT COUNT(*) FROM {_quote_identifier(table)}"
+                    ).fetchone()[0]
+                except Exception:
+                    count = "?"
+                column_names = [info[1] for info in _table_column_info(conn, table)]
+                preview = ", ".join(column_names[:14])
+                if len(column_names) > 14:
+                    preview += ", ..."
+                lines.append(f"  - {table}: rows={count}; columns={preview or 'unknown'}")
+        finally:
+            conn.close()
+    blocks.append("\n".join(lines))
+
+
+def _add_admin_sql_coverage_summary(blocks: list[str]) -> None:
+    lines = ["[Admin SQL Coverage - all configured SQLite DBs are connected read-only]"]
+    for db_key in DB_PATHS:
+        conn = _connect(db_key)
+        if not conn:
+            lines.append(f"- {db_key}: database_unavailable")
+            continue
+        try:
+            table_rows = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+            ).fetchall()
+            tables = [row[0] for row in table_rows if not _is_internal_table(row[0])]
+            lines.append(
+                f"- {db_key}: tables={len(tables)}; "
+                f"table_names={', '.join(tables[:80])}"
+                + (" ..." if len(tables) > 80 else "")
+            )
+        finally:
+            conn.close()
+    blocks.append("\n".join(lines))
+
+
+def _generic_search_terms(query: str, terms: list[str]) -> list[str]:
+    q_lower = (query or "").lower()
+    result = list(terms)
+    for bill in _bill_numbers(query):
+        result.insert(0, bill)
+    for known in ("spanberger", "rouse", "feggans"):
+        if known in q_lower and known not in result:
+            result.insert(0, known)
+    generic = {
+        "database", "databases", "table", "tables", "schema", "source",
+        "sources", "record", "records", "lookup", "search", "admin",
+        "chat", "voteiq", "public", "report", "analysis", "data",
+    }
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for term in result:
+        low = term.lower()
+        if low in generic or low in seen:
+            continue
+        seen.add(low)
+        cleaned.append(term)
+        if len(cleaned) >= 5:
+            break
+    return cleaned
+
+
+def _add_generic_sql_search_context(blocks: list[str], query: str, terms: list[str]) -> None:
+    search_terms = _generic_search_terms(query, terms)
+    if not search_terms:
+        return
+
+    lines = ["[Admin SQL Generic Search - read-only all-table scan]"]
+    lines.append(f"searched_terms={', '.join(search_terms)}")
+    matches = 0
+    scanned_tables = 0
+    skipped_tables: list[str] = []
+
+    for db_key in DB_PATHS:
+        conn = _connect(db_key)
+        if not conn:
+            lines.append(f"- {db_key}: database_unavailable")
+            continue
+        try:
+            table_rows = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+            ).fetchall()
+            for row in table_rows:
+                table = row[0]
+                if _is_internal_table(table):
+                    continue
+                info = _table_column_info(conn, table)
+                if not info:
+                    continue
+                columns = [
+                    col[1]
+                    for col in info
+                    if any(kind in str(col[2] or "").upper() for kind in ("CHAR", "CLOB", "TEXT"))
+                ]
+                if not columns:
+                    skipped_tables.append(f"{db_key}.{table}: no_text_columns")
+                    continue
+                scanned_tables += 1
+                search_cols = columns[:8]
+                select_cols = [col[1] for col in info[:10]]
+                clause, params = _like_any_text_clause(search_cols, search_terms)
+                try:
+                    rows = conn.execute(f"""
+                        SELECT {', '.join(_quote_identifier(col) for col in select_cols)}
+                        FROM {_quote_identifier(table)}
+                        WHERE {clause}
+                        LIMIT 3
+                    """, tuple(params)).fetchall()
+                except Exception as exc:
+                    skipped_tables.append(f"{db_key}.{table}: search_error:{type(exc).__name__}")
+                    continue
+                if not rows:
+                    continue
+                matches += len(rows)
+                lines.append(
+                    f"- {db_key}.{table}: matched_rows={len(rows)}; "
+                    f"searched_columns={', '.join(search_cols)}"
+                )
+                for found in rows:
+                    lines.append(f"  - {_row_to_line(found, max_value=220)}")
+                if matches >= 45:
+                    lines.append("search_limit_reached=true")
+                    blocks.append("\n".join(lines))
+                    return
+        finally:
+            conn.close()
+
+    lines.append(f"summary=scanned_tables={scanned_tables}; matched_rows={matches}")
+    if skipped_tables:
+        lines.append("skipped=" + "; ".join(skipped_tables[:20]))
     blocks.append("\n".join(lines))
 
 
@@ -1225,4 +1394,23 @@ def build_database_context(query: str, max_chars: int = 22000) -> str:
     context = "\n\n---\n\n".join(blocks)
     if len(context) > max_chars:
         context = context[:max_chars].rstrip() + "\n\n[Database Context truncated to fit model context.]"
+    return context
+
+
+def build_admin_database_context(query: str, max_chars: int = 28000) -> str:
+    """Build read-only SQL context for admin chat, including generic all-table search."""
+    q = query or ""
+    q_lower = q.lower()
+    terms = _keywords(q)
+    blocks: list[str] = []
+    _add_admin_sql_coverage_summary(blocks)
+    base = build_database_context(q, max_chars=max_chars)
+    if base:
+        blocks.append(base)
+    _add_generic_sql_search_context(blocks, q, terms)
+    if re.search(r"\b(database|databases|tables|schema|columns)\b", q_lower):
+        _add_full_schema_summary(blocks)
+    context = "\n\n---\n\n".join(blocks)
+    if len(context) > max_chars:
+        context = context[:max_chars].rstrip() + "\n\n[Admin Database Context truncated to fit model context.]"
     return context
