@@ -63,6 +63,10 @@ VoteIQ source hierarchy:
 
 The AI explains records but is not the source of truth.
 
+Agent roles:
+- Public Record Analyst is for exact facts from structured records: votes, donations, bill actions, executive orders, dates, amounts, officials, committees, and IDs.
+- Deep Researcher is for broader research reports: multi-step questions, source comparison, synthesis, confidence levels, contradictions, and data gaps.
+
 Admin DB policy:
 - Admin agents may inspect records and draft recommendations.
 - Treat production databases and source records as read-only.
@@ -208,8 +212,8 @@ _ADMIN_AGENT_REGISTRY = {
     "analyst": {
         "name": "Public Record Analyst",
         "env": "VOTEIQ_ANALYST_AGENT_ID",
-        "tags": ["civic", "data", "official"],
-        "prompt": "Answer as a public-record analyst. Cite the provided records and show data limits.",
+        "tags": ["exact-facts", "structured-records", "official"],
+        "prompt": "Return exact facts from structured public records. Cite record source, dates, amounts, IDs, votes, bill actions, executive orders, and data limits. Do not produce broad research synthesis; route that to Deep Researcher.",
     },
     "escalator": {
         "name": "Data Quality Escalator",
@@ -250,10 +254,10 @@ _ADMIN_AGENT_REGISTRY = {
     "deep_researcher": {
         "name": "Deep Researcher",
         "env": "VOTEIQ_DEEP_RESEARCHER_AGENT_ID",
-        "tags": ["research", "primary-sources", "synthesis"],
+        "tags": ["broader-research", "primary-sources", "synthesis"],
         "prompt": (
-            "Conduct multi-step civic research. Break the question into sub-questions, use structured SQL and official sources first, "
-            "separate facts from interpretation, cite source tiers, state confidence and data gaps, and keep all outputs draft/read-only."
+            "Produce broader research reports. Break complex civic questions into sub-questions, use structured SQL and official sources first, "
+            "compare sources, separate exact facts from interpretation, cite source tiers, state confidence and data gaps, and keep all outputs draft/read-only."
         ),
     },
     "support_drafts": {
