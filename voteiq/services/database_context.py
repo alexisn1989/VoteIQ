@@ -154,7 +154,8 @@ def _query_rows(
 _FINANCE_QUERY_TERMS = (
     "finance", "financial", "finicial", "fundraising", "fundraiser",
     "raised", "donor", "donors", "money", "contribution", "contributions",
-    "campaign", "filing", "filings", "sbe", "vpap", "funding", "funded",
+    "donation", "donations", "campaign", "filing", "filings", "sbe",
+    "vpap", "funding", "funded",
 )
 
 
@@ -175,7 +176,10 @@ def _campaign_finance_terms(query: str, terms: list[str]) -> list[str]:
         "signed", "amended", "governor", "correlation", "correlate",
         "correlated", "relationship", "align", "alignment", "state",
         "virginia", "office", "candidate", "committee", "vote", "votes",
-        "voted", "voting", "record", "records",
+        "voted", "voting", "record", "records", "analysis", "analyze",
+        "pattern", "patterns", "compare", "comparison", "between",
+        "donation", "donations", "former", "federal", "congress",
+        "congressional", "representative",
     }
     names = [term for term in terms if term not in generic]
     q_lower = (query or "").lower()
@@ -202,6 +206,28 @@ def _known_federal_person(query: str) -> dict | None:
         if key in q_lower:
             return person
     return None
+
+
+def _add_known_person_scope_context(blocks: list[str], query: str) -> None:
+    q_lower = (query or "").lower()
+    if "spanberger" not in q_lower and "spanberge" not in q_lower:
+        return
+    if _is_explicit_federal_vote_query(query):
+        blocks.append(
+            "[Database Context - person scope]\n"
+            "person=Abigail Spanberger\n"
+            "requested_scope=former federal/congressional record\n"
+            "lookup_policy=Use federal roll-call tables only because the query explicitly requests federal or congressional records."
+        )
+        return
+    blocks.append(
+        "[Database Context - person scope]\n"
+        "person=Abigail Spanberger\n"
+        "current_voteiq_scope=Virginia state governor\n"
+        "lookup_policy=For current state-governor questions, use governor bill-action records "
+        "(signed, vetoed, amended/returned) and Virginia state campaign-finance tables. "
+        "Do not require federal roll-call vote records unless the user explicitly asks for her former congressional/federal record."
+    )
 
 
 def _is_explicit_federal_vote_query(query: str) -> bool:
@@ -1187,6 +1213,7 @@ def build_database_context(query: str, max_chars: int = 22000) -> str:
     bills = _bill_numbers(q)
     session = _session_year(q)
     terms = _keywords(q)
+    _add_known_person_scope_context(blocks, q)
     _add_bill_context(blocks, bills, session)
     _add_pac_context(blocks, q, terms)
     _add_governor_action_context(blocks, q, terms, session)

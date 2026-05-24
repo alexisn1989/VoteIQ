@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from enum import Enum
 from anthropic import Anthropic
+from voteiq.services.database_context import build_database_context
 
 router = APIRouter()
 
@@ -65,6 +66,8 @@ class AdminChatRequest(BaseModel):
     """Request to call an admin agent"""
     mode: AgentMode
     query: str
+    retrieved_records: str = ""
+    output_mode: str = ""
     interactive: bool = False
 
 
@@ -136,8 +139,20 @@ async def admin_chat(req: AdminChatRequest) -> AdminChatResponse:
     try:
         client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
+        retrieved_records = (
+            (req.retrieved_records or "").strip()
+            or build_database_context(req.query)
+            or "No matching local SQL records were found for this query."
+        )
+        agent_prompt = (
+            "Use the following SQL/API/RAG evidence first. If evidence is present, "
+            "do not say no structured records were returned.\n\n"
+            f"Retrieved records:\n{retrieved_records}\n\n"
+            f"User query:\n{req.query}"
+        )
+
         response = client.agents.messages.create(
-            agent_id=agent_id, messages=[{"role": "user", "content": req.query}]
+            agent_id=agent_id, messages=[{"role": "user", "content": agent_prompt}]
         )
 
         result_text = response.content[0].text if response.content else "No response"

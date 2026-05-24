@@ -350,6 +350,48 @@ class GovernorActionContextTests(unittest.TestCase):
         self.assertNotIn("polls federal vote lookup", context)
         self.assertNotIn("bioguide_id=S001209", context)
 
+    def test_spanberger_vote_finance_correlation_analysis_keeps_state_finance_terms(self):
+        self._exec(
+            """
+            CREATE TABLE governor_actions (
+                bill_number TEXT, session TEXT, title TEXT, action_label TEXT,
+                action TEXT, action_date TEXT, governor TEXT, source_url TEXT
+            )
+            """,
+            """
+            INSERT INTO governor_actions VALUES (
+                'HB1385', '2026',
+                'Higher educational institutions, public; membership of governing boards.',
+                'Vetoed', 'vetoed', '2026-05-19',
+                'Abigail Spanberger', 'https://governor.example/hb1385'
+            )
+            """,
+            """
+            CREATE TABLE va_cf_schedule_a (
+                candidate_name TEXT, election_cycle TEXT, first_name TEXT,
+                last_or_company TEXT, employer TEXT, occupation TEXT,
+                is_individual INTEGER, transaction_date TEXT, amount REAL
+            )
+            """,
+            """
+            INSERT INTO va_cf_schedule_a VALUES (
+                'Abigail  Spanberger', '2025', '', 'DGA Action',
+                '', 'Federal PAC', 0, '2025-09-01', 1000000
+            )
+            """,
+        )
+
+        context = dc.build_database_context(
+            "Spanberger vote records campaign finance correlation analysis"
+        )
+
+        self.assertIn("current_voteiq_scope=Virginia state governor", context)
+        self.assertIn("governor bill-action records", context)
+        self.assertIn("polls.governor_actions lookup", context)
+        self.assertIn("polls.va_cf_schedule_a campaign finance totals", context)
+        self.assertIn("total_amount=1000000.0", context)
+        self.assertNotIn("No rows matched searched_terms=spanberger, analysis", context)
+
     def test_explicit_federal_vote_lookup_returns_spanberger_vote_rows_when_present(self):
         self._exec(
             """
