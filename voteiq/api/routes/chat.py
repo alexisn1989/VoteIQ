@@ -5,11 +5,13 @@ import json
 import os
 import re
 import sqlite3
+import uuid
+from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
 
 import pdfplumber
-from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from voteiq.config.rate_limit import limiter
 from fastapi.responses import HTMLResponse, StreamingResponse
 
@@ -192,6 +194,156 @@ say so. Do not fill gaps from memory."""
     messages.append({"role": "user", "content": evidence_block})
     messages.append({"role": "user", "content": user_question})
     return messages
+
+
+_ADMIN_AGENT_REGISTRY = {
+    "analyst": {
+        "name": "Public Record Analyst",
+        "env": "VOTEIQ_ANALYST_AGENT_ID",
+        "tags": ["civic", "data", "official"],
+        "prompt": "Answer as a public-record analyst. Cite the provided records and show data limits.",
+    },
+    "escalator": {
+        "name": "Data Quality Escalator",
+        "env": "VOTEIQ_ESCALATOR_AGENT_ID",
+        "tags": ["support", "data-quality"],
+        "prompt": "Investigate the issue and draft an escalation summary with repro steps, likely source, and suggested fix.",
+    },
+    "field_monitor": {
+        "name": "Field Monitor",
+        "env": "VOTEIQ_FIELD_MONITOR_AGENT_ID",
+        "tags": ["intelligence", "briefing"],
+        "prompt": "Prepare a concise field-monitor intelligence brief with immediate, soon, and later actions.",
+    },
+    "debugger": {
+        "name": "Data Debugger",
+        "env": "VOTEIQ_DEBUGGER_AGENT_ID",
+        "tags": ["debug", "pipeline"],
+        "prompt": "Debug the data or retrieval issue using only supplied records and identify likely next checks.",
+    },
+    "golden_query": {
+        "name": "Golden Query QA",
+        "env": "VOTEIQ_GOLDEN_QUERY_AGENT_ID",
+        "tags": ["qa", "search"],
+        "prompt": "Evaluate whether the retrieved result satisfies the expected answer. Flag missing or weak evidence.",
+    },
+    "crosswalk": {
+        "name": "Identity Crosswalk",
+        "env": "VOTEIQ_CROSSWALK_AGENT_ID",
+        "tags": ["identity", "matching"],
+        "prompt": "Resolve identity fields carefully. Preserve FEC IDs, bioguide IDs, aliases, party, state, and district.",
+    },
+    "data_analyst": {
+        "name": "Data Analyst",
+        "env": "VOTEIQ_DATA_ANALYST_AGENT_ID",
+        "tags": ["analysis", "records"],
+        "prompt": "Analyze the supplied records without inferring motive, causation, corruption, influence, or effectiveness.",
+    },
+    "support_drafts": {
+        "name": "Support Drafts",
+        "env": "VOTEIQ_SUPPORT_DRAFTS_AGENT_ID",
+        "tags": ["support", "communication"],
+        "prompt": "Draft a concise support response. Say what was checked, what is missing, and the next action.",
+    },
+    "whro_grants": {
+        "name": "WHRO Grants",
+        "env": "VOTEIQ_WHRO_GRANTS_AGENT_ID",
+        "tags": ["grants", "partnerships"],
+        "prompt": "Draft grant or partnership language using the supplied VoteIQ public-record mission context.",
+    },
+}
+
+
+def _admin_now() -> str:
+    return datetime.utcnow().isoformat(timespec="seconds")
+
+
+def _admin_state_path() -> str:
+    return os.path.join(os.getenv("DATA_DIR", _BASE_DIR), "admin_dashboard_state.json")
+
+
+def _load_admin_state() -> dict:
+    default = {"qa_results": [], "escalations": [], "field_reports": [], "agent_calls": {}}
+    path = _admin_state_path()
+    if not os.path.exists(path):
+        return default
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        for key, value in default.items():
+            data.setdefault(key, value)
+        return data
+    except Exception:
+        return default
+
+
+def _save_admin_state(state: dict) -> None:
+    path = _admin_state_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(state, f, indent=2, ensure_ascii=False)
+
+
+def _admin_agent_status(mode: str, state: dict | None = None) -> dict:
+    spec = _ADMIN_AGENT_REGISTRY[mode]
+    agent_id = os.getenv(spec["env"])
+    metrics = (state or _load_admin_state()).get("agent_calls", {}).get(mode, {})
+    return {
+        "mode": mode,
+        "name": spec["name"],
+        "deployed": bool(agent_id),
+        "agent_id": agent_id,
+        "tags": spec["tags"],
+        "deployment_status": "Ready" if agent_id else "Not deployed",
+        "created_at": metrics.get("created_at"),
+        "last_called": metrics.get("last_called"),
+        "total_calls": metrics.get("total_calls", 0),
+        "success_rate": metrics.get("success_rate"),
+        "avg_response_time_ms": metrics.get("avg_response_time_ms"),
+    }
+
+
+def _record_admin_agent_call(mode: str, ok: bool, elapsed_ms: int) -> None:
+    state = _load_admin_state()
+    calls = state.setdefault("agent_calls", {}).setdefault(mode, {"created_at": _admin_now(), "total_calls": 0, "successes": 0, "total_ms": 0})
+    calls["total_calls"] = int(calls.get("total_calls", 0)) + 1
+    calls["successes"] = int(calls.get("successes", 0)) + (1 if ok else 0)
+    calls["total_ms"] = int(calls.get("total_ms", 0)) + elapsed_ms
+    calls["last_called"] = _admin_now()
+    calls["success_rate"] = round(calls["successes"] / max(calls["total_calls"], 1), 3)
+    calls["avg_response_time_ms"] = round(calls["total_ms"] / max(calls["total_calls"], 1))
+    _save_admin_state(state)
+
+
+def _run_admin_agent(mode: str, query: str, retrieved_records: str = "", max_tokens: int = 1200) -> str:
+    if mode not in _ADMIN_AGENT_REGISTRY:
+        modes = ", ".join(sorted(_ADMIN_AGENT_REGISTRY))
+        return f"Unknown admin mode '{mode}'. Available modes: {modes}."
+    records = (retrieved_records or "").strip() or build_database_context(query) or "No matching local SQL records were found for this query."
+    spec = _ADMIN_AGENT_REGISTRY[mode]
+    messages = _build_voteiq_admin_messages(
+        query,
+        [],
+        f"Agent mode: {mode}\nAgent instruction: {spec['prompt']}\n\n{records}",
+    )
+    model = (os.getenv("ANTHROPIC_ADMIN_MODEL") or os.getenv("ANTHROPIC_MODEL") or "claude-sonnet-4-6").strip()
+    start = datetime.utcnow()
+    try:
+        response = get_claude_client().messages.create(
+            model=model,
+            max_tokens=max_tokens,
+            cache_control={"type": "ephemeral"},
+            system=cached_system_prompt(VOTEIQ_ADMIN_SYSTEM_PROMPT),
+            messages=messages,
+        )
+        elapsed = int((datetime.utcnow() - start).total_seconds() * 1000)
+        _record_admin_agent_call(mode, True, elapsed)
+        return response.content[0].text
+    except Exception as exc:
+        elapsed = int((datetime.utcnow() - start).total_seconds() * 1000)
+        _record_admin_agent_call(mode, False, elapsed)
+        import main as _m
+        return _m._friendly_claude_error(exc)
 
 
 class ChatMessage(BaseModel):
@@ -965,6 +1117,302 @@ async def admin_chat(req: AdminChatRequest, _: None = Depends(require_admin_toke
     except Exception as e:
         import main as _m
         return ChatResponse(reply=_m._friendly_claude_error(e))
+
+
+@router.post("/admin/chat")
+async def admin_dashboard_chat(
+    mode: str = Query("analyst"),
+    query: str = Query(""),
+    max_tokens: int = Query(1200, ge=200, le=4000),
+    _: None = Depends(require_admin_token),
+):
+    question = (query or "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="query is required")
+    if mode not in _ADMIN_AGENT_REGISTRY:
+        raise HTTPException(status_code=404, detail=f"Unknown admin mode: {mode}")
+    response_text = _run_admin_agent(mode, question, max_tokens=max_tokens)
+    return {
+        "status": "success",
+        "mode": mode,
+        "agent": _ADMIN_AGENT_REGISTRY[mode]["name"],
+        "query": question,
+        "response": response_text,
+        "timestamp": _admin_now(),
+    }
+
+
+@router.get("/admin/agents")
+async def admin_agents(_: None = Depends(require_admin_token)):
+    state = _load_admin_state()
+    agents = [_admin_agent_status(mode, state) for mode in _ADMIN_AGENT_REGISTRY]
+    deployed = sum(1 for agent in agents if agent["deployed"])
+    return {
+        "status": "success",
+        "summary": {
+            "total_agents": len(agents),
+            "deployed": deployed,
+            "missing": len(agents) - deployed,
+        },
+        "agents": agents,
+    }
+
+
+@router.get("/admin/agents/{mode}")
+async def admin_agent_detail(mode: str, _: None = Depends(require_admin_token)):
+    if mode not in _ADMIN_AGENT_REGISTRY:
+        raise HTTPException(status_code=404, detail=f"Unknown admin mode: {mode}")
+    return {
+        "status": "success",
+        **_admin_agent_status(mode),
+    }
+
+
+@router.post("/admin/qa/test")
+async def admin_qa_test(
+    query: str = Query(""),
+    expected_result: str = Query(""),
+    _: None = Depends(require_admin_token),
+):
+    question = (query or "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="query is required")
+    expected = (expected_result or "").strip()
+    actual = build_database_context(question) or "No matching local SQL records were found for this query."
+    passed = bool(expected and expected.lower() in actual.lower())
+    result = {
+        "id": f"qa-{uuid.uuid4().hex[:8]}",
+        "query": question,
+        "expected": expected,
+        "actual": actual[:4000],
+        "test_date": _admin_now(),
+        "passed": passed,
+    }
+    state = _load_admin_state()
+    state.setdefault("qa_results", []).insert(0, result)
+    _save_admin_state(state)
+    return {"status": "success", **result}
+
+
+@router.get("/admin/qa/results")
+async def admin_qa_results(
+    limit: int = Query(50, ge=1, le=500),
+    days: int = Query(7, ge=1, le=3650),
+    _: None = Depends(require_admin_token),
+):
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    results = []
+    for result in _load_admin_state().get("qa_results", []):
+        try:
+            if datetime.fromisoformat(result.get("test_date", "")) < cutoff:
+                continue
+        except Exception:
+            pass
+        results.append(result)
+        if len(results) >= limit:
+            break
+    passed = sum(1 for result in results if result.get("passed"))
+    return {
+        "status": "success",
+        "period": f"Last {days} days",
+        "summary": {
+            "total_tests": len(results),
+            "passed": passed,
+            "failed": len(results) - passed,
+            "pass_rate": f"{(passed / max(len(results), 1)) * 100:.1f}%",
+        },
+        "results": results,
+    }
+
+
+def _admin_table_count(db_path: str, table: str) -> int | None:
+    if not os.path.exists(db_path):
+        return None
+    try:
+        conn = sqlite3.connect(db_path)
+        count = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+        conn.close()
+        return int(count)
+    except Exception:
+        return None
+
+
+@router.get("/admin/qa/coverage")
+async def admin_qa_coverage(_: None = Depends(require_admin_token)):
+    state = _load_admin_state()
+    qa_results = state.get("qa_results", [])
+    return {
+        "status": "success",
+        "coverage": {
+            "governor_actions": {
+                "records": _admin_table_count(_POLLS_DB, "governor_actions"),
+                "tested_queries": sum(1 for item in qa_results if "governor" in item.get("query", "").lower()),
+            },
+            "executive_orders": {
+                "records": _admin_table_count(_POLLS_DB, "governor_executive_orders"),
+                "tested_queries": sum(1 for item in qa_results if "executive order" in item.get("query", "").lower()),
+            },
+            "donations": {
+                "records": _admin_table_count(_POLLS_DB, "va_finance_contributions"),
+                "tested_queries": sum(1 for item in qa_results if any(word in item.get("query", "").lower() for word in ("donor", "donation", "finance", "pac"))),
+            },
+            "officials": {
+                "records": _admin_table_count(_POLLS_DB, "candidate_registry"),
+                "tested_queries": sum(1 for item in qa_results if any(word in item.get("query", "").lower() for word in ("official", "candidate", "profile"))),
+            },
+        },
+        "gaps": [
+            "Coverage counts depend on local SQL tables available in this deployment.",
+            "QA pass/fail is based on expected text appearing in retrieved structured context.",
+            "RAG document coverage is checked by source-specific tests, not this SQL table counter.",
+        ],
+    }
+
+
+@router.post("/admin/escalations")
+async def admin_create_escalation(
+    record_type: str = Query(""),
+    entity_name: str = Query(""),
+    issue_description: str = Query(""),
+    severity: str = Query("medium"),
+    _: None = Depends(require_admin_token),
+):
+    if not (record_type and entity_name and issue_description):
+        raise HTTPException(status_code=400, detail="record_type, entity_name, and issue_description are required")
+    escalation = {
+        "id": f"esc-{uuid.uuid4().hex[:8]}",
+        "record_type": record_type,
+        "entity_name": entity_name,
+        "issue": issue_description,
+        "severity": severity,
+        "status": "open",
+        "created_at": _admin_now(),
+        "assigned_to": None,
+        "asana_task": None,
+        "slack_notified": False,
+    }
+    state = _load_admin_state()
+    state.setdefault("escalations", []).insert(0, escalation)
+    _save_admin_state(state)
+    return {"status": "success", "escalation": escalation}
+
+
+@router.get("/admin/escalations")
+async def admin_escalations(
+    status: str | None = Query(None),
+    severity: str | None = Query(None),
+    limit: int = Query(50, ge=1, le=500),
+    _: None = Depends(require_admin_token),
+):
+    all_items = _load_admin_state().get("escalations", [])
+    filtered = [
+        item for item in all_items
+        if (not status or item.get("status") == status)
+        and (not severity or item.get("severity") == severity)
+    ][:limit]
+    return {
+        "status": "success",
+        "summary": {
+            "total": len(all_items),
+            "open": sum(1 for item in all_items if item.get("status") == "open"),
+            "in_progress": sum(1 for item in all_items if item.get("status") == "in_progress"),
+            "fixed": sum(1 for item in all_items if item.get("status") == "fixed"),
+        },
+        "escalations": filtered,
+    }
+
+
+def _find_admin_escalation(state: dict, escalation_id: str) -> dict | None:
+    for escalation in state.get("escalations", []):
+        if escalation.get("id") == escalation_id:
+            return escalation
+    return None
+
+
+@router.get("/admin/escalations/{escalation_id}")
+async def admin_escalation_detail(escalation_id: str, _: None = Depends(require_admin_token)):
+    state = _load_admin_state()
+    escalation = _find_admin_escalation(state, escalation_id)
+    if not escalation:
+        raise HTTPException(status_code=404, detail="Escalation not found")
+    return {
+        "status": "success",
+        "escalation": escalation,
+        "details": {
+            "repro_steps": escalation.get("repro_steps"),
+            "primary_source": escalation.get("primary_source"),
+            "our_data": escalation.get("our_data"),
+            "correct_data": escalation.get("correct_data"),
+            "suggested_fix": escalation.get("suggested_fix"),
+            "sla_hours": {"critical": 24, "high": 48, "medium": 168, "low": 336}.get(escalation.get("severity"), 168),
+        },
+    }
+
+
+@router.patch("/admin/escalations/{escalation_id}")
+async def admin_update_escalation(
+    escalation_id: str,
+    status: str | None = Query(None),
+    assigned_to: str | None = Query(None),
+    _: None = Depends(require_admin_token),
+):
+    state = _load_admin_state()
+    escalation = _find_admin_escalation(state, escalation_id)
+    if not escalation:
+        raise HTTPException(status_code=404, detail="Escalation not found")
+    if status is not None:
+        escalation["status"] = status
+    if assigned_to is not None:
+        escalation["assigned_to"] = assigned_to
+    escalation["updated_at"] = _admin_now()
+    _save_admin_state(state)
+    return {"status": "success", "escalation": escalation, "action": "Escalation updated"}
+
+
+@router.post("/admin/field-monitor/scan")
+async def admin_field_monitor_scan(_: None = Depends(require_admin_token)):
+    query = "Run weekly VoteIQ field monitor scan."
+    full_report = _run_admin_agent("field_monitor", query, max_tokens=1600)
+    report = {
+        "id": f"fm-{uuid.uuid4().hex[:8]}",
+        "scan_date": _admin_now(),
+        "week": f"Week of {datetime.utcnow().strftime('%B %d, %Y')}",
+        "summary": full_report[:500],
+        "actions": [
+            {"priority": "IMMEDIATE", "count": full_report.lower().count("immediate")},
+            {"priority": "SOON", "count": full_report.lower().count("soon")},
+            {"priority": "LATER", "count": full_report.lower().count("later")},
+        ],
+        "full_report": full_report,
+    }
+    state = _load_admin_state()
+    state.setdefault("field_reports", []).insert(0, report)
+    _save_admin_state(state)
+    return {"status": "success", "report": report}
+
+
+@router.get("/admin/field-monitor/reports")
+async def admin_field_monitor_reports(
+    limit: int = Query(10, ge=1, le=100),
+    _: None = Depends(require_admin_token),
+):
+    reports = _load_admin_state().get("field_reports", [])[:limit]
+    return {
+        "status": "success",
+        "summary": {
+            "total_scans": len(reports),
+            "latest_scan": reports[0]["scan_date"] if reports else None,
+        },
+        "reports": reports,
+    }
+
+
+@router.get("/admin/field-monitor/latest")
+async def admin_field_monitor_latest(_: None = Depends(require_admin_token)):
+    reports = _load_admin_state().get("field_reports", [])
+    if not reports:
+        return {"status": "empty", "report": None}
+    return {"status": "success", "report": reports[0]}
 
 
 def _identity_query(user_query: str) -> bool:
