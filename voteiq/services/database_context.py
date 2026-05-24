@@ -15,6 +15,9 @@ DB_PATHS = {
     "virginia_legislature": BASE_DIR / "virginia_legislature.db",
 }
 
+DATA_DIR_ENV_VARS = ("DATA_DIR", "VOTEIQ_DATA_DIR", "RENDER_DISK_MOUNT_PATH")
+COMMON_DATA_DIRS = (Path("/data"), Path("/var/data"))
+
 BILL_RE = re.compile(r"\b(HB|SB|HJ|SJ|HR|SR|HJR|SJR)\s*-?\s*(\d{1,5})\b", re.I)
 YEAR_RE = re.compile(r"\b20\d{2}\b")
 
@@ -83,14 +86,45 @@ def _row_to_line(row: sqlite3.Row, max_value: int = 360) -> str:
     return "; ".join(parts)
 
 
+def _candidate_db_paths(db_key: str) -> list[Path]:
+    base_path = DB_PATHS[db_key]
+    candidates: list[Path] = []
+    for env_var in DATA_DIR_ENV_VARS:
+        data_dir = os.getenv(env_var)
+        if data_dir:
+            candidates.append(Path(data_dir) / base_path.name)
+    candidates.append(base_path)
+    for data_dir in COMMON_DATA_DIRS:
+        candidates.append(data_dir / base_path.name)
+
+    seen: set[str] = set()
+    unique: list[Path] = []
+    for candidate in candidates:
+        key = str(candidate)
+        if key not in seen:
+            seen.add(key)
+            unique.append(candidate)
+    return unique
+
+
+def _resolve_db_path(db_key: str) -> Path | None:
+    for path in _candidate_db_paths(db_key):
+        if path.exists():
+            return path
+    return None
+
+
+def _db_unavailable_line(db_key: str) -> str:
+    expected = ", ".join(str(path) for path in _candidate_db_paths(db_key))
+    return (
+        f"- {db_key}: database_unavailable; reason=sqlite_file_missing; "
+        f"expected_paths={expected}"
+    )
+
+
 def _connect(db_key: str) -> sqlite3.Connection | None:
-    path = DB_PATHS[db_key]
-    data_dir = os.getenv("DATA_DIR")
-    if data_dir:
-        alt = Path(data_dir) / path.name
-        if alt.exists():
-            path = alt
-    if not path.exists():
+    path = _resolve_db_path(db_key)
+    if path is None:
         return None
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
@@ -1225,7 +1259,7 @@ def _add_full_schema_summary(blocks: list[str]) -> None:
     for db_key in DB_PATHS:
         conn = _connect(db_key)
         if not conn:
-            lines.append(f"- {db_key}: database_unavailable")
+            lines.append(_db_unavailable_line(db_key))
             continue
         lines.append(f"- {db_key}:")
         try:
@@ -1257,7 +1291,7 @@ def _add_admin_sql_coverage_summary(blocks: list[str]) -> None:
     for db_key in DB_PATHS:
         conn = _connect(db_key)
         if not conn:
-            lines.append(f"- {db_key}: database_unavailable")
+            lines.append(_db_unavailable_line(db_key))
             continue
         try:
             table_rows = conn.execute(
@@ -1314,7 +1348,7 @@ def _add_generic_sql_search_context(blocks: list[str], query: str, terms: list[s
     for db_key in DB_PATHS:
         conn = _connect(db_key)
         if not conn:
-            lines.append(f"- {db_key}: database_unavailable")
+            lines.append(_db_unavailable_line(db_key))
             continue
         try:
             table_rows = conn.execute(

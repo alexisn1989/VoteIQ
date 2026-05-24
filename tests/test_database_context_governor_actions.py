@@ -1,3 +1,4 @@
+import os
 import sqlite3
 import tempfile
 import unittest
@@ -17,6 +18,12 @@ class GovernorActionContextTests(unittest.TestCase):
         self.original_openstates_path = dc.DB_PATHS["openstates"]
         self.original_legislative_path = dc.DB_PATHS["legislative_intelligence"]
         self.original_virginia_legislature_path = dc.DB_PATHS["virginia_legislature"]
+        self.original_data_env = {
+            env_var: os.environ.get(env_var)
+            for env_var in dc.DATA_DIR_ENV_VARS
+        }
+        for env_var in dc.DATA_DIR_ENV_VARS:
+            os.environ.pop(env_var, None)
         dc.DB_PATHS["polls"] = self.db_path
         dc.DB_PATHS["openstates"] = self.openstates_path
         dc.DB_PATHS["legislative_intelligence"] = self.legislative_path
@@ -27,6 +34,11 @@ class GovernorActionContextTests(unittest.TestCase):
         dc.DB_PATHS["openstates"] = self.original_openstates_path
         dc.DB_PATHS["legislative_intelligence"] = self.original_legislative_path
         dc.DB_PATHS["virginia_legislature"] = self.original_virginia_legislature_path
+        for env_var, value in self.original_data_env.items():
+            if value is None:
+                os.environ.pop(env_var, None)
+            else:
+                os.environ[env_var] = value
         self.tmp.cleanup()
 
     def _exec(self, *statements):
@@ -640,6 +652,48 @@ class GovernorActionContextTests(unittest.TestCase):
         self.assertIn("polls.odd_public_records", context)
         self.assertIn("legislative_intelligence.custom_legislative_notes", context)
         self.assertIn("Unique civic audit phrase", context)
+
+    def test_admin_unavailable_dbs_report_sqlite_file_paths(self):
+        self._exec(
+            """
+            CREATE TABLE available_records (
+                id INTEGER PRIMARY KEY,
+                note TEXT
+            )
+            """,
+            "INSERT INTO available_records (note) VALUES ('polls is available')",
+        )
+
+        context = dc.build_admin_database_context("what can you pull up right now")
+
+        self.assertIn(
+            "- openstates: database_unavailable; reason=sqlite_file_missing",
+            context,
+        )
+        self.assertIn(str(self.openstates_path), context)
+        self.assertIn(
+            "- legislative_intelligence: database_unavailable; reason=sqlite_file_missing",
+            context,
+        )
+        self.assertIn(str(self.legislative_path), context)
+        self.assertIn("expected_paths=", context)
+
+    def test_db_resolution_uses_render_data_dir_when_root_file_missing(self):
+        data_dir = Path(self.tmp.name) / "render_data"
+        data_dir.mkdir()
+        data_dir_openstates = data_dir / "openstates_va.db"
+        self._exec_db(
+            data_dir_openstates,
+            """
+            CREATE TABLE bills (
+                bill_id TEXT,
+                session TEXT
+            )
+            """,
+        )
+        os.environ["DATA_DIR"] = str(data_dir)
+
+        self.assertEqual(dc._resolve_db_path("openstates"), data_dir_openstates)
 
 
 if __name__ == "__main__":
