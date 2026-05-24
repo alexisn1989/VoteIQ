@@ -280,6 +280,16 @@ _ADMIN_AGENT_REGISTRY = {
             "Focus on process, cite tickets/messages/PRs, avoid individual blame, calculate confidence, list open questions, and propose one concrete process change."
         ),
     },
+    "visual_explainer": {
+        "name": "Visual Explainer",
+        "env": "VOTEIQ_VISUAL_EXPLAINER_AGENT_ID",
+        "tags": ["visualization", "customer-facing", "charts", "maps"],
+        "prompt": (
+            "Turn verified VoteIQ Analyst/API/RAG data into JSON visual definitions for charts, maps, timelines, comparison tables, or summary cards. "
+            "Use verified sources only, include source labels, current-through date, data limits, and a plain-English explanation. "
+            "Do not invent missing data, infer motive or causation, hide gaps, use private data, or mislead with scales."
+        ),
+    },
     "whro_grants": {
         "name": "WHRO Grants",
         "env": "VOTEIQ_WHRO_GRANTS_AGENT_ID",
