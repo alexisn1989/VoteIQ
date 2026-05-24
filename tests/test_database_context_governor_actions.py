@@ -409,6 +409,61 @@ class GovernorActionContextTests(unittest.TestCase):
         self.assertIn("total_amount=1000000.0", context)
         self.assertNotIn("No rows matched searched_terms=spanberger, analysis", context)
 
+    def test_spanberger_campaign_finance_typos_still_return_itemized_finance(self):
+        self._exec(
+            """
+            CREATE TABLE governor_actions (
+                bill_number TEXT, session TEXT, title TEXT, action_label TEXT,
+                action TEXT, action_date TEXT, governor TEXT, source_url TEXT
+            )
+            """,
+            """
+            INSERT INTO governor_actions VALUES (
+                'HB111', '2026',
+                'Voter registration; cancellation of registration, sources of data.',
+                'Vetoed', 'vetoed', '2026-05-19',
+                'Abigail Spanberger', 'https://governor.example/hb111'
+            )
+            """,
+            """
+            CREATE TABLE va_finance_people (
+                person_name TEXT, office TEXT, party TEXT, committee_name TEXT,
+                finance_url TEXT, source_url TEXT, data_confidence TEXT, fetched_at TEXT
+            )
+            """,
+            """
+            INSERT INTO va_finance_people VALUES (
+                'Abigail Spanberger', 'Governor', 'Democratic',
+                'Spanberger for Governor', 'https://www.vpap.org/committees/106366/',
+                'https://www.elections.virginia.gov/', 'high',
+                '2026-05-23T08:00:00Z'
+            )
+            """,
+            """
+            CREATE TABLE va_cf_schedule_a (
+                candidate_name TEXT, election_cycle TEXT, first_name TEXT,
+                last_or_company TEXT, employer TEXT, occupation TEXT,
+                is_individual INTEGER, transaction_date TEXT, amount REAL
+            )
+            """,
+            """
+            INSERT INTO va_cf_schedule_a VALUES (
+                'Abigail  Spanberger', '2025', '', 'Clean Virginia Fund',
+                '', 'PAC', 0, '2025-08-01', 500000
+            )
+            """,
+        )
+
+        context = dc.build_admin_database_context(
+            "Governor Spanberger veto activity campaing fiance correlation",
+            max_chars=12000,
+        )
+
+        self.assertIn("polls.va_finance_people campaign finance profile", context)
+        self.assertIn("polls.va_cf_schedule_a campaign finance totals", context)
+        self.assertIn("total_amount=500000.0", context)
+        self.assertIn("polls.governor_actions lookup", context)
+
     def test_explicit_federal_vote_lookup_returns_spanberger_vote_rows_when_present(self):
         self._exec(
             """

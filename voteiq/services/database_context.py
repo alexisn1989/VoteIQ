@@ -170,10 +170,11 @@ def _query_rows(
 
 
 _FINANCE_QUERY_TERMS = (
-    "finance", "financial", "finicial", "fundraising", "fundraiser",
+    "finance", "financial", "finicial", "fiance", "finace",
+    "fundraising", "fundraiser",
     "raised", "donor", "donors", "money", "contribution", "contributions",
-    "donation", "donations", "campaign", "filing", "filings", "sbe",
-    "vpap", "funding", "funded",
+    "donation", "donations", "campaign", "campaing", "campain",
+    "filing", "filings", "sbe", "vpap", "funding", "funded",
 )
 
 
@@ -184,13 +185,15 @@ def _is_campaign_finance_query(query: str) -> bool:
 
 def _campaign_finance_terms(query: str, terms: list[str]) -> list[str]:
     generic = {
-        "campaign", "finance", "financial", "finicial", "fundraising",
+        "campaign", "campaing", "campain", "finance", "financial",
+        "finicial", "fiance", "finace", "fundraising",
         "fundraiser", "raised", "donor", "donors", "money", "contribution",
         "contributions", "record", "records", "filing", "filings", "sbe",
         "vpap", "funding", "funded", "public", "source", "sources",
         "research", "report", "overview", "with", "why", "return", "returned", "data",
         "issue", "problem", "lookup", "retrieval", "debug", "debugger",
-        "bill", "bills", "action", "actions", "veto", "vetoes", "vetoed",
+        "bill", "bills", "action", "actions", "activity", "activities",
+        "veto", "vetoes", "vetoed",
         "signed", "amended", "governor", "correlation", "correlate",
         "correlated", "relationship", "align", "alignment", "state",
         "virginia", "office", "candidate", "committee", "vote", "votes",
@@ -1385,9 +1388,13 @@ def build_database_context(query: str, max_chars: int = 22000) -> str:
     _add_known_person_scope_context(blocks, q)
     _add_bill_context(blocks, bills, session)
     _add_pac_context(blocks, q, terms)
-    _add_governor_action_context(blocks, q, terms, session)
     _add_federal_vote_context(blocks, q, terms)
-    _add_campaign_finance_context(blocks, q, terms)
+    if _is_campaign_finance_query(q):
+        _add_campaign_finance_context(blocks, q, terms)
+        _add_governor_action_context(blocks, q, terms, session)
+    else:
+        _add_governor_action_context(blocks, q, terms, session)
+        _add_campaign_finance_context(blocks, q, terms)
     _add_person_vote_context(blocks, q, terms, session)
     _add_keyword_context(blocks, q, terms, session)
 
