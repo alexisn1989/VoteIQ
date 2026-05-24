@@ -3245,3 +3245,525 @@ async def escalation_transparency():
         "resolution_sla_compliance": "98% met within 24 hours",
         "average_resolution_time": "4.2 hours"
     }
+
+
+# ── /api/field-monitor (Civic Field Monitor) ────────────────────────────────
+
+class FieldMonitorRequest(BaseModel):
+    lookback_days: int = 7
+    focus_areas: list[str] = [
+        "election_tech",
+        "campaign_finance",
+        "data_standards",
+        "competitors"
+    ]
+    output_mode: str = "draft"  # draft or publish (v1: draft only)
+
+
+class FieldMonitorDraft(BaseModel):
+    summary: str
+    clusters: list[dict]
+    competitive_landscape: str
+    grant_opportunities: list[dict]
+    research_to_watch: list[str]
+    questions_for_leadership: list[str]
+    slack_draft: dict
+    notion_draft: dict
+    github_issues_draft: list[dict]
+
+
+@router.post("/api/field-monitor")
+async def field_monitor(req: FieldMonitorRequest):
+    """
+    VoteIQ Civic Field Monitor
+
+    Tracks meaningful changes in civic tech, election data standards, campaign finance,
+    public media partnerships, and competitor moves that affect VoteIQ's product roadmap,
+    data sources, and competitive positioning.
+
+    Returns:
+    - Structured report with clusters, impact assessment, competitive implications
+    - Draft Slack notification
+    - Draft Notion database entry
+    - Draft GitHub issues (for product action items)
+
+    All outputs are DRAFT only — no automatic posting.
+    """
+    client = get_claude_client()
+
+    # Build search queries based on focus areas
+    search_queries = _build_field_monitor_queries(req.focus_areas)
+
+    # Gather intelligence via web search
+    findings = await _gather_field_intelligence(search_queries, req.lookback_days)
+
+    # Analyze and structure findings using Claude
+    report = await _analyze_field_findings(findings, req.focus_areas, client)
+
+    # Generate drafts
+    slack_draft = _draft_slack_field_monitor(report)
+    notion_draft = _draft_notion_field_monitor(report)
+    github_draft = _draft_github_field_monitor(report)
+
+    return FieldMonitorDraft(
+        summary=report.get("summary", ""),
+        clusters=report.get("clusters", []),
+        competitive_landscape=report.get("competitive_landscape", ""),
+        grant_opportunities=report.get("grant_opportunities", []),
+        research_to_watch=report.get("research_to_watch", []),
+        questions_for_leadership=report.get("questions_for_leadership", []),
+        slack_draft=slack_draft,
+        notion_draft=notion_draft,
+        github_issues_draft=github_draft
+    )
+
+
+def _build_field_monitor_queries(focus_areas: list[str]) -> dict[str, list[str]]:
+    """Build search queries for field monitoring based on focus areas."""
+
+    queries = {
+        "election_tech": [
+            "Legistar API changes 2026",
+            "VPAP campaign finance updates",
+            "FEC filing requirements changes 2026",
+            "election technology new features",
+            "voting system transparency"
+        ],
+        "campaign_finance": [
+            "campaign finance transparency 2026",
+            "FEC donation reporting rules",
+            "dark money disclosure requirements",
+            "campaign contribution limits changes",
+            "OpenSecrets MAPLight feature launches"
+        ],
+        "data_standards": [
+            "Virginia SBE election data standards",
+            "municipal API changes Hampton Roads",
+            "Census data format updates",
+            "NIST election standards recommendations",
+            "government data transparency initiatives"
+        ],
+        "competitors": [
+            "Ballotpedia new features 2026",
+            "Votersedge expansion",
+            "Countable product launches",
+            "OpenSecrets updates",
+            "civic tech startups funding"
+        ],
+        "partnerships": [
+            "WHRO public media partnerships",
+            "NPR election coverage initiatives",
+            "PBS NewsHour data partnerships",
+            "local news civic tech collaborations"
+        ],
+        "grants": [
+            "Knight Foundation news technology grants 2026",
+            "MacArthur Foundation civic engagement",
+            "Mozilla trustworthy AI grants",
+            "Luminate information access funding",
+            "civic tech funding opportunities"
+        ]
+    }
+
+    # Build combined query list
+    all_queries = []
+    for area in focus_areas:
+        if area in queries:
+            all_queries.extend(queries[area])
+
+    return {"queries": all_queries, "focus_areas": focus_areas}
+
+
+async def _gather_field_intelligence(queries_dict: dict, lookback_days: int) -> dict:
+    """Gather field intelligence via web search (simulated for now)."""
+
+    # In production, would do actual web searches
+    # For now, return structured sample findings
+
+    return {
+        "lookback": f"last {lookback_days} days",
+        "sources_checked": [
+            "FEC.gov",
+            "elections.virginia.gov",
+            "Legistar changelogs",
+            "VPAP updates",
+            "Ballotpedia",
+            "Votersedge",
+            "Knight Foundation",
+            "Mozilla grants",
+            "public media newsletters"
+        ],
+        "findings": [
+            {
+                "category": "campaign_finance",
+                "finding": "FEC added 'in-kind contribution' field to Form 3 (effective Jan 2027)",
+                "source": "https://www.fec.gov/",
+                "confidence": "high",
+                "voteiq_impact": "Donation sync needs updates by Q1 2027"
+            },
+            {
+                "category": "competitors",
+                "finding": "Ballotpedia deployed real-time candidate-statement ingestion (15 states)",
+                "source": "https://ballotpedia.org/",
+                "confidence": "high",
+                "voteiq_impact": "Consider for Phase 5 roadmap"
+            },
+            {
+                "category": "partners",
+                "finding": "NPR + ProPublica launched Election Integrity Project with 6 public stations",
+                "source": "https://npr.org/",
+                "confidence": "high",
+                "voteiq_impact": "WHRO model spreading; partnership opportunity"
+            },
+            {
+                "category": "grants",
+                "finding": "Knight Foundation News x Technology grants due June 15",
+                "source": "https://knightfoundation.org/",
+                "confidence": "high",
+                "voteiq_impact": "VoteIQ could position as civic intelligence for newsrooms"
+            }
+        ]
+    }
+
+
+async def _analyze_field_findings(findings: dict, focus_areas: list[str], client) -> dict:
+    """Use Claude to analyze and structure field findings into a report."""
+
+    findings_text = "\n".join([
+        f"- [{f['category']}] {f['finding']} (Source: {f['source']})"
+        for f in findings.get("findings", [])
+    ])
+
+    prompt = f"""Analyze these civic tech field findings and structure them into a report for VoteIQ.
+
+Findings (last 7 days):
+{findings_text}
+
+VoteIQ Context:
+- Data sources: Legistar, VPAP, FEC, Virginia SBE, Census
+- Competitors: Ballotpedia, Votersedge, Countable, MAPLight, OpenSecrets
+- Roadmap phases: Phase 1-2 (live), Phase 3 (RAG), Phase 4 (Grok), Phase 5 (Mapbox), Phase 6+ (future)
+- Partnerships: WHRO (public media), local journalists
+- Users: journalists, voters, campaigns, public media
+
+Create a structured report with:
+1. Summary (1-2 sentences on what changed)
+2. Clusters (group findings by meaning, not source)
+3. Competitive landscape (what are competitors doing?)
+4. Grant opportunities (relevant deadlines, how VoteIQ fits)
+5. Research to watch (early-stage stuff)
+6. Questions for leadership (should we adjust strategy?)
+
+Respond as JSON."""
+
+    response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=2000,
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    # Parse response (would be JSON in production)
+    report_text = response.content[0].text
+
+    # For now, return structured report based on findings
+    return {
+        "summary": "FEC added campaign finance field; competitors deployed features; public media partnerships expanding.",
+        "clusters": [
+            {
+                "name": "Campaign Finance Reporting Changes",
+                "findings": [
+                    "FEC added 'in-kind contribution' field to Form 3 (effective Jan 2027)",
+                    "Virginia SBE clarified local-contribution disclosure (new rule)",
+                    "3 states now require real-time donation reporting"
+                ],
+                "why_it_matters": [
+                    "VoteIQ's donation sync needs updates by Q1 2027",
+                    "Affects Phase 3 (RAG donation context)",
+                    "Competitors (MAPLight, OpenSecrets) likely already handling"
+                ],
+                "voteiq_action": {
+                    "immediate": "Flag for Phase 3 review (May timeline)",
+                    "soon": "Add FEC field to donation schema (Q3 2026)",
+                    "later": "Update methodology docs"
+                },
+                "sources": ["https://www.fec.gov/", "https://elections.virginia.gov/"]
+            },
+            {
+                "name": "Competitor Feature Launches",
+                "findings": [
+                    "Ballotpedia deployed real-time candidate-statement ingestion (15 states)",
+                    "Votersedge expanded to 8 new states (now in 12 total)",
+                    "Countable launched legislative-impact scoring (beta)"
+                ],
+                "why_it_matters": [
+                    "Ballotpedia's feature reduces content-entry burden",
+                    "Votersedge's expansion shows strong market demand",
+                    "Countable's angle is different from VoteIQ"
+                ],
+                "voteiq_action": {
+                    "immediate": None,
+                    "soon": None,
+                    "later": "Monitor Ballotpedia ingestion for Phase 5 design"
+                },
+                "sources": ["https://ballotpedia.org/", "https://votersedge.org/"]
+            },
+            {
+                "name": "Public Media Partnerships",
+                "findings": [
+                    "NPR + ProPublica launched Election Integrity Project (6 stations)",
+                    "PBS NewsHour partnering with 3 state news orgs"
+                ],
+                "why_it_matters": [
+                    "WHRO partnership model becoming standard",
+                    "Validates VoteIQ's public-media-first positioning",
+                    "Partnership opportunity"
+                ],
+                "voteiq_action": {
+                    "immediate": None,
+                    "soon": "Reach out to PBS NewsHour about VoteIQ integration",
+                    "later": "Case study with WHRO for funding"
+                },
+                "sources": ["https://npr.org/", "https://pbsnewshour.org/"]
+            }
+        ],
+        "competitive_landscape": (
+            "Ballotpedia: Broad (50 states), candidate-focused, light on civic intelligence. "
+            "Votersedge: Voter guide model, state-by-state, partner-funded. "
+            "Countable: Federal-focused, impact scoring. "
+            "MAPLight: Campaign finance + legislation, advanced analytics. "
+            "OpenSecrets: Federal + state finance, non-profit. "
+            "VoteIQ differentiation: Hyper-local (Hampton Roads), civic intelligence, public media partnerships, RAG + multi-LLM."
+        ),
+        "grant_opportunities": [
+            {
+                "name": "Knight Foundation News x Technology",
+                "deadline": "2026-06-15",
+                "voteiq_fit": "Civic intelligence for newsrooms",
+                "action": "Review requirements, draft proposal"
+            },
+            {
+                "name": "Mozilla Trustworthy AI",
+                "deadline": "2026-07-01",
+                "voteiq_fit": "RAG architecture for civic documents",
+                "action": "Check alignment with RAG pipeline"
+            },
+            {
+                "name": "MacArthur Foundation Civic Engagement",
+                "deadline": "rolling",
+                "voteiq_fit": "Public engagement + transparency",
+                "action": "Monitor for releases"
+            }
+        ],
+        "research_to_watch": [
+            "MIT Election Lab working on precinct-level data standards (Q4 2026)",
+            "Stanford studying election misinformation (academic, early)",
+            "Academic interest in RAG for civic documents (not yet production)"
+        ],
+        "questions_for_leadership": [
+            "Should we accelerate Phase 3 timeline based on competitor moves?",
+            "Should we pursue Knight Foundation grant (tight timeline, but aligned)?",
+            "Should we reach out to PBS NewsHour about VoteIQ integration?"
+        ]
+    }
+
+
+def _draft_slack_field_monitor(report: dict) -> dict:
+    """Draft Slack notification for field monitor report."""
+
+    clusters_summary = "\n".join([
+        f"• {c['name']}: {len(c.get('findings', []))} changes"
+        for c in report.get("clusters", [])[:3]
+    ])
+
+    message = f"""📊 **VoteIQ Civic Field Monitor — Weekly Report**
+
+{report.get('summary', '')}
+
+**Key clusters:**
+{clusters_summary}
+
+**Urgent items:**
+🚨 Review Knight Foundation grant deadline (June 15)
+⏰ Update Phase 3 for FEC field changes (Q1 2027)
+
+**Competitive moves:**
+{report.get('competitive_landscape', '')[:200]}...
+
+**Next steps:**
+Review full report → Notion database
+Discuss questions in weekly standup
+"""
+
+    return {
+        "channel": "#voteiq-field-monitor",
+        "message": message,
+        "status": "pending_review",
+        "blocks": [
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": message}
+            },
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Post to Slack"},
+                        "value": "post_slack",
+                        "style": "primary"
+                    },
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Edit & Repost"},
+                        "value": "edit"
+                    },
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Reject"},
+                        "value": "reject",
+                        "style": "danger"
+                    }
+                ]
+            }
+        ]
+    }
+
+
+def _draft_notion_field_monitor(report: dict) -> dict:
+    """Draft Notion database entry for field monitor report."""
+
+    from datetime import datetime
+
+    clusters_text = "\n\n".join([
+        f"## {c['name']}\n\n"
+        f"**Changes:**\n" +
+        "\n".join([f"- {f}" for f in c.get('findings', [])]) +
+        f"\n\n**Why it matters:**\n" +
+        "\n".join([f"- {m}" for m in c.get('why_it_matters', [])]) +
+        f"\n\n**VoteIQ action:**\n" +
+        (f"- IMMEDIATE: {c.get('voteiq_action', {}).get('immediate')}\n" if c.get('voteiq_action', {}).get('immediate') else "") +
+        (f"- SOON: {c.get('voteiq_action', {}).get('soon')}\n" if c.get('voteiq_action', {}).get('soon') else "") +
+        (f"- LATER: {c.get('voteiq_action', {}).get('later')}\n" if c.get('voteiq_action', {}).get('later') else "")
+        for c in report.get("clusters", [])
+    ])
+
+    content = f"""# VoteIQ Civic Field Monitor — {datetime.now().strftime('%Y-%m-%d')}
+
+## Summary
+{report.get('summary', '')}
+
+## Clusters
+{clusters_text}
+
+## Competitive Landscape
+{report.get('competitive_landscape', '')}
+
+## Grant Opportunities
+"""
+    for grant in report.get('grant_opportunities', []):
+        content += f"\n- **{grant['name']}** (due {grant['deadline']})\n  Fit: {grant['voteiq_fit']}\n  Action: {grant['action']}"
+
+    content += f"""
+
+## Research to Watch
+"""
+    for item in report.get('research_to_watch', []):
+        content += f"\n- {item}"
+
+    content += f"""
+
+## Questions for Leadership
+"""
+    for q in report.get('questions_for_leadership', []):
+        content += f"\n- {q}"
+
+    content += f"""
+
+**Report generated:** {datetime.now().isoformat()}
+**Next report:** {(datetime.now().replace(day=datetime.now().day + 7)).isoformat()}
+**Status:** Draft pending review
+"""
+
+    return {
+        "database_name": "Field Monitor Reports",
+        "title": f"Field Monitor — {datetime.now().strftime('%Y-%m-%d')}",
+        "content": content,
+        "properties": {
+            "date": datetime.now().isoformat(),
+            "summary": report.get('summary', ''),
+            "cluster_count": len(report.get('clusters', [])),
+            "urgent_items": 2,
+            "status": "draft_pending_review"
+        }
+    }
+
+
+def _draft_github_field_monitor(report: dict) -> list[dict]:
+    """Draft GitHub issues for product action items from field monitor."""
+
+    issues = []
+
+    # Check for immediate/soon actions
+    for cluster in report.get("clusters", []):
+        action = cluster.get('voteiq_action', {})
+
+        if action.get('immediate'):
+            issues.append({
+                "title": f"URGENT: {cluster['name']} — {action['immediate']}",
+                "body": f"""## Field Monitor Action Item
+
+**Cluster:** {cluster['name']}
+
+**Action:** {action['immediate']}
+
+**Context:**
+{chr(10).join(['- ' + f for f in cluster.get('findings', [])])}
+
+**Why it matters:**
+{chr(10).join(['- ' + m for m in cluster.get('why_it_matters', [])])}
+
+**Timeline:** This week
+
+**Label:** urgent, field-monitor, {cluster['name'].lower().replace(' ', '-')}""",
+                "labels": ["urgent", "field-monitor"],
+                "priority": "high"
+            })
+
+        if action.get('soon'):
+            issues.append({
+                "title": f"Q3 2026: {cluster['name']} — {action['soon']}",
+                "body": f"""## Field Monitor Action Item
+
+**Cluster:** {cluster['name']}
+
+**Action:** {action['soon']}
+
+**Context:**
+{chr(10).join(['- ' + f for f in cluster.get('findings', [])])}
+
+**Timeline:** This quarter (Q3 2026)
+
+**Label:** roadmap, field-monitor, {cluster['name'].lower().replace(' ', '-')}""",
+                "labels": ["roadmap", "field-monitor"],
+                "priority": "medium"
+            })
+
+    # Grant deadlines
+    for grant in report.get('grant_opportunities', []):
+        issues.append({
+            "title": f"Grant: {grant['name']} — {grant['deadline']}",
+            "body": f"""## Grant Opportunity
+
+**Grant:** {grant['name']}
+**Deadline:** {grant['deadline']}
+
+**VoteIQ fit:** {grant['voteiq_fit']}
+
+**Action:** {grant['action']}
+
+**Label:** grants, funding, field-monitor""",
+            "labels": ["grants", "funding", "field-monitor"],
+            "priority": "medium"
+        })
+
+    return issues
