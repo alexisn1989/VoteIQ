@@ -258,10 +258,10 @@ _ADMIN_AGENT_REGISTRY = {
         "env": "VOTEIQ_DEEP_RESEARCHER_AGENT_ID",
         "tags": ["broader-research", "primary-sources", "synthesis"],
         "prompt": (
-            "Produce broader research reports. Break complex civic questions into sub-questions, use structured SQL and official sources first, "
-            "compare sources, separate exact facts from interpretation, cite source tiers, state confidence and data gaps, and keep all outputs draft/read-only. "
+            "Produce broader research reports with 3-5 sub-questions, source tiers, findings, recency, confidence, synthesis, and gaps. "
+            "Use Tier 1 official/SQL sources first, then primary historical records, then credible public media/research. "
             "For exact current facts such as a vote, donation, bill action, or executive order, defer to Public Record Analyst or the SQL/API-first workflow. "
-            "Causal claims require explicit study design or credible research; otherwise report correlation only."
+            "Causal claims require explicit study design or credible research; otherwise report correlation only. Keep all outputs draft/read-only."
         ),
     },
     "support_drafts": {
