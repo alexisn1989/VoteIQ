@@ -90,17 +90,80 @@ def _premium_analyst_enabled(req) -> bool:
     return voice in {"pro", "newsroom"} or tier in {"pro", "newsroom"}
 
 
-def _source_line(answer_type: str | None = None) -> str:
+def _source_line(answer_type: str | None = None, sources_used: set[str] | None = None) -> str:
+    if sources_used:
+        source_text = " · ".join(sorted(sources_used))
+        prefix = f"*Answer type: {answer_type}. Sources:" if answer_type else "*Sources:"
+        return (
+            "\n\n---\n"
+            f"{prefix} {source_text}. "
+            "Data limits: This answer depends on available public records and may not include late filings, amended records, or records not yet digitized. "
+            "VoteIQ does not infer motive, intent, corruption, influence, causation, or policy effectiveness.*"
+        )
     if not answer_type:
         return _SOURCE_LINE
     return _SOURCE_LINE.replace("*Sources:", f"*Answer type: {answer_type}. Sources:", 1)
 
 
-def _with_source_line(reply: str, answer_type: str | None = None) -> str:
+def _with_source_line(
+    reply: str,
+    answer_type: str | None = None,
+    sources_used: set[str] | None = None,
+) -> str:
     """Append the standard source footer unless the model already included one."""
+    reply = _sanitize_voting_record_language(reply)
     if "Sources:" in (reply or ""):
         return reply.rstrip()
-    return reply.rstrip() + _source_line(answer_type)
+    return reply.rstrip() + _source_line(answer_type, sources_used)
+
+
+def _sanitize_voting_record_language(reply: str) -> str:
+    """Keep voting-record answers factual and remove interpretive labels."""
+    text = reply or ""
+    text = re.sub(
+        r"Overall vote rate:\s*([\d,]+)\s+YES\s+\(([^)]+)\),\s*([\d,]+)\s+NO\s+out of\s+([\d,]+)\s+floor votes",
+        r"Recorded floor vote distribution: \1 YES votes and \3 NO votes across \4 recorded floor vote events.",
+        text,
+        flags=re.I,
+    )
+    text = re.sub(
+        r"\*\*Dissenting Votes\s*—\s*voted NO but bill passed",
+        "**Recorded NO votes where the bill passed",
+        text,
+        flags=re.I,
+    )
+    text = re.sub(
+        r"(?im)^\s*-?\s*Caucus read:.*(?:\r?\n)?",
+        "",
+        text,
+    )
+    text = re.sub(
+        r"(?im)^.*moderate voice within party.*(?:\r?\n)?",
+        "",
+        text,
+    )
+    text = re.sub(
+        r"(?i)Committee votes:\s*([\d,]+)\s+total\s*[—-]\s*([\d,]+)\s+YES,\s*([\d,]+)\s+NO",
+        (
+            "Committee vote records in the current dataset show \\2 YES and \\3 NO votes. "
+            "This may reflect how committee actions are recorded in the source data; verify against committee roll-call records before treating it as a complete behavioral measure."
+        ),
+        text,
+    )
+    text = re.sub(
+        r"(?im)^.*breaks most often on [^\r\n]+(?:\r?\n)?",
+        "",
+        text,
+    )
+    if (
+        "Recorded NO votes where the bill passed" in text
+        and "VoteIQ does not infer why" not in text
+    ):
+        text += (
+            "\n\nVoteIQ does not infer why Sen. Rouse voted NO. These records only show vote outcomes, "
+            "party-majority comparison, bill category, and whether the bill passed."
+        )
+    return text
 
 
 def _track_sources(context: str) -> set[str]:
@@ -113,7 +176,7 @@ def _track_sources(context: str) -> set[str]:
     context_lower = context.lower()
 
     # SQL/database sources
-    if "[database context" in context_lower:
+    if "virginia lis" in context_lower or "lis.virginia.gov" in context_lower:
         sources.add("Virginia LIS")
     if "[governor action" in context_lower:
         sources.add("Governor of Virginia")
@@ -2599,7 +2662,8 @@ def _bills_system_prompt(
         f"- SENATE VS HOUSE YES RATES: Never compare a senator's yes rate to a representative's without flagging the difference. "
         f"Senate votes include far more procedural, cloture, and motion votes where minority-party senators routinely vote Nay — "
         f"this structurally depresses Senate yes rates relative to House yes rates. "
-        f"Always note: \"Senate yes rates are not directly comparable to House yes rates due to the higher volume of procedural and cloture votes in the Senate.\""
+        f"Always note: \"Senate yes rates are not directly comparable to House yes rates due to the higher volume of procedural and cloture votes in the Senate.\"\n"
+        f"- For voting-pattern sections, include this no-inference note: \"VoteIQ does not infer why Sen. Rouse voted NO. These records only show vote outcomes, party-majority comparison, bill category, and whether the bill passed.\" Use the relevant title/name if the question is about someone else.\n"
         f"\n\nHALLUCINATION PREVENTION — follow these rules strictly:\n"
         f"1. Never say a legislator \"prioritized\", \"championed\", \"focused on\", or \"made X a priority\" unless the excerpt explicitly states it. Sponsoring a bill does not imply it was a priority.\n"
         f"2. Never infer a legislator's role beyond what the data shows. If they are listed as sponsor, say \"sponsored\". If their exact role is unclear, say \"co-sponsored or listed as patron — exact role unclear.\"\n"
@@ -2638,20 +2702,26 @@ def _bills_system_prompt(
         f"\n\nRESPONSE FORMAT — use this exact structure for legislator questions:\n\n"
         f"Your [chamber] representative is **[Full Name] ([Party], District [N])**.\n\n"
         f"**[YEAR] Session Voting Record:**\n"
-        f"- Overall vote rate: [CONFIRMED — OpenStates] [Y] YES ([X]%), [N] NO out of [N] floor votes\n"
-        f"- Party alignment: [CONFIRMED — calculated from vote records] voted with [Party] party majority on [X]% of floor votes\n"
+        f"- Recorded floor vote distribution: [CONFIRMED — OpenStates] [Y] YES votes and [N] NO votes across [TOTAL] recorded floor vote events.\n"
+        f"- Party alignment: [CONFIRMED — calculated from vote records] [X]% of recorded floor votes where party-majority comparison was available.\n"
+        f"- Overall caucus alignment: [Y]% including uncontested/procedural votes, only if the excerpt clearly defines that denominator. If the denominator is not defined, omit this metric.\n"
+        f"- Contested-vote pattern: [Name] voted with the [Party] majority on [X]% of recorded floor votes and aligned with the [Party] majority on [Y]% of contested party-split votes. Use only metrics whose denominators are clearly defined in the excerpt; otherwise omit them.\n"
         f"- Comparison note: if multiple representatives are shown in the current answer, you may say \"[X]% party alignment — the lowest/highest party-alignment rate among the representatives shown here.\" Only compare the representatives actually shown in this answer.\n"
-        f"- Caucus read: [copy exactly from excerpt if present; use the plain-language wording, not the old technical faction label]\n"
-        f"- Committee votes: [CONFIRMED — OpenStates] [N] total — [Y] YES, [N] NO\n\n"
+        f"- Do not use ideology, positioning, or caucus-read labels. Describe only the recorded vote metrics whose denominators are defined.\n"
+        f"- Committee vote records in the current dataset show [Y] YES and [N] NO votes. This may reflect how committee actions are recorded in the source data; verify against committee roll-call records before treating it as a complete behavioral measure.\n\n"
         f"**Key Votes** (if present in excerpt; put this before aggregate issue stats):\n"
         f"- [markdown bill link from excerpt]: [YES/NO note exactly from excerpt] — [one-line plain-English issue summary]\n\n"
-        f"**Dissenting Votes — voted NO but bill passed ([N] total):**\n"
-        f"[CONFIRMED — OpenStates, INFERRED significance]:\n"
+        f"**Recorded NO votes where the bill passed ([N] total):**\n"
+        f"[CONFIRMED — OpenStates]:\n"
         f"- [Policy area]: [markdown bill links from excerpt] — [one-line description]\n"
-        f"Pattern: [INFERRED] [one sentence. Always end with: \"Dataset does not include stated reasons for these votes.\"]\n\n"
+        f"Note: VoteIQ does not infer why Sen. Rouse voted NO. These records only show vote outcomes, party-majority comparison, bill category, and whether the bill passed. Use the relevant title/name if the question is about someone else.\n\n"
         f"**Vote Breakdown by Issue Area** (if present in excerpt):\n"
         f"- [topic]: [N] votes — [Y] YES, [N] NO | party alignment: [X]%\n"
         f"  - Breaks from party: [copy the NO-against-party-YES-majority bill links from excerpt]\n\n"
+        f"Issue-category note: only say \"Issue categories with the most recorded party-majority breaks\" if the excerpt provides counts. Format as:\n"
+        f"- Transportation: [X] votes\n"
+        f"- Healthcare: [Y] votes\n"
+        f"If counts are not available, omit the claim.\n\n"
         f"**Legislative Partnerships** (if present in excerpt):\n"
         f"- [Name] ([Party]) — [N] bills co-sponsored [cross-party if flagged]\n"
         f"- Bipartisan: [names if present]\n\n"
@@ -2663,8 +2733,8 @@ def _bills_system_prompt(
         f"COMMITTEE VOTE CONTEXT — if the excerpt contains a [CONTEXT] note about committee votes, include it in plain language.\n\n"
         f"IMPORTANT: Always copy bill links exactly as they appear in the excerpts. List ALL sponsored bills found in the excerpt, do not truncate the list.\n"
         f"When a bill excerpt contains a \"Companion bill(s)\" line, always render those as clickable markdown links in your response.\n\n"
-        f"**Methodology note** (always include when answering about caucus labels or party alignment):\n"
-        f"Caucus read is plain-language shorthand derived from OpenStates roll-call data (confirmed votes only). "
+        f"**Methodology note** (always include when answering about party alignment):\n"
+        f"Party-majority comparisons are calculated from OpenStates roll-call data when available. "
         f"Split-vote threshold: 15–85% of party voting YES, minimum 5 members voting. "
         f"\"Breaks from party\" means actual recorded NO votes against the party YES majority. "
         f"Issue-area tags are keyword-based, not official legislative categories.\n\n"
@@ -3188,7 +3258,7 @@ async def bills_chat(req: BillsChatRequest):
     if _ck and not _governor_action_query(user_query):
         cached = _m._get_cached_reply(_ck, _ck_fb)
         if cached:
-            cached = _with_source_line(cached, _answer_type_from_context(context, chroma_error))
+            cached = _with_source_line(cached, _answer_type_from_context(context, chroma_error), _track_sources(context))
             return ChatResponse(reply=cached)
 
     chroma_note = (
@@ -3220,7 +3290,7 @@ async def bills_chat(req: BillsChatRequest):
 
     try:
         reply = _m._claude_reply(system_prompt, req.messages, max_tokens=max_tokens, model=model, cache_ttl=cache_ttl)
-        reply = _with_source_line(reply, answer_type)
+        reply = _with_source_line(reply, answer_type, _track_sources(context))
         if _ck:
             _m._set_cached_reply(_ck, reply)
         return ChatResponse(reply=reply)
@@ -3312,7 +3382,7 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
     if _ck and not _governor_action_query(user_query):
         cached = _m._get_cached_reply(_ck, _ck_fb)
         if cached:
-            cached = _with_source_line(cached, _answer_type_from_context(context, chroma_error))
+            cached = _with_source_line(cached, _answer_type_from_context(context, chroma_error), _track_sources(context))
             async def _cached_gen(text=cached):
                 chunk = 24
                 for i in range(0, len(text), chunk):
