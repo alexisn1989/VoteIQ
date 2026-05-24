@@ -315,7 +315,13 @@ def _record_admin_agent_call(mode: str, ok: bool, elapsed_ms: int) -> None:
     _save_admin_state(state)
 
 
-def _run_admin_agent(mode: str, query: str, retrieved_records: str = "", max_tokens: int = 1200) -> str:
+def _run_admin_agent(
+    mode: str,
+    query: str,
+    retrieved_records: str = "",
+    max_tokens: int = 1200,
+    output_mode: str = "",
+) -> str:
     if mode not in _ADMIN_AGENT_REGISTRY:
         modes = ", ".join(sorted(_ADMIN_AGENT_REGISTRY))
         return f"Unknown admin mode '{mode}'. Available modes: {modes}."
@@ -324,7 +330,7 @@ def _run_admin_agent(mode: str, query: str, retrieved_records: str = "", max_tok
     messages = _build_voteiq_admin_messages(
         query,
         [],
-        f"Agent mode: {mode}\nAgent instruction: {spec['prompt']}\n\n{records}",
+        f"Agent mode: {mode}\nOutput mode: {output_mode or 'standard'}\nAgent instruction: {spec['prompt']}\n\n{records}",
     )
     model = (os.getenv("ANTHROPIC_ADMIN_MODEL") or os.getenv("ANTHROPIC_MODEL") or "claude-sonnet-4-6").strip()
     start = datetime.utcnow()
@@ -426,6 +432,7 @@ class AdminDashboardChatRequest(BaseModel):
     mode: str = "analyst"
     query: str = ""
     retrieved_records: str = ""
+    output_mode: str = ""
     max_tokens: int = 1200
 
     @field_validator("max_tokens")
@@ -1136,12 +1143,14 @@ async def admin_dashboard_chat(
     req: AdminDashboardChatRequest | None = Body(None),
     mode: str | None = Query(None),
     query: str | None = Query(None),
+    output_mode: str | None = Query(None),
     max_tokens: int | None = Query(None, ge=200, le=4000),
     _: None = Depends(require_admin_token),
 ):
     body = req or AdminDashboardChatRequest()
     selected_mode = (mode or body.mode or "analyst").strip()
     question = (query if query is not None else body.query or "").strip()
+    selected_output_mode = (output_mode if output_mode is not None else body.output_mode or "").strip()
     token_limit = max_tokens or body.max_tokens
     if not question:
         raise HTTPException(status_code=400, detail="query is required")
@@ -1152,10 +1161,12 @@ async def admin_dashboard_chat(
         question,
         retrieved_records=body.retrieved_records,
         max_tokens=token_limit,
+        output_mode=selected_output_mode,
     )
     return {
         "status": "success",
         "mode": selected_mode,
+        "output_mode": selected_output_mode or "standard",
         "agent": _ADMIN_AGENT_REGISTRY[selected_mode]["name"],
         "query": question,
         "response": response_text,
