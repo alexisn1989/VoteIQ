@@ -25,6 +25,8 @@ STEPS: list[tuple[str, list[str], int]] = [
 # Optional heavy steps — only run when env vars are set
 OPTIONAL: list[tuple[str, list[str], int, str]] = [
     # (script, extra_args, timeout, required_env_var)
+    ("scripts/build_openstates_data_dir.py", ["--session", os.getenv("OPENSTATES_BUILD_SESSION", "2026"),
+                                              "--resume"],       3600, "OPENSTATES_API_KEY"),
     ("download_va_finance.py",     ["--since", os.getenv("VA_FINANCE_SINCE", "2023_01"),
                                     "--workers", os.getenv("VA_FINANCE_WORKERS", "2")],
                                                               1800, "VOTEIQ_BUILD_STATE_FINANCE"),
@@ -33,6 +35,8 @@ OPTIONAL: list[tuple[str, list[str], int, str]] = [
     ("bulk_download_va_reports.py", ["--start", os.getenv("VA_FINANCE_REPORT_START", "2023_01"),
                                      "--end", os.getenv("VA_FINANCE_REPORT_END", "2026_05")],
                                                               1800, "VOTEIQ_BUILD_STATE_FINANCE"),
+    ("build_legislative_intelligence.py", ["--since", os.getenv("LEGISLATIVE_INTELLIGENCE_SINCE", "2023")],
+                                                              1800, "VOTEIQ_BUILD_LEGISLATIVE_INTELLIGENCE"),
     ("ingest_congress.py",        ["--congress", "119"],       600,  "CONGRESS_API_KEY"),
     ("ingest_congress_votes.py",  ["--house-limit", "300"],    600,  "CONGRESS_API_KEY"),
     ("ingest_fec_pacs.py",        [],                          1800, "FEC_API_KEY"),
