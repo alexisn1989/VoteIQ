@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import os
 import re
@@ -263,7 +264,7 @@ def _admin_state_path() -> str:
 
 
 def _load_admin_state() -> dict:
-    default = {"qa_results": [], "escalations": [], "field_reports": [], "agent_calls": {}}
+    default = {"qa_results": [], "escalations": [], "field_reports": [], "agent_calls": {}, "audit_log": []}
     path = _admin_state_path()
     if not os.path.exists(path):
         return default
@@ -282,6 +283,46 @@ def _save_admin_state(state: dict) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(state, f, indent=2, ensure_ascii=False)
+
+
+def _admin_query_hash(query: str) -> str:
+    return hashlib.sha256((query or "").encode("utf-8")).hexdigest()[:16]
+
+
+def _admin_user_from_request(request: Request) -> str:
+    return (
+        request.headers.get("x-admin-user")
+        or request.headers.get("x-user-email")
+        or request.headers.get("x-forwarded-user")
+        or "admin"
+    )
+
+
+def _record_admin_audit(
+    request: Request,
+    *,
+    endpoint: str,
+    mode: str,
+    query: str,
+    agent_id: str | None,
+    action_taken: str,
+    approval_status: str,
+) -> dict:
+    record = {
+        "admin_user": _admin_user_from_request(request),
+        "endpoint": endpoint,
+        "mode": mode,
+        "query_hash": _admin_query_hash(query),
+        "timestamp": _admin_now(),
+        "agent_id": agent_id,
+        "action_taken": action_taken,
+        "approval_status": approval_status,
+    }
+    state = _load_admin_state()
+    state.setdefault("audit_log", []).insert(0, record)
+    state["audit_log"] = state["audit_log"][:1000]
+    _save_admin_state(state)
+    return record
 
 
 def _admin_agent_status(mode: str, state: dict | None = None) -> dict:
@@ -433,6 +474,8 @@ class AdminDashboardChatRequest(BaseModel):
     query: str = ""
     retrieved_records: str = ""
     output_mode: str = ""
+    action_taken: str = ""
+    approval_status: str = ""
     max_tokens: int = 1200
 
     @field_validator("max_tokens")
@@ -1140,10 +1183,13 @@ async def admin_chat(req: AdminChatRequest, _: None = Depends(require_admin_toke
 
 @router.post("/admin/chat")
 async def admin_dashboard_chat(
+    request: Request,
     req: AdminDashboardChatRequest | None = Body(None),
     mode: str | None = Query(None),
     query: str | None = Query(None),
     output_mode: str | None = Query(None),
+    action_taken: str | None = Query(None),
+    approval_status: str | None = Query(None),
     max_tokens: int | None = Query(None, ge=200, le=4000),
     _: None = Depends(require_admin_token),
 ):
@@ -1151,11 +1197,14 @@ async def admin_dashboard_chat(
     selected_mode = (mode or body.mode or "analyst").strip()
     question = (query if query is not None else body.query or "").strip()
     selected_output_mode = (output_mode if output_mode is not None else body.output_mode or "").strip()
+    selected_action = (action_taken if action_taken is not None else body.action_taken or f"chat:{selected_output_mode or 'standard'}").strip()
+    selected_approval = (approval_status if approval_status is not None else body.approval_status or "approved").strip()
     token_limit = max_tokens or body.max_tokens
     if not question:
         raise HTTPException(status_code=400, detail="query is required")
     if selected_mode not in _ADMIN_AGENT_REGISTRY:
         raise HTTPException(status_code=404, detail=f"Unknown admin mode: {selected_mode}")
+    agent_id = os.getenv(_ADMIN_AGENT_REGISTRY[selected_mode]["env"])
     response_text = _run_admin_agent(
         selected_mode,
         question,
@@ -1163,12 +1212,23 @@ async def admin_dashboard_chat(
         max_tokens=token_limit,
         output_mode=selected_output_mode,
     )
+    audit_record = _record_admin_audit(
+        request,
+        endpoint="/admin/chat",
+        mode=selected_mode,
+        query=question,
+        agent_id=agent_id,
+        action_taken=selected_action,
+        approval_status=selected_approval,
+    )
     return {
         "status": "success",
         "mode": selected_mode,
         "output_mode": selected_output_mode or "standard",
         "agent": _ADMIN_AGENT_REGISTRY[selected_mode]["name"],
+        "agent_id": agent_id,
         "query": question,
+        "query_hash": audit_record["query_hash"],
         "response": response_text,
         "timestamp": _admin_now(),
     }
@@ -1202,6 +1262,7 @@ async def admin_agent_detail(mode: str, _: None = Depends(require_admin_token)):
 
 @router.post("/admin/qa/test")
 async def admin_qa_test(
+    request: Request,
     query: str = Query(""),
     expected_result: str = Query(""),
     _: None = Depends(require_admin_token),
@@ -1223,6 +1284,15 @@ async def admin_qa_test(
     state = _load_admin_state()
     state.setdefault("qa_results", []).insert(0, result)
     _save_admin_state(state)
+    _record_admin_audit(
+        request,
+        endpoint="/admin/qa/test",
+        mode="golden_query",
+        query=question,
+        agent_id=os.getenv(_ADMIN_AGENT_REGISTRY["golden_query"]["env"]),
+        action_taken=f"qa_test:{result['id']}",
+        approval_status="approved",
+    )
     return {"status": "success", **result}
 
 
@@ -1301,8 +1371,28 @@ async def admin_qa_coverage(_: None = Depends(require_admin_token)):
     }
 
 
+@router.get("/admin/audit")
+async def admin_audit_log(
+    limit: int = Query(100, ge=1, le=1000),
+    mode: str | None = Query(None),
+    admin_user: str | None = Query(None),
+    _: None = Depends(require_admin_token),
+):
+    records = [
+        item for item in _load_admin_state().get("audit_log", [])
+        if (not mode or item.get("mode") == mode)
+        and (not admin_user or item.get("admin_user") == admin_user)
+    ][:limit]
+    return {
+        "status": "success",
+        "summary": {"total_returned": len(records)},
+        "audit_log": records,
+    }
+
+
 @router.post("/admin/escalations")
 async def admin_create_escalation(
+    request: Request,
     record_type: str = Query(""),
     entity_name: str = Query(""),
     issue_description: str = Query(""),
@@ -1326,6 +1416,15 @@ async def admin_create_escalation(
     state = _load_admin_state()
     state.setdefault("escalations", []).insert(0, escalation)
     _save_admin_state(state)
+    _record_admin_audit(
+        request,
+        endpoint="/admin/escalations",
+        mode="escalator",
+        query=f"{record_type}:{entity_name}:{issue_description}",
+        agent_id=os.getenv(_ADMIN_AGENT_REGISTRY["escalator"]["env"]),
+        action_taken=f"create_escalation:{escalation['id']}",
+        approval_status="approved",
+    )
     return {"status": "success", "escalation": escalation}
 
 
@@ -1383,6 +1482,7 @@ async def admin_escalation_detail(escalation_id: str, _: None = Depends(require_
 
 @router.patch("/admin/escalations/{escalation_id}")
 async def admin_update_escalation(
+    request: Request,
     escalation_id: str,
     status: str | None = Query(None),
     assigned_to: str | None = Query(None),
@@ -1398,12 +1498,22 @@ async def admin_update_escalation(
         escalation["assigned_to"] = assigned_to
     escalation["updated_at"] = _admin_now()
     _save_admin_state(state)
+    _record_admin_audit(
+        request,
+        endpoint=f"/admin/escalations/{escalation_id}",
+        mode="escalator",
+        query=f"{escalation_id}:{status or ''}:{assigned_to or ''}",
+        agent_id=os.getenv(_ADMIN_AGENT_REGISTRY["escalator"]["env"]),
+        action_taken="update_escalation",
+        approval_status="approved",
+    )
     return {"status": "success", "escalation": escalation, "action": "Escalation updated"}
 
 
 @router.post("/admin/field-monitor/scan")
-async def admin_field_monitor_scan(_: None = Depends(require_admin_token)):
+async def admin_field_monitor_scan(request: Request, _: None = Depends(require_admin_token)):
     query = "Run weekly VoteIQ field monitor scan."
+    agent_id = os.getenv(_ADMIN_AGENT_REGISTRY["field_monitor"]["env"])
     full_report = _run_admin_agent("field_monitor", query, max_tokens=1600)
     report = {
         "id": f"fm-{uuid.uuid4().hex[:8]}",
@@ -1420,6 +1530,15 @@ async def admin_field_monitor_scan(_: None = Depends(require_admin_token)):
     state = _load_admin_state()
     state.setdefault("field_reports", []).insert(0, report)
     _save_admin_state(state)
+    _record_admin_audit(
+        request,
+        endpoint="/admin/field-monitor/scan",
+        mode="field_monitor",
+        query=query,
+        agent_id=agent_id,
+        action_taken=f"run_field_monitor:{report['id']}",
+        approval_status="approved",
+    )
     return {"status": "success", "report": report}
 
 
