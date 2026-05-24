@@ -25,10 +25,14 @@ class ScopeLimitFooterTests(unittest.TestCase):
 
     def test_polling_scope_limit_answer_type_is_defined(self):
         self.assertIn('SCOPE_LIMIT_ANSWER_TYPE = "Scope / dataset limitation"', CHAT_SOURCE)
-        self.assertIn('POLLING_DATA_LIMIT = "Polling data is not currently included', CHAT_SOURCE)
+        self.assertIn("POLLING_DATA_LIMIT = (", CHAT_SOURCE)
+        self.assertIn("Polling data is not currently included", CHAT_SOURCE)
+        self.assertIn("VoteIQ can help with voting records", CHAT_SOURCE)
 
     def test_polling_scope_limit_footer_says_sources_used_none(self):
         self.assertIn("Sources used: none", self.source_line)
+        self.assertIn("Answer type: {SCOPE_LIMIT_ANSWER_TYPE}.", self.source_line)
+        self.assertIn("Data limits: {limit}", self.source_line)
         self.assertIn("SCOPE_LIMIT_ANSWER_TYPE", self.source_line)
         self.assertIn("POLLING_DATA_LIMIT", self.polling_reply)
 

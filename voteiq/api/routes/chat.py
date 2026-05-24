@@ -52,7 +52,11 @@ _SOURCE_LINE = (
 )
 
 SCOPE_LIMIT_ANSWER_TYPE = "Scope / dataset limitation"
-POLLING_DATA_LIMIT = "Polling data is not currently included in VoteIQ's public-record dataset."
+POLLING_DATA_LIMIT = (
+    "Polling data is not currently included in VoteIQ's public-record dataset. "
+    "VoteIQ can help with voting records, bill sponsorships, campaign finance records, "
+    "governor actions, executive orders, and legislator profiles."
+)
 
 VOTEIQ_ADMIN_SYSTEM_PROMPT = """
 You are VoteIQ, a neutral civic intelligence assistant.
@@ -102,9 +106,9 @@ def _source_line(
         limit = data_limits or "This question is outside the currently available VoteIQ dataset."
         return (
             "\n\n---\n"
-            f"*Answer type: {SCOPE_LIMIT_ANSWER_TYPE}. Sources used: none. "
-            f"Data limits: {limit} "
-            "VoteIQ does not infer motive, intent, corruption, influence, causation, or policy effectiveness.*"
+            f"Answer type: {SCOPE_LIMIT_ANSWER_TYPE}.\n"
+            "Sources used: none.\n"
+            f"Data limits: {limit}"
         )
     if sources_used:
         source_text = " · ".join(sorted(sources_used))
