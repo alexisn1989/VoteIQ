@@ -18,6 +18,15 @@ DB_PATHS = {
 BILL_RE = re.compile(r"\b(HB|SB|HJ|SJ|HR|SR|HJR|SJR)\s*-?\s*(\d{1,5})\b", re.I)
 YEAR_RE = re.compile(r"\b20\d{2}\b")
 
+KNOWN_FEDERAL_PEOPLE = {
+    "spanberger": {
+        "name": "Abigail Spanberger",
+        "bioguide_id": "S001209",
+        "fec_candidate_ids": ["H8VA07094"],
+        "office_note": "Former U.S. Representative for Virginia; current Virginia governor in VoteIQ records.",
+    },
+}
+
 
 def _norm_bill(value: str) -> str:
     match = BILL_RE.search(value or "")
@@ -163,7 +172,9 @@ def _campaign_finance_terms(query: str, terms: list[str]) -> list[str]:
         "research", "overview", "with", "why", "return", "returned", "data",
         "issue", "problem", "lookup", "retrieval", "debug", "debugger",
         "bill", "bills", "action", "actions", "veto", "vetoes", "vetoed",
-        "signed", "amended", "governor",
+        "signed", "amended", "governor", "correlation", "correlate",
+        "correlated", "relationship", "align", "alignment", "state",
+        "virginia", "office", "candidate", "committee",
     }
     names = [term for term in terms if term not in generic]
     q_lower = (query or "").lower()
@@ -182,6 +193,25 @@ def _campaign_finance_terms(query: str, terms: list[str]) -> list[str]:
         if len(result) >= 5:
             break
     return result
+
+
+def _known_federal_person(query: str) -> dict | None:
+    q_lower = (query or "").lower()
+    for key, person in KNOWN_FEDERAL_PEOPLE.items():
+        if key in q_lower:
+            return person
+    return None
+
+
+def _is_explicit_federal_vote_query(query: str) -> bool:
+    q_lower = (query or "").lower()
+    federal_terms = (
+        "federal", "congress", "congressional", "u.s. house", "us house",
+        "house of representatives", "representative", "roll call", "roll-call",
+        "former congress", "former representative", "former u.s. representative",
+        "former us representative", "bioguide",
+    )
+    return any(term in q_lower for term in federal_terms)
 
 
 def _like_clause(columns: list[str], terms: list[str]) -> tuple[str, list[str]]:
@@ -726,6 +756,8 @@ def _person_terms(terms: list[str]) -> list[str]:
 
 def _add_person_vote_context(blocks: list[str], query: str, terms: list[str], session: str) -> None:
     q_lower = (query or "").lower()
+    if _known_federal_person(query) and _is_explicit_federal_vote_query(query):
+        return
     has_vote_term = any(term in q_lower for term in ("vote", "votes", "voted", "voting"))
     has_record_term = "record" in q_lower and not _is_campaign_finance_query(query)
     if not (has_vote_term or has_record_term):
@@ -771,8 +803,160 @@ def _add_person_vote_context(blocks: list[str], query: str, terms: list[str], se
         conn.close()
 
 
+def _add_federal_vote_context(blocks: list[str], query: str, terms: list[str]) -> None:
+    q_lower = (query or "").lower()
+    if not any(term in q_lower for term in (
+        "vote", "votes", "voted", "voting", "roll call", "roll-call",
+        "correlation", "campaign data", "campaign finance",
+    )):
+        return
+
+    person = _known_federal_person(query)
+    explicit_federal = _is_explicit_federal_vote_query(query)
+    if person and not explicit_federal:
+        return
+
+    conn = _connect("polls")
+    if not conn:
+        return
+
+    members: list[sqlite3.Row] = []
+    if terms and explicit_federal and _table_exists(conn, "congress_members"):
+        member_terms = [
+            term for term in terms
+            if term not in {
+                "vote", "votes", "voted", "voting", "campaign", "finance",
+                "data", "correlation", "record", "records",
+            }
+        ]
+        if member_terms:
+            clause, params = _like_all_text_clause(["name"], member_terms[:3])
+            try:
+                members = conn.execute(f"""
+                    SELECT bioguide_id, name, party, chamber, state, district
+                    FROM congress_members
+                    WHERE {clause}
+                    LIMIT 5
+                """, tuple(params)).fetchall()
+            except Exception:
+                members = []
+
+    targets: list[dict] = []
+    for row in members:
+        targets.append({
+            "name": row["name"],
+            "bioguide_id": row["bioguide_id"],
+            "party": row["party"] if "party" in row.keys() else "",
+            "chamber": row["chamber"] if "chamber" in row.keys() else "",
+            "state": row["state"] if "state" in row.keys() else "",
+            "district": row["district"] if "district" in row.keys() else "",
+            "office_note": "",
+        })
+    if person and not any(t["bioguide_id"] == person["bioguide_id"] for t in targets):
+        targets.insert(0, {
+            "name": person["name"],
+            "bioguide_id": person["bioguide_id"],
+            "party": "",
+            "chamber": "",
+            "state": "VA",
+            "district": "",
+            "office_note": person["office_note"],
+        })
+    if not targets:
+        conn.close()
+        return
+
+    lines = ["[Database Context - polls federal vote lookup]"]
+    lines.append("Source: Congress.gov / House Clerk roll-call tables when rows are present")
+
+    try:
+        for target in targets[:3]:
+            bgid = target["bioguide_id"]
+            lines.append(
+                f"target_name={target['name']}; bioguide_id={bgid}"
+                + (f"; note={target['office_note']}" if target.get("office_note") else "")
+            )
+
+            total = 0
+            if _table_exists(conn, "congress_votes"):
+                rows = conn.execute(
+                    """
+                    SELECT
+                        congress,
+                        COUNT(*) AS total_votes,
+                        SUM(CASE WHEN UPPER(member_vote) IN ('YEA', 'AYE', 'YES') THEN 1 ELSE 0 END) AS yea_votes,
+                        SUM(CASE WHEN UPPER(member_vote) IN ('NAY', 'NO') THEN 1 ELSE 0 END) AS nay_votes,
+                        SUM(CASE WHEN UPPER(member_vote) = 'NOT VOTING' THEN 1 ELSE 0 END) AS not_voting,
+                        MIN(vote_date) AS first_vote_date,
+                        MAX(vote_date) AS latest_vote_date
+                    FROM congress_votes
+                    WHERE bioguide_id = ?
+                    GROUP BY congress
+                    ORDER BY congress DESC
+                    """,
+                    (bgid,),
+                ).fetchall()
+                total += sum(int(row["total_votes"] or 0) for row in rows)
+                for row in rows:
+                    lines.append(f"- congress_votes summary: {_row_to_line(row)}")
+                recent = conn.execute(
+                    """
+                    SELECT congress, vote_date, bill, question, member_vote, result
+                    FROM congress_votes
+                    WHERE bioguide_id = ?
+                    ORDER BY vote_date DESC, vote_number DESC
+                    LIMIT 10
+                    """,
+                    (bgid,),
+                ).fetchall()
+                for row in recent:
+                    lines.append(f"- congress_votes recent: {_row_to_line(row)}")
+            else:
+                lines.append("- congress_votes: table_missing")
+
+            if _table_exists(conn, "federal_votes"):
+                rows = conn.execute(
+                    """
+                    SELECT
+                        congress,
+                        COUNT(*) AS total_votes,
+                        SUM(CASE WHEN UPPER(vote) IN ('YEA', 'AYE', 'YES') THEN 1 ELSE 0 END) AS yea_votes,
+                        SUM(CASE WHEN UPPER(vote) IN ('NAY', 'NO') THEN 1 ELSE 0 END) AS nay_votes,
+                        MIN(vote_date) AS first_vote_date,
+                        MAX(vote_date) AS latest_vote_date
+                    FROM federal_votes
+                    WHERE bioguide_id = ?
+                    GROUP BY congress
+                    ORDER BY congress DESC
+                    """,
+                    (bgid,),
+                ).fetchall()
+                total += sum(int(row["total_votes"] or 0) for row in rows)
+                for row in rows:
+                    lines.append(f"- federal_votes summary: {_row_to_line(row)}")
+            else:
+                lines.append("- federal_votes: table_missing")
+
+            if total == 0:
+                lines.append(
+                    f"lookup_status=zero_records; detail=no local federal vote rows found for bioguide_id={bgid}"
+                )
+    except Exception as exc:
+        lines.append(f"lookup_status=lookup_error; detail={type(exc).__name__}: {str(exc)[:240]}")
+    finally:
+        conn.close()
+
+    blocks.append("\n".join(lines))
+
+
 def _add_governor_action_context(blocks: list[str], query: str, terms: list[str], session: str) -> None:
     q_lower = (query or "").lower()
+    has_governor_action_term = any(
+        term in q_lower
+        for term in ("governor", "veto", "vetoed", "vetoes", "signed", "amended")
+    )
+    if _known_federal_person(query) and _is_explicit_federal_vote_query(query) and not has_governor_action_term:
+        return
     if not any(term in q_lower for term in ("governor", "spanberger", "veto", "vetoed", "vetoes", "signed", "amended")):
         return
 
@@ -967,12 +1151,14 @@ def build_database_context(query: str, max_chars: int = 22000) -> str:
 
     bills = _bill_numbers(q)
     session = _session_year(q)
+    terms = _keywords(q)
     _add_bill_context(blocks, bills, session)
-    _add_pac_context(blocks, q, _keywords(q))
-    _add_campaign_finance_context(blocks, q, _keywords(q))
-    _add_person_vote_context(blocks, q, _keywords(q), session)
-    _add_governor_action_context(blocks, q, _keywords(q), session)
-    _add_keyword_context(blocks, q, _keywords(q), session)
+    _add_pac_context(blocks, q, terms)
+    _add_governor_action_context(blocks, q, terms, session)
+    _add_federal_vote_context(blocks, q, terms)
+    _add_campaign_finance_context(blocks, q, terms)
+    _add_person_vote_context(blocks, q, terms, session)
+    _add_keyword_context(blocks, q, terms, session)
 
     context = "\n\n---\n\n".join(blocks)
     if len(context) > max_chars:
