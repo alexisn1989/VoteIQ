@@ -1,0 +1,276 @@
+{
+  "scopes": {
+    "local_hampton_roads": {
+      "description": "Hampton Roads local government (Virginia Beach, Norfolk, Newport News, Chesapeake, etc.)",
+      "keywords": [
+        "city council",
+        "municipal",
+        "hampton roads",
+        "virginia beach",
+        "norfolk",
+        "newport news",
+        "chesapeake",
+        "williamsburg",
+        "local government",
+        "city manager",
+        "councilmember",
+        "mayor",
+        "town council"
+      ],
+      "enabled_sources": [
+        "Legistar",
+        "Municipal Records",
+        "VPAP",
+        "Virginia SBE"
+      ],
+      "disabled_sources": ["FEC", "Congress.gov"],
+      "scope_priority": 1
+    },
+    "virginia_state": {
+      "description": "Virginia state government (General Assembly, statewide offices, state elections)",
+      "keywords": [
+        "virginia general assembly",
+        "house of delegates",
+        "state senate",
+        "governor",
+        "attorney general",
+        "state legislator",
+        "virginia bill",
+        "sb ",
+        "hb ",
+        "virginia law",
+        "state election",
+        "state representative"
+      ],
+      "enabled_sources": [
+        "Virginia LIS",
+        "OpenStates",
+        "Virginia SBE",
+        "VPAP",
+        "Legistar"
+      ],
+      "disabled_sources": ["FEC", "Congress.gov"],
+      "scope_priority": 2
+    },
+    "federal": {
+      "description": "U.S. Congress, federal candidates, federal elections, federal legislation",
+      "keywords": [
+        "u.s. congress",
+        "u.s. house",
+        "u.s. senate",
+        "congressman",
+        "congresswoman",
+        "senator",
+        "representative",
+        "congressional",
+        "federal candidate",
+        "federal committee",
+        "federal election",
+        "fec",
+        "congress.gov",
+        "federal bill",
+        "federal donation",
+        "federal campaign"
+      ],
+      "enabled_sources": [
+        "FEC",
+        "Congress.gov",
+        "OpenStates",
+        "VPAP"
+      ],
+      "disabled_sources": [],
+      "scope_priority": 3
+    },
+    "mixed": {
+      "description": "Questions comparing or combining state/local and federal data",
+      "keywords": [
+        "compare",
+        "both",
+        "state and federal",
+        "local and federal",
+        "vs",
+        "versus"
+      ],
+      "enabled_sources": [
+        "Virginia LIS",
+        "OpenStates",
+        "Virginia SBE",
+        "VPAP",
+        "Legistar",
+        "Municipal Records",
+        "FEC",
+        "Congress.gov"
+      ],
+      "disabled_sources": [],
+      "scope_priority": 4
+    },
+    "unknown": {
+      "description": "Query scope not clearly determined; default to Virginia/local",
+      "keywords": [],
+      "enabled_sources": [
+        "Virginia LIS",
+        "OpenStates",
+        "Virginia SBE",
+        "VPAP",
+        "Legistar",
+        "Municipal Records"
+      ],
+      "disabled_sources": ["FEC", "Congress.gov"],
+      "scope_priority": 5
+    }
+  },
+  "source_definitions": {
+    "Virginia LIS": {
+      "scope": "virginia_state",
+      "description": "Virginia Legislative Information System",
+      "current_through": "2026-05-24",
+      "url": "https://lis.virginia.gov",
+      "data_types": ["bills", "votes", "legislators"]
+    },
+    "OpenStates": {
+      "scope": ["virginia_state", "federal"],
+      "description": "Open States Project (state and federal legislative data)",
+      "current_through": "2026-05-24",
+      "url": "https://openstates.org",
+      "data_types": ["bills", "votes", "legislators"]
+    },
+    "Virginia SBE": {
+      "scope": ["virginia_state", "local_hampton_roads"],
+      "description": "Virginia State Board of Elections",
+      "current_through": "2026-05-24",
+      "url": "https://www.elections.virginia.gov",
+      "data_types": ["election_results", "voting_records"]
+    },
+    "VPAP": {
+      "scope": ["virginia_state", "local_hampton_roads", "federal"],
+      "description": "Virginia Public Access Project (campaign finance)",
+      "current_through": "2026-05-23",
+      "url": "https://www.vpap.org",
+      "data_types": ["donations", "campaign_finance"]
+    },
+    "Legistar": {
+      "scope": ["virginia_state", "local_hampton_roads"],
+      "description": "Municipal government records (meetings, votes, agendas)",
+      "current_through": "varies_by_municipality",
+      "url": "https://legistar.com",
+      "data_types": ["municipal_votes", "meetings", "agendas"]
+    },
+    "Municipal Records": {
+      "scope": "local_hampton_roads",
+      "description": "Direct municipal government websites and records",
+      "current_through": "varies_by_municipality",
+      "url": "varies",
+      "data_types": ["ordinances", "resolutions", "meeting_minutes"]
+    },
+    "FEC": {
+      "scope": "federal",
+      "description": "Federal Election Commission (federal campaign finance)",
+      "current_through": "2026-05-20",
+      "url": "https://fec.gov",
+      "data_types": ["federal_donations", "federal_committees", "federal_candidates"]
+    },
+    "Congress.gov": {
+      "scope": "federal",
+      "description": "Congress.gov (U.S. Congress bills and votes)",
+      "current_through": "2026-05-24",
+      "url": "https://congress.gov",
+      "data_types": ["federal_bills", "federal_votes"]
+    }
+  },
+  "scope_detection_rules": [
+    {
+      "pattern": "compare|both|state and federal|local and federal|vs\\.?|versus",
+      "case_insensitive": true,
+      "scope": "mixed",
+      "confidence": "high",
+      "explanation": "Query compares state/local and federal data"
+    },
+    {
+      "pattern": "^(sb|hb|cr)\\s*\\d+",
+      "case_insensitive": true,
+      "scope": "virginia_state",
+      "confidence": "high",
+      "explanation": "Bill ID format (SB/HB/CR) matches Virginia General Assembly"
+    },
+    {
+      "pattern": "u\\.s\\.\\s+(house|senate|senator|representative)|congress\\.gov|congressman|congresswoman|representative.*congress|senator.*(united states|u\\.s\\.|federal)|u\\.s\\. senator|us senator",
+      "case_insensitive": true,
+      "scope": "federal",
+      "confidence": "high",
+      "explanation": "Query mentions U.S. Congress or federal legislature"
+    },
+    {
+      "pattern": "^(congress|what bills did congress|house voted|senate voted)",
+      "case_insensitive": true,
+      "scope": "federal",
+      "confidence": "high",
+      "explanation": "Query mentions Congress voting or legislation"
+    },
+    {
+      "pattern": "elaine luria|elaine burke|morgan griffith|gus grisham|tim kaine|tim scott|virginia.*congressional|congressional.*virginia|virginia delegation",
+      "case_insensitive": true,
+      "scope": "federal",
+      "confidence": "high",
+      "explanation": "Query mentions Virginia congressional delegation member"
+    },
+    {
+      "pattern": "city council|city manager|mayor|municipal government|hampton roads|virginia beach|norfolk|newport news|chesapeake|legistar|local government",
+      "case_insensitive": true,
+      "scope": "local_hampton_roads",
+      "confidence": "high",
+      "explanation": "Query mentions local government or Hampton Roads municipality"
+    },
+    {
+      "pattern": "virginia (house|senate|general assembly|bill|law|legislature|election)",
+      "case_insensitive": true,
+      "scope": "virginia_state",
+      "confidence": "high",
+      "explanation": "Query mentions Virginia state government"
+    },
+    {
+      "pattern": "fec|federal election commission",
+      "case_insensitive": true,
+      "scope": "federal",
+      "confidence": "high",
+      "explanation": "Query mentions FEC (Federal Election Commission)"
+    }
+  ],
+  "routing_rules": {
+    "public_record_analyst": {
+      "allowed_scopes": ["local_hampton_roads", "virginia_state", "federal", "mixed"],
+      "prefer_scopes": ["virginia_state", "local_hampton_roads"],
+      "note": "Routes to federal specialists for federal queries"
+    },
+    "support_agent": {
+      "allowed_scopes": ["local_hampton_roads", "virginia_state", "federal", "mixed"],
+      "note": "Escalates data quality issues"
+    },
+    "structured_extractor": {
+      "allowed_scopes": ["local_hampton_roads", "virginia_state", "federal", "mixed"],
+      "note": "Respects scope when extracting from documents"
+    },
+    "field_monitor": {
+      "allowed_scopes": ["virginia_state", "local_hampton_roads"],
+      "prefer_scopes": ["virginia_state", "local_hampton_roads"],
+      "note": "Monitors Virginia/local civic field; not federal"
+    }
+  },
+  "source_footer_rules": {
+    "show_only_used": true,
+    "include_freshness": true,
+    "include_explanation": true,
+    "format": "inline",
+    "examples": {
+      "state_query": "Sources used: Virginia LIS · OpenStates (current through May 24, 2026)",
+      "federal_query": "Sources used: FEC (current through May 20, 2026) · Congress.gov (current through May 24, 2026)",
+      "local_query": "Sources used: Legistar · Municipal Records (current through May 2026)",
+      "mixed_query": "Sources used: VPAP (Virginia/federal campaign finance, current through May 23) · FEC (federal campaign finance, current through May 20) · Virginia LIS (state bills, current through May 24)"
+    }
+  },
+  "defaults": {
+    "default_scope": "virginia_state",
+    "fallback_scope": "unknown",
+    "enable_federal_by_default": false,
+    "warn_on_scope_change": true
+  }
+}
