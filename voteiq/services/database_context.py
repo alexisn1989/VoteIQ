@@ -116,6 +116,13 @@ def _table_exists(conn: sqlite3.Connection, table: str) -> bool:
     ).fetchone() is not None
 
 
+def _table_columns(conn: sqlite3.Connection, table: str) -> set[str]:
+    try:
+        return {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+    except Exception:
+        return set()
+
+
 def _query_rows(
     conn: sqlite3.Connection,
     sql: str,
@@ -464,6 +471,9 @@ def _add_governor_action_context(blocks: list[str], query: str, terms: list[str]
     conn = _connect("polls")
     if not conn:
         return
+    if not _table_exists(conn, "governor_actions"):
+        conn.close()
+        return
 
     action_terms = [
         term for term in terms
@@ -478,18 +488,48 @@ def _add_governor_action_context(blocks: list[str], query: str, terms: list[str]
     if not action_terms:
         action_terms = ["spanberger", "governor"]
 
-    clause, params = _like_any_clause(
-        ["governor", "action_label", "raw_status", "title", "bill_number", "sponsor_name"],
-        action_terms[:6],
-    )
+    columns = _table_columns(conn, "governor_actions")
+    select_candidates = [
+        "bill_number", "bill_id", "session", "title", "action_label", "action",
+        "raw_status", "status", "action_date", "date", "governor", "sponsor_name",
+        "source_url", "url",
+    ]
+    search_candidates = [
+        "governor", "action_label", "action", "raw_status", "status",
+        "title", "bill_number", "bill_id", "sponsor_name",
+    ]
+    select_cols = [col for col in select_candidates if col in columns]
+    search_cols = [col for col in search_candidates if col in columns]
+    if not select_cols or not search_cols:
+        conn.close()
+        return
+
+    clause, params = _like_any_clause(search_cols, action_terms[:6])
+    where_parts = [f"({clause})"]
+    query_params: list[str] = list(params)
+    if "session" in columns:
+        where_parts.insert(0, "session=?")
+        query_params.insert(0, session)
+    order_col = "action_date" if "action_date" in columns else "date" if "date" in columns else select_cols[0]
     _query_rows(conn, f"""
-        SELECT bill_number, session, title, action_label, raw_status,
-               action_date, governor, sponsor_name, source_url
+        SELECT {", ".join(select_cols)}
         FROM governor_actions
-        WHERE session=? AND ({clause})
-        ORDER BY action_date DESC, bill_number
+        WHERE {" AND ".join(where_parts)}
+        ORDER BY {order_col} DESC
         LIMIT 40
-    """, [session, *params], "polls.governor_actions keyword", blocks, limit=40)
+    """, query_params, "polls.governor_actions keyword", blocks, limit=40)
+
+    if "veto" in q_lower and not any("governor_actions" in block for block in blocks):
+        veto_cols = [col for col in ("action_label", "action", "raw_status", "status", "title") if col in columns]
+        if veto_cols:
+            veto_clause, veto_params = _like_any_clause(veto_cols, ["veto"])
+            _query_rows(conn, f"""
+                SELECT {", ".join(select_cols)}
+                FROM governor_actions
+                WHERE {veto_clause}
+                ORDER BY {order_col} DESC
+                LIMIT 40
+            """, veto_params, "polls.governor_actions veto fallback", blocks, limit=40)
     conn.close()
 
 
