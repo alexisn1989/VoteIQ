@@ -142,6 +142,45 @@ def _query_rows(
     blocks.append("\n".join(lines))
 
 
+_FINANCE_QUERY_TERMS = (
+    "finance", "financial", "finicial", "fundraising", "fundraiser",
+    "raised", "donor", "donors", "money", "contribution", "contributions",
+    "campaign", "filing", "filings", "sbe", "vpap", "funding", "funded",
+)
+
+
+def _is_campaign_finance_query(query: str) -> bool:
+    q_lower = (query or "").lower()
+    return any(term in q_lower for term in _FINANCE_QUERY_TERMS)
+
+
+def _campaign_finance_terms(query: str, terms: list[str]) -> list[str]:
+    generic = {
+        "campaign", "finance", "financial", "finicial", "fundraising",
+        "fundraiser", "raised", "donor", "donors", "money", "contribution",
+        "contributions", "record", "records", "filing", "filings", "sbe",
+        "vpap", "funding", "funded", "public", "source", "sources",
+        "research", "overview", "with",
+    }
+    names = [term for term in terms if term not in generic]
+    q_lower = (query or "").lower()
+    if "spanberger" in q_lower or "spanberge" in q_lower:
+        names.insert(0, "spanberger")
+    elif "governor" in q_lower and _is_campaign_finance_query(query):
+        names.insert(0, "spanberger")
+
+    result: list[str] = []
+    seen: set[str] = set()
+    for name in names:
+        low = name.lower()
+        if low and low not in seen:
+            seen.add(low)
+            result.append(low)
+        if len(result) >= 5:
+            break
+    return result
+
+
 def _like_clause(columns: list[str], terms: list[str]) -> tuple[str, list[str]]:
     clauses = []
     params: list[str] = []
@@ -162,6 +201,205 @@ def _like_any_clause(columns: list[str], terms: list[str]) -> tuple[str, list[st
             clauses.append(f"lower({col}) LIKE ?")
             params.append(f"%{term.lower()}%")
     return " OR ".join(clauses), params
+
+
+def _add_campaign_finance_context(blocks: list[str], query: str, terms: list[str]) -> None:
+    if not _is_campaign_finance_query(query):
+        return
+
+    q_lower = (query or "").lower()
+    finance_terms = _campaign_finance_terms(query, terms)
+    if not finance_terms:
+        return
+
+    conn = _connect("polls")
+    if not conn:
+        blocks.append(
+            "[Database Context - campaign finance lookup]\n"
+            "lookup_status=lookup_error\n"
+            "detail=polls.db unavailable"
+        )
+        return
+
+    found_any = False
+    searched_tables: list[str] = []
+
+    try:
+        if _table_exists(conn, "candidate_registry"):
+            searched_tables.append("candidate_registry")
+            columns = _table_columns(conn, "candidate_registry")
+            search_cols = [col for col in ("name", "office", "party", "state", "level") if col in columns]
+            select_cols = [
+                col for col in (
+                    "candidate_key", "fec_candidate_id", "bioguide_id", "lis_id",
+                    "name", "party", "level", "office", "state", "cycle",
+                )
+                if col in columns
+            ]
+            if search_cols and select_cols:
+                clause, params = _like_any_text_clause(search_cols, finance_terms)
+                rows = conn.execute(f"""
+                    SELECT {', '.join(_quote_identifier(col) for col in select_cols)}
+                    FROM candidate_registry
+                    WHERE {clause}
+                    ORDER BY {_quote_identifier('cycle') if 'cycle' in columns else select_cols[0]} DESC
+                    LIMIT 8
+                """, tuple(params)).fetchall()
+                if rows:
+                    found_any = True
+                    lines = ["[Database Context - polls.candidate_registry campaign finance identity]"]
+                    lines.extend(f"- {_row_to_line(row)}" for row in rows)
+                    blocks.append("\n".join(lines))
+
+        if _table_exists(conn, "va_finance_people"):
+            searched_tables.append("va_finance_people")
+            columns = _table_columns(conn, "va_finance_people")
+            search_cols = [
+                col for col in ("person_name", "committee_name", "office", "party", "role")
+                if col in columns
+            ]
+            select_cols = [
+                col for col in (
+                    "person_name", "office", "district", "party", "role",
+                    "committee_name", "finance_url", "source_url", "data_confidence",
+                    "fetched_at",
+                )
+                if col in columns
+            ]
+            if search_cols and select_cols:
+                clause, params = _like_any_text_clause(search_cols, finance_terms)
+                rows = conn.execute(f"""
+                    SELECT {', '.join(_quote_identifier(col) for col in select_cols)}
+                    FROM va_finance_people
+                    WHERE {clause}
+                    ORDER BY {_quote_identifier('fetched_at') if 'fetched_at' in columns else select_cols[0]} DESC
+                    LIMIT 8
+                """, tuple(params)).fetchall()
+                if rows:
+                    found_any = True
+                    lines = ["[Database Context - polls.va_finance_people campaign finance profile]"]
+                    lines.append("Source: Virginia SBE Campaign Finance / VPAP-linked local records")
+                    lines.extend(f"- {_row_to_line(row)}" for row in rows)
+                    blocks.append("\n".join(lines))
+
+        if _table_exists(conn, "va_cf_reports"):
+            searched_tables.append("va_cf_reports")
+            columns = _table_columns(conn, "va_cf_reports")
+            search_cols = [
+                col for col in ("CandidateName", "CommitteeName", "OfficeSought", "Party")
+                if col in columns
+            ]
+            select_cols = [
+                col for col in (
+                    "CandidateName", "CommitteeName", "CommitteeType", "OfficeSought",
+                    "Party", "ElectionCycle", "ReportYear", "FilingType",
+                    "FilingDate", "StartDate", "EndDate", "NoActivity",
+                    "BalanceLastReportingPeriod", "source_period",
+                )
+                if col in columns
+            ]
+            if search_cols and select_cols:
+                clause, params = _like_any_text_clause(search_cols, finance_terms)
+                where_parts = [f"({clause})"]
+                if "CommitteeType" in columns and "inaugural" not in q_lower:
+                    where_parts.append("lower(CAST(\"CommitteeType\" AS TEXT)) NOT LIKE '%inaugural%'")
+                order_col = "FilingDate" if "FilingDate" in columns else select_cols[0]
+                rows = conn.execute(f"""
+                    SELECT {', '.join(_quote_identifier(col) for col in select_cols)}
+                    FROM va_cf_reports
+                    WHERE {' AND '.join(where_parts)}
+                    ORDER BY {_quote_identifier(order_col)} DESC
+                    LIMIT 8
+                """, tuple(params)).fetchall()
+                if rows:
+                    found_any = True
+                    lines = ["[Database Context - polls.va_cf_reports campaign finance filings]"]
+                    lines.append("Source: Virginia SBE Campaign Finance filings")
+                    lines.extend(f"- {_row_to_line(row)}" for row in rows)
+                    blocks.append("\n".join(lines))
+
+        if _table_exists(conn, "va_cf_schedule_a"):
+            searched_tables.append("va_cf_schedule_a")
+            columns = _table_columns(conn, "va_cf_schedule_a")
+            required = {"candidate_name", "election_cycle", "amount"}
+            if required.issubset(columns):
+                clause, params = _like_any_text_clause(["candidate_name"], finance_terms)
+                rows = conn.execute(f"""
+                    SELECT
+                        candidate_name,
+                        election_cycle,
+                        COUNT(*) AS contribution_records,
+                        ROUND(SUM(amount), 2) AS total_amount,
+                        MIN(transaction_date) AS first_transaction_date,
+                        MAX(transaction_date) AS latest_transaction_date
+                    FROM va_cf_schedule_a
+                    WHERE ({clause})
+                      AND amount > 0
+                    GROUP BY candidate_name, election_cycle
+                    ORDER BY CAST(election_cycle AS INTEGER) DESC, total_amount DESC
+                    LIMIT 8
+                """, tuple(params)).fetchall()
+                if rows:
+                    found_any = True
+                    lines = ["[Database Context - polls.va_cf_schedule_a campaign finance totals]"]
+                    lines.append("Source: Virginia SBE Campaign Finance Schedule A itemized contribution records")
+                    lines.extend(f"- {_row_to_line(row)}" for row in rows)
+                    blocks.append("\n".join(lines))
+
+                donor_name_expr = (
+                    "CASE "
+                    "WHEN CAST(is_individual AS TEXT) IN ('1', 'True', 'true') "
+                    "THEN TRIM(COALESCE(first_name, '') || ' ' || COALESCE(last_or_company, '')) "
+                    "ELSE TRIM(COALESCE(last_or_company, '')) "
+                    "END"
+                    if {"is_individual", "first_name", "last_or_company"}.issubset(columns)
+                    else "TRIM(COALESCE(candidate_name, 'Unknown donor'))"
+                )
+                donor_selects = [
+                    f"{donor_name_expr} AS donor_name",
+                    "election_cycle",
+                    "COUNT(*) AS contribution_records",
+                    "ROUND(SUM(amount), 2) AS total_amount",
+                ]
+                group_cols = ["donor_name", "election_cycle"]
+                if "employer" in columns:
+                    donor_selects.append("employer")
+                    group_cols.append("employer")
+                if "occupation" in columns:
+                    donor_selects.append("occupation")
+                    group_cols.append("occupation")
+                rows = conn.execute(f"""
+                    SELECT {', '.join(donor_selects)}
+                    FROM va_cf_schedule_a
+                    WHERE ({clause})
+                      AND amount > 0
+                    GROUP BY {', '.join(group_cols)}
+                    ORDER BY total_amount DESC
+                    LIMIT 10
+                """, tuple(params)).fetchall()
+                if rows:
+                    found_any = True
+                    lines = ["[Database Context - polls.va_cf_schedule_a top contributors]"]
+                    lines.append("Source: Virginia SBE Campaign Finance Schedule A itemized contribution records")
+                    lines.extend(f"- {_row_to_line(row)}" for row in rows)
+                    blocks.append("\n".join(lines))
+    except Exception as exc:
+        blocks.append(
+            "[Database Context - campaign finance lookup]\n"
+            "lookup_status=lookup_error\n"
+            f"detail={type(exc).__name__}: {str(exc)[:240]}\n"
+            f"searched_tables={', '.join(searched_tables) if searched_tables else 'none'}"
+        )
+    finally:
+        conn.close()
+
+    if not found_any:
+        blocks.append(
+            "[Database Context - campaign finance lookup]\n"
+            "lookup_status=zero_records\n"
+            f"searched_terms={', '.join(finance_terms)}\n"
+            f"searched_tables={', '.join(searched_tables) if searched_tables else 'none'}"
+        )
 
 
 def _quote_identifier(name: str) -> str:
@@ -246,7 +484,7 @@ def _add_keyword_context(blocks: list[str], query: str, terms: list[str], sessio
         return
 
     q_lower = (query or "").lower()
-    is_finance = any(term in q_lower for term in ("finance", "donor", "money", "contribution", "campaign", "pac"))
+    is_finance = _is_campaign_finance_query(query) or "pac" in q_lower
 
     conn = _connect("polls")
     if conn and is_finance:
@@ -653,6 +891,7 @@ def build_database_context(query: str, max_chars: int = 22000) -> str:
     session = _session_year(q)
     _add_bill_context(blocks, bills, session)
     _add_pac_context(blocks, q, _keywords(q))
+    _add_campaign_finance_context(blocks, q, _keywords(q))
     _add_person_vote_context(blocks, q, _keywords(q), session)
     _add_governor_action_context(blocks, q, _keywords(q), session)
     _add_keyword_context(blocks, q, _keywords(q), session)
