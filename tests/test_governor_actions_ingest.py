@@ -28,12 +28,23 @@ class GovernorActionsIngestTests(unittest.TestCase):
                 veto_count = conn.execute(
                     "SELECT COUNT(*) FROM governor_actions WHERE action = 'vetoed'"
                 ).fetchone()[0]
+                hb1385_title = conn.execute(
+                    """
+                    SELECT title
+                    FROM governor_actions
+                    WHERE bill_number = 'HB1385' AND session = '2026'
+                    """
+                ).fetchone()[0]
             finally:
                 conn.close()
 
         self.assertIsNotNone(table)
         self.assertGreaterEqual(count, 28)
         self.assertGreaterEqual(veto_count, 28)
+        self.assertEqual(
+            hb1385_title,
+            "Higher educational institutions, public; membership of governing boards.",
+        )
 
 
 if __name__ == "__main__":

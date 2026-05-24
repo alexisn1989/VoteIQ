@@ -36,36 +36,36 @@ ACTION_LABELS = {
 OFFICIAL_2026_VETO_OVERRIDES = {
     # April regular-session vetoes already appear correctly in OpenStates latest
     # snapshots on some builds, but keeping them here makes the outcome stable.
-    "HB1288": ("2026-04-13", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html"),
-    "SB17": ("2026-04-13", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html"),
-    "HB86": ("2026-04-13", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html"),
-    "SB764": ("2026-04-13", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html"),
-    "HB637": ("2026-04-14", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html"),
-    "SB23": ("2026-04-13", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html"),
-    "SB661": ("2026-04-13", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html"),
-    "SB756": ("2026-04-11", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html"),
+    "HB1288": ("2026-04-13", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html", "Enforcement of vehicle liens; increases property value."),
+    "SB17": ("2026-04-13", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html", "Enforcement of vehicle liens; increases property value."),
+    "HB86": ("2026-04-13", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html", "Mattress Stewardship Program; established, definitions, report."),
+    "SB764": ("2026-04-13", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html", "Defendant; deferred disposition in a criminal case, license suspension."),
+    "HB637": ("2026-04-14", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html", "Possession of residue of a controlled substance unlawful; penalties exceptions."),
+    "SB23": ("2026-04-13", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html", "Plea agreements and court orders; prohibited provisions."),
+    "SB661": ("2026-04-13", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html", "Va. Small Business Economic Dev. Act; established, regulation and taxation of skill game machines."),
+    "SB756": ("2026-04-11", "https://www.governor.virginia.gov/newsroom/news-releases/2026/april-releases/name-1116393-en.html", "Casino gaming; eligible host localities."),
 
     # Post-reconvene vetoes in the Governor's May 19, 2026 release.
-    "HB61": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
-    "HB111": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
-    "HB246": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
-    "SB335": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
-    "HB449": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
-    "SB229": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
-    "HB483": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
-    "SB271": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
-    "HB642": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
-    "SB542": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
-    "HB1173": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
-    "SB258": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
-    "HB1222": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
-    "HB1385": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
-    "SB494": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
-    "HB1392": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
-    "SB83": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
-    "SB218": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
-    "HB1263": ("2026-05-14", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
-    "SB378": ("2026-05-14", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html"),
+    "HB61": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html", "Small SWaM Business Procurement Enhancement Program; established, report."),
+    "HB111": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html", "Voter registration; cancellation of registration, sources of data."),
+    "HB246": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html", "Mental illness, neurocognitive disorder, etc.; affirmative defense or reduced penalty."),
+    "SB335": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html", "Mental illness, neurocognitive disorder, etc.; affirmative defense or reduced penalty."),
+    "HB449": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html", "Civil actions filed on behalf of multiple persons; class actions."),
+    "SB229": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html", "Civil actions filed on behalf of multiple persons; class actions."),
+    "HB483": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html", "Prescription Drug Affordability Board; established."),
+    "SB271": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html", "Prescription Drug Affordability Board; established."),
+    "HB642": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html", "Cannabis control; establishes framework for creation of retail marijuana market, penalties, report."),
+    "SB542": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html", "Cannabis control; establishes framework for creation of retail marijuana market, penalties, report."),
+    "HB1173": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html", "Virginia Human Rights Act; reasonable accommodation for known limitations related to menopause."),
+    "SB258": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html", "Virginia Human Rights Act; reasonable accommodation for known limitations related to menopause."),
+    "HB1222": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html", "Social services, local departments of; child abuse and neglect, recorded interviews."),
+    "HB1385": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html", "Higher educational institutions, public; membership of governing boards."),
+    "SB494": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html", "Higher educational institutions, public; membership of governing boards."),
+    "HB1392": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html", "Correctional facilities, local and regional, and courthouse security; powers & duties for operation."),
+    "SB83": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html", "District or circuit court; possession of portable electronic devices."),
+    "SB218": ("2026-05-19", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html", "Inmates; Director of Dept. of Corrections shall continue to accept applications for confinement."),
+    "HB1263": ("2026-05-14", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html", "Public employees; repeals existing prohibition on collective bargaining, etc."),
+    "SB378": ("2026-05-14", "https://www.governor.virginia.gov/newsroom/news-releases/2026/may-releases/name-1118109-en.html", "Public employees; repeals existing prohibition on collective bargaining, etc."),
 }
 
 
@@ -160,9 +160,9 @@ def _apply_official_veto_overrides(conn: sqlite3.Connection, sessions: list[str]
 
     count = 0
     conn.row_factory = sqlite3.Row
-    for bill_number, (action_date, source_url) in OFFICIAL_2026_VETO_OVERRIDES.items():
+    for bill_number, (action_date, source_url, fallback_title) in OFFICIAL_2026_VETO_OVERRIDES.items():
         bill = _bill_lookup(conn, bill_number, "2026")
-        title = bill["title"] if bill else ""
+        title = bill["title"] if bill else fallback_title
         prior_status = bill["status"] if bill else ""
         existing = conn.execute(
             """
