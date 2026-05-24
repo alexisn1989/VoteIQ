@@ -164,6 +164,10 @@ def _like_any_clause(columns: list[str], terms: list[str]) -> tuple[str, list[st
     return " OR ".join(clauses), params
 
 
+def _quote_identifier(name: str) -> str:
+    return '"' + str(name).replace('"', '""') + '"'
+
+
 def _add_bill_context(blocks: list[str], bills: list[str], session: str) -> None:
     if not bills:
         return
@@ -470,9 +474,19 @@ def _add_governor_action_context(blocks: list[str], query: str, terms: list[str]
 
     conn = _connect("polls")
     if not conn:
+        _append_governor_action_lookup_block(
+            blocks,
+            "lookup_error",
+            detail="polls.db unavailable",
+        )
         return
     if not _table_exists(conn, "governor_actions"):
         conn.close()
+        _append_governor_action_lookup_block(
+            blocks,
+            "table_missing",
+            detail="polls.governor_actions table not found",
+        )
         return
 
     action_terms = [
@@ -490,47 +504,117 @@ def _add_governor_action_context(blocks: list[str], query: str, terms: list[str]
 
     columns = _table_columns(conn, "governor_actions")
     select_candidates = [
-        "bill_number", "bill_id", "session", "title", "action_label", "action",
-        "raw_status", "status", "action_date", "date", "governor", "sponsor_name",
-        "source_url", "url",
+        "bill_number", "bill_id", "session", "title", "bill_title", "description",
+        "summary", "action_label", "action", "action_type", "raw_status", "status",
+        "action_status", "action_date", "date", "effective_date", "governor",
+        "sponsor_name", "source_url", "url",
     ]
     search_candidates = [
-        "governor", "action_label", "action", "raw_status", "status",
-        "title", "bill_number", "bill_id", "sponsor_name",
+        "governor", "action_label", "action", "action_type", "raw_status", "status",
+        "action_status", "title", "bill_title", "description", "summary",
+        "bill_number", "bill_id", "action_date", "date", "effective_date",
     ]
     select_cols = [col for col in select_candidates if col in columns]
     search_cols = [col for col in search_candidates if col in columns]
     if not select_cols or not search_cols:
         conn.close()
+        _append_governor_action_lookup_block(
+            blocks,
+            "schema_mismatch",
+            detail="governor_actions has no usable select/search columns",
+            columns=sorted(columns),
+            search_columns=search_cols,
+        )
         return
 
-    clause, params = _like_any_clause(search_cols, action_terms[:6])
+    clause, params = _like_any_text_clause(search_cols, action_terms[:6])
     where_parts = [f"({clause})"]
     query_params: list[str] = list(params)
     if "session" in columns:
-        where_parts.insert(0, "session=?")
+        where_parts.insert(0, f"{_quote_identifier('session')}=?")
         query_params.insert(0, session)
     order_col = "action_date" if "action_date" in columns else "date" if "date" in columns else select_cols[0]
-    _query_rows(conn, f"""
-        SELECT {", ".join(select_cols)}
-        FROM governor_actions
-        WHERE {" AND ".join(where_parts)}
-        ORDER BY {order_col} DESC
-        LIMIT 40
-    """, query_params, "polls.governor_actions keyword", blocks, limit=40)
+    quoted_select = ", ".join(_quote_identifier(col) for col in select_cols)
+    try:
+        rows = conn.execute(f"""
+            SELECT {quoted_select}
+            FROM governor_actions
+            WHERE {" AND ".join(where_parts)}
+            ORDER BY {_quote_identifier(order_col)} DESC
+            LIMIT 40
+        """, tuple(query_params)).fetchall()
 
-    if "veto" in q_lower and not any("governor_actions" in block for block in blocks):
-        veto_cols = [col for col in ("action_label", "action", "raw_status", "status", "title") if col in columns]
-        if veto_cols:
-            veto_clause, veto_params = _like_any_clause(veto_cols, ["veto"])
-            _query_rows(conn, f"""
-                SELECT {", ".join(select_cols)}
-                FROM governor_actions
-                WHERE {veto_clause}
-                ORDER BY {order_col} DESC
-                LIMIT 40
-            """, veto_params, "polls.governor_actions veto fallback", blocks, limit=40)
+        if not rows and "veto" in q_lower:
+            veto_cols = [
+                col for col in (
+                    "action_label", "action", "action_type", "raw_status", "status",
+                    "action_status", "title", "bill_title", "description", "summary",
+                )
+                if col in columns
+            ]
+            if veto_cols:
+                veto_clause, veto_params = _like_any_text_clause(veto_cols, ["veto"])
+                rows = conn.execute(f"""
+                    SELECT {quoted_select}
+                    FROM governor_actions
+                    WHERE {veto_clause}
+                    ORDER BY {_quote_identifier(order_col)} DESC
+                    LIMIT 40
+                """, tuple(veto_params)).fetchall()
+    except Exception as exc:
+        conn.close()
+        _append_governor_action_lookup_block(
+            blocks,
+            "lookup_error",
+            detail=f"{type(exc).__name__}: {str(exc)[:240]}",
+            columns=sorted(columns),
+            search_columns=search_cols,
+        )
+        return
+
     conn.close()
+    _append_governor_action_lookup_block(
+        blocks,
+        "records_found" if rows else "zero_records",
+        rows=rows,
+        columns=sorted(columns),
+        search_columns=search_cols,
+        detail=f"searched {len(search_cols)} column(s)",
+    )
+
+
+def _like_any_text_clause(columns: list[str], terms: list[str]) -> tuple[str, list[str]]:
+    clauses = []
+    params: list[str] = []
+    for term in terms:
+        for col in columns:
+            clauses.append(f"lower(CAST({_quote_identifier(col)} AS TEXT)) LIKE ?")
+            params.append(f"%{term.lower()}%")
+    return " OR ".join(clauses), params
+
+
+def _append_governor_action_lookup_block(
+    blocks: list[str],
+    status: str,
+    *,
+    rows: list[sqlite3.Row] | None = None,
+    columns: list[str] | None = None,
+    search_columns: list[str] | None = None,
+    detail: str = "",
+) -> None:
+    lines = ["[Database Context - polls.governor_actions lookup]"]
+    lines.append(f"lookup_status={status}")
+    if detail:
+        lines.append(f"detail={detail}")
+    if columns is not None:
+        lines.append(f"available_columns={', '.join(columns) if columns else 'none'}")
+    if search_columns is not None:
+        lines.append(f"searched_columns={', '.join(search_columns) if search_columns else 'none'}")
+    for row in rows or []:
+        lines.append(f"- {_row_to_line(row)}")
+    if status == "records_found":
+        lines.append("Footer: SQL governor action lookup")
+    blocks.append("\n".join(lines))
 
 
 def _add_schema_summary(blocks: list[str]) -> None:
