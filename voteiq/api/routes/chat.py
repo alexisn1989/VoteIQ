@@ -215,48 +215,80 @@ _ADMIN_AGENT_REGISTRY = {
         "name": "Public Record Analyst",
         "env": "VOTEIQ_ANALYST_AGENT_ID",
         "tags": ["exact-facts", "structured-records", "official"],
+        "visibility": "public_facing",
+        "surface": "Public Record Analyst output",
         "prompt": "Return exact facts from structured public records. Cite record source, dates, amounts, IDs, votes, bill actions, executive orders, and data limits. Do not produce broad research synthesis; route that to Deep Researcher.",
     },
     "escalator": {
         "name": "Data Quality Escalator",
         "env": "VOTEIQ_ESCALATOR_AGENT_ID",
         "tags": ["support", "data-quality"],
+        "visibility": "admin_only",
+        "surface": "Data Quality Escalator",
         "prompt": "Inspect records and draft an escalation summary with repro steps, likely source, and suggested fix. Do not write to production data or claim a fix was applied without separate human approval.",
     },
     "field_monitor": {
         "name": "Field Monitor",
         "env": "VOTEIQ_FIELD_MONITOR_AGENT_ID",
         "tags": ["intelligence", "briefing"],
+        "visibility": "admin_only",
+        "surface": "Civic Field Monitor",
         "prompt": "Prepare a concise field-monitor intelligence brief with immediate, soon, and later actions.",
     },
     "debugger": {
         "name": "Data Debugger",
         "env": "VOTEIQ_DEBUGGER_AGENT_ID",
         "tags": ["debug", "pipeline"],
+        "visibility": "admin_only",
+        "surface": "Source Debugger",
         "prompt": "Debug the data or retrieval issue using only supplied records and identify likely next checks. Inspect only; do not mutate production records.",
     },
     "golden_query": {
         "name": "Golden Query QA",
         "env": "VOTEIQ_GOLDEN_QUERY_AGENT_ID",
         "tags": ["qa", "search"],
+        "visibility": "admin_only",
+        "surface": "Golden Query Tester",
         "prompt": "Evaluate whether the retrieved result satisfies the expected answer. Flag missing or weak evidence.",
     },
     "crosswalk": {
         "name": "Identity Crosswalk",
         "env": "VOTEIQ_CROSSWALK_AGENT_ID",
         "tags": ["identity", "matching"],
+        "visibility": "admin_only",
+        "surface": "Identity Crosswalk",
         "prompt": "Resolve identity fields carefully. Preserve FEC IDs, bioguide IDs, aliases, party, state, and district.",
+    },
+    "structured_extractor": {
+        "name": "Structured Extractor",
+        "env": "VOTEIQ_STRUCTURED_EXTRACTOR_AGENT_ID",
+        "tags": ["internal", "extraction", "schema"],
+        "visibility": "admin_only",
+        "surface": "Structured Extractor",
+        "prompt": "Extract draft structured JSON from supplied civic source text. Preserve source URLs, confidence, and ambiguity notes. Do not write extracted records to production data.",
     },
     "data_analyst": {
         "name": "Data Analyst",
         "env": "VOTEIQ_DATA_ANALYST_AGENT_ID",
         "tags": ["analysis", "records"],
+        "visibility": "admin_only",
+        "surface": "Data Analyst",
         "prompt": "Analyze the supplied records without inferring motive, causation, corruption, influence, or effectiveness.",
+    },
+    "general_admin": {
+        "name": "General Admin Utility",
+        "env": "VOTEIQ_GENERAL_ADMIN_AGENT_ID",
+        "tags": ["internal", "admin", "ops"],
+        "visibility": "admin_only",
+        "surface": "General Admin Utility",
+        "prompt": "Help with internal VoteIQ admin operations, drafts, checklists, and coordination. Draft only; do not mutate production data or notify external parties without approval.",
     },
     "deep_researcher": {
         "name": "Deep Researcher",
         "env": "VOTEIQ_DEEP_RESEARCHER_AGENT_ID",
         "tags": ["broader-research", "primary-sources", "synthesis"],
+        "visibility": "admin_only",
+        "surface": "Deep Researcher",
         "prompt": (
             "Produce broader research reports with 3-5 sub-questions, source tiers, findings, recency, confidence, synthesis, and gaps. "
             "Use Tier 1 official/SQL sources first, then primary historical records, then credible public media/research. "
@@ -268,12 +300,16 @@ _ADMIN_AGENT_REGISTRY = {
         "name": "Support Drafts",
         "env": "VOTEIQ_SUPPORT_DRAFTS_AGENT_ID",
         "tags": ["support", "communication"],
+        "visibility": "public_facing",
+        "surface": "Support/help flow",
         "prompt": "Draft a concise support response. Say what was checked, what is missing, and the next action.",
     },
     "sprint_retro": {
         "name": "Sprint Retro Facilitator",
         "env": "VOTEIQ_SPRINT_RETRO_AGENT_ID",
         "tags": ["internal", "retro", "process"],
+        "visibility": "admin_only",
+        "surface": "Sprint Retro Facilitator",
         "prompt": (
             "Prepare internal VoteIQ sprint retrospectives from Linear, Slack, GitHub, and supplied context. "
             "Draft only: never post, save, notify, or share without human approval. "
@@ -284,6 +320,8 @@ _ADMIN_AGENT_REGISTRY = {
         "name": "Visual Explainer",
         "env": "VOTEIQ_VISUAL_EXPLAINER_AGENT_ID",
         "tags": ["visualization", "customer-facing", "charts", "maps"],
+        "visibility": "public_facing",
+        "surface": "Visual Explainer",
         "prompt": (
             "Turn verified VoteIQ Analyst/API/RAG data into JSON visual definitions for charts, maps, timelines, comparison tables, or summary cards. "
             "Use verified sources only, include source labels, current-through date, data limits, and a plain-English explanation. "
@@ -294,9 +332,18 @@ _ADMIN_AGENT_REGISTRY = {
         "name": "WHRO Grants",
         "env": "VOTEIQ_WHRO_GRANTS_AGENT_ID",
         "tags": ["grants", "partnerships"],
+        "visibility": "admin_only",
+        "surface": "WHRO/Grant Drafts",
         "prompt": "Draft grant or partnership language using the supplied VoteIQ public-record mission context.",
     },
 }
+
+_PUBLIC_FACING_FLOWS = [
+    {"name": "Public Record Analyst output", "mode": "analyst"},
+    {"name": "Visual Explainer", "mode": "visual_explainer"},
+    {"name": "Support/help flow", "mode": "support_drafts"},
+    {"name": "Report issue flow", "mode": "report_issue"},
+]
 
 
 def _admin_now() -> str:
@@ -413,6 +460,9 @@ def _admin_agent_status(mode: str, state: dict | None = None) -> dict:
         "deployed": bool(agent_id),
         "agent_id": agent_id,
         "tags": spec["tags"],
+        "visibility": spec.get("visibility", "admin_only"),
+        "surface": spec.get("surface", spec["name"]),
+        "public_facing": spec.get("visibility") == "public_facing",
         "deployment_status": "Ready" if agent_id else "Not deployed",
         "created_at": metrics.get("created_at"),
         "last_called": metrics.get("last_called"),
@@ -440,6 +490,7 @@ def _run_admin_agent(
     retrieved_records: str = "",
     max_tokens: int = 1200,
     output_mode: str = "",
+    model_override: str = "",
 ) -> str:
     if mode not in _ADMIN_AGENT_REGISTRY:
         modes = ", ".join(sorted(_ADMIN_AGENT_REGISTRY))
@@ -451,7 +502,7 @@ def _run_admin_agent(
         [],
         f"Agent mode: {mode}\nOutput mode: {output_mode or 'standard'}\nAgent instruction: {spec['prompt']}\n\n{records}",
     )
-    model = (os.getenv("ANTHROPIC_ADMIN_MODEL") or os.getenv("ANTHROPIC_MODEL") or "claude-sonnet-4-6").strip()
+    model = (model_override or os.getenv("ANTHROPIC_ADMIN_MODEL") or os.getenv("ANTHROPIC_MODEL") or "claude-sonnet-4-6").strip()
     start = datetime.utcnow()
     try:
         response = get_claude_client().messages.create(
@@ -552,6 +603,7 @@ class AdminDashboardChatRequest(BaseModel):
     query: str = ""
     retrieved_records: str = ""
     output_mode: str = ""
+    model: str = ""
     action_taken: str = ""
     approval_status: str = ""
     max_tokens: int = 1200
@@ -1289,6 +1341,7 @@ async def admin_dashboard_chat(
         retrieved_records=body.retrieved_records,
         max_tokens=token_limit,
         output_mode=selected_output_mode,
+        model_override=body.model,
     )
     audit_record = _record_admin_audit(
         request,
@@ -1317,13 +1370,25 @@ async def admin_agents(_: None = Depends(require_admin_token)):
     state = _load_admin_state()
     agents = [_admin_agent_status(mode, state) for mode in _ADMIN_AGENT_REGISTRY]
     deployed = sum(1 for agent in agents if agent["deployed"])
+    public_agents = [agent for agent in agents if agent["public_facing"]]
+    admin_agents_only = [agent for agent in agents if not agent["public_facing"]]
     return {
         "status": "success",
         "summary": {
             "total_agents": len(agents),
             "deployed": deployed,
             "missing": len(agents) - deployed,
+            "public_facing": len(public_agents),
+            "admin_only": len(admin_agents_only),
         },
+        "public_facing": [
+            {"name": flow["name"], "mode": flow["mode"]}
+            for flow in _PUBLIC_FACING_FLOWS
+        ],
+        "admin_only": [
+            {"name": agent["surface"], "mode": agent["mode"]}
+            for agent in admin_agents_only
+        ],
         "agents": agents,
     }
 

@@ -54,8 +54,35 @@
     <aside class="panel side">
       <h2>Evidence</h2>
       <div class="row">
+        <label for="mode">Mode</label>
+        <select id="mode">
+          <optgroup label="Public-facing outputs">
+            <option value="analyst">Public Record Analyst</option>
+            <option value="visual_explainer">Visual Explainer</option>
+            <option value="support_drafts">Support/help draft</option>
+          </optgroup>
+          <optgroup label="Admin-only agents">
+            <option value="escalator">Data Quality Escalator</option>
+            <option value="debugger">Source Debugger</option>
+            <option value="golden_query">Golden Query Tester</option>
+            <option value="crosswalk">Identity Crosswalk</option>
+            <option value="structured_extractor">Structured Extractor</option>
+            <option value="data_analyst">Data Analyst</option>
+            <option value="general_admin">General Admin Utility</option>
+            <option value="deep_researcher">Deep Researcher</option>
+            <option value="field_monitor">Civic Field Monitor</option>
+            <option value="sprint_retro">Sprint Retro Facilitator</option>
+            <option value="whro_grants">WHRO/Grant Drafts</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="row">
         <label for="records">Retrieved records</label>
         <textarea id="records" placeholder="Optional. Paste SQL/API/RAG evidence here. If blank, VoteIQ queries local SQL context for the question."></textarea>
+      </div>
+      <div class="row">
+        <label for="outputMode">Output mode</label>
+        <input id="outputMode" placeholder="standard, draft, brief, report, json..." />
       </div>
       <div class="row">
         <label for="model">Model</label>
@@ -102,20 +129,21 @@
       const thinking = addMsg('assistant', 'Thinking...');
       send.disabled = true;
       try {
-        const url = '/api/admin/chat' + (token ? ('?token=' + encodeURIComponent(token)) : '');
+        const url = '/admin/chat' + (token ? ('?token=' + encodeURIComponent(token)) : '');
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            question,
-            messages: history.slice(-8),
+            mode: document.getElementById('mode').value,
+            query: question,
             retrieved_records: document.getElementById('records').value,
+            output_mode: document.getElementById('outputMode').value,
             model: document.getElementById('model').value,
             max_tokens: Number(document.getElementById('maxTokens').value || 1200)
           })
         });
         const data = await res.json();
-        const reply = data.reply || data.detail || 'No response.';
+        const reply = data.response || data.reply || data.detail || 'No response.';
         thinking.textContent = reply;
         history.push({ role: 'assistant', content: reply });
       } catch (err) {
