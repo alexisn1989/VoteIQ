@@ -25,6 +25,14 @@ STEPS: list[tuple[str, list[str], int]] = [
 # Optional heavy steps — only run when env vars are set
 OPTIONAL: list[tuple[str, list[str], int, str]] = [
     # (script, extra_args, timeout, required_env_var)
+    ("download_va_finance.py",     ["--since", os.getenv("VA_FINANCE_SINCE", "2023_01"),
+                                    "--workers", os.getenv("VA_FINANCE_WORKERS", "2")],
+                                                              1800, "VOTEIQ_BUILD_STATE_FINANCE"),
+    ("build_va_state_finance.py",  ["--since", os.getenv("VA_FINANCE_BUILD_SINCE", "2023")],
+                                                              1800, "VOTEIQ_BUILD_STATE_FINANCE"),
+    ("bulk_download_va_reports.py", ["--start", os.getenv("VA_FINANCE_REPORT_START", "2023_01"),
+                                     "--end", os.getenv("VA_FINANCE_REPORT_END", "2026_05")],
+                                                              1800, "VOTEIQ_BUILD_STATE_FINANCE"),
     ("ingest_congress.py",        ["--congress", "119"],       600,  "CONGRESS_API_KEY"),
     ("ingest_congress_votes.py",  ["--house-limit", "300"],    600,  "CONGRESS_API_KEY"),
     ("ingest_fec_pacs.py",        [],                          1800, "FEC_API_KEY"),
