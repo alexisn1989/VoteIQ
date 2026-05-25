@@ -177,6 +177,101 @@ class CampaignFinanceService:
 
         return cursor.fetchall()
 
+    def get_pac_analysis(self, candidate_name: str) -> Optional[Dict]:
+        """Get detailed PAC contribution analysis for a candidate"""
+        conn = sqlite3.connect(str(self.db_path))
+        cursor = conn.cursor()
+
+        # Get total PAC contributions
+        cursor.execute("""
+            SELECT
+                COUNT(*) as pac_count,
+                SUM(amount) as pac_total
+            FROM va_cf_schedule_a
+            WHERE candidate_name = ? AND is_individual = 0
+        """, (candidate_name,))
+
+        result = cursor.fetchone()
+        pac_count = result[0] if result and result[0] else 0
+        pac_total = result[1] if result and result[1] else 0
+
+        # Get top PACs
+        cursor.execute("""
+            SELECT
+                last_or_company,
+                SUM(amount) as total,
+                COUNT(*) as donation_count
+            FROM va_cf_schedule_a
+            WHERE candidate_name = ? AND is_individual = 0
+            GROUP BY last_or_company
+            ORDER BY total DESC
+            LIMIT 20
+        """, (candidate_name,))
+
+        top_pacs = cursor.fetchall()
+
+        # Get PAC categories (Democratic, Republican, Issue-based)
+        pac_categories = self._categorize_pacs(top_pacs)
+
+        # Get individual vs PAC ratio
+        cursor.execute("""
+            SELECT
+                is_individual,
+                COUNT(*) as count,
+                SUM(amount) as total
+            FROM va_cf_schedule_a
+            WHERE candidate_name = ?
+            GROUP BY is_individual
+        """, (candidate_name,))
+
+        funding_breakdown = {}
+        for is_indiv, count, total in cursor.fetchall():
+            funding_breakdown[is_indiv] = {"count": count, "total": total}
+
+        conn.close()
+
+        individual_total = funding_breakdown.get(1, {}).get("total", 0)
+        pac_pct = (pac_total / (individual_total + pac_total) * 100) if (individual_total + pac_total) > 0 else 0
+
+        return {
+            'pac_count': pac_count,
+            'pac_total': pac_total,
+            'pac_percentage': pac_pct,
+            'top_pacs': top_pacs,
+            'pac_categories': pac_categories,
+            'individual_total': individual_total,
+        }
+
+    def _categorize_pacs(self, pac_list: list) -> Dict[str, list]:
+        """Categorize PACs by type (Democratic, Republican, Issue-based)"""
+        categories = {
+            'Democratic': [],
+            'Republican': [],
+            'Issue-Based': [],
+            'Other': [],
+        }
+
+        category_keywords = {
+            'Democratic': ['democratic', 'dga', 'house democratic', 'senate democratic', 'dnc', 'dem'],
+            'Republican': ['republican', 'rga', 'rsc', 'gop', 'right direction'],
+            'Issue-Based': ['fund', 'alliance', 'union', 'environmental', 'business', 'education', 'healthcare'],
+        }
+
+        for pac_name, total, count in pac_list:
+            pac_lower = (pac_name or "").lower()
+            categorized = False
+
+            for category, keywords in category_keywords.items():
+                if any(kw in pac_lower for kw in keywords):
+                    categories[category].append((pac_name, total, count))
+                    categorized = True
+                    break
+
+            if not categorized:
+                categories['Other'].append((pac_name, total, count))
+
+        return categories
+
     def get_legislative_correlation(self, governor_name: str = "Spanberger") -> Optional[Dict]:
         """Get correlation analysis between donations and legislative outcomes"""
         conn = sqlite3.connect(str(self.db_path))
@@ -270,7 +365,7 @@ class CampaignFinanceService:
         return categories
 
 
-def format_campaign_finance_response(data: CampaignFinanceData, correlation: Optional[Dict] = None, is_premium: bool = True) -> str:
+def format_campaign_finance_response(data: CampaignFinanceData, correlation: Optional[Dict] = None, pac_analysis: Optional[Dict] = None, is_premium: bool = True) -> str:
     """Format campaign finance data as markdown for chat response
 
     Args:
@@ -296,6 +391,28 @@ def format_campaign_finance_response(data: CampaignFinanceData, correlation: Opt
                                key=lambda x: x[1]['amount'],
                                reverse=True):
         response += f"| {sector} | ${info['amount']:,.0f} | {info['count']:,} | {info['pct']:.1f}% |\n"
+
+    # Add PAC analysis if available
+    if pac_analysis:
+        response += f"""
+
+### PAC Funding Analysis
+
+**PAC Contributions Summary:**
+- **Total from PACs**: ${pac_analysis['pac_total']:,.0f}
+- **Number of PACs**: {pac_analysis['pac_count']:,}
+- **% of Total Funding**: {pac_analysis['pac_percentage']:.1f}%
+- **Individual Donations**: ${pac_analysis['individual_total']:,.0f}
+
+**PACs by Category:**
+"""
+        for category, pacs in pac_analysis['pac_categories'].items():
+            if pacs:
+                response += f"\n**{category}** ({len(pacs)} PACs):\n"
+                for pac_name, total, count in pacs[:3]:  # Show top 3 per category
+                    response += f"  - {pac_name}: ${total:,.0f}\n"
+                if len(pacs) > 3:
+                    response += f"  ... and {len(pacs) - 3} more\n"
 
     response += f"""
 ### Top Individual Donors (Top 10)

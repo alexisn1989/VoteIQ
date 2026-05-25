@@ -50,11 +50,15 @@ def _fetch_spanberger_finance_context(user_query: str) -> str:
             # Always include correlation analysis
             has_correlation = any(kw in query_lower for kw in correlation_keywords)
             correlation = None
+            pac_analysis = None
 
             if has_correlation:
                 correlation = _campaign_finance_service.get_legislative_correlation("Spanberger")
 
-            return format_campaign_finance_response(data, correlation, is_premium=True)
+            # Always include PAC analysis
+            pac_analysis = _campaign_finance_service.get_pac_analysis("Abigail Spanberger")
+
+            return format_campaign_finance_response(data, correlation, pac_analysis, is_premium=True)
     except Exception as e:
         print(f"Error fetching Spanberger campaign finance: {e}")
 
@@ -98,7 +102,9 @@ def _fetch_state_campaign_finance_context(user_query: str, basic: bool = True) -
         if found_name:
             data = _campaign_finance_service.get_campaign_finance(found_name)
             if data:
-                return format_campaign_finance_response(data)
+                # Include PAC analysis for all candidates
+                pac_analysis = _campaign_finance_service.get_pac_analysis(found_name)
+                return format_campaign_finance_response(data, pac_analysis=pac_analysis)
     except Exception as e:
         print(f"Error fetching campaign finance for {candidate_name}: {e}")
 
