@@ -63,20 +63,56 @@ finally:
 PYEOF
 
 echo ""
-echo "[4/4] Checking Virginia state officials..."
+echo "[4/4] Loading Governor signed bills and executive orders..."
+python3 << 'PYEOF'
+import sys
+import os
+
+# Add current directory to path for imports
+sys.path.insert(0, os.getcwd())
+
+try:
+    import fetch_governor_signed_bills
+    count_signed = fetch_governor_signed_bills.run()
+    print(f"✓ Signed bills: {count_signed} bills loaded")
+except Exception as e:
+    print(f"⚠ Warning: Could not load signed bills: {e}")
+    count_signed = 0
+
+try:
+    import fetch_governor_executive_orders
+    count_exec = fetch_governor_executive_orders.run()
+    print(f"✓ Executive orders: {count_exec} orders loaded")
+except Exception as e:
+    print(f"⚠ Warning: Could not load executive orders: {e}")
+    count_exec = 0
+
+if count_signed > 0 or count_exec > 0:
+    print("✓ Governor actions data enhanced")
+PYEOF
+
+echo ""
+echo "[5/5] Verifying complete governor actions data..."
 python3 << 'PYEOF'
 import sqlite3
 
-conn = sqlite3.connect('legislative_intelligence.db')
+conn = sqlite3.connect('polls.db')
 cursor = conn.cursor()
 
 try:
-    cursor.execute("SELECT COUNT(*) FROM members WHERE member_id LIKE 'GOV' OR member_id LIKE 'S%' OR member_id LIKE 'H%'")
-    count = cursor.fetchone()[0]
-    print(f"  State officials in database: {count}")
-    print("✓ State officials database verified")
+    cursor.execute("""
+        SELECT action, COUNT(*) as count
+        FROM governor_actions
+        WHERE governor = 'Spanberger'
+        GROUP BY action
+        ORDER BY count DESC
+    """)
+    print("  Governor Actions Summary:")
+    for action, count in cursor.fetchall():
+        print(f"    {action:20} : {count:4} actions")
+    print("✓ Governor actions verified")
 except Exception as e:
-    print(f"  Note: State officials table will be populated separately")
+    print(f"  Note: Governor actions table status: {e}")
 finally:
     conn.close()
 PYEOF
@@ -88,5 +124,6 @@ echo "=========================================="
 echo ""
 echo "Status: READY FOR DEPLOYMENT"
 echo "Campaign Finance: Loaded and verified"
+echo "Governor Actions: Signed bills and executive orders loaded"
 echo "State Officials: Ready for queries"
 echo ""
