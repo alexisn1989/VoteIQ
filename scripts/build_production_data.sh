@@ -15,11 +15,21 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
-echo "[1/3] Building Virginia State Finance Database..."
+echo "[1/3] Downloading Virginia SBE Campaign Finance Data..."
+python3 download_va_finance.py --since 2024
+
+if [ $? -ne 0 ]; then
+    echo "✗ Failed to download SBE data"
+    exit 1
+fi
+echo "✓ CSV files downloaded successfully"
+
+echo ""
+echo "[2/3] Building Virginia State Finance Database..."
 python3 build_va_state_finance.py --since 2024 --output polls.db
 
 if [ $? -eq 0 ]; then
-    echo "✓ Campaign finance data loaded successfully"
+    echo "✓ Campaign finance database built successfully"
     FILE_SIZE=$(ls -lh polls.db | awk '{print $5}')
     echo "  Database size: $FILE_SIZE"
 else
@@ -28,7 +38,7 @@ else
 fi
 
 echo ""
-echo "[2/3] Verifying campaign finance data..."
+echo "[3/3] Verifying campaign finance data..."
 python3 << 'PYEOF'
 import sqlite3
 
@@ -53,7 +63,7 @@ finally:
 PYEOF
 
 echo ""
-echo "[3/3] Checking Virginia state officials..."
+echo "[4/4] Checking Virginia state officials..."
 python3 << 'PYEOF'
 import sqlite3
 
