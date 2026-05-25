@@ -27,15 +27,8 @@ _campaign_finance_service = CampaignFinanceService()
 
 # ── Campaign Finance Context Functions ────────────────────────────────────────
 
-def _fetch_spanberger_finance_context(user_query: str, section: str = "chat") -> str:
-    """Fetch campaign finance context for Governor Spanberger if query mentions fundraising.
-
-    Args:
-        user_query: User's question/query
-        section: Current section ('chat', 'pro', 'newspaper')
-                 - 'pro' and 'newspaper' get full correlation analysis
-                 - 'chat' gets basic info only
-    """
+def _fetch_spanberger_finance_context(user_query: str) -> str:
+    """Fetch campaign finance context for Governor Spanberger if query mentions fundraising."""
     if not user_query:
         return ""
 
@@ -54,15 +47,14 @@ def _fetch_spanberger_finance_context(user_query: str, section: str = "chat") ->
     try:
         data = _campaign_finance_service.get_campaign_finance("Abigail Spanberger")
         if data:
-            # Include correlation analysis for Pro and Newspaper sections
+            # Always include correlation analysis
             has_correlation = any(kw in query_lower for kw in correlation_keywords)
             correlation = None
-            show_correlation = section.lower() in ["pro", "newspaper"]
 
-            if has_correlation and show_correlation:
+            if has_correlation:
                 correlation = _campaign_finance_service.get_legislative_correlation("Spanberger")
 
-            return format_campaign_finance_response(data, correlation, is_premium=show_correlation)
+            return format_campaign_finance_response(data, correlation, is_premium=True)
     except Exception as e:
         print(f"Error fetching Spanberger campaign finance: {e}")
 

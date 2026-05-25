@@ -270,13 +270,13 @@ class CampaignFinanceService:
         return categories
 
 
-def format_campaign_finance_response(data: CampaignFinanceData, correlation: Optional[Dict] = None, is_premium: bool = False) -> str:
+def format_campaign_finance_response(data: CampaignFinanceData, correlation: Optional[Dict] = None, is_premium: bool = True) -> str:
     """Format campaign finance data as markdown for chat response
 
     Args:
         data: Campaign finance data
-        correlation: Legislative correlation data (premium only)
-        is_premium: Whether to include premium features (correlation analysis)
+        correlation: Legislative correlation data (always included)
+        is_premium: Whether to include correlation analysis (default True)
     """
 
     response = f"""
@@ -365,36 +365,10 @@ def format_campaign_finance_response(data: CampaignFinanceData, correlation: Opt
 - Vetoes strategically target bills opposing law enforcement or expanding worker rights
 """
 
-    # Add section notice if not showing correlation
-    if not is_premium:
-        response += """
----
-
-### [PRO/NEWSPAPER FEATURE] Legislative Correlation Analysis
-
-*This detailed analysis is available in:*
-- **Pro Section** - Full legislative intelligence and voting patterns
-- **Newspaper** - Investigative journalism on donations and legislative outcomes
-
-*Features in those sections:*
-- **Veto Pattern Analysis**: What types of bills get vetoed (Labor, Gaming, Criminal Justice, etc.)
-- **Legislative Outcomes**: Bills signed by sector, executive orders issued
-- **Correlation Intelligence**: How donations correlate with legislative votes/vetoes
-- **Strategic Analysis**: Which donor sectors get protected vs. opposed
-- **Detailed Examples**: Specific bills and voting patterns by sector
-
-This analysis reveals the relationship between campaign contributions and legislative outcomes.
-
----
-**Source**: Virginia State Board of Elections
-**Data Current**: May 25, 2026
-"""
-    else:
-        response += """
+    response += """
 ---
 **Source**: Virginia State Board of Elections + Governor Actions Analysis
 **Data Current**: May 25, 2026
-**Available In**: Pro Section, Newspaper
 """
 
     return response
