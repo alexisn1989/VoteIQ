@@ -46,7 +46,9 @@ def _fetch_spanberger_finance_context(user_query: str) -> str:
     try:
         data = _campaign_finance_service.get_campaign_finance("Abigail Spanberger")
         if data:
-            return format_campaign_finance_response(data)
+            # Get veto-donor correlation
+            correlation = _campaign_finance_service.get_veto_donor_correlation("Abigail Spanberger")
+            return format_campaign_finance_response(data, correlation=correlation)
     except Exception as e:
         print(f"Error fetching Spanberger campaign finance: {e}")
 
@@ -90,7 +92,9 @@ def _fetch_state_campaign_finance_context(user_query: str, basic: bool = True) -
         if found_name:
             data = _campaign_finance_service.get_campaign_finance(found_name)
             if data:
-                return format_campaign_finance_response(data)
+                # Get veto-donor correlation if available
+                correlation = _campaign_finance_service.get_veto_donor_correlation(found_name)
+                return format_campaign_finance_response(data, correlation=correlation)
     except Exception as e:
         print(f"Error fetching campaign finance for {candidate_name}: {e}")
 
