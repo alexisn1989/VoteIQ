@@ -9,6 +9,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 
+from voteiq.utils import _load_historical_results
+
 router = APIRouter(tags=["elections"])
 
 _BASE_DIR  = Path(__file__).resolve().parents[3]
@@ -214,19 +216,6 @@ HISTORICAL_ELECTION_META: dict[str, dict] = {
         "notes":    ["This CSV contains local town races only, so no statewide choropleth map is available."],
     },
 }
-
-
-def _load_historical_results(year: str) -> dict:
-    year = str(year)
-    if year in _historical_data_cache:
-        return _historical_data_cache[year]
-    try:
-        with _data_path(f"election_results_{year}.json").open(encoding="utf-8") as f:
-            _historical_data_cache[year] = json.load(f)
-    except Exception as e:
-        print(f"_load_historical_results {year}: {e}")
-        _historical_data_cache[year] = {}
-    return _historical_data_cache[year]
 
 
 # ── /election-map ─────────────────────────────────────────────────────────────
