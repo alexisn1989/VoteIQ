@@ -365,14 +365,18 @@ def format_campaign_finance_response(data: CampaignFinanceData, correlation: Opt
 - Vetoes strategically target bills opposing law enforcement or expanding worker rights
 """
 
-    # Add premium features notice if not premium
+    # Add section notice if not showing correlation
     if not is_premium:
         response += """
 ---
 
-### [PREMIUM FEATURE] Legislative Correlation Analysis
+### [PRO/NEWSPAPER FEATURE] Legislative Correlation Analysis
 
-*Upgrade to Premium to see:*
+*This detailed analysis is available in:*
+- **Pro Section** - Full legislative intelligence and voting patterns
+- **Newspaper** - Investigative journalism on donations and legislative outcomes
+
+*Features in those sections:*
 - **Veto Pattern Analysis**: What types of bills get vetoed (Labor, Gaming, Criminal Justice, etc.)
 - **Legislative Outcomes**: Bills signed by sector, executive orders issued
 - **Correlation Intelligence**: How donations correlate with legislative votes/vetoes
@@ -380,8 +384,6 @@ def format_campaign_finance_response(data: CampaignFinanceData, correlation: Opt
 - **Detailed Examples**: Specific bills and voting patterns by sector
 
 This analysis reveals the relationship between campaign contributions and legislative outcomes.
-
-[Upgrade to Premium](https://voteiq.local/premium)
 
 ---
 **Source**: Virginia State Board of Elections
@@ -392,7 +394,7 @@ This analysis reveals the relationship between campaign contributions and legisl
 ---
 **Source**: Virginia State Board of Elections + Governor Actions Analysis
 **Data Current**: May 25, 2026
-**Access Level**: Premium
+**Available In**: Pro Section, Newspaper
 """
 
     return response
