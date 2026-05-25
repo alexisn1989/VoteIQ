@@ -178,7 +178,7 @@ class CampaignFinanceService:
         return cursor.fetchall()
 
     def get_governor_actions_summary(self, governor_name: str = "Spanberger") -> Optional[Dict]:
-        """Get governor bill actions summary (signed, vetoed, amended)"""
+        """Get governor bill actions summary (signed, vetoed, amended, executive orders)"""
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
 
@@ -186,17 +186,28 @@ class CampaignFinanceService:
         cursor.execute("""
             SELECT action_label, COUNT(*) as count
             FROM governor_actions
-            WHERE governor LIKE ? AND session = '2026'
+            WHERE governor LIKE ?
             GROUP BY action_label
         """, (f"%{governor_name}%",))
 
         actions = cursor.fetchall()
+
+        # Query executive orders
+        cursor.execute("""
+            SELECT COUNT(*) as count
+            FROM governor_executive_orders
+            WHERE governor LIKE ?
+        """, (f"%{governor_name}%",))
+
+        eo_result = cursor.fetchone()
+        eo_count = eo_result[0] if eo_result else 0
+
         conn.close()
 
         if not actions:
             return None
 
-        summary = {}
+        summary = {'executive_orders': eo_count}
         for label, count in actions:
             if "signed" in label.lower():
                 summary['signed'] = count
@@ -295,13 +306,17 @@ def format_campaign_finance_response(data: CampaignFinanceData, correlation: Opt
 
     # Add governor actions summary if available
     if gov_actions:
+        total_bills = gov_actions.get('signed', 0) + gov_actions.get('vetoed', 0) + gov_actions.get('amended', 0)
+        veto_rate = (gov_actions.get('vetoed', 0) / total_bills * 100) if total_bills > 0 else 0
+
         response += f"""
 
-### 2026 Bill Actions Summary
+### 2026 Governor Actions Summary
 - **Signed into law**: {gov_actions.get('signed', 0)} bills
 - **Vetoed**: {gov_actions.get('vetoed', 0)} bills
 - **Amended/Returned**: {gov_actions.get('amended', 0)} bills
-- **Veto Rate**: {(gov_actions.get('vetoed', 0) / (gov_actions.get('signed', 0) + gov_actions.get('vetoed', 0) + gov_actions.get('amended', 0)) * 100):.1f}% of bills acted upon"""
+- **Executive Orders**: {gov_actions.get('executive_orders', 0)}
+- **Veto Rate**: {veto_rate:.1f}% of bills acted upon"""
 
     response += f"""
 
