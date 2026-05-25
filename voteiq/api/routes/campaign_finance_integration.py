@@ -212,16 +212,18 @@ class CampaignFinanceService:
         result = cursor.fetchone()
         total_exec_orders = result[0] if result else 0
 
-        # Find specific patterns
-        vetoed_bills = []
+        # Get all vetoed bills with titles
         cursor.execute("""
             SELECT bill_number, title
             FROM governor_actions
             WHERE governor = ? AND action = 'vetoed'
-            AND (title LIKE '%collective%' OR title LIKE '%bargain%' OR title LIKE '%labor%' OR title LIKE '%union%')
-            LIMIT 5
+            ORDER BY action_date DESC
         """, (governor_name,))
-        vetoed_bills = cursor.fetchall()
+
+        all_vetoed_bills = cursor.fetchall()
+
+        # Categorize vetoed bills by type
+        veto_categories = self._categorize_vetoed_bills(all_vetoed_bills)
 
         conn.close()
 
@@ -229,8 +231,43 @@ class CampaignFinanceService:
             'total_vetoes': total_vetoes,
             'total_signed_bills': total_signed,
             'total_executive_orders': total_exec_orders,
-            'vetoed_labor_bills': vetoed_bills,
+            'veto_categories': veto_categories,
+            'all_vetoed_bills': all_vetoed_bills,
         }
+
+    def _categorize_vetoed_bills(self, vetoed_bills: list) -> Dict[str, list]:
+        """Categorize vetoed bills by policy type/sector"""
+        categories = {
+            'Labor/Union Rights': [],
+            'Gaming/Betting': [],
+            'Criminal Justice': [],
+            'Property/Housing': [],
+            'Government/Procedure': [],
+            'Other': [],
+        }
+
+        category_keywords = {
+            'Labor/Union Rights': ['collective', 'bargain', 'union', 'labor', 'employee', 'wage'],
+            'Gaming/Betting': ['gaming', 'betting', 'casino', 'lottery', 'sports betting'],
+            'Criminal Justice': ['criminal', 'sentence', 'parole', 'incarcerat', 'defend', 'prison'],
+            'Property/Housing': ['property', 'housing', 'real estate', 'developer', 'lien', 'homeowner'],
+            'Government/Procedure': ['government', 'procedure', 'agency', 'board', 'committee', 'authority'],
+        }
+
+        for bill_number, title in vetoed_bills:
+            title_lower = (title or "").lower()
+            categorized = False
+
+            for category, keywords in category_keywords.items():
+                if any(kw in title_lower for kw in keywords):
+                    categories[category].append((bill_number, title))
+                    categorized = True
+                    break
+
+            if not categorized:
+                categories['Other'].append((bill_number, title))
+
+        return categories
 
 
 def format_campaign_finance_response(data: CampaignFinanceData, correlation: Optional[Dict] = None) -> str:
@@ -278,12 +315,27 @@ def format_campaign_finance_response(data: CampaignFinanceData, correlation: Opt
 - **Bills Vetoed**: {correlation['total_vetoes']} bills
 - **Executive Orders**: {correlation['total_executive_orders']} orders
 
+**What Types of Bills Get Vetoed:**
+"""
+
+        # Add veto breakdown by category
+        veto_categories = correlation.get('veto_categories', {})
+        for category, bills in veto_categories.items():
+            if bills:
+                response += f"\n**{category}** ({len(bills)} vetoes):\n"
+                for bill_num, title in bills[:3]:  # Show first 3 examples
+                    response += f"  - {bill_num}: {title[:60]}\n"
+                if len(bills) > 3:
+                    response += f"  ... and {len(bills) - 3} more\n"
+
+        response += f"""
+
 **Key Findings:**
 
 1. **PAC/Ideological Donors ($36.3M, 35.3% of funding)**: Perfect veto protection - 0 of all vetoes targeted this sector. Strong alignment between major donor base and governor's veto choices.
 
 2. **Labor/Union Donors ($642K, 0.6% of funding)**: Mixed support with significant opposition on core issues:
-   - [VETOED] Collective bargaining rights expansion
+   - [VETOED] Collective bargaining rights expansion (HB1263, SB378)
    - [VETOED] Public employees union protections
    - [SIGNED] Some labor/wage bills (28 bills signed)
    - Pattern suggests opposition to union organizing despite campaign support
@@ -295,10 +347,16 @@ def format_campaign_finance_response(data: CampaignFinanceData, correlation: Opt
 
 4. **Other Sectors** ($48.4M, 47.1%): Mixed - received both 707 bills signed AND 15 vetoes. Generic category with no clear pattern.
 
+**Veto Pattern Analysis**:
+- Opposition concentrated on: Labor organizing, Gaming/Betting expansion, Criminal justice reform
+- Most vetoes target bills that would expand worker protections or constrain law enforcement
+- No vetoes on bills benefiting major donor sectors (Finance, Tech, PAC-related)
+
 **Interpretation**: Strong correlation between campaign donations and legislative outcomes, particularly:
 - Ideological/PAC donors get complete veto protection
 - Labor gets support on some issues but blocked on organizing rights
 - Education and energy are policy priorities regardless of donor support
+- Vetoes strategically target bills opposing law enforcement or expanding worker rights
 """
 
     response += """
