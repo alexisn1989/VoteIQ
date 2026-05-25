@@ -35,6 +35,7 @@ def _fetch_spanberger_finance_context(user_query: str) -> str:
     query_lower = user_query.lower()
     finance_keywords = ["funding", "donor", "campaign", "fundrais", "contribut", "money", "pac", "raised"]
     spanberger_keywords = ["spanberger", "governor"]
+    correlation_keywords = ["veto", "correlation", "bill", "signed", "action", "legislative", "support", "opposition"]
 
     # Check if query mentions both finance and Spanberger
     has_finance = any(kw in query_lower for kw in finance_keywords)
@@ -46,7 +47,14 @@ def _fetch_spanberger_finance_context(user_query: str) -> str:
     try:
         data = _campaign_finance_service.get_campaign_finance("Abigail Spanberger")
         if data:
-            return format_campaign_finance_response(data)
+            # Include correlation analysis if query mentions legislative actions
+            has_correlation = any(kw in query_lower for kw in correlation_keywords)
+            correlation = None
+
+            if has_correlation:
+                correlation = _campaign_finance_service.get_legislative_correlation("Spanberger")
+
+            return format_campaign_finance_response(data, correlation)
     except Exception as e:
         print(f"Error fetching Spanberger campaign finance: {e}")
 
