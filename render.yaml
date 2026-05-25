@@ -1,15 +1,22 @@
 services:
-  - type: cron
-    name: voteiq-daily-ingest
-    schedule: "0 2 * * *"   # 2am UTC daily
-    command: python scripts/scheduled_ingest.py
-
-  - type: cron
-    name: voteiq-gemini-news
-    schedule: "0 6 * * *"   # 6am UTC daily
-    command: python ingest_news.py
-
-  - type: cron
-    name: voteiq-rss-news
-    schedule: "0 7 * * *"   # 7am UTC daily
-    command: python ingest_va_news.py
+  - type: web
+    name: voteiq-api
+    runtime: python311
+    plan: standard
+    buildCommand: bash build.sh
+    startCommand: gunicorn app:app
+    disks:
+      - name: data
+        mountPath: /data
+        sizeGB: 1
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: DATABASE_URL
+        scope: SERVICE
+      - key: PYTHONUNBUFFERED
+        value: "1"
+    health:
+      path: /health
+      pollIntervalSeconds: 30
+    autoDeploy: true

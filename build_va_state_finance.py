@@ -157,7 +157,7 @@ def clean_candidate_name(raw: str) -> str:
 
 def build_name_map(leg_conn: sqlite3.Connection) -> dict[str, str]:
     """Return {normalised_name: lis_id} for all legislators."""
-    rows = leg_conn.execute("SELECT lis_id, name FROM legislators").fetchall()
+    rows = leg_conn.execute("SELECT member_id, member_name FROM members").fetchall()
     return {clean_candidate_name(r[1]).lower(): r[0] for r in rows}
 
 
