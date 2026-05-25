@@ -5,6 +5,10 @@ services:
     plan: standard
     buildCommand: bash build.sh
     startCommand: gunicorn app:app
+    disks:
+      - name: data
+        mountPath: /data
+        sizeGB: 1
     envVars:
       - key: FLASK_ENV
         value: production
