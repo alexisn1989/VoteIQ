@@ -370,8 +370,9 @@ def format_campaign_finance_response(data: CampaignFinanceData, correlation: Opt
 
     Args:
         data: Campaign finance data
-        correlation: Legislative correlation data (always included)
-        is_premium: Whether to include correlation analysis (default True)
+        correlation: Legislative correlation data (premium feature)
+        pac_analysis: PAC analysis data (premium feature)
+        is_premium: Whether to include premium features (correlation and PAC analysis)
     """
 
     response = f"""
@@ -392,8 +393,8 @@ def format_campaign_finance_response(data: CampaignFinanceData, correlation: Opt
                                reverse=True):
         response += f"| {sector} | ${info['amount']:,.0f} | {info['count']:,} | {info['pct']:.1f}% |\n"
 
-    # Add PAC analysis if available
-    if pac_analysis:
+    # Add PAC analysis ONLY for premium users
+    if is_premium and pac_analysis:
         response += f"""
 
 ### PAC Funding Analysis
@@ -481,13 +482,37 @@ def format_campaign_finance_response(data: CampaignFinanceData, correlation: Opt
 - Education and energy are policy priorities regardless of donor support
 - Vetoes strategically target bills opposing law enforcement or expanding worker rights
 """
+    elif not is_premium:
+        # Show premium feature notice for free users
+        response += """
+
+---
+
+### [PRO/NEWSPAPER FEATURE] Advanced Analysis
+
+*This detailed analysis is available in:*
+- **Pro Section** - Full legislative intelligence and voting patterns
+- **Newspaper** - Investigative journalism on donations and legislative outcomes
+
+*Features in those sections:*
+- **PAC Analysis**: Detailed breakdown of Political Action Committee funding by category
+- **Legislative Correlation**: Veto patterns, signed bills, and executive orders by sector
+- **Strategic Analysis**: How donations correlate with legislative outcomes
+- **Detailed Examples**: Specific bills and voting patterns by sector
+
+This analysis reveals the relationship between campaign contributions and legislative outcomes.
+"""
 
     response += """
 ---
 **Source**: Virginia State Board of Elections + Governor Actions Analysis
-**Data Current**: May 25, 2026
-"""
+**Data Current**: May 25, 2026"""
 
+    if is_premium:
+        response += """
+**Available In**: Pro Section, Newspaper"""
+
+    response += "\n"
     return response
 
 
