@@ -177,6 +177,36 @@ class CampaignFinanceService:
 
         return cursor.fetchall()
 
+    def get_governor_actions_summary(self, governor_name: str = "Spanberger") -> Optional[Dict]:
+        """Get governor bill actions summary (signed, vetoed, amended)"""
+        conn = sqlite3.connect(str(self.db_path))
+        cursor = conn.cursor()
+
+        # Query governor_actions table
+        cursor.execute("""
+            SELECT action_label, COUNT(*) as count
+            FROM governor_actions
+            WHERE governor LIKE ? AND session = '2026'
+            GROUP BY action_label
+        """, (f"%{governor_name}%",))
+
+        actions = cursor.fetchall()
+        conn.close()
+
+        if not actions:
+            return None
+
+        summary = {}
+        for label, count in actions:
+            if "signed" in label.lower():
+                summary['signed'] = count
+            elif "vetoed" in label.lower():
+                summary['vetoed'] = count
+            elif "amended" in label.lower() or "returned" in label.lower():
+                summary['amended'] = count
+
+        return summary if summary else None
+
     def get_veto_donor_correlation(self, candidate_name: str) -> Optional[Dict]:
         """Get veto-donor correlation for governors"""
         # Veto data for Governor Spanberger (hardcoded for now)
@@ -257,11 +287,23 @@ class CampaignFinanceService:
         }
 
 
-def format_campaign_finance_response(data: CampaignFinanceData, correlation: Optional[Dict] = None) -> str:
+def format_campaign_finance_response(data: CampaignFinanceData, correlation: Optional[Dict] = None, gov_actions: Optional[Dict] = None) -> str:
     """Format campaign finance data as markdown for chat response"""
 
     response = f"""
-## Campaign Finance Profile: {data.candidate_name}
+## Campaign Finance Profile: {data.candidate_name}"""
+
+    # Add governor actions summary if available
+    if gov_actions:
+        response += f"""
+
+### 2026 Bill Actions Summary
+- **Signed into law**: {gov_actions.get('signed', 0)} bills
+- **Vetoed**: {gov_actions.get('vetoed', 0)} bills
+- **Amended/Returned**: {gov_actions.get('amended', 0)} bills
+- **Veto Rate**: {(gov_actions.get('vetoed', 0) / (gov_actions.get('signed', 0) + gov_actions.get('vetoed', 0) + gov_actions.get('amended', 0)) * 100):.1f}% of bills acted upon"""
+
+    response += f"""
 
 ### Financial Summary
 - **Total Raised**: ${data.total_raised:,.2f}
