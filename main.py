@@ -71,7 +71,7 @@ from voteiq.api.routes.admin import router as _admin_router
 app.include_router(_admin_router)
 from voteiq.api.routes.chat import router as _chat_router
 app.include_router(_chat_router)
-from voteiq.api.routes.elections import router as _elections_router
+from voteiq.api.routes.elections import router as _elections_router, _load_historical_results
 app.include_router(_elections_router)
 from voteiq.api.routes.district import router as _district_router
 app.include_router(_district_router)
