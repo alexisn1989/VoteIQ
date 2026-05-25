@@ -270,8 +270,14 @@ class CampaignFinanceService:
         return categories
 
 
-def format_campaign_finance_response(data: CampaignFinanceData, correlation: Optional[Dict] = None) -> str:
-    """Format campaign finance data as markdown for chat response"""
+def format_campaign_finance_response(data: CampaignFinanceData, correlation: Optional[Dict] = None, is_premium: bool = False) -> str:
+    """Format campaign finance data as markdown for chat response
+
+    Args:
+        data: Campaign finance data
+        correlation: Legislative correlation data (premium only)
+        is_premium: Whether to include premium features (correlation analysis)
+    """
 
     response = f"""
 ## Campaign Finance Profile: {data.candidate_name}
@@ -305,8 +311,8 @@ def format_campaign_finance_response(data: CampaignFinanceData, correlation: Opt
     for i, (name, amount) in enumerate(data.top_pac_donors, 1):
         response += f"{i}. **{name}** — ${amount:,.0f}\n"
 
-    # Add correlation analysis if available
-    if correlation:
+    # Add correlation analysis ONLY for premium users
+    if is_premium and correlation:
         response += f"""
 ### Correlation: Donations vs Legislative Actions
 
@@ -359,10 +365,34 @@ def format_campaign_finance_response(data: CampaignFinanceData, correlation: Opt
 - Vetoes strategically target bills opposing law enforcement or expanding worker rights
 """
 
-    response += """
+    # Add premium features notice if not premium
+    if not is_premium:
+        response += """
+---
+
+### [PREMIUM FEATURE] Legislative Correlation Analysis
+
+*Upgrade to Premium to see:*
+- **Veto Pattern Analysis**: What types of bills get vetoed (Labor, Gaming, Criminal Justice, etc.)
+- **Legislative Outcomes**: Bills signed by sector, executive orders issued
+- **Correlation Intelligence**: How donations correlate with legislative votes/vetoes
+- **Strategic Analysis**: Which donor sectors get protected vs. opposed
+- **Detailed Examples**: Specific bills and voting patterns by sector
+
+This analysis reveals the relationship between campaign contributions and legislative outcomes.
+
+[Upgrade to Premium](https://voteiq.local/premium)
+
+---
+**Source**: Virginia State Board of Elections
+**Data Current**: May 25, 2026
+"""
+    else:
+        response += """
 ---
 **Source**: Virginia State Board of Elections + Governor Actions Analysis
 **Data Current**: May 25, 2026
+**Access Level**: Premium
 """
 
     return response
