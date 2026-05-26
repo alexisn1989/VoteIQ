@@ -1281,10 +1281,13 @@ def _append_governor_action_lookup_block(
     if search_columns is not None:
         lines.append(f"searched_columns={', '.join(search_columns) if search_columns else 'none'}")
     if action_summary:
-        lines.append("CONFIRMED DATABASE TOTALS (full COUNT from governor_actions table — not a sample):")
-        for action, count in sorted(action_summary.items(), key=lambda item: -item[1]):
-            lines.append(f"  {action}: {count} records IN DATABASE")
-        lines.append("NOTE: The row sample below may only show recent vetoes. All action types listed above ARE confirmed present in the database. Do NOT say signed bills or executive orders are missing or unavailable.")
+        lines.append("CONFIRMED governor_actions DATABASE TOTALS (full table COUNT, not a sample):")
+        for action, count in sorted(action_summary.items(), key=lambda x: -x[1]):
+            lines.append(f"  {action}: {count} bills/orders IN DATABASE")
+        lines.append(
+            "NOTE: Rows below are a recent sample only. The action totals above are full-table counts, "
+            "so action types listed above ARE present in the database even if not shown in the sample rows."
+        )
     for row in rows or []:
         lines.append(f"- {_row_to_line(row)}")
     if status == "records_found":
