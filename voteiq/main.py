@@ -13,7 +13,11 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from voteiq.api.router import api_router
-from voteiq.api.routes.campaign_finance_integration import CampaignFinanceService, format_campaign_finance_response
+from voteiq.api.routes.campaign_finance_integration import (
+    CampaignFinanceService,
+    format_campaign_finance_response,
+    format_governor_actions_detail,
+)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -49,7 +53,8 @@ def _fetch_spanberger_finance_context(user_query: str) -> str:
             # Get veto-donor correlation and governor actions
             correlation = _campaign_finance_service.get_veto_donor_correlation("Abigail Spanberger")
             gov_actions = _campaign_finance_service.get_governor_actions_summary("Spanberger")
-            return format_campaign_finance_response(data, correlation=correlation, gov_actions=gov_actions)
+            detail = _campaign_finance_service.get_governor_actions_detail("Spanberger")
+            return format_campaign_finance_response(data, correlation=correlation, gov_actions=gov_actions, detail=detail)
     except Exception as e:
         print(f"Error fetching Spanberger campaign finance: {e}")
 
@@ -96,7 +101,8 @@ def _fetch_state_campaign_finance_context(user_query: str, basic: bool = True) -
                 # Get veto-donor correlation and governor actions if available
                 correlation = _campaign_finance_service.get_veto_donor_correlation(found_name)
                 gov_actions = _campaign_finance_service.get_governor_actions_summary(found_name)
-                return format_campaign_finance_response(data, correlation=correlation, gov_actions=gov_actions)
+                detail = _campaign_finance_service.get_governor_actions_detail(found_name)
+                return format_campaign_finance_response(data, correlation=correlation, gov_actions=gov_actions, detail=detail)
     except Exception as e:
         print(f"Error fetching campaign finance for {candidate_name}: {e}")
 

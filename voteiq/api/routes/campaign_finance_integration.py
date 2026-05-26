@@ -177,6 +177,49 @@ class CampaignFinanceService:
 
         return cursor.fetchall()
 
+    def get_governor_actions_detail(self, governor_name: str = "Spanberger") -> Optional[Dict]:
+        """Get complete governor actions with bills, vetoes, signed bills, and executive orders"""
+        conn = sqlite3.connect(str(self.db_path))
+        cursor = conn.cursor()
+
+        # Get all vetoed bills with details
+        cursor.execute("""
+            SELECT bill_number, title, action_date, source_url
+            FROM governor_actions
+            WHERE governor LIKE ? AND action_label LIKE '%vetoed%'
+            ORDER BY action_date DESC
+        """, (f"%{governor_name}%",))
+
+        vetoes = [{"bill": row[0], "title": row[1], "date": row[2], "url": row[3]} for row in cursor.fetchall()]
+
+        # Get all signed bills with details
+        cursor.execute("""
+            SELECT bill_number, title, action_date, source_url
+            FROM governor_actions
+            WHERE governor LIKE ? AND action_label LIKE '%signed%'
+            ORDER BY action_date DESC
+        """, (f"%{governor_name}%",))
+
+        signed = [{"bill": row[0], "title": row[1], "date": row[2], "url": row[3]} for row in cursor.fetchall()]
+
+        # Get all executive orders
+        cursor.execute("""
+            SELECT order_number, title, signed_date, source_url
+            FROM governor_executive_orders
+            WHERE governor LIKE ?
+            ORDER BY signed_date DESC
+        """, (f"%{governor_name}%",))
+
+        eos = [{"number": row[0], "title": row[1], "date": row[2], "url": row[3]} for row in cursor.fetchall()]
+
+        conn.close()
+
+        return {
+            "vetoes": vetoes,
+            "signed": signed,
+            "executive_orders": eos
+        }
+
     def get_governor_actions_summary(self, governor_name: str = "Spanberger") -> Optional[Dict]:
         """Get governor bill actions summary (signed, vetoed, amended, executive orders)"""
         conn = sqlite3.connect(str(self.db_path))
@@ -298,7 +341,61 @@ class CampaignFinanceService:
         }
 
 
-def format_campaign_finance_response(data: CampaignFinanceData, correlation: Optional[Dict] = None, gov_actions: Optional[Dict] = None) -> str:
+def format_governor_actions_detail(detail: Dict) -> str:
+    """Format detailed governor actions with links to bills and executive orders"""
+    response = ""
+
+    # Vetoes section
+    if detail.get("vetoes"):
+        response += """
+## Vetoes (2026)
+
+"""
+        for veto in detail["vetoes"]:
+            bill_link = f"[{veto['bill']}]({veto['url']})" if veto.get('url') else veto['bill']
+            response += f"- **{bill_link}** — {veto['title']} ({veto['date']})\n"
+
+    # Signed bills section
+    if detail.get("signed"):
+        response += f"""
+
+## Bills Signed Into Law (2026)
+
+**Total: {len(detail['signed'])} bills signed**
+
+"""
+        # Show first 20 signed bills
+        for signed in detail["signed"][:20]:
+            bill_link = f"[{signed['bill']}]({signed['url']})" if signed.get('url') else signed['bill']
+            response += f"- **{bill_link}** — {signed['title']} ({signed['date']})\n"
+
+        if len(detail["signed"]) > 20:
+            response += f"\n*... and {len(detail['signed']) - 20} more bills signed*\n"
+
+    # Executive orders section
+    if detail.get("executive_orders"):
+        response += f"""
+
+## Executive Orders (2026)
+
+**Total: {len(detail['executive_orders'])} executive orders**
+
+"""
+        for eo in detail["executive_orders"]:
+            eo_link = f"[EO {eo['number']}]({eo['url']})" if eo.get('url') else f"EO {eo['number']}"
+            response += f"- **{eo_link}** — {eo['title']} ({eo['date']})\n"
+
+    response += """
+
+---
+**Source**: Virginia LIS, Governor's Office, OpenStates
+**Data Current**: May 25, 2026
+"""
+
+    return response
+
+
+def format_campaign_finance_response(data: CampaignFinanceData, correlation: Optional[Dict] = None, gov_actions: Optional[Dict] = None, detail: Optional[Dict] = None) -> str:
     """Format campaign finance data as markdown for chat response"""
 
     response = f"""
@@ -412,6 +509,12 @@ def format_campaign_finance_response(data: CampaignFinanceData, correlation: Opt
 **Pattern**: Largest donors get veto protection, smallest donors get explicitly vetoed.
 """
 
+    # Add detailed governor actions if available (includes its own source note)
+    if detail:
+        response += "\n" + format_governor_actions_detail(detail)
+        return response
+
+    # Otherwise add standard source note
     response += """
 ---
 **Source**: Virginia State Board of Elections + Governor's Office
