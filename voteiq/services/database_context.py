@@ -1149,6 +1149,23 @@ def _add_governor_action_context(blocks: list[str], query: str, terms: list[str]
             LIMIT 40
         """, tuple(query_params)).fetchall()
 
+        # If the 40-row sample has no signed bills, explicitly fetch a signed sample
+        # so the AI sees real rows for each action type, not just recent vetoes
+        signed_col = next((c for c in ("action", "action_label", "action_type", "raw_status", "status", "action_status") if c in columns), None)
+        if signed_col and not any("sign" in str(r[signed_col]).lower() for r in rows):
+            try:
+                signed_sample = conn.execute(f"""
+                    SELECT {quoted_select}
+                    FROM governor_actions
+                    WHERE lower(CAST({_quote_identifier(signed_col)} AS TEXT)) LIKE '%sign%'
+                      AND {_quote_identifier('session') if 'session' in columns else '1'}={'?' if 'session' in columns else '1'}
+                    ORDER BY {_quote_identifier(order_col)} DESC
+                    LIMIT 5
+                """, (session,) if "session" in columns else ()).fetchall()
+                rows = list(rows) + list(signed_sample)
+            except Exception:
+                pass
+
         if not rows and "veto" in q_lower:
             veto_cols = [
                 col for col in (
@@ -1264,11 +1281,10 @@ def _append_governor_action_lookup_block(
     if search_columns is not None:
         lines.append(f"searched_columns={', '.join(search_columns) if search_columns else 'none'}")
     if action_summary:
-        summary = "; ".join(
-            f"{action}={count}"
-            for action, count in sorted(action_summary.items(), key=lambda item: (-item[1], item[0]))
-        )
-        lines.append(f"action_summary={summary}")
+        lines.append("CONFIRMED DATABASE TOTALS (full COUNT from governor_actions table — not a sample):")
+        for action, count in sorted(action_summary.items(), key=lambda item: -item[1]):
+            lines.append(f"  {action}: {count} records IN DATABASE")
+        lines.append("NOTE: The row sample below may only show recent vetoes. All action types listed above ARE confirmed present in the database. Do NOT say signed bills or executive orders are missing or unavailable.")
     for row in rows or []:
         lines.append(f"- {_row_to_line(row)}")
     if status == "records_found":
