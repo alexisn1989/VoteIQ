@@ -1288,6 +1288,7 @@ def _append_governor_action_lookup_block(
             "NOTE: Rows below are a recent sample only. The action totals above are full-table counts, "
             "so action types listed above ARE present in the database even if not shown in the sample rows."
         )
+        lines.append("Use the totals above for availability. Use sample rows only as examples.")
     for row in rows or []:
         lines.append(f"- {_row_to_line(row)}")
     if status == "records_found":
