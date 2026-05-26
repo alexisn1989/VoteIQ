@@ -3234,8 +3234,8 @@ Available data for this representative:
 Governor action rule:
 If the context below includes any "[Governor Action" rows, treat those as confirmed local governor-action records. Do not say governor actions returned no data, are unavailable, or cannot be confirmed for this query. For veto questions, list bills whose Action is "Vetoed", "Veto sustained", or "Veto overridden" from those rows.
 
-Database access rule:
-If the context below includes "[Database Context" rows, treat them as direct local SQLite records from VoteIQ's databases. Use those rows before making any general statement that data is unavailable.
+Database access rule (PRIORITY):
+If the context below includes "[Database Context" rows, treat them as direct local SQLite records from VoteIQ's databases. Use SQL records FIRST before checking document/RAG context or making general statements that data is unavailable. All SQL tables are comprehensively searched for this query.
 
 Profile linking rule:
 If the context below includes "Profile Markdown Link", use that exact Markdown link the first time you name that person.

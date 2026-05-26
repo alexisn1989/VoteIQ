@@ -1432,6 +1432,10 @@ def build_database_context(query: str, max_chars: int = 22000) -> str:
     _add_person_vote_context(blocks, q, terms, session)
     _add_keyword_context(blocks, q, terms, session)
 
+    # Add comprehensive SQL table search as fallback for any unmatched keywords
+    # This ensures all SQL tables are searched before RAG context
+    _add_generic_sql_search_context(blocks, q, terms)
+
     context = "\n\n---\n\n".join(blocks)
     if len(context) > max_chars:
         context = context[:max_chars].rstrip() + "\n\n[Database Context truncated to fit model context.]"
