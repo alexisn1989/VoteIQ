@@ -2575,10 +2575,16 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
     signed_count = governor_counts.get("signed", 0)
     veto_count = sum(governor_counts.get(key, 0) for key in ("vetoed", "pocket_veto", "veto_sustained", "veto_overridden"))
     amended_count = governor_counts.get("amended", 0)
+    eo_count = len(eo_rows) if eo_rows else 0
     lines.extend([
         "",
-        "**Finding 3: Legislative And Executive Record**",
-        f"- Governor action records in local SQL for the 2026 session: {signed_count} signed, {veto_count} vetoed, and {amended_count} amended/returned with recommendation. Bill metadata is from Virginia legislative/OpenStates-style records; verify final legal status at Virginia LIS.",
+        "**Finding 3: Legislative And Executive Record (2026 Session)**",
+        f"- **Bills Signed**: {signed_count} bills signed into law",
+        f"- **Bills Vetoed**: {veto_count} bills vetoed (pocket veto, veto, veto sustained, or veto overridden)",
+        f"- **Bills Amended**: {amended_count} bills amended/returned with recommendation",
+        f"- **Executive Orders**: {eo_count} executive orders/directives issued",
+        "",
+        "- Bill metadata is from Virginia legislative/OpenStates-style records; verify final legal status at Virginia LIS.",
     ])
     if veto_rows:
         lines.append("- Recent/sample vetoed bills:")
@@ -2587,17 +2593,21 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
             url = row["source_url"] or f"https://openstates.org/va/bills/2026/{bill}/"
             lines.append(f"  - [{bill}]({url}) - {row['title'] or 'Title not available'} ({row['action_date'] or 'date not available'})")
     if signed_rows:
-        lines.append("- Recent/sample signed bills:")
+        lines.append(f"- **Sample of signed bills** ({signed_count} total; showing 8 most recent):")
         for row in signed_rows:
             bill = row["bill_number"]
             url = row["source_url"] or f"https://openstates.org/va/bills/2026/{bill}/"
             chapter = f"; Chapter {row['chapter_number']}" if row["chapter_number"] else ""
             lines.append(f"  - [{bill}]({url}) - {row['title'] or 'Title not available'} ({row['action_date'] or 'date not available'}{chapter})")
+        if signed_count > 8:
+            lines.append(f"  - ... and {signed_count - 8} more bills signed. Ask 'What bills has Governor Spanberger signed?' for the complete list.")
     if eo_rows:
-        lines.append(f"- Executive orders/directives: showing the {len(eo_rows)} most recent records; ask for the full executive-order list for all records.")
+        lines.append(f"- **Executive Orders** ({eo_count} total; showing {len(eo_rows)} most recent):")
         for row in eo_rows:
             order_number = row["order_number"] or "number not available"
             lines.append(f"  - [Order {order_number}]({_eo_chat_read_url(order_number)}) - {row['title'] or 'Title not available'} ({row['signed_date'] or 'date not available'})")
+        if eo_count > len(eo_rows):
+            lines.append(f"  - Ask 'What executive orders has Governor Spanberger issued?' for the complete list of {eo_count} orders.")
 
     lines.extend([
         "",
