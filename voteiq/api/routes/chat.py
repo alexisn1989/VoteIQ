@@ -2398,6 +2398,7 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
     veto_rows = []
     signed_rows = []
     eo_rows = []
+    eo_total = 0
     sector_totals: dict[str, dict[str, float | int]] = {}
 
     try:
@@ -2516,6 +2517,12 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
             LIMIT 8
             """
         ).fetchall()
+        eo_total = conn.execute(
+            """
+            SELECT COUNT(*) FROM governor_executive_orders
+            WHERE lower(governor) LIKE '%spanberger%'
+            """
+        ).fetchone()[0]
         conn.close()
     except Exception:
         return ""
@@ -2575,7 +2582,7 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
     signed_count = governor_counts.get("signed", 0)
     veto_count = sum(governor_counts.get(key, 0) for key in ("vetoed", "pocket_veto", "veto_sustained", "veto_overridden"))
     amended_count = governor_counts.get("amended", 0)
-    eo_count = len(eo_rows) if eo_rows else 0
+    eo_count = eo_total if eo_total > 0 else len(eo_rows)
     lines.extend([
         "",
         "**Finding 3: Legislative And Executive Record (2026 Session)**",
@@ -2593,7 +2600,7 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
             url = row["source_url"] or f"https://openstates.org/va/bills/2026/{bill}/"
             lines.append(f"  - [{bill}]({url}) - {row['title'] or 'Title not available'} ({row['action_date'] or 'date not available'})")
     if signed_rows:
-        lines.append(f"- **Sample of signed bills** ({signed_count} total; showing 8 most recent):")
+        lines.append(f"- **Signed bills** ({signed_count} total; showing 8 most recent):")
         for row in signed_rows:
             bill = row["bill_number"]
             url = row["source_url"] or f"https://openstates.org/va/bills/2026/{bill}/"
@@ -2601,13 +2608,17 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
             lines.append(f"  - [{bill}]({url}) - {row['title'] or 'Title not available'} ({row['action_date'] or 'date not available'}{chapter})")
         if signed_count > 8:
             lines.append(f"  - ... and {signed_count - 8} more bills signed. Ask 'What bills has Governor Spanberger signed?' for the complete list.")
+    else:
+        lines.append("- Signed bill rows were not returned from the current local SQL query.")
     if eo_rows:
         lines.append(f"- **Executive Orders** ({eo_count} total; showing {len(eo_rows)} most recent):")
         for row in eo_rows:
             order_number = row["order_number"] or "number not available"
             lines.append(f"  - [Order {order_number}]({_eo_chat_read_url(order_number)}) - {row['title'] or 'Title not available'} ({row['signed_date'] or 'date not available'})")
         if eo_count > len(eo_rows):
-            lines.append(f"  - Ask 'What executive orders has Governor Spanberger issued?' for the complete list of {eo_count} orders.")
+            lines.append(f"  - ... and {eo_count - len(eo_rows)} more orders. Ask 'What executive orders has Governor Spanberger issued?' for the complete list.")
+    else:
+        lines.append("- Executive-order rows were not returned from the current local SQL query.")
 
     lines.extend([
         "",
