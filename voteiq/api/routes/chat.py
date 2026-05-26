@@ -2386,7 +2386,13 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
     q = (user_query or "").lower()
     if "spanberger" not in q or "governor" not in q:
         return ""
-    if not any(term in q for term in ("overview", "public-record", "public record", "profile", "campaign finance", "major donors")):
+    if not any(term in q for term in (
+        "overview", "public-record", "public record", "profile",
+        "campaign finance", "major donors",
+        "signed", "vetoed", "veto", "bills", "legislation",
+        "executive order", "what has", "what did", "record",
+        "done as governor", "actions", "legislative",
+    )):
         return ""
     if "youngkin" in q:
         return ""
