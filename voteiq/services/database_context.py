@@ -1139,6 +1139,7 @@ def _add_governor_action_context(blocks: list[str], query: str, terms: list[str]
         query_params.insert(0, session)
     order_col = "action_date" if "action_date" in columns else "date" if "date" in columns else select_cols[0]
     quoted_select = ", ".join(_quote_identifier(col) for col in select_cols)
+    action_summary: dict[str, int] = {}
     try:
         rows = conn.execute(f"""
             SELECT {quoted_select}
@@ -1176,11 +1177,46 @@ def _add_governor_action_context(blocks: list[str], query: str, terms: list[str]
         )
         return
 
+    summary_col = next(
+        (
+            col for col in (
+                "action", "action_label", "action_type", "raw_status",
+                "status", "action_status",
+            )
+            if col in columns
+        ),
+        None,
+    )
+    if summary_col:
+        try:
+            summary_where: list[str] = []
+            summary_params: list[str] = []
+            if "session" in columns:
+                summary_where.append(f"{_quote_identifier('session')}=?")
+                summary_params.append(session)
+            if "governor" in columns and any(term in q_lower for term in ("spanberger", "governor")):
+                summary_where.append("lower(CAST(governor AS TEXT)) LIKE ?")
+                summary_params.append("%spanberger%")
+            where_sql = f"WHERE {' AND '.join(summary_where)}" if summary_where else ""
+            for summary_row in conn.execute(f"""
+                SELECT CAST({_quote_identifier(summary_col)} AS TEXT) AS action_value,
+                       COUNT(*) AS count
+                FROM governor_actions
+                {where_sql}
+                GROUP BY CAST({_quote_identifier(summary_col)} AS TEXT)
+                ORDER BY count DESC
+            """, tuple(summary_params)).fetchall():
+                key = str(summary_row["action_value"] or "unknown").strip() or "unknown"
+                action_summary[key] = int(summary_row["count"] or 0)
+        except Exception:
+            action_summary = {}
+
     conn.close()
     _append_governor_action_lookup_block(
         blocks,
         "records_found" if rows else "zero_records",
         rows=rows,
+        action_summary=action_summary,
         columns=sorted(columns),
         search_columns=search_cols,
         detail=f"searched {len(search_cols)} column(s)",
@@ -1214,6 +1250,7 @@ def _append_governor_action_lookup_block(
     status: str,
     *,
     rows: list[sqlite3.Row] | None = None,
+    action_summary: dict[str, int] | None = None,
     columns: list[str] | None = None,
     search_columns: list[str] | None = None,
     detail: str = "",
@@ -1226,6 +1263,12 @@ def _append_governor_action_lookup_block(
         lines.append(f"available_columns={', '.join(columns) if columns else 'none'}")
     if search_columns is not None:
         lines.append(f"searched_columns={', '.join(search_columns) if search_columns else 'none'}")
+    if action_summary:
+        summary = "; ".join(
+            f"{action}={count}"
+            for action, count in sorted(action_summary.items(), key=lambda item: (-item[1], item[0]))
+        )
+        lines.append(f"action_summary={summary}")
     for row in rows or []:
         lines.append(f"- {_row_to_line(row)}")
     if status == "records_found":
@@ -1320,6 +1363,7 @@ def _generic_search_terms(query: str, terms: list[str]) -> list[str]:
         "database", "databases", "table", "tables", "schema", "source",
         "sources", "record", "records", "lookup", "search", "admin",
         "chat", "voteiq", "public", "report", "analysis", "data",
+        "vote", "votes", "voted", "voting",
     }
     cleaned: list[str] = []
     seen: set[str] = set()

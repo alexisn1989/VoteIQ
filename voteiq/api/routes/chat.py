@@ -3254,7 +3254,7 @@ Available data for this representative:
 - Governor Spanberger's bill actions (signed, vetoed, amended) and executive orders
 
 Governor action rule:
-If the context below includes any "[Governor Action" rows, treat those as confirmed local governor-action records. Do not say governor actions returned no data, are unavailable, or cannot be confirmed for this query. For veto questions, list bills whose Action is "Vetoed", "Veto sustained", or "Veto overridden" from those rows.
+If the context below includes "[Database Context - polls.governor_actions lookup]", read the "action_summary=" line FIRST — that line gives the TRUE total counts from the full database (e.g. action_summary=signed=966; vetoed=28; amended=147). Do NOT say signed bills, amended bills, or executive orders are unavailable, missing, or not in the dataset — they exist in the database and the action_summary confirms their counts. The rows shown are a sample (up to 40) ordered by most recent date; signed bills may not appear in the sample if vetoes are more recent, but they are confirmed present by action_summary. Always report the full counts from action_summary when summarizing governor actions.
 
 Database access rule (PRIORITY):
 If the context below includes "[Database Context" rows, treat them as direct local SQLite records from VoteIQ's databases. Use SQL records FIRST before checking document/RAG context or making general statements that data is unavailable. All SQL tables are comprehensively searched for this query.

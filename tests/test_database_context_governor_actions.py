@@ -179,6 +179,30 @@ class GovernorActionContextTests(unittest.TestCase):
         self.assertIn("lookup_status=zero_records", context)
         self.assertNotIn("Footer: SQL governor action lookup", context)
 
+    def test_action_summary_counts_all_spanberger_actions_for_session(self):
+        self._exec(
+            """
+            CREATE TABLE governor_actions (
+                bill_number TEXT, session TEXT, title TEXT, action TEXT,
+                action_date TEXT, governor TEXT
+            )
+            """,
+            """
+            INSERT INTO governor_actions VALUES
+                ('HB1', '2026', 'Veto bill one', 'vetoed', '2026-04-13', 'Abigail Spanberger'),
+                ('HB2', '2026', 'Veto bill two', 'vetoed', '2026-04-14', 'Abigail Spanberger'),
+                ('HB3', '2026', 'Signed bill', 'signed', '2026-04-15', 'Abigail Spanberger'),
+                ('HB4', '2026', 'Other governor bill', 'signed', '2026-04-16', 'Other Governor')
+            """,
+        )
+
+        context = dc.build_database_context("Spanberger vetoes 2026")
+
+        self.assertIn("lookup_status=records_found", context)
+        self.assertIn("action_summary=vetoed=2; signed=1", context)
+        self.assertIn("bill_number=HB1", context)
+        self.assertNotIn("HB4", context)
+
     def test_schema_mismatch_returns_diagnostic(self):
         self._exec("CREATE TABLE governor_actions (id INTEGER)")
 
