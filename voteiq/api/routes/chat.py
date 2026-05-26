@@ -582,7 +582,7 @@ _ADMIN_AGENT_REGISTRY = {
         "name": "Deep Researcher",
         "env": "VOTEIQ_DEEP_RESEARCHER_AGENT_ID",
         "tags": ["broader-research", "primary-sources", "synthesis"],
-        "visibility": "admin_only",
+        "visibility": "public_facing",
         "surface": "Deep Researcher",
         "prompt": (
             "Produce broader research reports with 3-5 sub-questions, source tiers, findings, recency, confidence, synthesis, and gaps. "
@@ -635,6 +635,7 @@ _ADMIN_AGENT_REGISTRY = {
 
 _PUBLIC_FACING_FLOWS = [
     {"name": "Public Record Analyst output", "mode": "analyst"},
+    {"name": "Deep Researcher", "mode": "deep_researcher"},
     {"name": "Visual Explainer", "mode": "visual_explainer"},
     {"name": "Support/help flow", "mode": "support_drafts"},
     {"name": "Report issue flow", "mode": "report_issue"},
@@ -3935,6 +3936,109 @@ DO NOT automatically send escalations. Draft them for human review."""
             # Note to reply that escalation has been drafted
             reply = reply + "\n\n*[Support team: This response includes an escalation draft for human review.]*"
 
+        return ChatResponse(reply=reply)
+    except Exception as e:
+        return ChatResponse(reply=_m._friendly_claude_error(e))
+
+
+@router.post("/api/deep-researcher-chat", response_model=ChatResponse)
+async def deep_researcher_chat(req: ChatRequest):
+    """
+    Deep Researcher mode: broader research synthesis with source tiers and confidence levels.
+    Produces 3-5 sub-questions, source tiers, findings, recency, confidence, synthesis, and gaps.
+    """
+    import main as _m
+    from voteiq.services.database_context import build_database_context
+
+    user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
+
+    database_context = build_database_context(user_query) or ""
+
+    deep_researcher_prompt = """You are VoteIQ's Deep Researcher.
+
+Your role is to produce broader research reports on complex civic questions.
+
+APPROACH:
+1. Break the question into 3-5 sub-questions
+2. Use source tiers: Tier 1 (official/SQL) > Tier 2 (primary historical) > Tier 3 (credible public media/research)
+3. Report findings with source citations
+4. Assess recency and confidence (HIGH/MEDIUM/LOW)
+5. Synthesize findings with gaps and limitations
+
+FOR EXACT FACTS (votes, donations, bill actions, executive orders):
+- Defer to Public Record Analyst or SQL-first workflow if asking for current records
+- Use these as Tier 1 sources in your research
+
+CAUSAL CLAIMS:
+- Require explicit study design or credible research
+- Otherwise report correlation only
+- Flag when causation is claimed vs. correlation supported
+
+TONE: Academic, transparent about limitations, cite sources, distinguish fact from analysis.
+
+DO NOT:
+- Infer motive, intent, corruption, influence, or policy effectiveness without evidence
+- Claim expertise beyond what sources support
+- Make policy recommendations
+
+Available Database Context (SQL/Structured Records - Tier 1):
+{database_context if database_context else "No matching structured records found for this query."}"""
+
+    try:
+        reply = _m._claude_reply(deep_researcher_prompt, req.messages, max_tokens=2000, cache_ttl="1h")
+        return ChatResponse(reply=reply)
+    except Exception as e:
+        return ChatResponse(reply=_m._friendly_claude_error(e))
+
+
+@router.post("/api/visual-explainer-chat", response_model=ChatResponse)
+async def visual_explainer_chat(req: ChatRequest):
+    """
+    Visual Explainer mode: turns verified data into visual definitions for charts, maps, and tables.
+    Returns JSON-structured visual definitions with plain-English explanations.
+    """
+    import main as _m
+    from voteiq.services.database_context import build_database_context
+
+    user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
+
+    database_context = build_database_context(user_query) or ""
+
+    visual_explainer_prompt = """You are VoteIQ's Visual Explainer.
+
+Your role is to turn verified VoteIQ data into visual definitions that can be rendered as charts, maps, timelines, comparison tables, or summary cards.
+
+PROCESS:
+1. Verify all data comes from VoteIQ Analyst output, SQL records, or official APIs
+2. Design JSON structure for the visual (chart type, dimensions, labels, values)
+3. Include source labels and current-through dates
+4. Add plain-English explanation of what the visual shows
+5. Include data limits and interpretation notes
+
+OUTPUT FORMAT:
+Provide a JSON visual definition with:
+- visual_type: "bar_chart" | "line_chart" | "map" | "table" | "timeline" | "comparison" | "card"
+- title: descriptive title
+- subtitle: context or date range
+- data: structured data for rendering
+- source: where data came from
+- current_through: data freshness date
+- explanation: plain-English summary (1-2 sentences)
+- data_limits: caveats or gaps
+- interpretation: what this shows, not what it means for policy
+
+DO NOT:
+- Invent missing data
+- Infer motive or causation
+- Hide gaps or limitations
+- Use private/sensitive data
+- Mislead with scales or color schemes
+
+Available Database Context (Verified Records):
+{database_context if database_context else "No matching structured records found for this query."}"""
+
+    try:
+        reply = _m._claude_reply(visual_explainer_prompt, req.messages, max_tokens=1500, cache_ttl="1h")
         return ChatResponse(reply=reply)
     except Exception as e:
         return ChatResponse(reply=_m._friendly_claude_error(e))
