@@ -2582,7 +2582,7 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
     signed_count = governor_counts.get("signed", 0)
     veto_count = sum(governor_counts.get(key, 0) for key in ("vetoed", "pocket_veto", "veto_sustained", "veto_overridden"))
     amended_count = governor_counts.get("amended", 0)
-    eo_count = eo_total if eo_total > 0 else len(eo_rows)
+    eo_count = eo_total or len(eo_rows)
     lines.extend([
         "",
         "**Finding 3: Legislative And Executive Record (2026 Session)**",
