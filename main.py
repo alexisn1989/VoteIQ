@@ -77,6 +77,8 @@ from voteiq.api.routes.district import router as _district_router
 app.include_router(_district_router)
 from voteiq.api.routes.feedback import router as _feedback_router
 app.include_router(_feedback_router)
+from voteiq.api.routes.tasks import router as _tasks_router
+app.include_router(_tasks_router)
 
 # DATA_DIR: set to Render persistent disk mount path (e.g. /var/data) in production.
 # Falls back to the project directory for local development.

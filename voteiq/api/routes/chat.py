@@ -1410,14 +1410,16 @@ def _direct_governor_veto_reply(user_query: str) -> str:
     q = (user_query or "").lower()
     wants_vetoes = "veto" in q or "vetoed" in q
     wants_signed = "signed" in q or "signing" in q or "signed into law" in q
-    if not wants_vetoes and not wants_signed:
+    wants_eo = any(t in q for t in ("executive order", "executive orders", "exec order"))
+    if not wants_vetoes and not wants_signed and not wants_eo:
         return ""
-    if not any(term in q for term in ("governor", "spanberger", "she", "her", "veto", "vetoed", "signed")):
+    if not any(term in q for term in ("governor", "spanberger", "she", "her", "veto", "vetoed", "signed", "executive order")):
         return ""
     if "youngkin" in q:
         return ""
     veto_rows = []
     signed_rows = []
+    eo_rows_direct: list = []
     action_counts: dict[str, int] = {}
     try:
         if os.path.exists(_POLLS_DB):
@@ -1443,6 +1445,7 @@ def _direct_governor_veto_reply(user_query: str) -> str:
                   AND lower(governor) LIKE '%spanberger%'
                   AND action IN ('vetoed', 'pocket_veto', 'veto_sustained', 'veto_overridden')
                 ORDER BY action_date DESC, bill_number
+                LIMIT 10
                 """
             ).fetchall()
             signed_rows = conn.execute(
@@ -1453,13 +1456,26 @@ def _direct_governor_veto_reply(user_query: str) -> str:
                   AND lower(governor) LIKE '%spanberger%'
                   AND action = 'signed'
                 ORDER BY action_date DESC, bill_number
-                LIMIT 30
+                LIMIT 10
                 """
             ).fetchall()
+            if wants_eo:
+                try:
+                    eo_rows_direct = conn.execute(
+                        """
+                        SELECT order_number, title, signed_date, summary, source_url
+                        FROM governor_executive_orders
+                        ORDER BY signed_date DESC
+                        LIMIT 5
+                        """
+                    ).fetchall()
+                except Exception:
+                    eo_rows_direct = []
             conn.close()
     except Exception:
         veto_rows = []
         signed_rows = []
+        eo_rows_direct = []
 
     if wants_vetoes and not veto_rows:
         veto_rows = [
@@ -1487,7 +1503,8 @@ def _direct_governor_veto_reply(user_query: str) -> str:
         lines.append("")
 
     if wants_vetoes:
-        lines.append(f"**Vetoed bills ({len(veto_rows)}):**")
+        veto_total = sum(action_counts.get(key, 0) for key in ("vetoed", "pocket_veto", "veto_sustained", "veto_overridden")) or len(veto_rows)
+        lines.append(f"**Vetoed bills — {veto_total} total (showing up to 10 examples):**")
         for row in veto_rows:
             bill = row["bill_number"]
             title = row["title"] or "Title not available"
@@ -1499,7 +1516,7 @@ def _direct_governor_veto_reply(user_query: str) -> str:
     if wants_signed:
         signed_total = action_counts.get("signed", len(signed_rows))
         if signed_rows:
-            lines.append(f"**Signed bills:** VoteIQ has {signed_total} signed records. Showing the 30 most recent:")
+            lines.append(f"**Signed bills — {signed_total} total (showing up to 10 examples):**")
             for row in signed_rows:
                 bill = row["bill_number"]
                 title = row["title"] or "Title not available"
@@ -1507,8 +1524,26 @@ def _direct_governor_veto_reply(user_query: str) -> str:
                 date = row["action_date"] or "date not available"
                 chapter = f"; Chapter {row['chapter_number']}" if row["chapter_number"] else ""
                 lines.append(f"- [{bill}]({url}) — {title} ({date}{chapter})")
-        elif not wants_vetoes:
+            lines.append("")
+        elif not wants_vetoes and not wants_eo:
             return ""
+
+    if wants_eo:
+        if eo_rows_direct:
+            lines.append(f"**Executive Orders (showing up to 5 examples):**")
+            for row in eo_rows_direct:
+                eo_num = row["order_number"] or "EO"
+                title = row["title"] or "Title not available"
+                date = row["signed_date"] or "date not available"
+                url = row["source_url"] or ""
+                summary = row["summary"] or ""
+                url_part = f" — [{url}]({url})" if url else ""
+                summary_part = f"\n  {summary}" if summary else ""
+                lines.append(f"- {eo_num}: {title} ({date}){url_part}{summary_part}")
+            lines.append("")
+        else:
+            lines.append("**Executive Orders:** No executive order records found in VoteIQ's current dataset.")
+            lines.append("")
 
     lines.extend([
         "",
@@ -2500,7 +2535,7 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
               AND lower(governor) LIKE '%spanberger%'
               AND action IN ('vetoed', 'pocket_veto', 'veto_sustained', 'veto_overridden')
             ORDER BY action_date DESC, bill_number
-            LIMIT 8
+            LIMIT 50
             """
         ).fetchall()
         signed_rows = conn.execute(
@@ -2592,6 +2627,7 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
     lines.extend([
         "",
         "**Finding 3: Legislative And Executive Record (2026 Session)**",
+        f"- **Summary**: {signed_count} bills signed | {veto_count} bills vetoed | {amended_count} bills amended | {eo_count} executive orders issued",
         f"- **Bills Signed**: {signed_count} bills signed into law",
         f"- **Bills Vetoed**: {veto_count} bills vetoed (pocket veto, veto, veto sustained, or veto overridden)",
         f"- **Bills Amended**: {amended_count} bills amended/returned with recommendation",
@@ -2600,7 +2636,7 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
         "- Bill metadata is from Virginia legislative/OpenStates-style records; verify final legal status at Virginia LIS.",
     ])
     if veto_rows:
-        lines.append("- Recent/sample vetoed bills:")
+        lines.append(f"- **Vetoed bills** ({veto_count} total):")
         for row in veto_rows:
             bill = row["bill_number"]
             url = row["source_url"] or f"https://openstates.org/va/bills/2026/{bill}/"
