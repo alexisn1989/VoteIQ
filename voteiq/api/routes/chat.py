@@ -2355,6 +2355,156 @@ def _format_governor_eo_detail(row: sqlite3.Row) -> str:
     return "\n".join(lines)
 
 
+def _direct_governor_correlation_reply(user_query: str) -> str:
+    """
+    Premium-only: Return governor bill-outcome vs. sponsor donor-sector correlation.
+    Caller MUST gate this behind _premium_analyst_enabled(req).
+    """
+    q = (user_query or "").lower()
+    _gov = any(t in q for t in (
+        "governor", "spanberger", "signed", "vetoed", "veto", "bill", "action",
+    ))
+    _money = any(t in q for t in (
+        "donor", "sector", "finance", "financ", "campaign", "contribut",
+        "donation", "money", "fund", "industry", "correlat",
+        "who back", "who support", "who gave", "who paid", "who fund",
+    ))
+    if not _gov or not _money:
+        return ""
+
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+
+        # Overall action counts
+        action_counts = {
+            r["action"]: int(r["cnt"])
+            for r in conn.execute("""
+                SELECT action, COUNT(*) AS cnt
+                FROM governor_actions
+                WHERE session = '2026'
+                  AND lower(governor) LIKE '%spanberger%'
+                GROUP BY action
+                ORDER BY cnt DESC
+            """).fetchall()
+        }
+
+        # Top sectors per action via campaign_finance_summary name join
+        sector_rows = conn.execute("""
+            SELECT ga.action, cfs.top_sector,
+                   COUNT(*) AS bill_count,
+                   SUM(cfs.total_raised) AS total_raised_sum
+            FROM governor_actions ga
+            JOIN campaign_finance_summary cfs
+              ON lower(trim(ga.sponsor_name)) = lower(trim(cfs.name))
+            WHERE lower(ga.governor) LIKE '%spanberger%'
+              AND ga.session = '2026'
+            GROUP BY ga.action, cfs.top_sector
+            ORDER BY ga.action, bill_count DESC
+        """).fetchall()
+
+        # Top sponsors per action by bill count
+        top_sponsors = conn.execute("""
+            SELECT ga.action, ga.sponsor_name, ga.sponsor_party,
+                   COUNT(*) AS bill_count,
+                   cfs.top_sector, cfs.total_raised
+            FROM governor_actions ga
+            LEFT JOIN campaign_finance_summary cfs
+              ON lower(trim(ga.sponsor_name)) = lower(trim(cfs.name))
+            WHERE lower(ga.governor) LIKE '%spanberger%'
+              AND ga.session = '2026'
+            GROUP BY ga.action, ga.sponsor_name
+            ORDER BY ga.action, bill_count DESC
+        """).fetchall()
+
+        # Coverage stat
+        total_bills = conn.execute("""
+            SELECT COUNT(*) FROM governor_actions
+            WHERE lower(governor) LIKE '%spanberger%' AND session='2026'
+        """).fetchone()[0]
+        matched_bills = conn.execute("""
+            SELECT COUNT(*) FROM governor_actions ga
+            JOIN campaign_finance_summary cfs
+              ON lower(trim(ga.sponsor_name)) = lower(trim(cfs.name))
+            WHERE lower(ga.governor) LIKE '%spanberger%' AND ga.session='2026'
+        """).fetchone()[0]
+
+        conn.close()
+    except Exception:
+        return ""
+
+    if not action_counts:
+        return ""
+
+    # Group sectors and sponsors by action
+    from collections import defaultdict
+    sectors_by_action: dict = defaultdict(list)
+    for r in sector_rows:
+        sectors_by_action[r["action"]].append(r)
+
+    sponsors_by_action: dict = defaultdict(list)
+    for r in top_sponsors:
+        sponsors_by_action[r["action"]].append(r)
+
+    _ACTION_LABEL = {
+        "signed": "Signed into law",
+        "vetoed": "Vetoed",
+        "amended": "Amended / returned",
+    }
+
+    lines = [
+        "## Governor Spanberger — Campaign Donor Sector Correlation (2026 Session)",
+        "",
+        "**Bill outcome totals:**",
+    ]
+    for action, label in _ACTION_LABEL.items():
+        cnt = action_counts.get(action, 0)
+        if cnt:
+            lines.append(f"- {label}: {cnt:,} bills")
+
+    lines += [
+        "",
+        f"**Finance data coverage:** {matched_bills:,} of {total_bills:,} bills ({matched_bills*100//total_bills if total_bills else 0}%) "
+        f"matched to sponsor campaign-finance records.",
+        "",
+        "**Top donor sectors by governor action** *(sponsors with matched finance records only)*:",
+    ]
+
+    for action, label in _ACTION_LABEL.items():
+        rows = sectors_by_action.get(action, [])
+        if not rows:
+            continue
+        lines.append(f"\n*{label}:*")
+        for r in rows[:5]:
+            sector = r["top_sector"] or "Unknown"
+            lines.append(f"- {sector}: {r['bill_count']} bill{'s' if r['bill_count'] != 1 else ''}")
+
+    lines += ["", "**Top bill sponsors by action:**"]
+    for action, label in _ACTION_LABEL.items():
+        rows = sponsors_by_action.get(action, [])
+        if not rows:
+            continue
+        lines.append(f"\n*{label} — top 5 sponsors:*")
+        for r in rows[:5]:
+            party = f" ({r['sponsor_party'][0]})" if r["sponsor_party"] else ""
+            sector_note = f", top sector: {r['top_sector']}" if r["top_sector"] else ""
+            raised_note = f", raised ${r['total_raised']:,.0f}" if r["total_raised"] else ""
+            lines.append(
+                f"- {r['sponsor_name']}{party}: {r['bill_count']} bill{'s' if r['bill_count'] != 1 else ''}"
+                f"{sector_note}{raised_note}"
+            )
+
+    lines += [
+        "",
+        "---",
+        "*Correlation does not imply causation. VoteIQ reports public-record overlaps only "
+        "and does not infer motive, reward, pressure, influence, or policy intent. "
+        "Finance data: Virginia SBE public records. Sources: Virginia LIS · VPAP.*",
+    ]
+
+    return "\n".join(lines)
+
+
 def _direct_governor_eo_reply(user_query: str) -> str:
     """Return Spanberger executive orders directly from local SQL."""
     q = (user_query or "").lower()
@@ -3168,7 +3318,12 @@ async def chat(req: ChatRequest):
     direct_source_reply = _direct_voteiq_source_hierarchy_reply(last_question)
     if direct_source_reply:
         return ChatResponse(reply=direct_source_reply)
-    direct_governor_reply = _direct_spanberger_governor_overview_reply(last_question) or _direct_governor_eo_reply(last_question) or _direct_governor_veto_reply(last_question)
+    direct_governor_reply = (
+        _direct_spanberger_governor_overview_reply(last_question)
+        or _direct_governor_eo_reply(last_question)
+        or _direct_governor_veto_reply(last_question)
+        or (_direct_governor_correlation_reply(last_question) if _premium_analyst_enabled(req) else None)
+    )
     if direct_governor_reply:
         return ChatResponse(reply=direct_governor_reply)
 
@@ -3440,7 +3595,12 @@ async def gemini_chat(request: Request, req: ChatRequest):
     direct_source_reply = _direct_voteiq_source_hierarchy_reply(user_query)
     if direct_source_reply:
         return ChatResponse(reply=direct_source_reply)
-    direct_governor_reply = _direct_spanberger_governor_overview_reply(user_query) or _direct_governor_eo_reply(user_query) or _direct_governor_veto_reply(user_query)
+    direct_governor_reply = (
+        _direct_spanberger_governor_overview_reply(user_query)
+        or _direct_governor_eo_reply(user_query)
+        or _direct_governor_veto_reply(user_query)
+        or (_direct_governor_correlation_reply(user_query) if _premium_analyst_enabled(req) else None)
+    )
     if direct_governor_reply:
         return ChatResponse(reply=direct_governor_reply)
 
@@ -3548,7 +3708,12 @@ async def bills_chat(req: BillsChatRequest):
     direct_source_reply = _direct_voteiq_source_hierarchy_reply(user_query)
     if direct_source_reply:
         return ChatResponse(reply=direct_source_reply)
-    direct_governor_reply = _direct_spanberger_governor_overview_reply(user_query) or _direct_governor_eo_reply(user_query) or _direct_governor_veto_reply(user_query)
+    direct_governor_reply = (
+        _direct_spanberger_governor_overview_reply(user_query)
+        or _direct_governor_eo_reply(user_query)
+        or _direct_governor_veto_reply(user_query)
+        or (_direct_governor_correlation_reply(user_query) if _premium_analyst_enabled(req) else None)
+    )
     if direct_governor_reply:
         return ChatResponse(reply=direct_governor_reply)
 
@@ -3670,7 +3835,12 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
             yield f"data: {json.dumps({'token': text})}\n\n"
         return StreamingResponse(_source_gen(), media_type="text/event-stream")
 
-    direct_governor_reply = _direct_spanberger_governor_overview_reply(user_query) or _direct_governor_eo_reply(user_query) or _direct_governor_veto_reply(user_query)
+    direct_governor_reply = (
+        _direct_spanberger_governor_overview_reply(user_query)
+        or _direct_governor_eo_reply(user_query)
+        or _direct_governor_veto_reply(user_query)
+        or (_direct_governor_correlation_reply(user_query) if _premium_analyst_enabled(req) else None)
+    )
     if direct_governor_reply:
         async def _direct_gen(text=direct_governor_reply):
             yield f"data: {json.dumps({'token': text})}\n\n"
