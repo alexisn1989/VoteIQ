@@ -2442,12 +2442,13 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
     eo_total = 0
     sector_totals: dict[str, dict[str, float | int]] = {}
 
+    if not os.path.exists(_POLLS_DB):
+        return ""
+
+    # Finance data — best-effort; missing tables do not abort the function
     try:
-        if not os.path.exists(_POLLS_DB):
-            return ""
         conn = sqlite3.connect(_POLLS_DB)
         conn.row_factory = sqlite3.Row
-
         finance_person = conn.execute(
             """
             SELECT person_name, office, party, committee_name, finance_url, source_url, fetched_at
@@ -2490,10 +2491,8 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
             LIMIT 10
             """
         ).fetchall()
-
         try:
             from build_va_state_finance import classify_sector
-
             finance_rows = conn.execute(
                 """
                 SELECT occupation, employer, last_or_company, is_individual, amount
@@ -2514,7 +2513,14 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
                 stats["records"] = int(stats["records"]) + 1
         except Exception:
             sector_totals = {}
+        conn.close()
+    except Exception:
+        pass  # Finance tables unavailable — continue with legislative record
 
+    # Governor actions — required; return "" only if this block fails
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
         governor_counts = {
             row["action"]: int(row["count"])
             for row in conn.execute(
@@ -2535,7 +2541,7 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
               AND lower(governor) LIKE '%spanberger%'
               AND action IN ('vetoed', 'pocket_veto', 'veto_sustained', 'veto_overridden')
             ORDER BY action_date DESC, bill_number
-            LIMIT 50
+            LIMIT 10
             """
         ).fetchall()
         signed_rows = conn.execute(
@@ -2549,21 +2555,21 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
             LIMIT 8
             """
         ).fetchall()
-        eo_rows = conn.execute(
-            """
-            SELECT order_number, title, signed_date, source_url
-            FROM governor_executive_orders
-            WHERE lower(governor) LIKE '%spanberger%'
-            ORDER BY signed_date DESC, order_number DESC
-            LIMIT 8
-            """
-        ).fetchall()
-        eo_total = conn.execute(
-            """
-            SELECT COUNT(*) FROM governor_executive_orders
-            WHERE lower(governor) LIKE '%spanberger%'
-            """
-        ).fetchone()[0]
+        try:
+            eo_rows = conn.execute(
+                """
+                SELECT order_number, title, signed_date, source_url
+                FROM governor_executive_orders
+                ORDER BY signed_date DESC, order_number DESC
+                LIMIT 8
+                """
+            ).fetchall()
+            eo_total = conn.execute(
+                "SELECT COUNT(*) FROM governor_executive_orders"
+            ).fetchone()[0]
+        except Exception:
+            eo_rows = []
+            eo_total = 0
         conn.close()
     except Exception:
         return ""
