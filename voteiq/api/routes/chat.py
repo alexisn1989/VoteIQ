@@ -2544,17 +2544,31 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
             LIMIT 10
             """
         ).fetchall()
-        signed_rows = conn.execute(
-            """
-            SELECT bill_number, title, action_date, chapter_number, source_url
-            FROM governor_actions
-            WHERE session = '2026'
-              AND lower(governor) LIKE '%spanberger%'
-              AND action = 'signed'
-            ORDER BY action_date DESC, bill_number
-            LIMIT 8
-            """
-        ).fetchall()
+        try:
+            signed_rows = conn.execute(
+                """
+                SELECT bill_number, title, action_date, chapter_number, source_url
+                FROM governor_actions
+                WHERE session = '2026'
+                  AND lower(governor) LIKE '%spanberger%'
+                  AND action = 'signed'
+                ORDER BY action_date DESC, bill_number
+                LIMIT 8
+                """
+            ).fetchall()
+        except Exception:
+            # chapter_number may not exist in older schema
+            signed_rows = conn.execute(
+                """
+                SELECT bill_number, title, action_date, NULL AS chapter_number, source_url
+                FROM governor_actions
+                WHERE session = '2026'
+                  AND lower(governor) LIKE '%spanberger%'
+                  AND action = 'signed'
+                ORDER BY action_date DESC, bill_number
+                LIMIT 8
+                """
+            ).fetchall()
         try:
             eo_rows = conn.execute(
                 """

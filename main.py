@@ -3663,19 +3663,25 @@ def _fetch_governor_action_context(query: str, bill_numbers: list[str] | None = 
                     LIMIT ?
                 """, [*params, limit]).fetchall()
             elif is_gov_query:
-                params = []
-                governor_clause = ""
-                if wants_spanberger:
-                    governor_clause = "WHERE lower(governor) LIKE ?"
-                    params.append("%spanberger%")
-                rows = conn.execute(f"""
+                gov_filter = "lower(governor) LIKE '%spanberger%'" if wants_spanberger else "1=1"
+                signed = conn.execute(f"""
                     SELECT bill_number, session, title, action_label, action_date,
                            governor, sponsor_name, sponsor_party, source_url, raw_status
                     FROM governor_actions
-                    {governor_clause}
+                    WHERE {gov_filter} AND action = 'signed'
                     ORDER BY action_date DESC
-                    LIMIT 10
-                """, params).fetchall()
+                    LIMIT 5
+                """).fetchall()
+                vetoed = conn.execute(f"""
+                    SELECT bill_number, session, title, action_label, action_date,
+                           governor, sponsor_name, sponsor_party, source_url, raw_status
+                    FROM governor_actions
+                    WHERE {gov_filter}
+                      AND action IN ('vetoed', 'pocket_veto', 'veto_sustained', 'veto_overridden')
+                    ORDER BY action_date DESC
+                    LIMIT 5
+                """).fetchall()
+                rows = list(signed) + list(vetoed)
             else:
                 keywords = [w for w in q_lower.split() if len(w) > 3][:6]
                 if not keywords:
