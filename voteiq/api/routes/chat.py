@@ -2521,6 +2521,12 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
     try:
         conn = sqlite3.connect(_POLLS_DB)
         conn.row_factory = sqlite3.Row
+        # Bail out cleanly if the table doesn't exist yet
+        if not conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='governor_actions'"
+        ).fetchone():
+            conn.close()
+            return ""
         governor_counts = {
             row["action"]: int(row["count"])
             for row in conn.execute(
