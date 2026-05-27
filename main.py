@@ -3823,67 +3823,47 @@ def _fetch_va_state_member_context(
 
 
 def _fetch_governor_eo_context(query: str) -> str:
-    """Fetch Spanberger executive orders relevant to the query from polls.db."""
-    blocks: list[str] = []
+    """Semantic search over embedded executive-order full text via ChromaDB.
+
+    Returns up to 5 de-duplicated EO chunks most relevant to the query.
+    Returns "" if ChromaDB or Voyage are unavailable — structured EO data
+    is served by the direct-reply path (_direct_spanberger_governor_overview_reply).
+    """
     try:
-        conn = sqlite3.connect(_POLLS_DB)
-        conn.row_factory = sqlite3.Row
-        q_lower = query.lower()
-        _eo_intent = {"governor", "spanberger", "executive", "signed", "order", "directive", "governer", "eo"}
-        is_gov_query = any(w in q_lower for w in _eo_intent)
+        q_vec = _get_voyage_client().embed(
+            [query], model=_BILLS_MODEL, input_type="query"
+        ).embeddings[0]
+        # Request extra results so filtering for executive_order yields enough
+        results   = _query_chroma(q_vec, n_results=20)
+        docs      = results.get("documents", [[]])[0]
+        metadatas = results.get("metadatas", [[]])[0]
 
-        if is_gov_query:
-            rows = conn.execute("""
-                SELECT order_number, title, governor, signed_date, summary, source_url, policy_topics
-                FROM governor_executive_orders
-                ORDER BY signed_date DESC
-                LIMIT 8
-            """).fetchall()
-        else:
-            keywords = [w for w in q_lower.split() if len(w) > 4][:6]
-            if not keywords:
-                conn.close()
-                return ""
-            conditions = " OR ".join(
-                ["lower(title) LIKE ? OR lower(summary) LIKE ? OR lower(policy_topics) LIKE ?"] * len(keywords)
-            )
-            params = []
-            for kw in keywords:
-                p = f"%{kw}%"
-                params.extend([p, p, p])
-            rows = conn.execute(
-                f"""
-                SELECT order_number, title, governor, signed_date, summary, source_url, policy_topics
-                FROM governor_executive_orders
-                WHERE {conditions}
-                ORDER BY signed_date DESC
-                LIMIT 5
-                """,
-                params,
-            ).fetchall()
-
-        conn.close()
-        for row in rows:
-            url_line = f"\nSource: {row['source_url']}" if row['source_url'] else ""
-            summary = (row['summary'] or "")[:400]
-            topics_line = ""
-            if row["policy_topics"]:
-                try:
-                    t = json.loads(row["policy_topics"])
-                    if t:
-                        topics_line = f"\nTopics: {', '.join(t[:6])}"
-                except Exception:
-                    pass
+        blocks: list[str] = []
+        seen_orders: set[str] = set()
+        for doc, meta in zip(docs, metadatas):
+            if meta.get("chunk_type") != "executive_order":
+                continue
+            order_num = meta.get("bill_id", "")
+            if order_num in seen_orders:
+                continue          # one block per order — avoid duplicate chunks
+            seen_orders.add(order_num)
+            governor   = meta.get("governor", "")
+            signed     = meta.get("signed_date", "")
+            title      = meta.get("title", "")
+            source_url = meta.get("source_url", "")
+            url_line   = f"\nSource: {source_url}" if source_url else ""
+            excerpt    = doc[:600].rstrip() + ("…" if len(doc) > 600 else "")
             blocks.append(
-                f"[Governor Executive Order — {row['governor']} | {row['signed_date']}]\n"
-                f"Order {row['order_number']}: {row['title']}\n"
-                f"Summary: {summary}"
-                f"{topics_line}"
+                f"[Governor Executive Order — {governor} | {signed}]\n"
+                f"Order {order_num}: {title}\n"
+                f"{excerpt}"
                 f"{url_line}"
             )
+            if len(blocks) >= 5:
+                break
+        return "\n\n".join(blocks)
     except Exception:
         return ""
-    return "\n\n".join(blocks)
 
 
 def _fetch_foreign_policy_ie_context(fec_candidate_id: str, cycle: int | None = None) -> str:
