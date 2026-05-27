@@ -2445,15 +2445,27 @@ def _direct_governor_correlation_reply(user_query: str) -> str:
             "total_raised": r["total_raised"],
         }
 
-    # Match each sponsor row to CFS via normalized name
+    # Supplement: va_cf_schedule_a aggregated by candidate name (first+last key)
+    try:
+        sbe_supplement = _m._get_sbe_supplement()
+    except Exception:
+        sbe_supplement = {}
+
+    def _norm_first_last(name: str) -> str:
+        """Reduce to first+last word after stripping initials — matches SBE supplement keys."""
+        words = _norm_legislator_name(name).split()
+        return f"{words[0]} {words[-1]}" if len(words) >= 2 else " ".join(words)
+
+    # Match each sponsor row: CFS first, SBE supplement as fallback
     sectors_by_action: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     sponsors_by_action: dict[str, list] = defaultdict(list)
     matched_bills = 0
     total_bills = sum(r["bill_count"] for r in ga_rows)
 
     for r in ga_rows:
-        norm = _norm_legislator_name(r["sponsor_name"])
-        fin = cfs_lookup.get(norm)
+        norm      = _norm_legislator_name(r["sponsor_name"])
+        norm_fl   = _norm_first_last(r["sponsor_name"])
+        fin = cfs_lookup.get(norm) or sbe_supplement.get(norm_fl)
         if fin:
             matched_bills += r["bill_count"]
             sectors_by_action[r["action"]][fin["top_sector"] or "Unknown"] += r["bill_count"]

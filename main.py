@@ -4138,6 +4138,101 @@ def _fetch_finance_context(bioguide_ids: list[str], question: str) -> str:
 
 _SPANBERGER_FINANCE_CACHE: str | None = None
 
+# Supplement cache: normalized_name → {total_raised, top_sector}
+# Built lazily from va_cf_schedule_a for sponsors not in campaign_finance_summary
+_SBE_SUPPLEMENT_CACHE: dict[str, dict] | None = None
+
+
+def _get_sbe_supplement() -> dict[str, dict]:
+    """
+    Build (once) a normalized-name lookup of total_raised + top_sector from
+    va_cf_schedule_a for candidates not captured in campaign_finance_summary.
+    Strips prefixes, middle names/initials; uses first+last word as key.
+    """
+    global _SBE_SUPPLEMENT_CACHE
+    if _SBE_SUPPLEMENT_CACHE is not None:
+        return _SBE_SUPPLEMENT_CACHE
+
+    _SBE_SUPPLEMENT_CACHE = {}
+    if not os.path.exists(_POLLS_DB):
+        return _SBE_SUPPLEMENT_CACHE
+
+    try:
+        from build_va_state_finance import classify_sector as _classify_sector
+    except Exception:
+        # If classifier unavailable, still return totals without sector
+        def _classify_sector(occ: str, emp: str, co: str = "") -> str:
+            return "Individual/Other"
+
+    _PREFIXES = {"mr", "mrs", "ms", "dr", "prof", "hon", "rev", "sir"}
+
+    def _norm_sbe(name: str) -> str:
+        """Normalize va_cf_schedule_a candidate name to 'firstname lastname'."""
+        import re as _re
+        name = (name or "").strip().lower()
+        # Strip trailing punctuation
+        name = name.rstrip(".")
+        # Strip prefixes
+        words = name.split()
+        words = [w for w in words if w.rstrip(".") not in _PREFIXES]
+        # Strip middle initials (single letter or single letter + period)
+        words = [w for w in words if not _re.fullmatch(r"[a-z]\.?", w)]
+        if len(words) >= 2:
+            return f"{words[0]} {words[-1]}"   # first + last only
+        return " ".join(words)
+
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+
+        # Aggregate: total raised + top employer per candidate
+        rows = conn.execute("""
+            SELECT candidate_name,
+                   SUM(amount) AS total_raised,
+                   employer, occupation,
+                   COUNT(*) AS cnt
+            FROM va_cf_schedule_a
+            WHERE amount > 0
+              AND CAST(election_cycle AS INTEGER) >= 2021
+            GROUP BY candidate_name, employer, occupation
+            ORDER BY candidate_name, total_raised DESC
+        """).fetchall()
+        conn.close()
+    except Exception:
+        return _SBE_SUPPLEMENT_CACHE
+
+    # Aggregate per candidate: total raised + sector from top employer
+    from collections import defaultdict
+    candidate_data: dict[str, dict] = defaultdict(lambda: {"total_raised": 0.0, "sector_amounts": {}})
+
+    for row in rows:
+        norm_key = _norm_sbe(row["candidate_name"])
+        if not norm_key or len(norm_key) < 3:
+            continue
+        cd = candidate_data[norm_key]
+        cd["total_raised"] += float(row["total_raised"] or 0)
+        sector = _classify_sector(
+            row["occupation"] or "",
+            row["employer"] or "",
+        )
+        cd["sector_amounts"][sector] = (
+            cd["sector_amounts"].get(sector, 0.0) + float(row["total_raised"] or 0)
+        )
+
+    # Build final lookup
+    for norm_key, cd in candidate_data.items():
+        top_sector = (
+            max(cd["sector_amounts"], key=cd["sector_amounts"].get)
+            if cd["sector_amounts"] else "Individual/Other"
+        )
+        _SBE_SUPPLEMENT_CACHE[norm_key] = {
+            "total_raised": cd["total_raised"],
+            "top_sector": top_sector,
+        }
+
+    print(f"SBE supplement cache built: {len(_SBE_SUPPLEMENT_CACHE)} candidates", flush=True)
+    return _SBE_SUPPLEMENT_CACHE
+
 
 def _fetch_spanberger_finance_context(question: str = "") -> str:
     """Return Governor Spanberger campaign-finance context from local Virginia SBE Schedule A rows."""
