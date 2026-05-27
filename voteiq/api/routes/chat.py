@@ -2355,6 +2355,32 @@ def _format_governor_eo_detail(row: sqlite3.Row) -> str:
     return "\n".join(lines)
 
 
+_NICKNAMES = {
+    "charlie": "charles", "chris": "christopher", "bill": "william",
+    "bob": "robert", "jim": "james", "mike": "michael", "dave": "david",
+    "beth": "elizabeth", "liz": "elizabeth", "betty": "elizabeth",
+    "joe": "joseph", "dan": "daniel", "tom": "thomas", "matt": "matthew",
+    "ben": "benjamin", "nick": "nicholas", "tony": "anthony",
+    "rick": "richard", "rob": "robert", "rich": "richard",
+    "steve": "stephen", "jeff": "jeffrey", "andy": "andrew",
+}
+
+
+def _norm_legislator_name(name: str) -> str:
+    """Normalize legislator name: lowercase, strip middle initials, expand nicknames."""
+    import re as _re
+    name = (name or "").strip().lower()
+    if "," in name:                          # "Last, First" → "First Last"
+        parts = name.split(",", 1)
+        name = parts[1].strip() + " " + parts[0].strip()
+    name = _re.sub(r"\b[a-z]\.\s*", "", name)   # strip single-letter initials
+    name = _re.sub(r"\s+", " ", name).strip()
+    words = name.split()
+    if words and words[0] in _NICKNAMES:
+        words[0] = _NICKNAMES[words[0]]
+    return " ".join(words)
+
+
 def _direct_governor_correlation_reply(user_query: str) -> str:
     """
     Premium-only: Return governor bill-outcome vs. sponsor donor-sector correlation.
@@ -2384,50 +2410,24 @@ def _direct_governor_correlation_reply(user_query: str) -> str:
                 FROM governor_actions
                 WHERE session = '2026'
                   AND lower(governor) LIKE '%spanberger%'
-                GROUP BY action
-                ORDER BY cnt DESC
+                GROUP BY action ORDER BY cnt DESC
             """).fetchall()
         }
 
-        # Top sectors per action via campaign_finance_summary name join
-        sector_rows = conn.execute("""
-            SELECT ga.action, cfs.top_sector,
-                   COUNT(*) AS bill_count,
-                   SUM(cfs.total_raised) AS total_raised_sum
-            FROM governor_actions ga
-            JOIN campaign_finance_summary cfs
-              ON lower(trim(ga.sponsor_name)) = lower(trim(cfs.name))
-            WHERE lower(ga.governor) LIKE '%spanberger%'
-              AND ga.session = '2026'
-            GROUP BY ga.action, cfs.top_sector
-            ORDER BY ga.action, bill_count DESC
+        # Load all governor action sponsor rows
+        ga_rows = conn.execute("""
+            SELECT action, sponsor_name, sponsor_party, COUNT(*) AS bill_count
+            FROM governor_actions
+            WHERE lower(governor) LIKE '%spanberger%' AND session = '2026'
+              AND sponsor_name IS NOT NULL AND sponsor_name != ''
+            GROUP BY action, sponsor_name, sponsor_party
+            ORDER BY action, bill_count DESC
         """).fetchall()
 
-        # Top sponsors per action by bill count
-        top_sponsors = conn.execute("""
-            SELECT ga.action, ga.sponsor_name, ga.sponsor_party,
-                   COUNT(*) AS bill_count,
-                   cfs.top_sector, cfs.total_raised
-            FROM governor_actions ga
-            LEFT JOIN campaign_finance_summary cfs
-              ON lower(trim(ga.sponsor_name)) = lower(trim(cfs.name))
-            WHERE lower(ga.governor) LIKE '%spanberger%'
-              AND ga.session = '2026'
-            GROUP BY ga.action, ga.sponsor_name
-            ORDER BY ga.action, bill_count DESC
-        """).fetchall()
-
-        # Coverage stat
-        total_bills = conn.execute("""
-            SELECT COUNT(*) FROM governor_actions
-            WHERE lower(governor) LIKE '%spanberger%' AND session='2026'
-        """).fetchone()[0]
-        matched_bills = conn.execute("""
-            SELECT COUNT(*) FROM governor_actions ga
-            JOIN campaign_finance_summary cfs
-              ON lower(trim(ga.sponsor_name)) = lower(trim(cfs.name))
-            WHERE lower(ga.governor) LIKE '%spanberger%' AND ga.session='2026'
-        """).fetchone()[0]
+        # Load campaign finance summary for Python-side normalized matching
+        cfs_rows = conn.execute(
+            "SELECT name, top_sector, total_raised FROM campaign_finance_summary"
+        ).fetchall()
 
         conn.close()
     except Exception:
@@ -2436,15 +2436,34 @@ def _direct_governor_correlation_reply(user_query: str) -> str:
     if not action_counts:
         return ""
 
-    # Group sectors and sponsors by action
+    # Build normalized CFS lookup: norm_name → {top_sector, total_raised}
     from collections import defaultdict
-    sectors_by_action: dict = defaultdict(list)
-    for r in sector_rows:
-        sectors_by_action[r["action"]].append(r)
+    cfs_lookup: dict[str, dict] = {}
+    for r in cfs_rows:
+        cfs_lookup[_norm_legislator_name(r["name"])] = {
+            "top_sector": r["top_sector"],
+            "total_raised": r["total_raised"],
+        }
 
-    sponsors_by_action: dict = defaultdict(list)
-    for r in top_sponsors:
-        sponsors_by_action[r["action"]].append(r)
+    # Match each sponsor row to CFS via normalized name
+    sectors_by_action: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    sponsors_by_action: dict[str, list] = defaultdict(list)
+    matched_bills = 0
+    total_bills = sum(r["bill_count"] for r in ga_rows)
+
+    for r in ga_rows:
+        norm = _norm_legislator_name(r["sponsor_name"])
+        fin = cfs_lookup.get(norm)
+        if fin:
+            matched_bills += r["bill_count"]
+            sectors_by_action[r["action"]][fin["top_sector"] or "Unknown"] += r["bill_count"]
+        sponsors_by_action[r["action"]].append({
+            "sponsor_name": r["sponsor_name"],
+            "sponsor_party": r["sponsor_party"],
+            "bill_count": r["bill_count"],
+            "top_sector": fin["top_sector"] if fin else None,
+            "total_raised": fin["total_raised"] if fin else None,
+        })
 
     _ACTION_LABEL = {
         "signed": "Signed into law",
@@ -2471,13 +2490,12 @@ def _direct_governor_correlation_reply(user_query: str) -> str:
     ]
 
     for action, label in _ACTION_LABEL.items():
-        rows = sectors_by_action.get(action, [])
-        if not rows:
+        sector_counts = sectors_by_action.get(action, {})
+        if not sector_counts:
             continue
         lines.append(f"\n*{label}:*")
-        for r in rows[:5]:
-            sector = r["top_sector"] or "Unknown"
-            lines.append(f"- {sector}: {r['bill_count']} bill{'s' if r['bill_count'] != 1 else ''}")
+        for sector, cnt in sorted(sector_counts.items(), key=lambda x: x[1], reverse=True)[:5]:
+            lines.append(f"- {sector}: {cnt} bill{'s' if cnt != 1 else ''}")
 
     lines += ["", "**Top bill sponsors by action:**"]
     for action, label in _ACTION_LABEL.items():
