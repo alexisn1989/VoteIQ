@@ -4289,11 +4289,16 @@ def _fetch_spanberger_finance_context(question: str = "") -> str:
 def _fetch_governor_action_money_analyst_context(question: str = "") -> str:
     """Return structured analyst context for governor actions crossed with sponsor finance."""
     q = (question or "").lower()
-    if not any(term in q for term in ("analy", "analyst", "pattern", "overlap", "compare", "relationship")):
+    _gov_terms = ("governor", "spanberger", "signed", "veto", "vetoed", "action", "bill outcome", "executive order")
+    _money_terms = (
+        "money", "donor", "donors", "finance", "financ", "funding", "sector",
+        "contribution", "contribut", "campaign", "donation", "industry",
+        "who fund", "who back", "who support", "who gave", "who paid",
+        "analy", "pattern", "overlap", "compare", "relationship", "correlat",
+    )
+    if not any(term in q for term in _gov_terms):
         return ""
-    if not any(term in q for term in ("governor", "spanberger", "signed", "veto", "action", "bill outcome")):
-        return ""
-    if not any(term in q for term in ("money", "donor", "finance", "funding", "sector", "contribution", "campaign")):
+    if not any(term in q for term in _money_terms):
         return ""
 
     try:

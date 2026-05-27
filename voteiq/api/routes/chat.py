@@ -1097,6 +1097,10 @@ def _build_bills_context(
             seen_docs.add(full_profile_block)
             context_blocks.insert(0, full_profile_block)
 
+        _gov_money_q = (
+            any(t in q_lower for t in ("governor", "spanberger", "signed", "veto", "vetoed"))
+            and _is_money_q
+        )
         if _premium_analyst_enabled(req):
             analyst_context = _m._fetch_governor_action_money_analyst_context(user_query)
             if analyst_context and analyst_context not in seen_docs:
@@ -1107,6 +1111,17 @@ def _build_bills_context(
             if member_analyst_context and member_analyst_context not in seen_docs:
                 seen_docs.add(member_analyst_context)
                 context_blocks.insert(0, member_analyst_context)
+        elif _gov_money_q:
+            _teaser = (
+                "[Campaign Correlation Note — Pro/Newsroom Feature]\n"
+                "VoteIQ has donor-sector vs. governor bill-outcome correlation data for "
+                "Governor Spanberger's 2026 session (966 signed, 28 vetoed, 147 amended bills "
+                "crossed with sponsor campaign finance by industry sector). "
+                "Full correlation analysis is available to Pro and Newsroom subscribers."
+            )
+            if _teaser not in seen_docs:
+                seen_docs.add(_teaser)
+                context_blocks.append(_teaser)
 
         if _premium_analyst_enabled(req) and _is_money_q and _m._PAC_CACHE:
             _fec_bgids: list[str] = []
