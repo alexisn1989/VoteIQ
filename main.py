@@ -124,8 +124,9 @@ from voteiq.api.routes.governor import router as _governor_router
 app.include_router(_governor_router)
 
 # DATA_DIR: set to Render persistent disk mount path (e.g. /var/data) in production.
-# Falls back to the project directory for local development.
-_DATA_DIR = os.getenv("DATA_DIR", BASE_DIR)
+# Falls back to project root if DATA_DIR directory doesn't exist (e.g. after disk deletion).
+_data_dir_raw = os.getenv("DATA_DIR", BASE_DIR)
+_DATA_DIR = _data_dir_raw if os.path.isdir(_data_dir_raw) else BASE_DIR
 _OPENSTATES_DB = os.path.join(_DATA_DIR, "openstates_va.db")
 _POLLS_DB = os.path.join(_DATA_DIR, "polls.db")
 _FEC_DB = os.path.join(BASE_DIR, "fec_va.db")

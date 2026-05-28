@@ -1386,7 +1386,8 @@ def _governor_action_query(user_query: str) -> bool:
     ))
 
 
-_POLLS_DB = os.path.join(os.getenv("DATA_DIR", _BASE_DIR), "polls.db")
+_data_dir_raw = os.getenv("DATA_DIR", _BASE_DIR)
+_POLLS_DB = os.path.join(_data_dir_raw if os.path.isdir(_data_dir_raw) else _BASE_DIR, "polls.db")
 
 SPANBERGER_2026_VETO_FALLBACKS = {
     "HB1288": ("2026-04-13", "Enforcement of vehicle liens; increases property value."),
