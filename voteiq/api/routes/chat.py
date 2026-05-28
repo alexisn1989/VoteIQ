@@ -2975,6 +2975,9 @@ def _direct_va_finance_reply(user_query: str, premium: bool = False) -> str:
 
     # Must be primarily a finance/donor query — explicit terms only to avoid overlap with overview
     _finance_kws = any(t in q for t in (
+        "campaign finance", "finance record", "finance records", "financial record",
+        "financial records", "fundraising", "fundraising record", "fundraising records",
+        "how much money", "how much did spanberger raise", "how much did abigail raise",
         "top donor", "largest donor", "biggest donor", "major donor",
         "who gave", "who funded", "who contributed", "who backed", "who paid",
         "how much raised", "how much did she raise", "fundraising total", "fundraising record",
@@ -3020,9 +3023,10 @@ def _direct_va_finance_reply(user_query: str, premium: bool = False) -> str:
             SELECT person_name, office, party, committee_name, finance_url, source_url, fetched_at
             FROM va_finance_people
             WHERE lower(person_name) LIKE ?
+               OR lower(committee_name) LIKE ?
             ORDER BY fetched_at DESC LIMIT 1
             """,
-            (candidate_filter,),
+            (candidate_filter, candidate_filter),
         ).fetchone()
 
         cycle_rows = conn.execute(
@@ -3099,6 +3103,7 @@ def _direct_va_finance_reply(user_query: str, premium: bool = False) -> str:
         f"- {committee_name} ([VPAP committee page]({committee_url}))",
         "",
         "**Cycle Totals (Virginia SBE itemized receipts)**",
+        "- Local SQL data is loaded for this committee; this answer is based on `polls.db.va_cf_schedule_a` rows.",
     ]
     for row in cycle_rows:
         latest = f", latest transaction {row['latest']}" if row["latest"] else ""
@@ -3163,6 +3168,217 @@ def _direct_va_finance_reply(user_query: str, premium: bool = False) -> str:
         "- [Full Spanberger governor profile](/ask?q=Tell+me+about+Governor+Spanberger%27s+record)",
         "- [Which bills has Governor Spanberger signed?](/ask?q=Which+bills+has+Governor+Spanberger+signed%3F)",
         "- [Campaign finance vs governor bill actions (Pro)](/ask?q=Campaign+finance+vs+governor+actions+Spanberger)",
+    ])
+    return "\n".join(lines)
+
+
+def _direct_va_legislator_reply(user_query: str, premium: bool = False) -> str:
+    """Direct SQL reply for VA state delegate/senator profile queries.
+
+    Fires when a query mentions a recognisable VA legislator name plus
+    legislative keywords. Returns voting record, sponsored bills,
+    co-sponsorships, and campaign finance from the seed tables.
+    Spanberger/governor queries are excluded (handled by dedicated functions).
+    """
+    import re as _re
+    import json as _json
+
+    q = (user_query or "").lower()
+
+    # Skip governor-specific queries
+    if "spanberger" in q or "abigail" in q or "governor" in q:
+        return ""
+
+    # Must have legislative context keywords
+    _leg_kws = any(t in q for t in (
+        "delegate", "senator", "legislator", "lawmaker",
+        "voted", "votes", "voting record", "bill", "bills",
+        "sponsored", "introduced", "cosponsored", "co-sponsored",
+        "their record", "campaign finance", "donor", "funded by",
+        "who gives", "who gave", "va house", "va senate",
+        "virginia house", "virginia senate",
+        "what did", "tell me about", "profile", "record",
+    ))
+    if not _leg_kws:
+        return ""
+
+    if not os.path.exists(_POLLS_DB):
+        return ""
+
+    # Extract proper-name candidates: 2+ capitalised words
+    name_candidates = _re.findall(r'\b([A-Z][a-zA-Z]+(?:\.?\s+[A-Z][a-zA-Z]+)+)\b', user_query)
+    if not name_candidates:
+        return ""
+
+    legislator_name = None
+    vote_summary = None
+    sponsored = []
+    sponsored_total = 0
+    cosponsor_total = 0
+    recent_votes: list = []
+    finance = None
+
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+
+        if not conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='va_legislator_vote_summary'"
+        ).fetchone():
+            conn.close()
+            return ""
+
+        # Try to match a name from the query to a legislator in the DB
+        for name in name_candidates:
+            row = conn.execute(
+                "SELECT * FROM va_legislator_vote_summary WHERE voter_name = ? AND session = '2026'",
+                (name,),
+            ).fetchone()
+            if not row:
+                # Partial match on last word (e.g. "Boysko" matches "Jennifer B. Boysko")
+                last_word = name.strip().split()[-1]
+                if len(last_word) >= 4:
+                    row = conn.execute(
+                        "SELECT * FROM va_legislator_vote_summary "
+                        "WHERE lower(voter_name) LIKE ? AND session = '2026' LIMIT 1",
+                        (f"%{last_word.lower()}%",),
+                    ).fetchone()
+            if row:
+                legislator_name = row["voter_name"]
+                vote_summary = row
+                break
+
+        if not legislator_name:
+            conn.close()
+            return ""
+
+        recent_votes = conn.execute(
+            """
+            SELECT bill_id, vote_date, option, title
+            FROM va_legislator_recent_votes
+            WHERE voter_name = ? AND session = '2026'
+            ORDER BY vote_date DESC LIMIT 15
+            """,
+            (legislator_name,),
+        ).fetchall()
+
+        sponsored_total = conn.execute(
+            "SELECT COUNT(*) FROM va_legislator_sponsored_bills "
+            "WHERE legislator_name = ? AND session = '2026'",
+            (legislator_name,),
+        ).fetchone()[0]
+
+        sponsored = conn.execute(
+            """
+            SELECT bill_number, title, status_label, subject
+            FROM va_legislator_sponsored_bills
+            WHERE legislator_name = ? AND session = '2026'
+            ORDER BY status_date DESC LIMIT 8
+            """,
+            (legislator_name,),
+        ).fetchall()
+
+        cosponsor_total = conn.execute(
+            "SELECT COUNT(*) FROM va_legislator_cosponsor_bills "
+            "WHERE legislator_name = ? AND session = '2026'",
+            (legislator_name,),
+        ).fetchone()[0]
+
+        # Finance — match by last name
+        last_name = legislator_name.split()[-1]
+        finance = conn.execute(
+            """
+            SELECT total_raised, top_sector, top_sector_pct, by_sector_json, latest_cycle
+            FROM campaign_finance_summary
+            WHERE lower(name) LIKE ?
+            ORDER BY updated_at DESC LIMIT 1
+            """,
+            (f"%{last_name.lower()}%",),
+        ).fetchone()
+
+        conn.close()
+    except Exception:
+        return ""
+
+    # ── Format response ───────────────────────────────────────────────────────────
+    chamber = str(vote_summary["chamber"] or "Legislator")
+    party   = str(vote_summary["party"]   or "")
+    party_str = f" ({party})" if party else ""
+    yes_count = int(vote_summary["yes_count"]   or 0)
+    no_count  = int(vote_summary["no_count"]    or 0)
+    nv_count  = int(vote_summary["not_voting"]  or 0)
+    total     = int(vote_summary["total_votes"] or 0)
+    yes_rate  = round(yes_count / max(total, 1) * 100, 1)
+    no_rate   = round(no_count  / max(total, 1) * 100, 1)
+
+    lines = [
+        "**Legislative Record Brief**",
+        f"Subject: {legislator_name}",
+        f"Role: Virginia {chamber}{party_str}, 2026 session",
+        "Scope: Votes, sponsored bills, co-sponsorships, campaign finance",
+        "Sources: OpenStates VA, LegiScan VA, Virginia SBE, VoteIQ local SQL",
+        "",
+        "**Voting Record — 2026 Session**",
+        f"- Total votes cast: {total:,}",
+        f"- Yes: {yes_count:,} ({yes_rate}%) | No: {no_count:,} ({no_rate}%) | Not voting: {nv_count:,}",
+        "",
+    ]
+
+    if recent_votes:
+        lines.append(f"**{len(recent_votes)} Most Recent Votes**")
+        for rv in recent_votes:
+            opt = (rv["option"] or "?").upper()
+            title_short = (rv["title"] or rv["bill_id"] or "")[:80]
+            lines.append(
+                f"- [{rv['bill_id']}](https://openstates.org/va/bills/2026/{rv['bill_id']}/) "
+                f"**{opt}** — {title_short} ({rv['vote_date']})"
+            )
+        lines.append("")
+
+    if sponsored:
+        lines.append(
+            f"**Bills Introduced — 2026 Session ({sponsored_total} total; showing {len(sponsored)})**"
+        )
+        for b in sponsored:
+            status = f" [{b['status_label']}]" if b["status_label"] else ""
+            lines.append(
+                f"- [{b['bill_number']}](https://openstates.org/va/bills/2026/{b['bill_number']}/) "
+                f"— {(b['title'] or '')[:80]}{status}"
+            )
+        lines.append("")
+
+    lines.append(f"**Co-Sponsorships — 2026 Session**: {cosponsor_total:,} bills co-sponsored")
+    lines.append("")
+
+    if finance:
+        lines.append("**Campaign Finance (Virginia SBE — all cycles in VoteIQ)**")
+        lines.append(
+            f"- Total raised (through {finance['latest_cycle']}): "
+            f"${float(finance['total_raised'] or 0):,.0f}"
+        )
+        lines.append(f"- Top donor sector: {finance['top_sector']} ({finance['top_sector_pct']}%)")
+        if finance["by_sector_json"]:
+            try:
+                sectors = _json.loads(finance["by_sector_json"])[:6]
+                for s in sectors:
+                    lines.append(f"  - {s['sector']}: ${float(s['total']):,.0f}")
+            except Exception:
+                pass
+        if not premium:
+            lines.append("_Full donor list available with Pro/Newsroom access._")
+        lines.append("")
+
+    lines.extend([
+        "**Data Limits**",
+        "- Vote records from OpenStates VA; bill status from LegiScan VA.",
+        "- Finance from Virginia SBE via VoteIQ local import; VPAP totals may differ.",
+        "- This brief does not infer motive, influence, or causation from votes or donations.",
+        "",
+        "**Related Questions**",
+        f"- [What bills did {legislator_name} introduce?]"
+        f"(/ask?q=Bills+introduced+by+{legislator_name.replace(' ', '+')})",
+        f"- [How did {legislator_name} vote on education bills?]"
+        f"(/ask?q={legislator_name.replace(' ', '+')}+voted+education)",
     ])
     return "\n".join(lines)
 
@@ -3617,7 +3833,8 @@ async def chat(req: ChatRequest):
     if direct_source_reply:
         return ChatResponse(reply=direct_source_reply)
     direct_governor_reply = (
-        _direct_va_finance_reply(last_question, premium=_premium_analyst_enabled(req))
+        _direct_va_legislator_reply(last_question, premium=_premium_analyst_enabled(req))
+        or _direct_va_finance_reply(last_question, premium=_premium_analyst_enabled(req))
         or _direct_spanberger_governor_overview_reply(last_question)
         or _direct_governor_eo_reply(last_question)
         or _direct_governor_veto_reply(last_question)
@@ -3895,7 +4112,8 @@ async def gemini_chat(request: Request, req: ChatRequest):
     if direct_source_reply:
         return ChatResponse(reply=direct_source_reply)
     direct_governor_reply = (
-        _direct_va_finance_reply(user_query, premium=_premium_analyst_enabled(req))
+        _direct_va_legislator_reply(user_query, premium=_premium_analyst_enabled(req))
+        or _direct_va_finance_reply(user_query, premium=_premium_analyst_enabled(req))
         or _direct_spanberger_governor_overview_reply(user_query)
         or _direct_governor_eo_reply(user_query)
         or _direct_governor_veto_reply(user_query)
@@ -4009,7 +4227,8 @@ async def bills_chat(req: BillsChatRequest):
     if direct_source_reply:
         return ChatResponse(reply=direct_source_reply)
     direct_governor_reply = (
-        _direct_va_finance_reply(user_query, premium=_premium_analyst_enabled(req))
+        _direct_va_legislator_reply(user_query, premium=_premium_analyst_enabled(req))
+        or _direct_va_finance_reply(user_query, premium=_premium_analyst_enabled(req))
         or _direct_spanberger_governor_overview_reply(user_query)
         or _direct_governor_eo_reply(user_query)
         or _direct_governor_veto_reply(user_query)
@@ -4137,7 +4356,8 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
         return StreamingResponse(_source_gen(), media_type="text/event-stream")
 
     direct_governor_reply = (
-        _direct_va_finance_reply(user_query, premium=_premium_analyst_enabled(req))
+        _direct_va_legislator_reply(user_query, premium=_premium_analyst_enabled(req))
+        or _direct_va_finance_reply(user_query, premium=_premium_analyst_enabled(req))
         or _direct_spanberger_governor_overview_reply(user_query)
         or _direct_governor_eo_reply(user_query)
         or _direct_governor_veto_reply(user_query)
