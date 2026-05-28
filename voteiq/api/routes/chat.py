@@ -2614,14 +2614,21 @@ def _direct_governor_eo_reply(user_query: str) -> str:
 def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
     """Return a neutral SQL-first public-record overview for Governor Spanberger."""
     q = (user_query or "").lower()
-    if "spanberger" not in q or "governor" not in q:
+    # Fire if Spanberger is mentioned by name OR if asking about VA governor generically
+    _mentions_spanberger = "spanberger" in q or "abigail" in q
+    _mentions_governor = "governor" in q
+    if not _mentions_spanberger and not _mentions_governor:
+        return ""
+    if not _mentions_spanberger and not any(
+        t in q for t in ("virginia governor", "va governor", "our governor")
+    ):
         return ""
     if not any(term in q for term in (
         "overview", "public-record", "public record", "profile",
-        "campaign finance", "major donors",
-        "signed", "vetoed", "veto", "bills", "legislation",
-        "executive order", "what has", "what did", "record",
-        "done as governor", "actions", "legislative",
+        "campaign finance", "major donors", "who is", "tell me", "brief",
+        "signed", "vetoed", "veto", "bills", "legislation", "info",
+        "executive order", "what has", "what did", "record", "about",
+        "done as governor", "actions", "legislative", "research",
     )):
         return ""
     if "youngkin" in q:
