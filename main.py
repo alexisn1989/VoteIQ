@@ -7638,6 +7638,42 @@ async def _on_startup():
         except Exception as exc:
             print(f"Voyage backfill skipped: {exc}")
 
+    def _governor_seed_task():
+        """Seed governor_actions + governor_executive_orders if signed bills are missing."""
+        try:
+            conn = sqlite3.connect(_POLLS_DB)
+            try:
+                signed = conn.execute(
+                    "SELECT COUNT(*) FROM governor_actions "
+                    "WHERE action='signed' AND lower(governor) LIKE '%spanberger%'"
+                ).fetchone()[0]
+            except Exception:
+                signed = 0
+            if signed >= 500:
+                print(f"[governor-seed] {signed} signed bills present — skipping seed.")
+                conn.close()
+                return
+            seed_file = os.path.join(BASE_DIR, "data", "governor_seed.sql")
+            if not os.path.exists(seed_file):
+                print(f"[governor-seed] Seed file not found at {seed_file}")
+                conn.close()
+                return
+            print(f"[governor-seed] Only {signed} signed bills — seeding from {seed_file}...")
+            with open(seed_file, "r", encoding="utf-8") as f:
+                script = f.read()
+            conn.executescript(script)
+            conn.commit()
+            ga = conn.execute("SELECT COUNT(*) FROM governor_actions").fetchone()[0]
+            signed_after = conn.execute(
+                "SELECT COUNT(*) FROM governor_actions "
+                "WHERE action='signed' AND lower(governor) LIKE '%spanberger%'"
+            ).fetchone()[0]
+            geo = conn.execute("SELECT COUNT(*) FROM governor_executive_orders").fetchone()[0]
+            print(f"[governor-seed] Done: {ga} governor_actions ({signed_after} signed), {geo} EOs.")
+            conn.close()
+        except Exception as exc:
+            print(f"[governor-seed] Failed: {exc}")
+
     def _gov_actions_task():
         try:
             import ingest_governor_actions
@@ -7654,6 +7690,8 @@ async def _on_startup():
         except Exception as exc:
             print(f"PAC cache warm skipped: {exc}")
 
+    # Seed governor data first — must run before _gov_actions_task
+    _governor_seed_task()
     threading.Thread(target=_embed_task, daemon=True).start()
     threading.Thread(target=_gov_actions_task, daemon=True).start()
     threading.Thread(target=_pac_cache_task, daemon=True).start()
