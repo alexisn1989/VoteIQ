@@ -7721,8 +7721,42 @@ async def _on_startup():
         except Exception as exc:
             print(f"PAC cache warm skipped: {exc}")
 
-    # Seed governor data first — must run before _gov_actions_task
+    def _finance_seed_task():
+        """Seed pre-aggregated finance tables from data/finance_seed.sql if missing."""
+        try:
+            conn = sqlite3.connect(_POLLS_DB)
+            try:
+                n = conn.execute(
+                    "SELECT COUNT(*) FROM va_finance_cycle_totals "
+                    "WHERE lower(candidate_name) LIKE '%spanberger%'"
+                ).fetchone()[0]
+            except Exception:
+                n = 0
+            if n >= 3:
+                print(f"[finance-seed] {n} cycle-total rows present — skipping seed.")
+                conn.close()
+                return
+            seed_file = os.path.join(BASE_DIR, "data", "finance_seed.sql")
+            if not os.path.exists(seed_file):
+                print(f"[finance-seed] Seed file not found at {seed_file}")
+                conn.close()
+                return
+            print(f"[finance-seed] Seeding pre-aggregated finance tables from {seed_file}...")
+            with open(seed_file, "r", encoding="utf-8") as f:
+                script = f.read()
+            conn.executescript(script)
+            conn.commit()
+            cycles  = conn.execute("SELECT COUNT(*) FROM va_finance_cycle_totals").fetchone()[0]
+            donors  = conn.execute("SELECT COUNT(*) FROM va_finance_top_donors").fetchone()[0]
+            sectors = conn.execute("SELECT COUNT(*) FROM va_finance_sector_totals").fetchone()[0]
+            print(f"[finance-seed] Done: {cycles} cycle rows, {donors} donor rows, {sectors} sector rows.")
+            conn.close()
+        except Exception as exc:
+            print(f"[finance-seed] Failed: {exc}")
+
+    # Seed governor data and finance summaries synchronously before background threads
     _governor_seed_task()
+    _finance_seed_task()
     threading.Thread(target=_embed_task, daemon=True).start()
     threading.Thread(target=_gov_actions_task, daemon=True).start()
     threading.Thread(target=_finance_rebuild_task, daemon=True).start()

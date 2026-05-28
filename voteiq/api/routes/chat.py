@@ -2644,6 +2644,7 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
     eo_rows = []
     eo_total = 0
     sector_totals: dict[str, dict[str, float | int]] = {}
+    finance_table_note = ""
 
     if not os.path.exists(_POLLS_DB):
         return ""
@@ -2652,15 +2653,19 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
     try:
         conn = sqlite3.connect(_POLLS_DB)
         conn.row_factory = sqlite3.Row
-        finance_person = conn.execute(
-            """
-            SELECT person_name, office, party, committee_name, finance_url, source_url, fetched_at
-            FROM va_finance_people
-            WHERE lower(person_name) LIKE '%spanberger%'
-            ORDER BY fetched_at DESC
-            LIMIT 1
-            """
-        ).fetchone()
+        if conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='va_finance_people'"
+        ).fetchone():
+            finance_person = conn.execute(
+                """
+                SELECT person_name, office, party, committee_name, finance_url, source_url, fetched_at
+                FROM va_finance_people
+                WHERE lower(person_name) LIKE '%spanberger%'
+                   OR lower(committee_name) LIKE '%spanberger%'
+                ORDER BY fetched_at DESC
+                LIMIT 1
+                """
+            ).fetchone()
         cycle_rows = conn.execute(
             """
             SELECT election_cycle, ROUND(SUM(amount), 2) AS total,
@@ -2829,11 +2834,15 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
         f"- Committee shown in local records: {finance_person['committee_name'] if finance_person and finance_person['committee_name'] else 'Spanberger for Governor'} ([VPAP committee page]({committee_url})).",
         f"- VoteIQ local SQL totals from Virginia SBE Schedule A itemized contribution rows, cycles 2023+ total ${all_total:,.0f} across {all_records:,} contribution records. These are candidate-committee receipt records in the local import, not a full accounting of outside spending.",
     ]
+    if finance_table_note:
+        lines.append(f"- Finance table note: {finance_table_note}")
     if cycle_rows:
-        lines.append("- Cycle totals from local SBE import:")
+        lines.append("- SQL table `va_cf_schedule_a` cycle totals from local SBE import:")
         for row in cycle_rows:
             latest = f", latest transaction {row['latest']}" if row["latest"] else ""
             lines.append(f"  - {row['election_cycle']}: ${float(row['total'] or 0):,.0f} from {int(row['records'] or 0):,} records{latest}")
+    else:
+        lines.append("- SQL table `va_cf_schedule_a`: no Spanberger contribution rows returned from the connected local database.")
 
     if sector_totals:
         latest_total = next((float(row["total"] or 0) for row in cycle_rows if str(row["election_cycle"]) == "2025"), 0.0)
@@ -2944,16 +2953,16 @@ def _direct_va_finance_reply(user_query: str, premium: bool = False) -> str:
 
     cycle_rows: list = []
     donor_rows: list = []
-    sector_totals: dict[str, dict[str, float | int]] = {}
+    sector_rows: list = []
     finance_person = None
 
     try:
         conn = sqlite3.connect(_POLLS_DB)
         conn.row_factory = sqlite3.Row
 
-        # Bail out cleanly if finance table doesn't exist yet
+        # Require the pre-aggregated cycle-totals table (seeded from data/finance_seed.sql)
         if not conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='va_cf_schedule_a'"
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='va_finance_cycle_totals'"
         ).fetchone():
             conn.close()
             return ""
@@ -2970,17 +2979,10 @@ def _direct_va_finance_reply(user_query: str, premium: bool = False) -> str:
 
         cycle_rows = conn.execute(
             """
-            SELECT election_cycle,
-                   ROUND(SUM(amount), 2) AS total,
-                   COUNT(*) AS records,
-                   COUNT(DISTINCT CASE WHEN is_individual = 1 THEN
-                       TRIM(COALESCE(first_name, '') || ' ' || COALESCE(last_or_company, ''))
-                   END) AS unique_individuals,
-                   MAX(transaction_date) AS latest
-            FROM va_cf_schedule_a
+            SELECT election_cycle, total, records, unique_individuals,
+                   latest_date AS latest
+            FROM va_finance_cycle_totals
             WHERE lower(candidate_name) LIKE ?
-              AND amount > 0
-            GROUP BY election_cycle
             ORDER BY CAST(election_cycle AS INTEGER) DESC
             """,
             (candidate_filter,),
@@ -2991,56 +2993,30 @@ def _direct_va_finance_reply(user_query: str, premium: bool = False) -> str:
             return ""
 
         highlight_cycle = str(cycle_rows[0]["election_cycle"])
-
         donor_limit = 25 if premium else 15
+
         donor_rows = conn.execute(
             """
-            SELECT
-                CASE
-                    WHEN is_individual = 1
-                    THEN TRIM(COALESCE(first_name, '') || ' ' || COALESCE(last_or_company, ''))
-                    ELSE COALESCE(last_or_company, '')
-                END AS donor_name,
-                COALESCE(employer, '') AS employer,
-                COALESCE(occupation, '') AS occupation,
-                ROUND(SUM(amount), 2) AS total,
-                COUNT(*) AS records,
-                is_individual
-            FROM va_cf_schedule_a
+            SELECT donor_name, employer, occupation, is_individual, total, records
+            FROM va_finance_top_donors
             WHERE lower(candidate_name) LIKE ?
-              AND amount > 0
               AND election_cycle = ?
-            GROUP BY donor_name, employer, occupation
-            HAVING donor_name != ''
-            ORDER BY total DESC
+            ORDER BY rank
             LIMIT ?
             """,
             (candidate_filter, highlight_cycle, donor_limit),
         ).fetchall()
 
-        try:
-            from build_va_state_finance import classify_sector
-            fin_rows = conn.execute(
-                """
-                SELECT occupation, employer, last_or_company, is_individual, amount
-                FROM va_cf_schedule_a
-                WHERE lower(candidate_name) LIKE ?
-                  AND amount > 0
-                  AND election_cycle = ?
-                """,
-                (candidate_filter, highlight_cycle),
-            ).fetchall()
-            for row in fin_rows:
-                sector = classify_sector(
-                    row["occupation"] or "",
-                    row["employer"] or "",
-                    row["last_or_company"] or "" if not row["is_individual"] else "",
-                )
-                stats = sector_totals.setdefault(sector, {"total": 0.0, "records": 0})
-                stats["total"] = float(stats["total"]) + float(row["amount"] or 0)
-                stats["records"] = int(stats["records"]) + 1
-        except Exception:
-            sector_totals = {}
+        sector_rows = conn.execute(
+            """
+            SELECT sector, total, records
+            FROM va_finance_sector_totals
+            WHERE lower(candidate_name) LIKE ?
+              AND election_cycle = ?
+            ORDER BY total DESC
+            """,
+            (candidate_filter, highlight_cycle),
+        ).fetchall()
 
         conn.close()
     except Exception:
@@ -3078,9 +3054,10 @@ def _direct_va_finance_reply(user_query: str, premium: bool = False) -> str:
     ]
     for row in cycle_rows:
         latest = f", latest transaction {row['latest']}" if row["latest"] else ""
+        unique_individuals = row["unique_individuals"] if "unique_individuals" in row.keys() else 0
         uniq = (
-            f", ~{int(row['unique_individuals'] or 0):,} unique individual donors"
-            if row.get("unique_individuals")
+            f", ~{int(unique_individuals or 0):,} unique individual donors"
+            if unique_individuals
             else ""
         )
         lines.append(
@@ -3093,18 +3070,16 @@ def _direct_va_finance_reply(user_query: str, premium: bool = False) -> str:
     ])
 
     sector_limit = 12 if premium else 8
-    if sector_totals:
+    if sector_rows:
         lines.append(
             f"**Donor Sectors — {highlight_cycle} "
             f"(keyword classification of SBE occupation/employer fields)**"
         )
-        for sector, stats in sorted(
-            sector_totals.items(), key=lambda x: float(x[1]["total"]), reverse=True
-        )[:sector_limit]:
-            pct = float(stats["total"]) / highlight_total * 100 if highlight_total else 0
+        for row in sector_rows[:sector_limit]:
+            pct = float(row["total"] or 0) / highlight_total * 100 if highlight_total else 0
             lines.append(
-                f"- {sector}: ${float(stats['total']):,.0f} "
-                f"({pct:.1f}% of {highlight_cycle} total, {int(stats['records']):,} records)"
+                f"- {row['sector']}: ${float(row['total'] or 0):,.0f} "
+                f"({pct:.1f}% of {highlight_cycle} total, {int(row['records'] or 0):,} records)"
             )
         lines.append("")
 
