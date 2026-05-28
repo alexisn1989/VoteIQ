@@ -2649,13 +2649,18 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
     if not os.path.exists(_POLLS_DB):
         return ""
 
-    # Finance data — best-effort; missing tables do not abort the function
+    # Finance data — best-effort; missing tables do not abort the function.
+    # Prefer the pre-aggregated seed tables (va_finance_*); fall back to raw va_cf_schedule_a.
     try:
         conn = sqlite3.connect(_POLLS_DB)
         conn.row_factory = sqlite3.Row
-        if conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='va_finance_people'"
-        ).fetchone():
+
+        def _table_exists(name: str) -> bool:
+            return bool(conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (name,)
+            ).fetchone())
+
+        if _table_exists("va_finance_people"):
             finance_person = conn.execute(
                 """
                 SELECT person_name, office, party, committee_name, finance_url, source_url, fetched_at
@@ -2666,61 +2671,104 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
                 LIMIT 1
                 """
             ).fetchone()
-        cycle_rows = conn.execute(
-            """
-            SELECT election_cycle, ROUND(SUM(amount), 2) AS total,
-                   COUNT(*) AS records, MAX(transaction_date) AS latest
-            FROM va_cf_schedule_a
-            WHERE lower(candidate_name) LIKE '%spanberger%'
-              AND amount > 0
-              AND CAST(election_cycle AS INTEGER) >= 2023
-            GROUP BY election_cycle
-            ORDER BY CAST(election_cycle AS INTEGER) DESC
-            """
-        ).fetchall()
-        donor_rows = conn.execute(
-            """
-            SELECT
-                CASE
-                    WHEN is_individual = 1 THEN TRIM(COALESCE(first_name, '') || ' ' || COALESCE(last_or_company, ''))
-                    ELSE COALESCE(last_or_company, '')
-                END AS donor_name,
-                COALESCE(employer, '') AS employer,
-                COALESCE(occupation, '') AS occupation,
-                ROUND(SUM(amount), 2) AS total,
-                COUNT(*) AS records
-            FROM va_cf_schedule_a
-            WHERE lower(candidate_name) LIKE '%spanberger%'
-              AND amount > 0
-              AND election_cycle = '2025'
-            GROUP BY donor_name, employer, occupation
-            HAVING donor_name != ''
-            ORDER BY total DESC
-            LIMIT 10
-            """
-        ).fetchall()
-        try:
-            from build_va_state_finance import classify_sector
-            finance_rows = conn.execute(
+
+        _has_cycle_seed = _table_exists("va_finance_cycle_totals") and bool(conn.execute(
+            "SELECT 1 FROM va_finance_cycle_totals WHERE lower(candidate_name) LIKE '%spanberger%' LIMIT 1"
+        ).fetchone())
+
+        if _has_cycle_seed:
+            # ── Pre-aggregated seed path (works on Render without the 1.9 GB raw table) ──
+            cycle_rows = conn.execute(
                 """
-                SELECT occupation, employer, last_or_company, is_individual, amount
+                SELECT election_cycle, total, records, latest_date AS latest
+                FROM va_finance_cycle_totals
+                WHERE lower(candidate_name) LIKE '%spanberger%'
+                  AND CAST(election_cycle AS INTEGER) >= 2023
+                ORDER BY CAST(election_cycle AS INTEGER) DESC
+                """
+            ).fetchall()
+            if _table_exists("va_finance_top_donors"):
+                donor_rows = conn.execute(
+                    """
+                    SELECT donor_name, employer, occupation, total, records
+                    FROM va_finance_top_donors
+                    WHERE lower(candidate_name) LIKE '%spanberger%'
+                      AND election_cycle = '2025'
+                    ORDER BY rank
+                    LIMIT 10
+                    """
+                ).fetchall()
+            if _table_exists("va_finance_sector_totals"):
+                for row in conn.execute(
+                    """
+                    SELECT sector, total, records
+                    FROM va_finance_sector_totals
+                    WHERE lower(candidate_name) LIKE '%spanberger%'
+                      AND election_cycle = '2025'
+                    ORDER BY total DESC
+                    """
+                ).fetchall():
+                    sector_totals[row["sector"]] = {
+                        "total": float(row["total"] or 0),
+                        "records": int(row["records"] or 0),
+                    }
+        elif _table_exists("va_cf_schedule_a"):
+            # ── Raw fallback (local dev with the full SBE import) ──
+            cycle_rows = conn.execute(
+                """
+                SELECT election_cycle, ROUND(SUM(amount), 2) AS total,
+                       COUNT(*) AS records, MAX(transaction_date) AS latest
+                FROM va_cf_schedule_a
+                WHERE lower(candidate_name) LIKE '%spanberger%'
+                  AND amount > 0
+                  AND CAST(election_cycle AS INTEGER) >= 2023
+                GROUP BY election_cycle
+                ORDER BY CAST(election_cycle AS INTEGER) DESC
+                """
+            ).fetchall()
+            donor_rows = conn.execute(
+                """
+                SELECT
+                    CASE
+                        WHEN is_individual = 1 THEN TRIM(COALESCE(first_name, '') || ' ' || COALESCE(last_or_company, ''))
+                        ELSE COALESCE(last_or_company, '')
+                    END AS donor_name,
+                    COALESCE(employer, '') AS employer,
+                    COALESCE(occupation, '') AS occupation,
+                    ROUND(SUM(amount), 2) AS total,
+                    COUNT(*) AS records
                 FROM va_cf_schedule_a
                 WHERE lower(candidate_name) LIKE '%spanberger%'
                   AND amount > 0
                   AND election_cycle = '2025'
+                GROUP BY donor_name, employer, occupation
+                HAVING donor_name != ''
+                ORDER BY total DESC
+                LIMIT 10
                 """
             ).fetchall()
-            for row in finance_rows:
-                sector = classify_sector(
-                    row["occupation"] or "",
-                    row["employer"] or "",
-                    row["last_or_company"] or "" if not row["is_individual"] else "",
-                )
-                stats = sector_totals.setdefault(sector, {"total": 0.0, "records": 0})
-                stats["total"] = float(stats["total"]) + float(row["amount"] or 0)
-                stats["records"] = int(stats["records"]) + 1
-        except Exception:
-            sector_totals = {}
+            try:
+                from build_va_state_finance import classify_sector
+                finance_rows = conn.execute(
+                    """
+                    SELECT occupation, employer, last_or_company, is_individual, amount
+                    FROM va_cf_schedule_a
+                    WHERE lower(candidate_name) LIKE '%spanberger%'
+                      AND amount > 0
+                      AND election_cycle = '2025'
+                    """
+                ).fetchall()
+                for row in finance_rows:
+                    sector = classify_sector(
+                        row["occupation"] or "",
+                        row["employer"] or "",
+                        row["last_or_company"] or "" if not row["is_individual"] else "",
+                    )
+                    stats = sector_totals.setdefault(sector, {"total": 0.0, "records": 0})
+                    stats["total"] = float(stats["total"]) + float(row["amount"] or 0)
+                    stats["records"] = int(stats["records"]) + 1
+            except Exception:
+                sector_totals = {}
         conn.close()
     except Exception:
         pass  # Finance tables unavailable — continue with legislative record
