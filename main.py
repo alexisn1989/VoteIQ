@@ -7683,6 +7683,36 @@ async def _on_startup():
         except Exception as exc:
             print(f"Governor actions ingest skipped: {exc}")
 
+    def _finance_rebuild_task():
+        """Rebuild SBE campaign finance data in background if Spanberger 2025 records missing."""
+        try:
+            conn = sqlite3.connect(_POLLS_DB)
+            try:
+                n = conn.execute(
+                    "SELECT COUNT(*) FROM va_cf_schedule_a "
+                    "WHERE lower(candidate_name) LIKE '%spanberger%' AND election_cycle='2025'"
+                ).fetchone()[0]
+            except Exception:
+                n = 0
+            conn.close()
+            if n >= 1000:
+                print(f"[finance-rebuild] {n:,} Spanberger 2025 records present — skipping rebuild.")
+                return
+            print(f"[finance-rebuild] Only {n} Spanberger 2025 records — rebuilding SBE finance data (background)...")
+            import subprocess
+            result = subprocess.run(
+                ["bash", "scripts/build_production_data.sh"],
+                cwd=BASE_DIR,
+                capture_output=False,
+                timeout=1800,  # 30 min max
+            )
+            if result.returncode == 0:
+                print("[finance-rebuild] SBE finance data rebuilt successfully.")
+            else:
+                print(f"[finance-rebuild] build_production_data.sh failed (exit {result.returncode}).")
+        except Exception as exc:
+            print(f"[finance-rebuild] Error: {exc}")
+
     def _pac_cache_task():
         try:
             from voteiq.api.routes.members import _load_pac_table
@@ -7695,6 +7725,7 @@ async def _on_startup():
     _governor_seed_task()
     threading.Thread(target=_embed_task, daemon=True).start()
     threading.Thread(target=_gov_actions_task, daemon=True).start()
+    threading.Thread(target=_finance_rebuild_task, daemon=True).start()
     threading.Thread(target=_pac_cache_task, daemon=True).start()
 
 
