@@ -64,6 +64,41 @@ def health_check():
     """Render health check — must return 200 or the service is marked unhealthy."""
     return {"status": "ok"}
 
+
+@app.get("/debug/db")
+def debug_db():
+    """Live DB diagnostic — shows which polls.db the running app sees and table counts."""
+    polls_path = _POLLS_DB
+    result: dict = {
+        "cwd": os.getcwd(),
+        "base_dir": BASE_DIR,
+        "data_dir_env": os.getenv("DATA_DIR", "(not set)"),
+        "polls_db_path": polls_path,
+        "polls_db_exists": os.path.isfile(polls_path),
+        "polls_db_size_mb": round(os.path.getsize(polls_path) / 1_048_576, 2) if os.path.isfile(polls_path) else 0,
+        "tables": {},
+    }
+    if os.path.isfile(polls_path):
+        try:
+            conn = sqlite3.connect(polls_path)
+            for tbl in ("governor_actions", "governor_executive_orders", "va_cf_schedule_a"):
+                try:
+                    n = conn.execute(f"SELECT COUNT(*) FROM {tbl}").fetchone()[0]
+                    result["tables"][tbl] = n
+                except Exception as e:
+                    result["tables"][tbl] = f"error: {e}"
+            try:
+                signed = conn.execute(
+                    "SELECT COUNT(*) FROM governor_actions WHERE action='signed' AND lower(governor) LIKE '%spanberger%'"
+                ).fetchone()[0]
+                result["spanberger_signed"] = signed
+            except Exception as e:
+                result["spanberger_signed"] = f"error: {e}"
+            conn.close()
+        except Exception as e:
+            result["db_error"] = str(e)
+    return result
+
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 app.include_router(voices_router, prefix="/api/v1")
 
