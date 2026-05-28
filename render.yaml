@@ -4,7 +4,7 @@ services:
     runtime: python311
     plan: standard
     buildCommand: bash build.sh
-    startCommand: gunicorn app:app
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     disks:
       - name: data
         mountPath: /data
