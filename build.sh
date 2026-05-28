@@ -8,7 +8,7 @@ echo "VoteIQ Render Build Process"
 echo "=========================================="
 
 # ── Resolve disk path from Render env var ─────────────────────────────────────
-DISK_PATH="${DATA_DIR:-/data}"
+DISK_PATH="${DATA_DIR:-/var/data}"
 echo "  DATA_DIR env: ${DATA_DIR:-(not set)}"
 echo "  Using disk path: $DISK_PATH"
 mkdir -p "$DISK_PATH"

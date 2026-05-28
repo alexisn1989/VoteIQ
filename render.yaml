@@ -7,7 +7,7 @@ services:
     startCommand: gunicorn app:app -k uvicorn.workers.UvicornWorker --workers 2 --timeout 120 --bind 0.0.0.0:$PORT
     disks:
       - name: data
-        mountPath: /data
+        mountPath: /var/data
         sizeGB: 1
     envVars:
       - key: FLASK_ENV
@@ -17,7 +17,7 @@ services:
       - key: PYTHONUNBUFFERED
         value: "1"
       - key: DATA_DIR
-        value: /data
+        value: /var/data
     health:
       path: /health
       pollIntervalSeconds: 30
