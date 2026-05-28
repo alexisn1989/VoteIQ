@@ -58,6 +58,12 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
+
+@app.get("/health")
+def health_check():
+    """Render health check — must return 200 or the service is marked unhealthy."""
+    return {"status": "ok"}
+
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 app.include_router(voices_router, prefix="/api/v1")
 
