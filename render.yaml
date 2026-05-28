@@ -16,6 +16,8 @@ services:
         scope: SERVICE
       - key: PYTHONUNBUFFERED
         value: "1"
+      - key: DATA_DIR
+        value: /data
     health:
       path: /health
       pollIntervalSeconds: 30
