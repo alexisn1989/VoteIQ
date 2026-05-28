@@ -99,6 +99,66 @@ def debug_db():
             result["db_error"] = str(e)
     return result
 
+@app.get("/admin/tables")
+def admin_tables(_: None = Depends(_require_admin)):
+    """List every table in polls.db with row counts. Requires ADMIN_TOKEN."""
+    if not os.path.isfile(_POLLS_DB):
+        return {"error": f"polls.db not found at {_POLLS_DB}"}
+    conn = sqlite3.connect(_POLLS_DB)
+    tables = {}
+    try:
+        for (name,) in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+        ).fetchall():
+            try:
+                n = conn.execute(f"SELECT COUNT(*) FROM [{name}]").fetchone()[0]
+                tables[name] = n
+            except Exception as e:
+                tables[name] = f"error: {e}"
+    finally:
+        conn.close()
+    return {
+        "polls_db": _POLLS_DB,
+        "size_mb": round(os.path.getsize(_POLLS_DB) / 1_048_576, 2),
+        "tables": tables,
+    }
+
+
+@app.get("/admin/query")
+def admin_query(
+    sql: str = Query(..., description="SELECT query to run against polls.db"),
+    limit: int = Query(default=100, le=1000),
+    _: None = Depends(_require_admin),
+):
+    """Run a SELECT query against polls.db. Requires ADMIN_TOKEN.
+
+    Usage: /admin/query?sql=SELECT+*+FROM+va_finance_cycle_totals&token=YOUR_TOKEN
+    """
+    sql_stripped = sql.strip().rstrip(";")
+    if not sql_stripped.lower().startswith("select"):
+        raise HTTPException(status_code=400, detail="Only SELECT queries are allowed.")
+    # Inject LIMIT if missing to protect against huge result sets
+    if "limit" not in sql_stripped.lower():
+        sql_stripped = f"{sql_stripped} LIMIT {limit}"
+    if not os.path.isfile(_POLLS_DB):
+        return {"error": f"polls.db not found at {_POLLS_DB}"}
+    conn = sqlite3.connect(_POLLS_DB)
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute(sql_stripped).fetchall()
+        columns = list(rows[0].keys()) if rows else []
+        return {
+            "sql": sql_stripped,
+            "columns": columns,
+            "row_count": len(rows),
+            "rows": [dict(r) for r in rows],
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        conn.close()
+
+
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 app.include_router(voices_router, prefix="/api/v1")
 
