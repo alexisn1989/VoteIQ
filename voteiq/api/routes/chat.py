@@ -2907,6 +2907,243 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
     return "\n".join(lines)
 
 
+def _direct_va_finance_reply(user_query: str, premium: bool = False) -> str:
+    """Direct SQL reply for Virginia campaign finance queries (top donors, sectors, cycle totals).
+
+    Fires on explicit donor/fundraising queries (top donors, who gave, sector breakdown, etc.)
+    and returns a detailed Campaign Finance Brief from va_cf_schedule_a.
+    The broader governor overview is handled by _direct_spanberger_governor_overview_reply.
+    """
+    q = (user_query or "").lower()
+
+    # Must be primarily a finance/donor query — explicit terms only to avoid overlap with overview
+    _finance_kws = any(t in q for t in (
+        "top donor", "largest donor", "biggest donor", "major donor",
+        "who gave", "who funded", "who contributed", "who backed", "who paid",
+        "how much raised", "how much did she raise", "fundraising total", "fundraising record",
+        "finance breakdown", "donation breakdown", "sector breakdown", "donor sector",
+        "sbe record", "vpap record", "contribution record", "schedule a",
+        "top contribut", "largest contribut", "biggest contribut",
+        "donor list", "list of donors",
+    ))
+    if not _finance_kws:
+        return ""
+
+    # Identify candidate — currently supports Spanberger; extend with name parsing as needed
+    _mentions_spanberger = "spanberger" in q or "abigail" in q
+    if not _mentions_spanberger:
+        return ""
+    if "youngkin" in q:
+        return ""
+
+    candidate_filter = "%spanberger%"
+    candidate_label = "Abigail Spanberger"
+
+    if not os.path.exists(_POLLS_DB):
+        return ""
+
+    cycle_rows: list = []
+    donor_rows: list = []
+    sector_totals: dict[str, dict[str, float | int]] = {}
+    finance_person = None
+
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+
+        # Bail out cleanly if finance table doesn't exist yet
+        if not conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='va_cf_schedule_a'"
+        ).fetchone():
+            conn.close()
+            return ""
+
+        finance_person = conn.execute(
+            """
+            SELECT person_name, office, party, committee_name, finance_url, source_url, fetched_at
+            FROM va_finance_people
+            WHERE lower(person_name) LIKE ?
+            ORDER BY fetched_at DESC LIMIT 1
+            """,
+            (candidate_filter,),
+        ).fetchone()
+
+        cycle_rows = conn.execute(
+            """
+            SELECT election_cycle,
+                   ROUND(SUM(amount), 2) AS total,
+                   COUNT(*) AS records,
+                   COUNT(DISTINCT CASE WHEN is_individual = 1 THEN
+                       TRIM(COALESCE(first_name, '') || ' ' || COALESCE(last_or_company, ''))
+                   END) AS unique_individuals,
+                   MAX(transaction_date) AS latest
+            FROM va_cf_schedule_a
+            WHERE lower(candidate_name) LIKE ?
+              AND amount > 0
+            GROUP BY election_cycle
+            ORDER BY CAST(election_cycle AS INTEGER) DESC
+            """,
+            (candidate_filter,),
+        ).fetchall()
+
+        if not cycle_rows:
+            conn.close()
+            return ""
+
+        highlight_cycle = str(cycle_rows[0]["election_cycle"])
+
+        donor_limit = 25 if premium else 15
+        donor_rows = conn.execute(
+            """
+            SELECT
+                CASE
+                    WHEN is_individual = 1
+                    THEN TRIM(COALESCE(first_name, '') || ' ' || COALESCE(last_or_company, ''))
+                    ELSE COALESCE(last_or_company, '')
+                END AS donor_name,
+                COALESCE(employer, '') AS employer,
+                COALESCE(occupation, '') AS occupation,
+                ROUND(SUM(amount), 2) AS total,
+                COUNT(*) AS records,
+                is_individual
+            FROM va_cf_schedule_a
+            WHERE lower(candidate_name) LIKE ?
+              AND amount > 0
+              AND election_cycle = ?
+            GROUP BY donor_name, employer, occupation
+            HAVING donor_name != ''
+            ORDER BY total DESC
+            LIMIT ?
+            """,
+            (candidate_filter, highlight_cycle, donor_limit),
+        ).fetchall()
+
+        try:
+            from build_va_state_finance import classify_sector
+            fin_rows = conn.execute(
+                """
+                SELECT occupation, employer, last_or_company, is_individual, amount
+                FROM va_cf_schedule_a
+                WHERE lower(candidate_name) LIKE ?
+                  AND amount > 0
+                  AND election_cycle = ?
+                """,
+                (candidate_filter, highlight_cycle),
+            ).fetchall()
+            for row in fin_rows:
+                sector = classify_sector(
+                    row["occupation"] or "",
+                    row["employer"] or "",
+                    row["last_or_company"] or "" if not row["is_individual"] else "",
+                )
+                stats = sector_totals.setdefault(sector, {"total": 0.0, "records": 0})
+                stats["total"] = float(stats["total"]) + float(row["amount"] or 0)
+                stats["records"] = int(stats["records"]) + 1
+        except Exception:
+            sector_totals = {}
+
+        conn.close()
+    except Exception:
+        return ""
+
+    committee_url = (
+        finance_person["finance_url"]
+        if finance_person and finance_person["finance_url"]
+        else "https://www.vpap.org/"
+    )
+    committee_name = (
+        finance_person["committee_name"]
+        if finance_person and finance_person["committee_name"]
+        else "Spanberger for Governor"
+    )
+
+    all_total = sum(float(r["total"] or 0) for r in cycle_rows)
+    all_records = sum(int(r["records"] or 0) for r in cycle_rows)
+    highlight_row = cycle_rows[0]
+    highlight_total = float(highlight_row["total"] or 0)
+    highlight_records = int(highlight_row["records"] or 0)
+    highlight_uniq = int(highlight_row["unique_individuals"] or 0)
+
+    lines = [
+        "**Campaign Finance Brief**",
+        f"Subject: {candidate_label}",
+        "Scope: Virginia SBE Schedule A itemized contribution records",
+        "Sources: Virginia State Board of Elections (SBE), VPAP, VoteIQ local SQL (va_cf_schedule_a)",
+        "Current through: May 2026",
+        "",
+        "**Committee**",
+        f"- {committee_name} ([VPAP committee page]({committee_url}))",
+        "",
+        "**Cycle Totals (Virginia SBE itemized receipts)**",
+    ]
+    for row in cycle_rows:
+        latest = f", latest transaction {row['latest']}" if row["latest"] else ""
+        uniq = (
+            f", ~{int(row['unique_individuals'] or 0):,} unique individual donors"
+            if row.get("unique_individuals")
+            else ""
+        )
+        lines.append(
+            f"- **{row['election_cycle']}**: ${float(row['total'] or 0):,.0f} "
+            f"from {int(row['records'] or 0):,} records{uniq}{latest}"
+        )
+    lines.extend([
+        f"- **All cycles combined**: ${all_total:,.0f} across {all_records:,} records",
+        "",
+    ])
+
+    sector_limit = 12 if premium else 8
+    if sector_totals:
+        lines.append(
+            f"**Donor Sectors — {highlight_cycle} "
+            f"(keyword classification of SBE occupation/employer fields)**"
+        )
+        for sector, stats in sorted(
+            sector_totals.items(), key=lambda x: float(x[1]["total"]), reverse=True
+        )[:sector_limit]:
+            pct = float(stats["total"]) / highlight_total * 100 if highlight_total else 0
+            lines.append(
+                f"- {sector}: ${float(stats['total']):,.0f} "
+                f"({pct:.1f}% of {highlight_cycle} total, {int(stats['records']):,} records)"
+            )
+        lines.append("")
+
+    if donor_rows:
+        lines.append(
+            f"**Top Donors — {highlight_cycle} "
+            f"(aggregated by name / employer / occupation; {len(donor_rows)} shown)**"
+        )
+        for i, row in enumerate(donor_rows, 1):
+            donor = row["donor_name"] or "Unknown"
+            details = ", ".join(part for part in (row["employer"], row["occupation"]) if part)
+            d_type = "individual" if row["is_individual"] else "org/PAC"
+            lines.append(
+                f"{i}. **{donor}**: ${float(row['total'] or 0):,.0f} "
+                f"across {int(row['records'] or 0):,} records"
+                + (f" ({details}; {d_type})" if details else f" ({d_type})")
+            )
+        if not premium:
+            lines.append(
+                "_Showing top 15 donors. Pro/Newsroom access shows top 25._"
+            )
+        lines.append("")
+
+    lines.extend([
+        "**Data Limits**",
+        "- Figures reflect VoteIQ's local import of Virginia SBE Schedule A itemized contribution rows only.",
+        "- Excluded from these totals: loans, transfers, unitemized receipts, refunds, in-kind contributions, and independent/outside spending.",
+        "- VPAP totals may differ due to reporting cutoffs, refunds, and methodology.",
+        "- 'Donor sector' labels are keyword-derived from SBE occupation/employer text and may be approximate.",
+        "- This brief does not treat donations as evidence of motive, influence, corruption, or causation.",
+        "",
+        "**Related Questions**",
+        "- [Full Spanberger governor profile](/ask?q=Tell+me+about+Governor+Spanberger%27s+record)",
+        "- [Which bills has Governor Spanberger signed?](/ask?q=Which+bills+has+Governor+Spanberger+signed%3F)",
+        "- [Campaign finance vs governor bill actions (Pro)](/ask?q=Campaign+finance+vs+governor+actions+Spanberger)",
+    ])
+    return "\n".join(lines)
+
+
 def _fetch_floor_statements(
     bioguide_id: str,
     query: str = "",
@@ -3357,7 +3594,8 @@ async def chat(req: ChatRequest):
     if direct_source_reply:
         return ChatResponse(reply=direct_source_reply)
     direct_governor_reply = (
-        _direct_spanberger_governor_overview_reply(last_question)
+        _direct_va_finance_reply(last_question, premium=_premium_analyst_enabled(req))
+        or _direct_spanberger_governor_overview_reply(last_question)
         or _direct_governor_eo_reply(last_question)
         or _direct_governor_veto_reply(last_question)
         or (_direct_governor_correlation_reply(last_question) if _premium_analyst_enabled(req) else None)
@@ -3634,7 +3872,8 @@ async def gemini_chat(request: Request, req: ChatRequest):
     if direct_source_reply:
         return ChatResponse(reply=direct_source_reply)
     direct_governor_reply = (
-        _direct_spanberger_governor_overview_reply(user_query)
+        _direct_va_finance_reply(user_query, premium=_premium_analyst_enabled(req))
+        or _direct_spanberger_governor_overview_reply(user_query)
         or _direct_governor_eo_reply(user_query)
         or _direct_governor_veto_reply(user_query)
         or (_direct_governor_correlation_reply(user_query) if _premium_analyst_enabled(req) else None)
@@ -3747,7 +3986,8 @@ async def bills_chat(req: BillsChatRequest):
     if direct_source_reply:
         return ChatResponse(reply=direct_source_reply)
     direct_governor_reply = (
-        _direct_spanberger_governor_overview_reply(user_query)
+        _direct_va_finance_reply(user_query, premium=_premium_analyst_enabled(req))
+        or _direct_spanberger_governor_overview_reply(user_query)
         or _direct_governor_eo_reply(user_query)
         or _direct_governor_veto_reply(user_query)
         or (_direct_governor_correlation_reply(user_query) if _premium_analyst_enabled(req) else None)
@@ -3874,7 +4114,8 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
         return StreamingResponse(_source_gen(), media_type="text/event-stream")
 
     direct_governor_reply = (
-        _direct_spanberger_governor_overview_reply(user_query)
+        _direct_va_finance_reply(user_query, premium=_premium_analyst_enabled(req))
+        or _direct_spanberger_governor_overview_reply(user_query)
         or _direct_governor_eo_reply(user_query)
         or _direct_governor_veto_reply(user_query)
         or (_direct_governor_correlation_reply(user_query) if _premium_analyst_enabled(req) else None)
