@@ -7866,7 +7866,7 @@ async def _on_startup():
                 n = conn.execute("SELECT COUNT(*) FROM campaign_finance_summary").fetchone()[0]
             except Exception:
                 n = 0
-            if n >= 160:
+            if n >= 163:
                 print(f"[finance-backfill] {n} rows present — skipping backfill.")
                 conn.close()
                 return
