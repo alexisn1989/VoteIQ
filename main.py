@@ -197,6 +197,8 @@ from voteiq.api.routes.federal import router as _federal_router
 app.include_router(_federal_router)
 from voteiq.api.routes.pacs import router as _pacs_router
 app.include_router(_pacs_router)
+from voteiq.api.routes.donor_map import router as _donor_map_router
+app.include_router(_donor_map_router)
 
 # DATA_DIR: set to Render persistent disk mount path (e.g. /var/data) in production.
 # Falls back to project root if DATA_DIR directory doesn't exist (e.g. after disk deletion).
