@@ -119,15 +119,17 @@
   .date-cell { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
   .empty-state { text-align: center; padding: 48px 20px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
 
-  /* ── Legislative focus section ── */
-  .insights-card { background: white; border: 1px solid var(--mid); padding: 20px 24px; margin-bottom: 24px; }
-  .insights-header { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: baseline; }
-  .insights-header em { font-style: normal; color: var(--navy); font-size: 0.65rem; }
-  .topic-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-  .topic-label { font-family: 'Barlow', sans-serif; font-size: 0.78rem; color: var(--navy); flex: 0 0 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .topic-track { flex: 1; height: 8px; background: var(--mid); border-radius: 2px; overflow: hidden; }
+  /* ── Insights two-column panel ── */
+  .insights-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--mid); border: 1px solid var(--mid); margin-bottom: 24px; }
+  .insights-panel { background: white; padding: 20px 22px; }
+  .insights-header { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; display: flex; justify-content: space-between; align-items: baseline; }
+  .insights-header em { font-style: normal; color: var(--navy); font-size: 0.65rem; letter-spacing: 0; text-transform: none; }
+  .topic-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+  .topic-label { font-family: 'Barlow', sans-serif; font-size: 0.76rem; color: var(--navy); flex: 0 0 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .topic-track { flex: 1; height: 7px; background: var(--mid); border-radius: 2px; overflow: hidden; }
   .topic-fill  { height: 100%; background: var(--navy); border-radius: 2px; transition: width 0.5s ease; }
-  .topic-count { font-family: 'Barlow Condensed', sans-serif; font-size: 0.7rem; color: var(--muted); flex: 0 0 32px; text-align: right; }
+  .topic-count { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; color: var(--muted); flex: 0 0 28px; text-align: right; }
+  @media (max-width: 640px) { .insights-grid { grid-template-columns: 1fr; } }
 
   /* ── Finance section ── */
   .sector-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
@@ -202,10 +204,18 @@
   <!-- Breakdown bar -->
   <div id="breakdown-card" class="breakdown-card" style="display:none"></div>
 
-  <!-- Legislative Focus -->
-  <div id="legislative-focus" class="insights-card" style="display:none">
-    <div class="insights-header">Legislative Focus — Bill Topics <em id="lf-subtitle"></em></div>
-    <div id="topic-bars"></div>
+  <!-- Legislative Agenda + Donor Sectors side-by-side -->
+  <div id="insights-grid" class="insights-grid" style="display:none">
+    <div class="insights-panel">
+      <div class="insights-header">Legislative Agenda <em id="lf-subtitle"></em></div>
+      <div id="topic-bars"></div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;color:var(--muted);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase">Bills introduced &amp; co-sponsored · 2026 session</div>
+    </div>
+    <div class="insights-panel">
+      <div class="insights-header">Donor Sectors <em id="fin-subtitle"></em></div>
+      <div id="sector-bars-inline"></div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;color:var(--muted);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase">Who funds this legislator's campaign — not specific bills · <a href="#" onclick="document.querySelector('[data-tab=finance]').click();return false;" style="color:var(--red);text-decoration:none">Full detail →</a></div>
+    </div>
   </div>
 
   <!-- Tabs -->
@@ -459,28 +469,7 @@
     }).join('');
   }
 
-  // ── Legislative Focus ─────────────────────────────────────────────────────────
-  const topics = D.bill_topics || [];
-  if (topics.length) {
-    const maxCount = Math.max(...topics.map(t => t.count), 1);
-    const totalBills = topics.reduce((s, t) => s + t.count, 0);
-    document.getElementById('lf-subtitle').textContent = `${totalBills} bills, 2026 session`;
-    document.getElementById('topic-bars').innerHTML = topics.map(t => {
-      const pct = Math.round(t.count / maxCount * 100);
-      return `<div class="topic-row">
-        <div class="topic-label" title="${esc(t.topic)}">${esc(t.topic)}</div>
-        <div class="topic-track"><div class="topic-fill" style="width:${pct}%"></div></div>
-        <div class="topic-count">${t.count}</div>
-      </div>`;
-    }).join('');
-    document.getElementById('legislative-focus').style.display = 'block';
-  }
-
-  // ── Campaign Funding ──────────────────────────────────────────────────────────
-  const finMeta    = D.finance_meta    || null;
-  const finSectors = D.finance_sectors || [];
-  const topDonors  = D.top_donors      || [];
-
+  // ── Shared helpers (used by insights grid + campaign funding tab) ────────────
   function fmtMoney(n) {
     if (!n) return '$0';
     if (n >= 1e6) return '$' + (n / 1e6).toFixed(1) + 'M';
@@ -496,6 +485,62 @@
     'Agriculture': '#3f6212', 'Defense': '#374151', 'Individual/Other': '#0d1b2a',
   };
 
+  const finMeta    = D.finance_meta    || null;
+  const finSectors = D.finance_sectors || [];
+  const topDonors  = D.top_donors      || [];
+
+  // ── Insights grid (legislative agenda + donor sectors) ───────────────────────
+  const topics     = D.bill_topics      || [];
+  const finMeta    = D.finance_meta     || null;
+  const finSectors = D.finance_sectors  || [];
+  const topDonors  = D.top_donors       || [];
+  const showGrid   = topics.length > 0 || finMeta;
+
+  if (showGrid) {
+    // Left panel — legislative agenda
+    if (topics.length) {
+      const maxCount  = Math.max(...topics.map(t => t.count), 1);
+      const totalBills = topics.reduce((s, t) => s + t.count, 0);
+      document.getElementById('lf-subtitle').textContent = `${totalBills} total`;
+      document.getElementById('topic-bars').innerHTML = topics.map(t => {
+        const pct = Math.round(t.count / maxCount * 100);
+        return `<div class="topic-row">
+          <div class="topic-label" title="${esc(t.topic)}">${esc(t.topic)}</div>
+          <div class="topic-track"><div class="topic-fill" style="width:${pct}%"></div></div>
+          <div class="topic-count">${t.count}</div>
+        </div>`;
+      }).join('');
+    } else {
+      document.getElementById('topic-bars').innerHTML =
+        '<div style="color:var(--muted);font-size:0.78rem;padding:8px 0">No bill data available</div>';
+    }
+
+    // Right panel — donor sectors (top 8, compact)
+    if (finMeta && finSectors.length) {
+      const topSectors = finSectors.slice(0, 8);
+      const maxAmt = Math.max(...topSectors.map(s => s.total), 1);
+      document.getElementById('fin-subtitle').textContent =
+        fmtMoney(finMeta.total_raised) + ' raised';
+      document.getElementById('sector-bars-inline').innerHTML =
+        topSectors.map(s => {
+          const pct   = Math.round(s.total / maxAmt * 100);
+          const color = SECTOR_COLORS[s.sector] || '#7a7468';
+          return `<div class="topic-row">
+            <div class="topic-label" title="${esc(s.sector)}">${esc(s.sector)}</div>
+            <div class="topic-track"><div class="topic-fill" style="width:${pct}%;background:${color}"></div></div>
+            <div class="topic-count" style="flex:0 0 52px">${fmtMoney(s.total)}</div>
+          </div>`;
+        }).join('');
+    } else {
+      document.getElementById('fin-subtitle').textContent = '';
+      document.getElementById('sector-bars-inline').innerHTML =
+        '<div style="color:var(--muted);font-size:0.78rem;padding:8px 0">No campaign finance data available</div>';
+    }
+
+    document.getElementById('insights-grid').style.display = 'grid';
+  }
+
+  // ── Campaign Funding tab (full detail) ───────────────────────────────────────
   const finDiv = document.getElementById('finance-content');
   if (!finMeta) {
     finDiv.innerHTML = '<div class="no-finance">No campaign finance data available for this legislator</div>';

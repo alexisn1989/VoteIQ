@@ -119,18 +119,30 @@ def _fetch_profile(conn, name: str) -> dict:
         ORDER BY sponsor_order LIMIT 50
     """, (bill_name,)).fetchall()]
 
-    # ── Bill topic breakdown (text before first ';' in title) ────────────────
+    # ── Bill topic breakdown — combined introduced + cosponsored ─────────────
+    # (text before first ';' in title; deduped by bill_id within each table)
     profile["bill_topics"] = [dict(r) for r in conn.execute("""
-        SELECT TRIM(SUBSTR(title, 1, INSTR(title || ';', ';') - 1)) AS topic,
-               COUNT(DISTINCT bill_id) AS count
-        FROM va_legislator_sponsored_bills
-        WHERE session = '2026' AND lower(legislator_name) = lower(?)
-          AND title != '' AND title IS NOT NULL
+        SELECT topic, SUM(cnt) AS count
+        FROM (
+            SELECT TRIM(SUBSTR(title, 1, INSTR(title || ';', ';') - 1)) AS topic,
+                   COUNT(DISTINCT bill_id) AS cnt
+            FROM va_legislator_sponsored_bills
+            WHERE session = '2026' AND lower(legislator_name) = lower(?)
+              AND title != '' AND title IS NOT NULL
+            GROUP BY topic
+            UNION ALL
+            SELECT TRIM(SUBSTR(title, 1, INSTR(title || ';', ';') - 1)) AS topic,
+                   COUNT(DISTINCT bill_id) AS cnt
+            FROM va_legislator_cosponsor_bills
+            WHERE session = '2026' AND lower(legislator_name) = lower(?)
+              AND title != '' AND title IS NOT NULL
+            GROUP BY topic
+        )
+        WHERE topic != ''
         GROUP BY topic
-        HAVING topic != ''
         ORDER BY count DESC
-        LIMIT 10
-    """, (bill_name,)).fetchall()]
+        LIMIT 12
+    """, (bill_name, bill_name)).fetchall()]
 
     # ── Campaign finance sectors ─────────────────────────────────────────────
     fin_row = conn.execute("""
