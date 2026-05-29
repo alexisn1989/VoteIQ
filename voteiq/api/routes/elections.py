@@ -22,7 +22,9 @@ _historical_data_cache: dict[str, Any] = {}
 
 
 def _data_path(*parts: str) -> Path:
-    return _DATA_DIR.joinpath(*parts)
+    # Election JSON/CSV files are committed to the repo (BASE_DIR), not the
+    # mounted data disk (DATA_DIR=/var/data).  Always resolve relative to repo.
+    return _BASE_DIR.joinpath(*parts)
 
 
 def _load_json(path: Path) -> Any:
