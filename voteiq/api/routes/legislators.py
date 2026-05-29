@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sqlite3
 from pathlib import Path
 from urllib.parse import unquote
@@ -43,10 +44,20 @@ def _legislators_list(conn) -> list[dict]:
                COUNT(DISTINCT cb.bill_id) AS bills_cosponsored
         FROM va_legislator_vote_summary v
         LEFT JOIN va_legislator_sponsored_bills sb
-               ON lower(sb.legislator_name) = lower(v.voter_name)
+               ON lower(sb.legislator_name) = CASE
+                      WHEN instr(v.voter_name, '. ') > 0
+                      THEN lower(substr(v.voter_name, 1, instr(v.voter_name, ' ')-1)
+                               || substr(v.voter_name, instr(v.voter_name, '. ')+1))
+                      ELSE lower(v.voter_name)
+                  END
               AND sb.session = v.session
         LEFT JOIN va_legislator_cosponsor_bills cb
-               ON lower(cb.legislator_name) = lower(v.voter_name)
+               ON lower(cb.legislator_name) = CASE
+                      WHEN instr(v.voter_name, '. ') > 0
+                      THEN lower(substr(v.voter_name, 1, instr(v.voter_name, ' ')-1)
+                               || substr(v.voter_name, instr(v.voter_name, '. ')+1))
+                      ELSE lower(v.voter_name)
+                  END
               AND cb.session = v.session
         WHERE v.session = '2026'
         GROUP BY v.voter_name
@@ -83,6 +94,10 @@ def _fetch_profile(conn, name: str) -> dict:
     resolved = row["voter_name"]
     profile = dict(row)
 
+    # vote_summary uses formal names (e.g. "Aaron R. Rouse") but bill tables
+    # use short names ("Aaron Rouse") — strip middle initial for bill lookups
+    bill_name = re.sub(r'\s+[A-Z]\.\s+', ' ', resolved).strip()
+
     profile["recent_votes"] = [dict(r) for r in conn.execute("""
         SELECT bill_id, vote_date, option, chamber, motion, title
         FROM va_legislator_recent_votes
@@ -95,14 +110,14 @@ def _fetch_profile(conn, name: str) -> dict:
         FROM va_legislator_sponsored_bills
         WHERE session = '2026' AND lower(legislator_name) = lower(?)
         ORDER BY status_date DESC
-    """, (resolved,)).fetchall()]
+    """, (bill_name,)).fetchall()]
 
     profile["cosponsored_bills"] = [dict(r) for r in conn.execute("""
         SELECT bill_id, bill_number, title, status_label, subject, sponsor_order
         FROM va_legislator_cosponsor_bills
         WHERE session = '2026' AND lower(legislator_name) = lower(?)
         ORDER BY sponsor_order LIMIT 50
-    """, (resolved,)).fetchall()]
+    """, (bill_name,)).fetchall()]
 
     return profile
 
