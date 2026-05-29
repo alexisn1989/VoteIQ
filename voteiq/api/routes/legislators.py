@@ -119,6 +119,42 @@ def _fetch_profile(conn, name: str) -> dict:
         ORDER BY sponsor_order LIMIT 50
     """, (bill_name,)).fetchall()]
 
+    # ── Bill topic breakdown (text before first ';' in title) ────────────────
+    profile["bill_topics"] = [dict(r) for r in conn.execute("""
+        SELECT TRIM(SUBSTR(title, 1, INSTR(title || ';', ';') - 1)) AS topic,
+               COUNT(DISTINCT bill_id) AS count
+        FROM va_legislator_sponsored_bills
+        WHERE session = '2026' AND lower(legislator_name) = lower(?)
+          AND title != '' AND title IS NOT NULL
+        GROUP BY topic
+        HAVING topic != ''
+        ORDER BY count DESC
+        LIMIT 10
+    """, (bill_name,)).fetchall()]
+
+    # ── Campaign finance sectors ─────────────────────────────────────────────
+    fin_row = conn.execute("""
+        SELECT total_raised, top_sector, top_sector_pct, latest_cycle,
+               by_sector_json, top_donors_json
+        FROM campaign_finance_summary
+        WHERE lower(name) = lower(?)
+        LIMIT 1
+    """, (bill_name,)).fetchone()
+
+    if fin_row:
+        profile["finance_meta"] = {
+            "total_raised": fin_row["total_raised"],
+            "top_sector":   fin_row["top_sector"],
+            "top_sector_pct": fin_row["top_sector_pct"],
+            "latest_cycle": fin_row["latest_cycle"],
+        }
+        profile["finance_sectors"] = json.loads(fin_row["by_sector_json"] or "[]")
+        profile["top_donors"]      = json.loads(fin_row["top_donors_json"] or "[]")[:10]
+    else:
+        profile["finance_meta"]    = None
+        profile["finance_sectors"] = []
+        profile["top_donors"]      = []
+
     return profile
 
 

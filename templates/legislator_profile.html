@@ -119,6 +119,37 @@
   .date-cell { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
   .empty-state { text-align: center; padding: 48px 20px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
 
+  /* ── Legislative focus section ── */
+  .insights-card { background: white; border: 1px solid var(--mid); padding: 20px 24px; margin-bottom: 24px; }
+  .insights-header { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: baseline; }
+  .insights-header em { font-style: normal; color: var(--navy); font-size: 0.65rem; }
+  .topic-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .topic-label { font-family: 'Barlow', sans-serif; font-size: 0.78rem; color: var(--navy); flex: 0 0 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .topic-track { flex: 1; height: 8px; background: var(--mid); border-radius: 2px; overflow: hidden; }
+  .topic-fill  { height: 100%; background: var(--navy); border-radius: 2px; transition: width 0.5s ease; }
+  .topic-count { font-family: 'Barlow Condensed', sans-serif; font-size: 0.7rem; color: var(--muted); flex: 0 0 32px; text-align: right; }
+
+  /* ── Finance section ── */
+  .sector-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .sector-label { font-family: 'Barlow', sans-serif; font-size: 0.78rem; color: var(--navy); flex: 0 0 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sector-track { flex: 1; height: 8px; background: var(--mid); border-radius: 2px; overflow: hidden; }
+  .sector-fill  { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+  .sector-amount { font-family: 'Barlow Condensed', sans-serif; font-size: 0.7rem; color: var(--muted); flex: 0 0 80px; text-align: right; white-space: nowrap; }
+  .finance-meta { display: flex; gap: 0; border: 1px solid var(--mid); background: #f8f6f0; margin-bottom: 20px; overflow: hidden; }
+  .finance-meta-box { flex: 1; padding: 12px 16px; border-right: 1px solid var(--mid); text-align: center; }
+  .finance-meta-box:last-child { border-right: none; }
+  .finance-meta-num { font-family: 'Barlow Condensed', sans-serif; font-size: 1.2rem; font-weight: 700; color: var(--navy); display: block; }
+  .finance-meta-lbl { font-family: 'Barlow Condensed', sans-serif; font-size: 0.56rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); display: block; margin-top: 3px; }
+  .finance-caveat { margin-top: 20px; padding: 12px 16px; border-left: 3px solid var(--mid); background: #f8f6f0; font-size: 0.75rem; color: var(--muted); line-height: 1.5; }
+  .finance-caveat strong { color: var(--navy); font-weight: 600; }
+  .donor-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-top: 16px; }
+  .donor-table thead th { font-family: 'Barlow Condensed', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--mid); background: #f0ede6; }
+  .donor-table tbody tr { border-bottom: 1px solid var(--mid); }
+  .donor-table tbody tr:last-child { border-bottom: none; }
+  .donor-table tbody tr:hover { background: #f8f6f0; }
+  .donor-table td { padding: 8px 10px; }
+  .no-finance { text-align: center; padding: 40px 20px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+
   /* ── Loading ── */
   .spinner { display: inline-block; width: 30px; height: 30px; border: 3px solid var(--mid); border-top-color: var(--navy); border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -171,12 +202,19 @@
   <!-- Breakdown bar -->
   <div id="breakdown-card" class="breakdown-card" style="display:none"></div>
 
+  <!-- Legislative Focus -->
+  <div id="legislative-focus" class="insights-card" style="display:none">
+    <div class="insights-header">Legislative Focus — Bill Topics <em id="lf-subtitle"></em></div>
+    <div id="topic-bars"></div>
+  </div>
+
   <!-- Tabs -->
   <div class="tabs-wrap" id="tabs-wrap" style="display:none">
     <div class="tab-list" id="tab-list">
       <button class="tab-btn active" data-tab="votes">Recent Votes <span class="tab-count" id="tc-votes"></span></button>
       <button class="tab-btn" data-tab="bills">Bills Introduced <span class="tab-count" id="tc-bills"></span></button>
       <button class="tab-btn" data-tab="cosponsor">Co-Sponsored <span class="tab-count" id="tc-cosponsor"></span></button>
+      <button class="tab-btn" data-tab="finance">Campaign Funding</button>
     </div>
 
     <!-- Recent Votes panel -->
@@ -231,6 +269,13 @@
         </table>
       </div>
     </div>
+    <!-- Campaign Funding panel -->
+    <div class="tab-panel" id="panel-finance">
+      <div class="data-table-wrap" style="padding:24px">
+        <div id="finance-content"></div>
+      </div>
+    </div>
+
   </div>
 
 </div><!-- /content-wrap -->
@@ -412,6 +457,100 @@
         <td class="date-cell">${esc(b.sponsor_order || '—')}</td>
       </tr>`;
     }).join('');
+  }
+
+  // ── Legislative Focus ─────────────────────────────────────────────────────────
+  const topics = D.bill_topics || [];
+  if (topics.length) {
+    const maxCount = Math.max(...topics.map(t => t.count), 1);
+    const totalBills = topics.reduce((s, t) => s + t.count, 0);
+    document.getElementById('lf-subtitle').textContent = `${totalBills} bills, 2026 session`;
+    document.getElementById('topic-bars').innerHTML = topics.map(t => {
+      const pct = Math.round(t.count / maxCount * 100);
+      return `<div class="topic-row">
+        <div class="topic-label" title="${esc(t.topic)}">${esc(t.topic)}</div>
+        <div class="topic-track"><div class="topic-fill" style="width:${pct}%"></div></div>
+        <div class="topic-count">${t.count}</div>
+      </div>`;
+    }).join('');
+    document.getElementById('legislative-focus').style.display = 'block';
+  }
+
+  // ── Campaign Funding ──────────────────────────────────────────────────────────
+  const finMeta    = D.finance_meta    || null;
+  const finSectors = D.finance_sectors || [];
+  const topDonors  = D.top_donors      || [];
+
+  function fmtMoney(n) {
+    if (!n) return '$0';
+    if (n >= 1e6) return '$' + (n / 1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return '$' + Math.round(n / 1e3) + 'K';
+    return '$' + Math.round(n).toLocaleString();
+  }
+
+  const SECTOR_COLORS = {
+    'Energy': '#c8102e', 'Healthcare': '#1a52c8', 'Legal': '#2a6035',
+    'Ideological': '#7c3aed', 'Finance': '#0e7490', 'Real Estate': '#b45309',
+    'Technology': '#0369a1', 'Transportation': '#b16300', 'Labor/Union': '#166534',
+    'Education': '#6b21a8', 'Retail': '#be185d', 'Manufacturing': '#6b7280',
+    'Agriculture': '#3f6212', 'Defense': '#374151', 'Individual/Other': '#0d1b2a',
+  };
+
+  const finDiv = document.getElementById('finance-content');
+  if (!finMeta) {
+    finDiv.innerHTML = '<div class="no-finance">No campaign finance data available for this legislator</div>';
+  } else {
+    const maxSector = finSectors.length ? Math.max(...finSectors.map(s => s.total), 1) : 1;
+    const sectorBars = finSectors.map(s => {
+      const pct = Math.round(s.total / maxSector * 100);
+      const color = SECTOR_COLORS[s.sector] || '#7a7468';
+      return `<div class="sector-row">
+        <div class="sector-label" title="${esc(s.sector)}">${esc(s.sector)}</div>
+        <div class="sector-track"><div class="sector-fill" style="width:${pct}%;background:${color}"></div></div>
+        <div class="sector-amount">${fmtMoney(s.total)}</div>
+      </div>`;
+    }).join('');
+
+    const donorRows = topDonors.map(d => `<tr>
+      <td>${esc(d.contributor_name || '—')}</td>
+      <td><span class="bill-id" style="color:${SECTOR_COLORS[d.sector]||'var(--muted)'}">${esc(d.sector || '—')}</span></td>
+      <td style="text-align:right;font-family:'Barlow Condensed',sans-serif;font-size:0.8rem">${fmtMoney(d.total)}</td>
+      <td style="text-align:right;font-family:'Barlow Condensed',sans-serif;font-size:0.76rem;color:var(--muted)">${d.count || ''}</td>
+    </tr>`).join('');
+
+    finDiv.innerHTML = `
+      <div class="finance-meta">
+        <div class="finance-meta-box">
+          <span class="finance-meta-num">${fmtMoney(finMeta.total_raised)}</span>
+          <span class="finance-meta-lbl">Total Raised</span>
+        </div>
+        <div class="finance-meta-box">
+          <span class="finance-meta-num">${esc(finMeta.top_sector || '—')}</span>
+          <span class="finance-meta-lbl">Top Sector</span>
+        </div>
+        <div class="finance-meta-box">
+          <span class="finance-meta-num">${finMeta.top_sector_pct ? finMeta.top_sector_pct + '%' : '—'}</span>
+          <span class="finance-meta-lbl">Top Sector Share</span>
+        </div>
+        <div class="finance-meta-box">
+          <span class="finance-meta-num">${esc(finMeta.latest_cycle || '—')}</span>
+          <span class="finance-meta-lbl">Latest Cycle</span>
+        </div>
+      </div>
+
+      <div class="breakdown-label" style="margin-bottom:12px">Funding by Sector (Virginia SBE public records)</div>
+      ${sectorBars}
+
+      ${topDonors.length ? `
+      <div class="breakdown-label" style="margin:20px 0 10px">Top Donors</div>
+      <table class="donor-table">
+        <thead><tr><th>Donor</th><th>Sector</th><th style="text-align:right">Total</th><th style="text-align:right">Contributions</th></tr></thead>
+        <tbody>${donorRows}</tbody>
+      </table>` : ''}
+
+      <div class="finance-caveat">
+        <strong>How to read this data:</strong> This shows who donated to this legislator's campaign overall — not who supported any specific bill they introduced. Donors did not select these bills, may not have known about them, and no link between donations and any legislative outcome is implied or shown. For lobbying activity on specific bills, see Virginia's lobbyist disclosure records. <strong>Correlation does not imply causation.</strong> Source: Virginia SBE public records.
+      </div>`;
   }
 
   // ── Show tabs ─────────────────────────────────────────────────────────────────
