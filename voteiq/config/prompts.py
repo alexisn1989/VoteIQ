@@ -270,14 +270,17 @@ DONOR SECTOR ALIGNMENT:
 
 ANALYSIS INSTRUCTIONS:
 1. How effective are they at passing legislation?
-2. Do their bills align with donor sectors?
-3. Are they more effective on donor-aligned bills?
+2. What policy areas do their bills focus on, and what sectors fund them overall?
+   NOTE: donor sectors reflect the legislator's overall funding history — donors
+   did not select or support specific bills. Do not imply they did.
+3. Is there a notable overlap between their legislative focus areas and the
+   industries that fund them? Frame as overlap, not alignment or influence.
 4. Bipartisan vs partisan bill breakdown
 5. Most revealing effectiveness finding in one sentence
 
 FORMAT:
 ## Effectiveness Overview
-## Donor-Bill Alignment
+## Legislative Focus vs. Funding Sectors
 ## Bipartisan Profile
 ## Effectiveness Finding
 
@@ -301,11 +304,24 @@ Governor Action Summary is based on current bill-status records.
 Pocket veto and pending action counts require action-history data and may not
 appear in latest-status snapshots.
 
+WHAT THIS DATA SHOWS — AND DOES NOT SHOW:
+The campaign finance data reflects who donated to each bill's PRIMARY SPONSOR
+over their fundraising career. It does NOT show:
+- Donors who supported or opposed any specific bill
+- Donors who lobbied for or against any outcome
+- Any communication between donors and the governor or sponsors about legislation
+- Any donor awareness of or interest in specific bills
+A donor who gave money to a legislator in a prior cycle has no measurable
+connection to any individual bill that legislator later introduced.
+You MUST communicate this distinction clearly to the reader.
+
 ANALYSIS RULES:
 - Do not infer motive, pressure, reward, corruption, or causation.
 - Do not say money caused a bill to be signed, vetoed, pocket vetoed, or amended.
-- Use cautious language: "overlap", "pattern", "concentration",
-  "public-record relationship", "worth further review."
+- Do not say donors "backed," "supported," "pushed for," or "opposed" any bill.
+- Never imply donors had a stake in or knowledge of specific legislation.
+- Use cautious language: "the sponsor received funding from", "among bills whose
+  sponsors were funded by", "public-record overlap", "worth further review."
 - Separate pocket vetoes from ordinary vetoes.
 - Clearly note the finance cycle and legislative session.
 - Explain any finance-cycle/session mismatch.
@@ -320,21 +336,30 @@ FORMAT:
 ## Governor Action Summary
 [Counts by action type.]
 
-## Money Pattern by Outcome
-[Compare top donor sectors for signed, amended, vetoed, pocket vetoed,
-overridden, sustained, and pending bills.]
+## How to Read This Data
+[Explain in plain English that the finance data shows who funded the bill's
+sponsor — not who supported the bill. State that donors did not pick these
+bills, may not have known about them, and that no link to outcomes is implied.]
+
+## Sponsor Funding by Outcome
+[For each outcome, describe which funding sectors were most common among
+the bills' sponsors. Use phrasing like "sponsors of signed bills most
+often received funding from..." — never "donors backed signed bills."]
 
 ## Sponsor Pattern
 [Top sponsors by outcome, party breakdown if visible.]
 
-## Donor Concentration
-[Where large-donor or party committee concentration appears.]
+## Funding Concentration
+[Where large-donor or party committee concentration appears among sponsors,
+framed as the sponsor's funding profile, not donor intent toward bills.]
 
 ## Data Limits
-[State limitations clearly.]
+[State limitations clearly: incomplete finance coverage, name-matching gaps,
+multi-cycle funding vs. single-session bills, and absence of lobbyist data.]
 
 ## VoteIQ Finding
-[One plain-English, nonpartisan sentence.]
+[One plain-English, nonpartisan sentence that correctly frames what the
+overlap shows without implying donor influence on outcomes.]
 """
 
 _PROMPT_TEMPLATES: dict[str, str] = {
