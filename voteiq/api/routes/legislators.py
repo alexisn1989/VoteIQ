@@ -28,6 +28,39 @@ def _polls_conn():
     return conn
 
 
+# Common first-name nicknames for fuzzy campaign-finance matching.
+# The finance table sometimes lists a legislator under a nickname
+# (e.g. "Joe McNamara" vs the formal "Joseph P. McNamara").
+_NICKNAMES = {
+    "david": "dave", "joseph": "joe", "joshua": "josh", "william": "bill",
+    "robert": "bob", "michael": "mike", "christopher": "chris", "daniel": "dan",
+    "thomas": "tom", "kathleen": "kathy", "jennifer": "jen", "matthew": "matt",
+    "richard": "rick", "edward": "ed", "anthony": "tony", "nicholas": "nick",
+    "samuel": "sam", "benjamin": "ben", "andrew": "andy", "stephen": "steve",
+    "steven": "steve", "patricia": "pat", "deborah": "debbie", "elizabeth": "liz",
+}
+
+
+def _name_key(full_name: str) -> str:
+    """Normalize a name to a 'first last' key for fuzzy finance matching.
+
+    Drops middle names/initials, generational suffixes (Jr/Sr/II/III), and
+    quoted nicknames, then applies a nickname map to the first name. Requires
+    BOTH first and last name to match — this prevents false positives between
+    different legislators who share a surname (e.g. Gretchen Bulova must NOT
+    match David Bulova; Kirk McPike must NOT match Jeremy McPike).
+    """
+    n = re.sub(r'"[^"]*"', "", full_name)                       # drop "Buddy" etc.
+    n = re.sub(r"\b(Jr|Sr|II|III|IV)\b", "", n, flags=re.I)     # drop suffixes
+    n = re.sub(r"[.,]", " ", n)                                  # punctuation -> space
+    tokens = [t for t in n.split() if len(t) > 1]               # drop single-letter initials
+    if not tokens:
+        return ""
+    first = _NICKNAMES.get(tokens[0].lower(), tokens[0].lower())
+    last = tokens[-1].lower()
+    return f"{first} {last}"
+
+
 def _inject(template: str, key: str, data) -> str:
     safe = json.dumps(data, default=str).replace("</script>", "<\\/script>")
     with (_BASE_DIR / "templates" / template).open("r", encoding="utf-8") as f:
@@ -152,6 +185,22 @@ def _fetch_profile(conn, name: str) -> dict:
         WHERE lower(name) = lower(?)
         LIMIT 1
     """, (bill_name,)).fetchone()
+
+    # Fuzzy fallback: the finance table may list this legislator under a
+    # nickname or dropped middle name (e.g. "Joe McNamara" for "Joseph P.
+    # McNamara"). Match on a first+last key so we never cross-match two
+    # different legislators who happen to share a surname.
+    if not fin_row:
+        target_key = _name_key(resolved)
+        if target_key:
+            for cand in conn.execute("""
+                SELECT total_raised, top_sector, top_sector_pct, latest_cycle,
+                       by_sector_json, top_donors_json, name
+                FROM campaign_finance_summary
+            """).fetchall():
+                if _name_key(cand["name"]) == target_key:
+                    fin_row = cand
+                    break
 
     if fin_row:
         profile["finance_meta"] = {
