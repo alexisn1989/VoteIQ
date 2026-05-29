@@ -15,7 +15,8 @@ _BASE_DIR = Path(__file__).resolve().parents[3]
 _data_dir_raw = os.getenv("DATA_DIR", str(_BASE_DIR))
 _DATA_DIR = _data_dir_raw if os.path.isdir(_data_dir_raw) else str(_BASE_DIR)
 _POLLS_DB = os.path.join(_DATA_DIR, "polls.db")
-_CENTROIDS_FILE = _BASE_DIR / "data" / "zip_centroids.json"
+_CENTROIDS_FILE  = _BASE_DIR / "data" / "zip_centroids.json"
+_MAPBOX_TOKEN    = os.getenv("MAPBOX_TOKEN", "")
 
 # Load centroid lookup once at import time
 try:
@@ -85,10 +86,15 @@ def _donor_map_data(conn) -> dict:
 
 
 def _inject(data: dict) -> str:
-    safe = json.dumps(data, default=str).replace("</script>", "<\\/script>")
+    safe  = json.dumps(data, default=str).replace("</script>", "<\\/script>")
+    token = json.dumps(_MAPBOX_TOKEN)
     with (_BASE_DIR / "templates" / "donor_map.html").open("r", encoding="utf-8") as f:
         html = f.read()
-    return html.replace("</head>", f"<script>window._MAP_DATA={safe};</script></head>", 1)
+    return html.replace(
+        "</head>",
+        f"<script>window._MAP_DATA={safe};window._MAPBOX_TOKEN={token};</script></head>",
+        1,
+    )
 
 
 # ── JSON API ──────────────────────────────────────────────────────────────────

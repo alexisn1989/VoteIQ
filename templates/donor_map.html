@@ -5,206 +5,102 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Donor Map · VoteIQ Virginia</title>
 
-  <!-- Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Mapbox GL JS -->
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
 
-  <!-- D3 + TopoJSON for US choropleth -->
-  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <!-- TopoJSON for US states source -->
   <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 
   <style>
-    /* ── Design tokens ─────────────────────────────────────────────────────── */
+    /* ── Tokens ──────────────────────────────────────────────────────────── */
     :root {
-      --navy:   #0d1b2a;
-      --red:    #c8102e;
-      --cream:  #f4f1eb;
-      --gold:   #b8963e;
-      --dem:    #1a52c8;
-      --rep:    #c8102e;
-      --card:   #ffffff;
-      --border: #d6d0c4;
-      --muted:  #6b6560;
+      --navy:  #0d1b2a;
+      --red:   #c8102e;
+      --cream: #f4f1eb;
+      --gold:  #b8963e;
+      --card:  #ffffff;
+      --border:#d6d0c4;
+      --muted: #6b6560;
+      --g0:    #d4edda;   /* lightest green  */
+      --g1:    #95d5b2;
+      --g2:    #52b788;
+      --g3:    #2d6a4f;
+      --g4:    #1b5e20;   /* darkest green   */
     }
-
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Barlow', system-ui, sans-serif; background: var(--cream); color: var(--navy); min-height: 100vh; }
 
-    body {
-      font-family: 'Barlow', system-ui, sans-serif;
-      background: var(--cream);
-      color: var(--navy);
-      min-height: 100vh;
-    }
-
-    /* ── Header ─────────────────────────────────────────────────────────────── */
-    header {
-      background: var(--navy);
-      padding: 14px 28px;
-      display: flex;
-      align-items: center;
-      gap: 18px;
-    }
-    .logo {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: #fff;
-      text-decoration: none;
-      letter-spacing: .02em;
-    }
+    /* ── Header ─────────────────────────────────────────────────────────── */
+    header { background: var(--navy); padding: 14px 28px; display: flex; align-items: center; gap: 18px; }
+    .logo  { font-family: 'Playfair Display', Georgia, serif; font-size: 1.5rem; font-weight: 700; color: #fff; text-decoration: none; letter-spacing: .02em; }
     .logo span { color: var(--gold); }
     nav { margin-left: auto; display: flex; gap: 10px; flex-wrap: wrap; }
-    nav a {
-      color: rgba(255,255,255,.75);
-      text-decoration: none;
-      font-size: .82rem;
-      font-weight: 500;
-      padding: 5px 12px;
-      border-radius: 4px;
-      transition: background .15s;
-    }
+    nav a { color: rgba(255,255,255,.75); text-decoration: none; font-size: .82rem; font-weight: 500; padding: 5px 12px; border-radius: 4px; transition: background .15s; }
     nav a:hover, nav a.active { background: rgba(255,255,255,.12); color: #fff; }
 
-    /* ── Page title ─────────────────────────────────────────────────────────── */
-    .page-hero {
-      background: var(--navy);
-      color: #fff;
-      padding: 28px 32px 24px;
-      border-bottom: 3px solid var(--red);
-    }
-    .page-hero h1 {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 2rem;
-      font-weight: 700;
-    }
-    .page-hero p {
-      color: rgba(255,255,255,.65);
-      font-size: .9rem;
-      margin-top: 6px;
-    }
+    /* ── Hero ────────────────────────────────────────────────────────────── */
+    .page-hero { background: var(--navy); color: #fff; padding: 28px 32px 24px; border-bottom: 3px solid var(--red); }
+    .page-hero h1 { font-family: 'Playfair Display', Georgia, serif; font-size: 2rem; font-weight: 700; }
+    .page-hero p  { color: rgba(255,255,255,.65); font-size: .9rem; margin-top: 6px; }
 
-    /* ── Stats bar ──────────────────────────────────────────────────────────── */
-    .stats-bar {
-      display: flex;
-      gap: 0;
-      background: var(--navy);
-      border-bottom: 1px solid rgba(255,255,255,.08);
-      overflow-x: auto;
-    }
-    .stat-item {
-      padding: 14px 28px;
-      border-right: 1px solid rgba(255,255,255,.08);
-      min-width: 140px;
-      flex-shrink: 0;
-    }
+    /* ── Stats bar ───────────────────────────────────────────────────────── */
+    .stats-bar { display: flex; background: var(--navy); border-bottom: 1px solid rgba(255,255,255,.08); overflow-x: auto; }
+    .stat-item { padding: 14px 28px; border-right: 1px solid rgba(255,255,255,.08); min-width: 140px; flex-shrink: 0; }
     .stat-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,.5); }
     .stat-value { font-size: 1.35rem; font-weight: 700; color: #fff; margin-top: 3px; }
     .stat-value.gold  { color: var(--gold); }
-    .stat-value.green { color: #4caf82; }
+    .stat-value.green { color: #52b788; }
 
-    /* ── Controls ───────────────────────────────────────────────────────────── */
-    .controls {
-      padding: 20px 32px 0;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    .tab-group { display: flex; gap: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
-    .tab-btn {
-      padding: 9px 22px;
-      background: #fff;
-      border: none;
-      cursor: pointer;
-      font-size: .88rem;
-      font-weight: 600;
-      color: var(--muted);
-      transition: all .15s;
-    }
+    /* ── Controls ────────────────────────────────────────────────────────── */
+    .controls { padding: 20px 32px 0; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .tab-group { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+    .tab-btn { padding: 9px 22px; background: #fff; border: none; cursor: pointer; font-size: .88rem; font-weight: 600; color: var(--muted); transition: all .15s; }
     .tab-btn.active { background: var(--navy); color: #fff; }
     .tab-btn:hover:not(.active) { background: var(--cream); color: var(--navy); }
+    #view-desc { font-size: .82rem; color: var(--muted); }
 
-    /* ── Map containers ─────────────────────────────────────────────────────── */
-    .map-wrap {
-      margin: 20px 32px 32px;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 2px 12px rgba(0,0,0,.10);
-      border: 1px solid var(--border);
-      background: #fff;
-    }
-    .map-view { display: none; }
-    .map-view.active { display: block; }
+    /* ── Map wrap ────────────────────────────────────────────────────────── */
+    .map-wrap { margin: 20px 32px 32px; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,.18); border: 1px solid var(--border); }
+    #map { height: 580px; }
 
-    /* ── D3 US choropleth ───────────────────────────────────────────────────── */
-    #us-map-svg {
-      width: 100%;
-      height: 540px;
-      display: block;
-      background: #e8f0f7;
-    }
-    .state-path {
-      stroke: #fff;
-      stroke-width: .6;
-      cursor: pointer;
-      transition: opacity .15s;
-    }
-    .state-path:hover { opacity: .8; stroke-width: 1.5; }
-    .state-label { font-size: 9px; fill: rgba(255,255,255,.7); pointer-events: none; text-anchor: middle; }
-
-    /* ── VA Leaflet map ─────────────────────────────────────────────────────── */
-    #va-map { height: 560px; }
-
-    /* ── Tooltip ────────────────────────────────────────────────────────────── */
-    #map-tooltip {
-      position: fixed;
-      background: var(--navy);
-      color: #fff;
-      padding: 10px 14px;
-      border-radius: 6px;
-      font-size: .82rem;
-      pointer-events: none;
-      z-index: 9999;
-      display: none;
-      max-width: 220px;
-      box-shadow: 0 4px 16px rgba(0,0,0,.3);
-    }
-    #map-tooltip strong { font-size: .95rem; display: block; margin-bottom: 4px; }
-    #map-tooltip .tt-row { display: flex; justify-content: space-between; gap: 12px; color: rgba(255,255,255,.8); margin-top: 2px; }
-    #map-tooltip .tt-val { color: #fff; font-weight: 600; }
-
-    /* ── Legend ─────────────────────────────────────────────────────────────── */
-    .legend-wrap {
-      padding: 14px 20px;
-      background: #f9f8f6;
-      border-top: 1px solid var(--border);
+    /* ── Legend ──────────────────────────────────────────────────────────── */
+    .legend-bar {
+      padding: 12px 20px;
+      background: #111e14;
       display: flex;
       align-items: center;
       gap: 10px;
       font-size: .78rem;
-      color: var(--muted);
+      color: rgba(255,255,255,.6);
     }
-    .legend-bar {
-      flex: 1;
-      max-width: 260px;
-      height: 10px;
-      border-radius: 5px;
+    .legend-gradient {
+      flex: 1; max-width: 240px; height: 10px; border-radius: 5px;
+      background: linear-gradient(to right, var(--g0), var(--g1), var(--g2), var(--g3), var(--g4));
     }
-    .legend-label { white-space: nowrap; }
+    #legend-note { margin-left: auto; font-size: .73rem; color: rgba(255,255,255,.4); }
 
-    /* ── Out-of-VA note ─────────────────────────────────────────────────────── */
-    .map-note {
-      padding: 10px 20px;
-      background: rgba(13,27,42,.04);
-      font-size: .78rem;
-      color: var(--muted);
-      border-top: 1px solid var(--border);
+    /* ── Mapbox popup override ───────────────────────────────────────────── */
+    .mapboxgl-popup-content {
+      background: #0d1b2a !important;
+      color: #fff !important;
+      border-radius: 8px !important;
+      padding: 12px 16px !important;
+      box-shadow: 0 4px 20px rgba(0,0,0,.5) !important;
+      min-width: 180px;
     }
+    .mapboxgl-popup-tip { border-top-color: #0d1b2a !important; border-bottom-color: #0d1b2a !important; }
+    .popup-title { font-weight: 700; font-size: .95rem; margin-bottom: 6px; color: #52b788; }
+    .popup-row   { display: flex; justify-content: space-between; gap: 12px; font-size: .82rem; color: rgba(255,255,255,.7); margin-top: 3px; }
+    .popup-row span:last-child { color: #fff; font-weight: 600; }
+
+    /* ── No token banner ─────────────────────────────────────────────────── */
+    #no-token { display: none; background: #fff3cd; border: 1px solid #ffc107; color: #856404;
+      padding: 16px 24px; margin: 20px 32px; border-radius: 8px; font-size: .9rem; }
   </style>
 </head>
 <body>
 
-<!-- ── Header ────────────────────────────────────────────────────────────────── -->
 <header>
   <a class="logo" href="/"><span>Vote</span>IQ</a>
   <nav>
@@ -217,14 +113,12 @@
   </nav>
 </header>
 
-<!-- ── Hero ──────────────────────────────────────────────────────────────────── -->
 <div class="page-hero">
   <h1>Donor Heat Map</h1>
-  <p>Where campaign contributions to Virginia candidates originate — by state and zip code.</p>
+  <p>Where campaign contributions to Virginia candidates originate — darker green means more money.</p>
 </div>
 
-<!-- ── Stats bar ─────────────────────────────────────────────────────────────── -->
-<div class="stats-bar" id="stats-bar">
+<div class="stats-bar">
   <div class="stat-item"><div class="stat-label">Total Raised</div><div class="stat-value gold" id="s-total">—</div></div>
   <div class="stat-item"><div class="stat-label">Total Donors</div><div class="stat-value" id="s-donors">—</div></div>
   <div class="stat-item"><div class="stat-label">Contributing States</div><div class="stat-value" id="s-states">—</div></div>
@@ -232,90 +126,56 @@
   <div class="stat-item"><div class="stat-label">VA Zip Codes</div><div class="stat-value" id="s-zips">—</div></div>
 </div>
 
-<!-- ── Controls ──────────────────────────────────────────────────────────────── -->
 <div class="controls">
   <div class="tab-group">
     <button class="tab-btn active" data-view="us">🇺🇸 All States</button>
     <button class="tab-btn"        data-view="va">📍 Virginia Detail</button>
   </div>
-  <span style="font-size:.82rem;color:var(--muted);margin-left:4px;" id="view-desc">
-    Donations to VA candidates by donor's home state
-  </span>
+  <span id="view-desc">Total donations to VA candidates by donor's home state</span>
 </div>
 
-<!-- ── Map area ───────────────────────────────────────────────────────────────── -->
+<div id="no-token">
+  ⚠️ Mapbox token not configured. Set the <code>MAPBOX_TOKEN</code> environment variable to enable the map.
+</div>
+
 <div class="map-wrap">
-  <!-- US choropleth -->
-  <div id="view-us" class="map-view active">
-    <svg id="us-map-svg"></svg>
-    <div class="legend-wrap" id="us-legend">
-      <span class="legend-label">Less</span>
-      <canvas class="legend-bar" id="legend-canvas"></canvas>
-      <span class="legend-label">More</span>
-      <span style="margin-left:auto;color:var(--muted);font-size:.75rem;">
-        Log scale · hover states for details
-      </span>
-    </div>
-  </div>
-
-  <!-- VA Leaflet bubble map -->
-  <div id="view-va" class="map-view">
-    <div id="va-map"></div>
-    <div class="map-note">
-      Bubble size proportional to total donations. Showing zip codes with ≥ $50K raised.
-      Data: Virginia SBE campaign finance filings.
-    </div>
+  <div id="map"></div>
+  <div class="legend-bar">
+    <span>Less $</span>
+    <div class="legend-gradient"></div>
+    <span>More $</span>
+    <span id="legend-note">Hover states or zip bubbles for details</span>
   </div>
 </div>
-
-<!-- Tooltip -->
-<div id="map-tooltip"></div>
 
 <script>
 (function () {
-  const raw = window._MAP_DATA || { states: [], va_zips: [] };
+  /* ── Data ─────────────────────────────────────────────────────────────── */
+  const raw   = window._MAP_DATA   || { states: [], va_zips: [] };
+  const token = window._MAPBOX_TOKEN || '';
 
-  /* ── Helpers ────────────────────────────────────────────────────────────── */
-  const fmt  = v => '$' + (v >= 1e9 ? (v/1e9).toFixed(1)+'B' : v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1e3 ? (v/1e3).toFixed(0)+'K' : v.toFixed(0));
-  const fmtn = v => v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1e3 ? (v/1e3).toFixed(0)+'K' : v.toString();
+  if (!token) {
+    document.getElementById('no-token').style.display = 'block';
+    document.querySelector('.map-wrap').style.display = 'none';
+    return;
+  }
 
-  /* ── Stats bar ──────────────────────────────────────────────────────────── */
-  const totalAll   = raw.states.reduce((a, s) => a + s.total, 0);
-  const donorsAll  = raw.states.reduce((a, s) => a + s.donors, 0);
-  const vaState    = raw.states.find(s => s.state === 'VA');
-  const vaPct      = vaState ? (vaState.total / totalAll * 100).toFixed(1) + '%' : '—';
+  /* ── Helpers ──────────────────────────────────────────────────────────── */
+  const fmt  = v => '$' + (v >= 1e9 ? (v/1e9).toFixed(1)+'B' : v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1e3 ? (v/1e3).toFixed(0)+'K' : (+v).toFixed(0));
+  const fmtn = v => v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1e3 ? (v/1e3).toFixed(0)+'K' : (+v).toString();
 
+  /* ── Stats bar ────────────────────────────────────────────────────────── */
+  const totalAll  = raw.states.reduce((a, s) => a + +s.total, 0);
+  const donorsAll = raw.states.reduce((a, s) => a + +s.donors, 0);
+  const vaState   = raw.states.find(s => s.state === 'VA');
+  const vaPct     = vaState ? (+vaState.total / totalAll * 100).toFixed(1) + '%' : '—';
   document.getElementById('s-total').textContent  = fmt(totalAll);
   document.getElementById('s-donors').textContent = fmtn(donorsAll);
   document.getElementById('s-states').textContent = raw.states.length;
   document.getElementById('s-va-pct').textContent = vaPct;
   document.getElementById('s-zips').textContent   = raw.va_zips.length.toLocaleString();
 
-  /* ── Tab switching ───────────────────────────────────────────────────────── */
-  const viewDescs = {
-    us: 'Donations to VA candidates by donor\'s home state',
-    va: 'Virginia donor concentration by zip code — bubble size = total raised'
-  };
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const v = btn.dataset.view;
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.map-view').forEach(el => el.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('view-' + v).classList.add('active');
-      document.getElementById('view-desc').textContent = viewDescs[v];
-      if (v === 'va' && !_vaMapInit) initVAMap();
-      if (v === 'us') window.dispatchEvent(new Event('resize')); // re-render D3
-    });
-  });
-
-  /* ══════════════════════════════════════════════════════════════════════════
-     US STATES CHOROPLETH (D3)
-  ══════════════════════════════════════════════════════════════════════════ */
-  const stateByAbbr = {};
-  raw.states.forEach(s => { stateByAbbr[s.state] = s; });
-
-  // FIPS → state abbreviation
+  /* ── Constants ────────────────────────────────────────────────────────── */
   const FIPS = {
     '01':'AL','02':'AK','04':'AZ','05':'AR','06':'CA','08':'CO','09':'CT',
     '10':'DE','11':'DC','12':'FL','13':'GA','15':'HI','16':'ID','17':'IL',
@@ -328,161 +188,234 @@
   };
   const STATE_NAMES = {
     'AL':'Alabama','AK':'Alaska','AZ':'Arizona','AR':'Arkansas','CA':'California',
-    'CO':'Colorado','CT':'Connecticut','DE':'Delaware','DC':'D.C.','FL':'Florida',
-    'GA':'Georgia','HI':'Hawaii','ID':'Idaho','IL':'Illinois','IN':'Indiana',
-    'IA':'Iowa','KS':'Kansas','KY':'Kentucky','LA':'Louisiana','ME':'Maine',
-    'MD':'Maryland','MA':'Massachusetts','MI':'Michigan','MN':'Minnesota',
-    'MS':'Mississippi','MO':'Missouri','MT':'Montana','NE':'Nebraska','NV':'Nevada',
-    'NH':'New Hampshire','NJ':'New Jersey','NM':'New Mexico','NY':'New York',
-    'NC':'North Carolina','ND':'North Dakota','OH':'Ohio','OK':'Oklahoma',
-    'OR':'Oregon','PA':'Pennsylvania','RI':'Rhode Island','SC':'South Carolina',
-    'SD':'South Dakota','TN':'Tennessee','TX':'Texas','UT':'Utah','VT':'Vermont',
-    'VA':'Virginia','WA':'Washington','WV':'West Virginia','WI':'Wisconsin','WY':'Wyoming'
+    'CO':'Colorado','CT':'Connecticut','DE':'Delaware','DC':'Washington D.C.',
+    'FL':'Florida','GA':'Georgia','HI':'Hawaii','ID':'Idaho','IL':'Illinois',
+    'IN':'Indiana','IA':'Iowa','KS':'Kansas','KY':'Kentucky','LA':'Louisiana',
+    'ME':'Maine','MD':'Maryland','MA':'Massachusetts','MI':'Michigan',
+    'MN':'Minnesota','MS':'Mississippi','MO':'Missouri','MT':'Montana',
+    'NE':'Nebraska','NV':'Nevada','NH':'New Hampshire','NJ':'New Jersey',
+    'NM':'New Mexico','NY':'New York','NC':'North Carolina','ND':'North Dakota',
+    'OH':'Ohio','OK':'Oklahoma','OR':'Oregon','PA':'Pennsylvania',
+    'RI':'Rhode Island','SC':'South Carolina','SD':'South Dakota',
+    'TN':'Tennessee','TX':'Texas','UT':'Utah','VT':'Vermont','VA':'Virginia',
+    'WA':'Washington','WV':'West Virginia','WI':'Wisconsin','WY':'Wyoming'
   };
 
-  // Color scale — log, cream → dark navy/red
-  const vals   = raw.states.map(s => s.total).filter(v => v > 0);
-  const minVal = d3.min(vals);
-  const maxVal = d3.max(vals);
-  const logScale = d3.scaleLog().domain([Math.max(1, minVal), maxVal]).clamp(true);
-  const colorScale = t => d3.interpolateRgb('#dce8f0', '#0d1b2a')(logScale(t));
+  const stateByAbbr = {};
+  raw.states.forEach(s => { stateByAbbr[s.state] = s; });
 
-  function drawUSMap() {
-    const svg    = d3.select('#us-map-svg');
-    const width  = svg.node().clientWidth || 960;
-    const height = svg.node().clientHeight || 540;
-    svg.selectAll('*').remove();
-    svg.attr('viewBox', `0 0 ${width} ${height}`);
+  const maxZipTotal = Math.max(...raw.va_zips.map(z => +z.total), 1);
 
-    const projection = d3.geoAlbersUsa().fitSize([width, height], { type: 'Sphere' });
-    // override with standard albersUSA scale so all states fit
-    const proj2 = d3.geoAlbersUsa().scale(width * 1.25).translate([width / 2, height / 2]);
-    const path  = d3.geoPath().projection(proj2);
-
-    const tooltip = document.getElementById('map-tooltip');
-
-    d3.json('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json').then(us => {
-      const features = topojson.feature(us, us.objects.states).features;
-
-      svg.selectAll('.state-path')
-        .data(features)
-        .enter().append('path')
-          .attr('class', 'state-path')
-          .attr('d', path)
-          .attr('fill', d => {
-            const abbr = FIPS[d.id.toString().padStart(2, '0')];
-            const s    = stateByAbbr[abbr];
-            return s ? colorScale(s.total) : '#cdd8e0';
-          })
-          .on('mousemove', (event, d) => {
-            const abbr = FIPS[d.id.toString().padStart(2, '0')];
-            const s    = stateByAbbr[abbr];
-            if (!abbr) return;
-            tooltip.style.display = 'block';
-            tooltip.style.left    = (event.clientX + 14) + 'px';
-            tooltip.style.top     = (event.clientY - 10) + 'px';
-            const pct = s ? (s.total / totalAll * 100).toFixed(2) + '%' : '—';
-            tooltip.innerHTML = `
-              <strong>${STATE_NAMES[abbr] || abbr}</strong>
-              <div class="tt-row"><span>Total donated</span><span class="tt-val">${s ? fmt(s.total) : 'No data'}</span></div>
-              <div class="tt-row"><span>Donors</span><span class="tt-val">${s ? fmtn(s.donors) : '—'}</span></div>
-              <div class="tt-row"><span>Share of total</span><span class="tt-val">${pct}</span></div>
-            `;
-          })
-          .on('mouseleave', () => { tooltip.style.display = 'none'; });
-
-      // Draw state abbreviation labels for larger states
-      const LABEL_STATES = new Set(['CA','TX','MT','NM','AZ','CO','WY','ND','SD','NE','KS',
-        'MN','IA','MO','WI','IL','MI','IN','OH','KY','TN','AL','GA','FL','NC','VA',
-        'NY','PA','WA','OR','ID','NV','UT']);
-      svg.selectAll('.state-label')
-        .data(features.filter(d => LABEL_STATES.has(FIPS[d.id.toString().padStart(2,'0')])))
-        .enter().append('text')
-          .attr('class', 'state-label')
-          .attr('x', d => { const c = path.centroid(d); return c[0]; })
-          .attr('y', d => { const c = path.centroid(d); return c[1] + 3; })
-          .text(d => FIPS[d.id.toString().padStart(2, '0')] || '');
-
-      // Legend canvas gradient
-      const canvas = document.getElementById('legend-canvas');
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        canvas.width = canvas.offsetWidth || 260;
-        canvas.height = 10;
-        const grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
-        for (let i = 0; i <= 10; i++) {
-          grad.addColorStop(i / 10, colorScale(logScale.invert(i / 10)));
-        }
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, canvas.width, 10);
-      }
-    }).catch(err => {
-      svg.append('text').attr('x', 20).attr('y', 40).text('Map data unavailable').attr('fill', '#666');
-    });
-  }
-
-  drawUSMap();
-  window.addEventListener('resize', () => {
-    if (document.getElementById('view-us').classList.contains('active')) drawUSMap();
+  /* ── Mapbox init ─────────────────────────────────────────────────────── */
+  mapboxgl.accessToken = token;
+  const map = new mapboxgl.Map({
+    container: 'map',
+    style:     'mapbox://styles/mapbox/dark-v11',
+    center:    [-98.5, 39.5],   // US centre
+    zoom:      3.8,
+    minZoom:   2,
+    maxZoom:   14,
   });
 
-  /* ══════════════════════════════════════════════════════════════════════════
-     VIRGINIA LEAFLET BUBBLE MAP
-  ══════════════════════════════════════════════════════════════════════════ */
-  let _vaMapInit = false;
+  map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
 
-  function initVAMap() {
-    _vaMapInit = true;
-    const map = L.map('va-map', { preferCanvas: true }).setView([37.5, -79.0], 7);
+  /* ── Build VA zip GeoJSON ─────────────────────────────────────────────── */
+  const zipGeoJSON = {
+    type: 'FeatureCollection',
+    features: raw.va_zips.map(z => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [+z.lng, +z.lat] },
+      properties: { total: +z.total, donors: +z.donors, city: z.city, zip: z.zip }
+    }))
+  };
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '© OpenStreetMap · © CARTO',
-      subdomains: 'abcd',
-      maxZoom: 14
-    }).addTo(map);
+  /* ── Popup ────────────────────────────────────────────────────────────── */
+  const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: 12 });
 
-    const zips    = raw.va_zips;
-    const maxTot  = Math.max(...zips.map(z => z.total));
-    const tooltip = document.getElementById('map-tooltip');
+  /* ── On map load: add all layers ─────────────────────────────────────── */
+  map.on('load', () => {
 
-    // Color by donation intensity
-    function bubbleColor(total) {
-      const t = Math.sqrt(total / maxTot);
-      if (t > .7)  return '#7b0e20';
-      if (t > .45) return '#c8102e';
-      if (t > .25) return '#e05070';
-      if (t > .1)  return '#f08090';
-      return '#f4b0bc';
-    }
+    /* ── 1. VA zip sources + layers ─────────────────────────────────────── */
+    map.addSource('va-zips', { type: 'geojson', data: zipGeoJSON });
 
-    zips.forEach(z => {
-      const r = Math.max(3, Math.sqrt(z.total / maxTot) * 42);
-      L.circleMarker([z.lat, z.lng], {
-        radius:      r,
-        fillColor:   bubbleColor(z.total),
-        color:       'rgba(255,255,255,.5)',
-        weight:      .8,
-        fillOpacity: .72
-      })
-      .on('mouseover', e => {
-        tooltip.style.display = 'block';
-        tooltip.innerHTML = `
-          <strong>${z.city || z.zip} (${z.zip})</strong>
-          <div class="tt-row"><span>Total donated</span><span class="tt-val">${fmt(z.total)}</span></div>
-          <div class="tt-row"><span>Donors</span><span class="tt-val">${fmtn(z.donors)}</span></div>
-        `;
-      })
-      .on('mousemove', e => {
-        tooltip.style.left = (e.originalEvent.clientX + 14) + 'px';
-        tooltip.style.top  = (e.originalEvent.clientY - 10) + 'px';
-      })
-      .on('mouseout', () => { tooltip.style.display = 'none'; })
-      .addTo(map);
+    // Heatmap layer (visible in VA view)
+    map.addLayer({
+      id:   'va-heat',
+      type: 'heatmap',
+      source: 'va-zips',
+      layout: { visibility: 'none' },
+      paint: {
+        'heatmap-weight': [
+          'interpolate', ['linear'], ['get', 'total'],
+          0, 0, maxZipTotal, 1
+        ],
+        'heatmap-intensity': [
+          'interpolate', ['linear'], ['zoom'],
+          5, 1.2, 12, 5
+        ],
+        'heatmap-color': [
+          'interpolate', ['linear'], ['heatmap-density'],
+          0,    'rgba(0,0,0,0)',
+          0.05, 'rgba(212,237,218,0.4)',
+          0.2,  '#95d5b2',
+          0.45, '#52b788',
+          0.7,  '#2d6a4f',
+          1.0,  '#1b5e20'
+        ],
+        'heatmap-radius': [
+          'interpolate', ['linear'], ['zoom'],
+          5, 16, 12, 36
+        ],
+        'heatmap-opacity': 0.88
+      }
     });
 
-    // VA bounds
-    map.fitBounds([[36.54, -83.68], [39.47, -75.24]], { padding: [20, 20] });
+    // Circle layer — visible at zoom >= 8 in VA view, for exact hover
+    map.addLayer({
+      id:   'va-circles',
+      type: 'circle',
+      source: 'va-zips',
+      minzoom: 7,
+      layout: { visibility: 'none' },
+      paint: {
+        'circle-radius': [
+          'interpolate', ['linear'], ['zoom'],
+          7,  ['interpolate', ['linear'], ['get', 'total'], 0, 3, maxZipTotal, 16],
+          12, ['interpolate', ['linear'], ['get', 'total'], 0, 5, maxZipTotal, 32]
+        ],
+        'circle-color': [
+          'step', ['get', 'total'],
+          '#d4edda',
+          500000,   '#95d5b2',
+          2000000,  '#52b788',
+          10000000, '#2d6a4f',
+          50000000, '#1b5e20'
+        ],
+        'circle-opacity': 0.75,
+        'circle-stroke-color': 'rgba(255,255,255,0.25)',
+        'circle-stroke-width': 0.8
+      }
+    });
+
+    /* ── 2. US States choropleth ─────────────────────────────────────────── */
+    fetch('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json')
+      .then(r => r.json())
+      .then(us => {
+        const gj = topojson.feature(us, us.objects.states);
+
+        gj.features.forEach(f => {
+          const abbr  = FIPS[String(f.id).padStart(2, '0')];
+          const s     = stateByAbbr[abbr] || {};
+          f.properties.abbr    = abbr || '';
+          f.properties.name    = STATE_NAMES[abbr] || abbr || 'Unknown';
+          f.properties.total   = +(s.total  || 0);
+          f.properties.donors  = +(s.donors || 0);
+          f.properties.pct     = s.total ? (+s.total / totalAll * 100).toFixed(2) : '0.00';
+        });
+
+        map.addSource('us-states', { type: 'geojson', data: gj });
+
+        // Fill — green step scale (darker = more $)
+        map.addLayer({
+          id:   'states-fill',
+          type: 'fill',
+          source: 'us-states',
+          layout: { visibility: 'visible' },
+          paint: {
+            'fill-color': [
+              'step', ['get', 'total'],
+              '#1c2b1e',        // 0  — near-invisible on dark bg
+              1,      '#d4edda',  // >$0
+              500000, '#95d5b2',  // >$500K
+              2000000,'#52b788',  // >$2M
+              10000000,'#2d6a4f', // >$10M
+              50000000,'#1b5e20', // >$50M
+              300000000,'#081c15' // >$300M (DC, VA)
+            ],
+            'fill-opacity': 0.78
+          }
+        }, 'waterway-label');  // insert below labels
+
+        map.addLayer({
+          id:   'states-line',
+          type: 'line',
+          source: 'us-states',
+          layout: { visibility: 'visible' },
+          paint: { 'line-color': 'rgba(255,255,255,0.12)', 'line-width': 0.6 }
+        });
+
+        /* State hover popup */
+        map.on('mousemove', 'states-fill', e => {
+          if (!e.features.length) return;
+          const p = e.features[0].properties;
+          map.getCanvas().style.cursor = 'pointer';
+          popup.setLngLat(e.lngLat).setHTML(`
+            <div class="popup-title">${p.name}</div>
+            <div class="popup-row"><span>Total donated</span><span>${p.total > 0 ? fmt(p.total) : 'No data'}</span></div>
+            <div class="popup-row"><span>Donors</span><span>${p.donors > 0 ? fmtn(p.donors) : '—'}</span></div>
+            <div class="popup-row"><span>Share of total</span><span>${p.pct}%</span></div>
+          `).addTo(map);
+        });
+        map.on('mouseleave', 'states-fill', () => {
+          map.getCanvas().style.cursor = '';
+          popup.remove();
+        });
+      })
+      .catch(() => console.warn('Could not load US atlas TopoJSON'));
+
+    /* ── VA circle hover popup ───────────────────────────────────────────── */
+    map.on('mousemove', 'va-circles', e => {
+      if (!e.features.length) return;
+      const p = e.features[0].properties;
+      map.getCanvas().style.cursor = 'pointer';
+      popup.setLngLat(e.lngLat).setHTML(`
+        <div class="popup-title">${p.city || p.zip} · ${p.zip}</div>
+        <div class="popup-row"><span>Total donated</span><span>${fmt(p.total)}</span></div>
+        <div class="popup-row"><span>Donors</span><span>${fmtn(p.donors)}</span></div>
+      `).addTo(map);
+    });
+    map.on('mouseleave', 'va-circles', () => {
+      map.getCanvas().style.cursor = '';
+      popup.remove();
+    });
+
+  }); // end map.on('load')
+
+  /* ── Tab switching ────────────────────────────────────────────────────── */
+  const US_LAYERS = ['states-fill', 'states-line'];
+  const VA_LAYERS = ['va-heat', 'va-circles'];
+  const VIEW_DESCS = {
+    us: 'Total donations to VA candidates by donor\'s home state — darker green = more money',
+    va: 'Virginia donor heat map by zip code — darker green = more money raised in that area'
+  };
+
+  function setView(view) {
+    const show = view === 'us' ? US_LAYERS : VA_LAYERS;
+    const hide = view === 'us' ? VA_LAYERS : US_LAYERS;
+    show.forEach(id => { try { map.setLayoutProperty(id, 'visibility', 'visible'); } catch(e){} });
+    hide.forEach(id => { try { map.setLayoutProperty(id, 'visibility', 'none');    } catch(e){} });
+    popup.remove();
+
+    if (view === 'us') {
+      map.flyTo({ center: [-98.5, 39.5], zoom: 3.8, duration: 900 });
+      document.getElementById('legend-note').textContent = 'Hover a state for details';
+    } else {
+      map.flyTo({ center: [-79.0, 37.5], zoom: 6.8, duration: 900 });
+      document.getElementById('legend-note').textContent = 'Hover a zip code for details (zoom in for precision)';
+    }
+
+    document.getElementById('view-desc').textContent = VIEW_DESCS[view];
   }
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      // Wait for layers to exist before toggling
+      if (map.isStyleLoaded()) setView(btn.dataset.view);
+      else map.once('idle', () => setView(btn.dataset.view));
+    });
+  });
 
 })();
 </script>
