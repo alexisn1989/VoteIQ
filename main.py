@@ -4,6 +4,14 @@ from voteiq.queries.timing import get_donation_timing, get_timing_summary
 from voteiq.routes.voices import router as voices_router
 from config.voices import VOICE_PROMPTS, TIER_MAX_TOKENS, TIER_VOICE_MAP
 from voteiq.utils import _load_historical_results
+from voteiq.api.routes.elections import (
+    _load_2018_results,
+    _load_2020_results,
+    _load_2021_results,
+    _load_2022_results,
+    _load_2023_results,
+    _load_2024_results,
+)
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, field_validator
