@@ -3,6 +3,7 @@ from civic_analyst import run_analyst, lookup_member
 from voteiq.queries.timing import get_donation_timing, get_timing_summary
 from voteiq.routes.voices import router as voices_router
 from config.voices import VOICE_PROMPTS, TIER_MAX_TOKENS, TIER_VOICE_MAP
+from voteiq.utils import _load_historical_results
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, field_validator
@@ -182,6 +183,8 @@ from voteiq.api.routes.tasks import router as _tasks_router
 app.include_router(_tasks_router)
 from voteiq.api.routes.governor import router as _governor_router
 app.include_router(_governor_router)
+from voteiq.api.routes.legislators import router as _legislators_router
+app.include_router(_legislators_router)
 
 # DATA_DIR: set to Render persistent disk mount path (e.g. /var/data) in production.
 # Falls back to project root if DATA_DIR directory doesn't exist (e.g. after disk deletion).

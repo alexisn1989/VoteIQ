@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Legislator Profile — VoteIQ</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root { --navy:#0d1b2a; --red:#c8102e; --light:#f4f1eb; --mid:#ddd8cc; --muted:#7a7468; --dem:#1a52c8; --rep:#c8102e; --yes:#2a8f4f; --no:#c8102e; --nv:#7a7468; --abs:#d97706; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--light); color: var(--navy); font-family: 'Barlow', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f4f1eb'/%3E%3Crect width='1' height='1' fill='%23e8e4dc' opacity='0.4'/%3E%3C/svg%3E"); pointer-events: none; z-index: 0; }
+
+  /* ── Topbar ── */
+  .topbar { background: var(--navy); color: var(--mid); font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; text-align: center; padding: 7px 16px; position: relative; z-index: 10; }
+  .topbar span { color: var(--red); margin: 0 6px; }
+
+  /* ── Header ── */
+  header { position: relative; z-index: 10; border-bottom: 3px double var(--navy); padding: 28px 48px 22px; display: flex; align-items: center; justify-content: space-between; background: var(--light); }
+  .logo-wrap { display: flex; align-items: center; gap: 16px; text-decoration: none; }
+  .logo-text { font-family: 'Playfair Display', serif; font-size: 1.9rem; font-weight: 900; color: var(--navy); letter-spacing: -0.03em; }
+  .logo-text em { color: var(--red); font-style: normal; }
+  .logo-sub { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+  .header-nav { display: flex; gap: 24px; align-items: center; }
+  .header-nav a { font-family: 'Barlow Condensed', sans-serif; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--navy); text-decoration: none; border-bottom: 2px solid transparent; padding-bottom: 2px; transition: border-color 0.2s, color 0.2s; }
+  .header-nav a:hover, .header-nav a.active { color: var(--red); border-bottom-color: var(--red); }
+
+  /* ── Content ── */
+  .content-wrap { position: relative; z-index: 10; max-width: 960px; margin: 0 auto; padding: 0 32px 80px; }
+
+  /* ── Back link ── */
+  .back-link { display: inline-flex; align-items: center; gap: 7px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); text-decoration: none; padding: 28px 0 20px; transition: color 0.18s; }
+  .back-link:hover { color: var(--navy); }
+  .back-link::before { content: '\2190'; font-size: 0.9rem; }
+
+  /* ── Profile hero ── */
+  .profile-hero { background: white; border: 1px solid var(--mid); overflow: hidden; margin-bottom: 24px; }
+  .profile-hero-stripe { height: 6px; }
+  .profile-hero-stripe.dem { background: var(--dem); }
+  .profile-hero-stripe.rep { background: var(--rep); }
+  .profile-hero-stripe.other { background: var(--muted); }
+  .profile-hero-body { padding: 28px 32px; display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+  .profile-name-block { flex: 1; min-width: 200px; }
+  .profile-eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .profile-name { font-family: 'Playfair Display', serif; font-size: clamp(1.5rem, 3vw, 2.2rem); font-weight: 900; color: var(--navy); line-height: 1.1; margin-bottom: 14px; letter-spacing: -0.02em; }
+  .profile-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+  .badge { display: inline-block; font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; padding: 4px 12px; border: 1.5px solid; }
+  .badge.dem { color: var(--dem); border-color: var(--dem); background: #eef2fb; }
+  .badge.rep { color: var(--rep); border-color: var(--rep); background: #fbeef0; }
+  .badge.other { color: var(--muted); border-color: var(--mid); background: white; }
+  .badge.chamber { color: var(--muted); border-color: var(--mid); background: white; }
+  .badge.session { color: var(--navy); border-color: var(--navy); background: white; }
+
+  /* Chat CTA */
+  .chat-cta { display: inline-flex; align-items: center; gap: 8px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; padding: 10px 20px; background: var(--navy); color: white; border: none; cursor: pointer; text-decoration: none; transition: background 0.18s; flex-shrink: 0; }
+  .chat-cta:hover { background: #162539; }
+  .chat-cta::before { content: '\1F4AC'; }
+
+  /* ── Stat boxes ── */
+  .stat-row { display: flex; gap: 0; border: 1px solid var(--mid); background: white; margin-bottom: 24px; overflow: hidden; }
+  .stat-box { flex: 1; padding: 16px 18px; border-right: 1px solid var(--mid); text-align: center; }
+  .stat-box:last-child { border-right: none; }
+  .stat-num { font-family: 'Barlow Condensed', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--navy); display: block; line-height: 1; }
+  .stat-num.yes  { color: var(--yes); }
+  .stat-num.no   { color: var(--no); }
+  .stat-num.nv   { color: var(--nv); }
+  .stat-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.58rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); display: block; margin-top: 5px; }
+
+  /* ── Vote breakdown bar ── */
+  .breakdown-card { background: white; border: 1px solid var(--mid); padding: 18px 24px; margin-bottom: 24px; }
+  .breakdown-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+  .breakdown-bar { display: flex; height: 12px; border-radius: 2px; overflow: hidden; margin-bottom: 12px; }
+  .breakdown-bar-seg { height: 100%; transition: width 0.6s ease; }
+  .breakdown-bar-seg.yes { background: var(--yes); }
+  .breakdown-bar-seg.no  { background: var(--no); }
+  .breakdown-bar-seg.nv  { background: var(--nv); }
+  .breakdown-bar-seg.abs { background: var(--abs); }
+  .breakdown-legend { display: flex; gap: 16px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .legend-dot.yes { background: var(--yes); }
+  .legend-dot.no  { background: var(--no); }
+  .legend-dot.nv  { background: var(--nv); }
+  .legend-dot.abs { background: var(--abs); }
+  .legend-text { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; color: var(--navy); letter-spacing: 0.06em; }
+  .legend-pct { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; color: var(--muted); margin-left: 2px; }
+
+  /* ── Tabs ── */
+  .tabs-wrap { margin-bottom: 0; }
+  .tab-list { display: flex; gap: 0; border-bottom: 2px solid var(--mid); margin-bottom: 0; }
+  .tab-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; padding: 10px 22px; border: none; background: none; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color 0.18s, border-color 0.18s; }
+  .tab-btn:hover { color: var(--navy); }
+  .tab-btn.active { color: var(--navy); border-bottom-color: var(--navy); }
+  .tab-count { font-size: 0.65rem; opacity: 0.7; margin-left: 4px; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── Data table ── */
+  .data-table-wrap { border: 1px solid var(--mid); background: white; overflow-x: auto; margin-top: 0; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+  .data-table thead { background: #f0ede6; }
+  .data-table thead th { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; padding: 10px 14px; text-align: left; white-space: nowrap; color: var(--muted); border-bottom: 1px solid var(--mid); }
+  .data-table tbody tr { border-bottom: 1px solid var(--mid); }
+  .data-table tbody tr:last-child { border-bottom: none; }
+  .data-table tbody tr:hover { background: #f8f6f0; }
+  .data-table td { padding: 10px 14px; vertical-align: top; }
+  .vote-opt { display: inline-block; font-family: 'Barlow Condensed', sans-serif; font-size: 0.64rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 8px; border-radius: 2px; }
+  .vote-opt.yes { background: #e6f5ec; color: var(--yes); border: 1px solid #b2dfcc; }
+  .vote-opt.no  { background: #fbeef0; color: var(--no);  border: 1px solid #f5b8c0; }
+  .vote-opt.nv  { background: #f0ede6; color: var(--nv);  border: 1px solid var(--mid); }
+  .vote-opt.abs { background: #fff8ec; color: var(--abs); border: 1px solid #f9d89c; }
+  .bill-id  { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; color: var(--red); white-space: nowrap; }
+  .bill-title { font-size: 0.82rem; color: var(--navy); line-height: 1.4; }
+  .bill-meta  { font-family: 'Barlow Condensed', sans-serif; font-size: 0.62rem; color: var(--muted); margin-top: 3px; }
+  .status-chip { display: inline-block; font-family: 'Barlow Condensed', sans-serif; font-size: 0.58rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 6px; border: 1px solid var(--mid); color: var(--muted); background: #f8f6f0; }
+  .status-chip.passed { border-color: #b2dfcc; color: var(--yes); background: #e6f5ec; }
+  .status-chip.failed { border-color: #f5b8c0; color: var(--no); background: #fbeef0; }
+  .status-chip.signed { border-color: #b2dfcc; color: #1a6635; background: #e0f0e6; }
+  .date-cell { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
+  .empty-state { text-align: center; padding: 48px 20px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+
+  /* ── Loading ── */
+  .spinner { display: inline-block; width: 30px; height: 30px; border: 3px solid var(--mid); border-top-color: var(--navy); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    header { padding: 18px 20px; flex-direction: column; gap: 14px; }
+    .header-nav { gap: 14px; flex-wrap: wrap; justify-content: center; }
+    .content-wrap { padding: 0 16px 60px; }
+    .profile-hero-body { flex-direction: column; }
+    .stat-row { flex-wrap: wrap; }
+    .stat-box { flex: 1 0 33%; border-bottom: 1px solid var(--mid); }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">Virginia General Assembly <span>|</span> 2026 Session <span>|</span> VoteIQ</div>
+
+<header>
+  <a href="/" class="logo-wrap">
+    <div>
+      <div class="logo-text">Vote<em>IQ</em></div>
+      <div class="logo-sub">Virginia Political Intelligence</div>
+    </div>
+  </a>
+  <nav class="header-nav">
+    <a href="/">Chat</a>
+    <a href="/representatives">Representatives</a>
+    <a href="/legislators" class="active">Legislators</a>
+    <a href="/past-elections">Elections</a>
+    <a href="/election-map">Map</a>
+  </nav>
+</header>
+
+<div class="content-wrap">
+
+  <a href="/legislators" class="back-link">All Legislators</a>
+
+  <!-- Profile hero — populated by JS -->
+  <div id="profile-hero" class="profile-hero">
+    <div style="display:flex;align-items:center;justify-content:center;padding:48px">
+      <span class="spinner"></span>
+    </div>
+  </div>
+
+  <!-- Stats row -->
+  <div id="stat-row" class="stat-row" style="display:none"></div>
+
+  <!-- Breakdown bar -->
+  <div id="breakdown-card" class="breakdown-card" style="display:none"></div>
+
+  <!-- Tabs -->
+  <div class="tabs-wrap" id="tabs-wrap" style="display:none">
+    <div class="tab-list" id="tab-list">
+      <button class="tab-btn active" data-tab="votes">Recent Votes <span class="tab-count" id="tc-votes"></span></button>
+      <button class="tab-btn" data-tab="bills">Bills Introduced <span class="tab-count" id="tc-bills"></span></button>
+      <button class="tab-btn" data-tab="cosponsor">Co-Sponsored <span class="tab-count" id="tc-cosponsor"></span></button>
+    </div>
+
+    <!-- Recent Votes panel -->
+    <div class="tab-panel active" id="panel-votes">
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Bill</th>
+              <th>Title</th>
+              <th>Vote</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="votes-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Bills Introduced panel -->
+    <div class="tab-panel" id="panel-bills">
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Bill #</th>
+              <th>Title</th>
+              <th>Subject</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="bills-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Co-Sponsored panel -->
+    <div class="tab-panel" id="panel-cosponsor">
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Bill #</th>
+              <th>Title</th>
+              <th>Subject</th>
+              <th>Status</th>
+              <th>Order</th>
+            </tr>
+          </thead>
+          <tbody id="cosponsor-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /content-wrap -->
+
+<script>
+(function () {
+  'use strict';
+  const D = window._PROFILE_DATA || {};
+
+  function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function partyClass(p) {
+    if (!p) return 'other';
+    const l = p.toLowerCase();
+    if (l.includes('democrat')) return 'dem';
+    if (l.includes('republican')) return 'rep';
+    return 'other';
+  }
+
+  function chamberLabel(c) {
+    if (c === 'upper') return 'Senator';
+    if (c === 'lower') return 'Delegate';
+    return c || 'Legislator';
+  }
+
+  function fmtDate(d) {
+    if (!d) return '—';
+    try {
+      const dt = new Date(d + (d.length === 10 ? 'T00:00:00' : ''));
+      return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch { return d; }
+  }
+
+  function statusClass(s) {
+    if (!s) return '';
+    const l = s.toLowerCase();
+    if (l.includes('passed') || l.includes('approved') || l.includes('enacted')) return 'passed';
+    if (l.includes('signed')) return 'signed';
+    if (l.includes('failed') || l.includes('defeated') || l.includes('died') || l.includes('vetoed')) return 'failed';
+    return '';
+  }
+
+  function voteClass(opt) {
+    if (!opt) return 'nv';
+    const l = opt.toLowerCase();
+    if (l === 'yes' || l === 'yea') return 'yes';
+    if (l === 'no' || l === 'nay') return 'no';
+    if (l === 'abstain') return 'abs';
+    return 'nv';
+  }
+
+  // ── Profile hero ────────────────────────────────────────────────────────────
+  if (D.voter_name) {
+    // Update page title
+    document.title = esc(D.voter_name) + ' — VoteIQ';
+
+    const pc = partyClass(D.party);
+    const chatQuery = encodeURIComponent('Tell me about ' + D.voter_name + ' and their voting record in the 2026 Virginia General Assembly session.');
+    document.getElementById('profile-hero').innerHTML = `
+      <div class="profile-hero-stripe ${pc}"></div>
+      <div class="profile-hero-body">
+        <div class="profile-name-block">
+          <div class="profile-eyebrow">Virginia General Assembly · 2026 Session</div>
+          <div class="profile-name">${esc(D.voter_name)}</div>
+          <div class="profile-badges">
+            <span class="badge ${pc}">${esc(D.party || 'Unknown Party')}</span>
+            <span class="badge chamber">${chamberLabel(D.chamber)}</span>
+            <span class="badge session">2026 Session</span>
+          </div>
+        </div>
+        <a href="/?q=${chatQuery}" class="chat-cta">Ask VoteIQ</a>
+      </div>`;
+  }
+
+  // ── Stats row ───────────────────────────────────────────────────────────────
+  const total     = Number(D.total_votes) || 0;
+  const yesCount  = Number(D.yes_count)   || 0;
+  const noCount   = Number(D.no_count)    || 0;
+  const nvCount   = Number(D.not_voting)  || 0;
+  const absCount  = Number(D.abstain)     || 0;
+  const yesRate   = D.yes_rate !== null && D.yes_rate !== undefined ? Number(D.yes_rate) : null;
+  const noRate    = total > 0 ? Math.round(noCount / total * 1000) / 10 : null;
+  const nvRate    = total > 0 ? Math.round(nvCount / total * 1000) / 10 : null;
+  const spCount   = (D.sponsored_bills  || []).length;
+  const coCount   = (D.cosponsored_bills || []).length;
+
+  const statRow = document.getElementById('stat-row');
+  statRow.innerHTML = `
+    <div class="stat-box"><span class="stat-num yes">${yesRate !== null ? yesRate + '%' : '—'}</span><span class="stat-label">Yes Rate</span></div>
+    <div class="stat-box"><span class="stat-num no">${noRate !== null ? noRate + '%' : '—'}</span><span class="stat-label">No Rate</span></div>
+    <div class="stat-box"><span class="stat-num nv">${nvRate !== null ? nvRate + '%' : '—'}</span><span class="stat-label">Not Voting</span></div>
+    <div class="stat-box"><span class="stat-num">${total.toLocaleString()}</span><span class="stat-label">Votes Cast</span></div>
+    <div class="stat-box"><span class="stat-num">${spCount}</span><span class="stat-label">Bills Intro.</span></div>
+    <div class="stat-box"><span class="stat-num">${coCount}</span><span class="stat-label">Co-Sponsored</span></div>`;
+  statRow.style.display = 'flex';
+
+  // ── Breakdown bar ────────────────────────────────────────────────────────────
+  const bCard = document.getElementById('breakdown-card');
+  if (total > 0) {
+    const yp = (yesCount / total * 100).toFixed(1);
+    const np = (noCount  / total * 100).toFixed(1);
+    const vp = (nvCount  / total * 100).toFixed(1);
+    const ap = (absCount / total * 100).toFixed(1);
+    bCard.innerHTML = `
+      <div class="breakdown-label">Vote Breakdown — 2026 Session (${total.toLocaleString()} total votes)</div>
+      <div class="breakdown-bar">
+        <div class="breakdown-bar-seg yes" style="width:${yp}%"></div>
+        <div class="breakdown-bar-seg no"  style="width:${np}%"></div>
+        <div class="breakdown-bar-seg nv"  style="width:${vp}%"></div>
+        <div class="breakdown-bar-seg abs" style="width:${ap}%"></div>
+      </div>
+      <div class="breakdown-legend">
+        <div class="legend-item"><span class="legend-dot yes"></span><span class="legend-text">Yes</span><span class="legend-pct">${yp}% (${yesCount.toLocaleString()})</span></div>
+        <div class="legend-item"><span class="legend-dot no"></span><span class="legend-text">No</span><span class="legend-pct">${np}% (${noCount.toLocaleString()})</span></div>
+        <div class="legend-item"><span class="legend-dot nv"></span><span class="legend-text">Not Voting</span><span class="legend-pct">${vp}% (${nvCount.toLocaleString()})</span></div>
+        ${absCount > 0 ? `<div class="legend-item"><span class="legend-dot abs"></span><span class="legend-text">Abstain</span><span class="legend-pct">${ap}% (${absCount.toLocaleString()})</span></div>` : ''}
+      </div>`;
+    bCard.style.display = 'block';
+  }
+
+  // ── Tab counts ───────────────────────────────────────────────────────────────
+  const votes    = D.recent_votes     || [];
+  const bills    = D.sponsored_bills  || [];
+  const cosponsor = D.cosponsored_bills || [];
+  document.getElementById('tc-votes').textContent    = votes.length    ? '(' + votes.length + ')' : '';
+  document.getElementById('tc-bills').textContent    = bills.length    ? '(' + bills.length + ')' : '';
+  document.getElementById('tc-cosponsor').textContent = cosponsor.length ? '(' + cosponsor.length + ')' : '';
+
+  // ── Recent votes ─────────────────────────────────────────────────────────────
+  const vtbody = document.getElementById('votes-tbody');
+  if (!votes.length) {
+    vtbody.innerHTML = '<tr><td colspan="4" class="empty-state">No recent vote records found</td></tr>';
+  } else {
+    vtbody.innerHTML = votes.map(v => {
+      const vc = voteClass(v.option);
+      return `<tr>
+        <td><span class="bill-id">${esc(v.bill_id || '—')}</span></td>
+        <td>
+          <div class="bill-title">${esc(v.title || v.bill_id || '—')}</div>
+          ${v.motion ? `<div class="bill-meta">${esc(v.motion)}</div>` : ''}
+        </td>
+        <td><span class="vote-opt ${vc}">${esc(v.option || 'Not Voting')}</span></td>
+        <td class="date-cell">${fmtDate(v.vote_date)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Bills introduced ─────────────────────────────────────────────────────────
+  const btbody = document.getElementById('bills-tbody');
+  if (!bills.length) {
+    btbody.innerHTML = '<tr><td colspan="5" class="empty-state">No primary-sponsored bills found</td></tr>';
+  } else {
+    btbody.innerHTML = bills.map(b => {
+      const sc = statusClass(b.status_label);
+      return `<tr>
+        <td><span class="bill-id">${esc(b.bill_number || b.bill_id || '—')}</span></td>
+        <td><div class="bill-title">${esc(b.title || '—')}</div></td>
+        <td class="date-cell">${esc(b.subject || '—')}</td>
+        <td><span class="status-chip ${sc}">${esc(b.status_label || '—')}</span></td>
+        <td class="date-cell">${fmtDate(b.status_date)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Co-sponsored bills ────────────────────────────────────────────────────────
+  const ctbody = document.getElementById('cosponsor-tbody');
+  if (!cosponsor.length) {
+    ctbody.innerHTML = '<tr><td colspan="5" class="empty-state">No co-sponsored bills found</td></tr>';
+  } else {
+    ctbody.innerHTML = cosponsor.map(b => {
+      const sc = statusClass(b.status_label);
+      return `<tr>
+        <td><span class="bill-id">${esc(b.bill_number || b.bill_id || '—')}</span></td>
+        <td><div class="bill-title">${esc(b.title || '—')}</div></td>
+        <td class="date-cell">${esc(b.subject || '—')}</td>
+        <td><span class="status-chip ${sc}">${esc(b.status_label || '—')}</span></td>
+        <td class="date-cell">${esc(b.sponsor_order || '—')}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Show tabs ─────────────────────────────────────────────────────────────────
+  document.getElementById('tabs-wrap').style.display = 'block';
+
+  // ── Tab switching ─────────────────────────────────────────────────────────────
+  document.getElementById('tab-list').addEventListener('click', e => {
+    const btn = e.target.closest('.tab-btn');
+    if (!btn) return;
+    const tab = btn.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tab));
+  });
+
+})();
+</script>
+</body>
+</html>

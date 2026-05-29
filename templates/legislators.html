@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>VA Legislators 2026 — VoteIQ</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root { --navy:#0d1b2a; --red:#c8102e; --light:#f4f1eb; --mid:#ddd8cc; --muted:#7a7468; --dem:#1a52c8; --rep:#c8102e; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--light); color: var(--navy); font-family: 'Barlow', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f4f1eb'/%3E%3Crect width='1' height='1' fill='%23e8e4dc' opacity='0.4'/%3E%3C/svg%3E"); pointer-events: none; z-index: 0; }
+
+  /* ── Topbar ── */
+  .topbar { background: var(--navy); color: var(--mid); font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; text-align: center; padding: 7px 16px; position: relative; z-index: 10; }
+  .topbar span { color: var(--red); margin: 0 6px; }
+
+  /* ── Header ── */
+  header { position: relative; z-index: 10; border-bottom: 3px double var(--navy); padding: 28px 48px 22px; display: flex; align-items: center; justify-content: space-between; background: var(--light); }
+  .logo-wrap { display: flex; align-items: center; gap: 16px; text-decoration: none; }
+  .logo-text { font-family: 'Playfair Display', serif; font-size: 1.9rem; font-weight: 900; color: var(--navy); letter-spacing: -0.03em; }
+  .logo-text em { color: var(--red); font-style: normal; }
+  .logo-sub { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+  .header-nav { display: flex; gap: 24px; align-items: center; }
+  .header-nav a { font-family: 'Barlow Condensed', sans-serif; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--navy); text-decoration: none; border-bottom: 2px solid transparent; padding-bottom: 2px; transition: border-color 0.2s, color 0.2s; }
+  .header-nav a:hover, .header-nav a.active { color: var(--red); border-bottom-color: var(--red); }
+
+  /* ── Hero ── */
+  .page-hero { position: relative; z-index: 10; max-width: 1200px; margin: 0 auto; padding: 48px 32px 32px; text-align: center; }
+  .page-hero-eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--red); margin-bottom: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .page-hero-eyebrow::before, .page-hero-eyebrow::after { content: ''; flex: 1; max-width: 60px; height: 1px; background: var(--red); }
+  .page-hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 900; line-height: 1.1; color: var(--navy); margin-bottom: 14px; letter-spacing: -0.02em; }
+  .page-hero h1 em { font-style: italic; color: var(--red); }
+  .page-hero p { font-size: 1rem; color: var(--muted); max-width: 560px; margin: 0 auto; line-height: 1.6; }
+
+  /* ── Section ── */
+  .section-wrap { position: relative; z-index: 10; max-width: 1200px; margin: 0 auto; padding: 0 32px 80px; }
+  .section-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--mid); }
+
+  /* ── Stats bar ── */
+  .stats-bar { display: flex; gap: 0; border: 1px solid var(--mid); background: white; margin-bottom: 28px; overflow: hidden; }
+  .stats-bar-item { flex: 1; padding: 16px 20px; border-right: 1px solid var(--mid); text-align: center; }
+  .stats-bar-item:last-child { border-right: none; }
+  .stats-bar-num { font-family: 'Barlow Condensed', sans-serif; font-size: 1.7rem; font-weight: 700; color: var(--navy); display: block; line-height: 1; }
+  .stats-bar-num.dem { color: var(--dem); }
+  .stats-bar-num.rep { color: var(--rep); }
+  .stats-bar-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); display: block; margin-top: 5px; }
+
+  /* ── Filters ── */
+  .filter-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  .filter-group { display: flex; gap: 5px; }
+  .tab-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; padding: 7px 16px; border: 2px solid var(--mid); background: white; color: var(--muted); cursor: pointer; transition: all 0.18s; }
+  .tab-btn:hover { border-color: var(--navy); color: var(--navy); }
+  .tab-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
+  .tab-btn.dem-btn.active { background: var(--dem); border-color: var(--dem); }
+  .tab-btn.rep-btn.active { background: var(--rep); border-color: var(--rep); }
+  .filter-divider { width: 1px; height: 32px; background: var(--mid); }
+  .search-wrap { margin-left: auto; position: relative; }
+  .search-input { font-family: 'Barlow', sans-serif; font-size: 0.82rem; padding: 8px 14px 8px 36px; border: 2px solid var(--mid); background: white; color: var(--navy); outline: none; transition: border-color 0.18s; width: 240px; }
+  .search-input:focus { border-color: var(--navy); }
+  .search-input::placeholder { color: var(--muted); }
+  .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.85rem; pointer-events: none; }
+
+  /* ── Result count ── */
+  .result-count { font-family: 'Barlow Condensed', sans-serif; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+
+  /* ── Table ── */
+  .leg-table-wrap { overflow-x: auto; border: 1px solid var(--mid); background: white; }
+  .leg-table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+  .leg-table thead { background: var(--navy); color: white; position: sticky; top: 0; z-index: 2; }
+  .leg-table thead th { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; padding: 13px 14px; text-align: left; white-space: nowrap; user-select: none; }
+  .leg-table thead th.sortable { cursor: pointer; }
+  .leg-table thead th.sortable:hover { background: #162539; }
+  .leg-table thead th.sorted-asc::after { content: ' \2191'; color: #ff9a9a; }
+  .leg-table thead th.sorted-desc::after { content: ' \2193'; color: #ff9a9a; }
+  .leg-table tbody tr { border-bottom: 1px solid var(--mid); cursor: pointer; transition: background 0.14s; }
+  .leg-table tbody tr:last-child { border-bottom: none; }
+  .leg-table tbody tr:hover { background: #ede9e0; }
+  .leg-table td { padding: 10px 14px; vertical-align: middle; }
+  .leg-table td.stripe-cell { padding: 0; width: 5px; min-width: 5px; }
+  .party-stripe-td { width: 5px; display: block; min-height: 40px; height: 100%; }
+  .party-stripe-td.dem { background: var(--dem); }
+  .party-stripe-td.rep { background: var(--rep); }
+  .party-stripe-td.other { background: var(--muted); }
+  .leg-name { font-weight: 600; color: var(--navy); font-size: 0.9rem; }
+  .leg-badge { display: inline-block; font-family: 'Barlow Condensed', sans-serif; font-size: 0.58rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 6px; border: 1px solid; margin-left: 6px; vertical-align: middle; }
+  .leg-badge.dem { color: var(--dem); border-color: var(--dem); background: #eef2fb; }
+  .leg-badge.rep { color: var(--rep); border-color: var(--rep); background: #fbeef0; }
+  .leg-badge.other { color: var(--muted); border-color: var(--mid); background: white; }
+  .leg-badge.chamber { color: var(--muted); border-color: var(--mid); background: white; }
+  .rate-wrap { display: flex; align-items: center; gap: 8px; min-width: 120px; }
+  .rate-bar-bg { width: 70px; height: 6px; background: var(--mid); border-radius: 2px; overflow: hidden; flex-shrink: 0; }
+  .rate-bar { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+  .rate-val { font-family: 'Barlow Condensed', sans-serif; font-size: 0.82rem; font-weight: 700; color: var(--navy); min-width: 44px; }
+  .num-cell { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 0.9rem; color: var(--navy); }
+  .num-cell.muted { color: var(--muted); }
+  .empty-row td { text-align: center; padding: 60px 20px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+
+  /* ── Loading ── */
+  .spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid var(--mid); border-top-color: var(--navy); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    header { padding: 18px 20px; flex-direction: column; gap: 14px; }
+    .header-nav { gap: 14px; flex-wrap: wrap; justify-content: center; }
+    .section-wrap { padding: 0 16px 60px; }
+    .page-hero { padding: 32px 16px 20px; }
+    .filter-row { gap: 8px; }
+    .search-wrap { margin-left: 0; width: 100%; }
+    .search-input { width: 100%; }
+    .stats-bar { flex-wrap: wrap; }
+    .stats-bar-item { flex: 1 0 33%; border-bottom: 1px solid var(--mid); }
+    .leg-table thead th:nth-child(3),
+    .leg-table td:nth-child(3) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">Virginia General Assembly <span>|</span> 2026 Session <span>|</span> VoteIQ</div>
+
+<header>
+  <a href="/" class="logo-wrap">
+    <div>
+      <div class="logo-text">Vote<em>IQ</em></div>
+      <div class="logo-sub">Virginia Political Intelligence</div>
+    </div>
+  </a>
+  <nav class="header-nav">
+    <a href="/">Chat</a>
+    <a href="/representatives">Representatives</a>
+    <a href="/legislators" class="active">Legislators</a>
+    <a href="/past-elections">Elections</a>
+    <a href="/election-map">Map</a>
+  </nav>
+</header>
+
+<div class="page-hero">
+  <div class="page-hero-eyebrow">2026 General Assembly</div>
+  <h1>Virginia <em>Legislators</em></h1>
+  <p>Voting records, sponsored legislation, and session activity for all 145 members of the Virginia General Assembly. Click any row to view a full profile.</p>
+</div>
+
+<div class="section-wrap">
+
+  <!-- Stats bar populated by JS -->
+  <div id="stats-bar" class="stats-bar">
+    <div class="stats-bar-item" style="grid-column:span 5;display:flex;align-items:center;justify-content:center;gap:12px;padding:20px">
+      <span class="spinner"></span>
+    </div>
+  </div>
+
+  <div class="section-label">All Members</div>
+
+  <!-- Filters -->
+  <div class="filter-row">
+    <div class="filter-group" id="chamber-filters">
+      <button class="tab-btn active" data-chamber="">All Chambers</button>
+      <button class="tab-btn" data-chamber="upper">Senate</button>
+      <button class="tab-btn" data-chamber="lower">House</button>
+    </div>
+    <div class="filter-divider"></div>
+    <div class="filter-group" id="party-filters">
+      <button class="tab-btn active" data-party="">All Parties</button>
+      <button class="tab-btn dem-btn" data-party="Democratic">Dem</button>
+      <button class="tab-btn rep-btn" data-party="Republican">Rep</button>
+    </div>
+    <div class="search-wrap">
+      <span class="search-icon">&#9906;</span>
+      <input type="text" class="search-input" id="search-input" placeholder="Search by name&hellip;" autocomplete="off"/>
+    </div>
+  </div>
+
+  <div class="result-count" id="result-count">&nbsp;</div>
+
+  <!-- Table -->
+  <div class="leg-table-wrap">
+    <table class="leg-table">
+      <thead>
+        <tr>
+          <th style="width:5px;padding:0"></th>
+          <th class="sortable" data-col="voter_name">Name</th>
+          <th class="sortable" data-col="chamber">Chamber</th>
+          <th class="sortable" data-col="party">Party</th>
+          <th class="sortable" data-col="yes_rate" title="% of recorded votes cast as Yes">Yes Rate</th>
+          <th class="sortable" data-col="bills_introduced" title="Primary-sponsored bills in 2026 session">Bills Intro.</th>
+          <th class="sortable" data-col="bills_cosponsored" title="Co-sponsored bills in 2026 session">Co-Spons.</th>
+          <th class="sortable" data-col="total_votes" title="Total recorded votes in 2026 session">Votes Cast</th>
+        </tr>
+      </thead>
+      <tbody id="leg-tbody">
+        <tr><td colspan="8" style="text-align:center;padding:48px"><span class="spinner"></span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div><!-- /section-wrap -->
+
+<script>
+(function () {
+  'use strict';
+  const ALL = window._LEG_DATA || [];
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  let fChamber = '', fParty = '', fSearch = '';
+  let sortCol = 'voter_name', sortDir = 'asc';
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function partyClass(p) {
+    if (!p) return 'other';
+    const l = p.toLowerCase();
+    if (l.includes('democrat')) return 'dem';
+    if (l.includes('republican')) return 'rep';
+    return 'other';
+  }
+
+  function chamberLabel(c) {
+    if (c === 'upper') return 'Senate';
+    if (c === 'lower') return 'House';
+    return c || '—';
+  }
+
+  function rateColor(rate, party) {
+    const pc = partyClass(party);
+    if (pc === 'dem') return '#1a52c8';
+    if (pc === 'rep') return '#c8102e';
+    return '#7a7468';
+  }
+
+  function fmt(n) {
+    if (n === null || n === undefined || n === '') return '—';
+    return Number(n).toLocaleString();
+  }
+
+  // ── Stats bar ──────────────────────────────────────────────────────────────
+  function buildStats() {
+    const senate = ALL.filter(r => r.chamber === 'upper');
+    const house  = ALL.filter(r => r.chamber === 'lower');
+    const dem    = ALL.filter(r => partyClass(r.party) === 'dem');
+    const rep    = ALL.filter(r => partyClass(r.party) === 'rep');
+    document.getElementById('stats-bar').innerHTML =
+      stat(ALL.length,    'Members',   '')    +
+      stat(senate.length, 'Senators',  '')    +
+      stat(house.length,  'Delegates', '')    +
+      stat(dem.length,    'Democrats', 'dem') +
+      stat(rep.length,    'Republicans','rep');
+  }
+
+  function stat(n, label, cls) {
+    return `<div class="stats-bar-item">
+      <span class="stats-bar-num${cls ? ' '+cls : ''}">${n}</span>
+      <span class="stats-bar-label">${label}</span>
+    </div>`;
+  }
+
+  // ── Filter + sort + render ─────────────────────────────────────────────────
+  function getFiltered() {
+    let rows = ALL.slice();
+    if (fChamber) rows = rows.filter(r => r.chamber === fChamber);
+    if (fParty)   rows = rows.filter(r => partyClass(r.party) === partyClass(fParty));
+    if (fSearch) {
+      const s = fSearch.toLowerCase();
+      rows = rows.filter(r => (r.voter_name || '').toLowerCase().includes(s));
+    }
+    rows.sort((a, b) => {
+      let av = a[sortCol], bv = b[sortCol];
+      const fallback = sortDir === 'asc' ? '￿' : '';
+      if (av === null || av === undefined) av = typeof bv === 'number' ? (sortDir === 'asc' ? Infinity : -Infinity) : fallback;
+      if (bv === null || bv === undefined) bv = typeof av === 'number' ? (sortDir === 'asc' ? Infinity : -Infinity) : fallback;
+      if (typeof av === 'string') av = av.toLowerCase();
+      if (typeof bv === 'string') bv = bv.toLowerCase();
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ?  1 : -1;
+      return 0;
+    });
+    return rows;
+  }
+
+  function renderTable() {
+    const rows = getFiltered();
+    const count = rows.length;
+    document.getElementById('result-count').textContent =
+      count + ' legislator' + (count !== 1 ? 's' : '');
+
+    const tbody = document.getElementById('leg-tbody');
+    if (!count) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="8">No legislators match your filters</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(r => {
+      const pc   = partyClass(r.party);
+      const rate = r.yes_rate !== null && r.yes_rate !== undefined ? Number(r.yes_rate) : null;
+      const enc  = encodeURIComponent(r.voter_name);
+      return `<tr onclick="location.href='/legislators/${enc}'">
+        <td class="stripe-cell"><span class="party-stripe-td ${pc}"></span></td>
+        <td>
+          <span class="leg-name">${esc(r.voter_name)}</span>
+          <span class="leg-badge chamber">${chamberLabel(r.chamber)}</span>
+        </td>
+        <td><span class="leg-badge ${pc}">${esc(r.party || 'Unknown')}</span></td>
+        <td>
+          <div class="rate-wrap">
+            <div class="rate-bar-bg">
+              <div class="rate-bar" style="width:${rate !== null ? rate : 0}%;background:${rateColor(rate, r.party)}"></div>
+            </div>
+            <span class="rate-val">${rate !== null ? rate + '%' : '—'}</span>
+          </div>
+        </td>
+        <td class="num-cell">${r.bills_introduced || 0}</td>
+        <td class="num-cell muted">${r.bills_cosponsored || 0}</td>
+        <td class="num-cell muted">${fmt(r.total_votes)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function updateSortHeaders() {
+    document.querySelectorAll('.leg-table thead th[data-col]').forEach(th => {
+      th.classList.remove('sorted-asc', 'sorted-desc');
+      if (th.dataset.col === sortCol) {
+        th.classList.add(sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+      }
+    });
+  }
+
+  // ── Event handlers ─────────────────────────────────────────────────────────
+  document.querySelectorAll('.leg-table thead th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      if (sortCol === th.dataset.col) {
+        sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortCol = th.dataset.col;
+        sortDir = (th.dataset.col === 'voter_name' || th.dataset.col === 'chamber' || th.dataset.col === 'party') ? 'asc' : 'desc';
+      }
+      updateSortHeaders();
+      renderTable();
+    });
+  });
+
+  document.getElementById('chamber-filters').addEventListener('click', e => {
+    const btn = e.target.closest('[data-chamber]');
+    if (!btn) return;
+    fChamber = btn.dataset.chamber;
+    document.querySelectorAll('#chamber-filters .tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+    renderTable();
+  });
+
+  document.getElementById('party-filters').addEventListener('click', e => {
+    const btn = e.target.closest('[data-party]');
+    if (!btn) return;
+    fParty = btn.dataset.party;
+    document.querySelectorAll('#party-filters .tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+    renderTable();
+  });
+
+  let searchTimer;
+  document.getElementById('search-input').addEventListener('input', e => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => { fSearch = e.target.value.trim(); renderTable(); }, 180);
+  });
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  buildStats();
+  updateSortHeaders();
+  renderTable();
+})();
+</script>
+</body>
+</html>
