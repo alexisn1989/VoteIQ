@@ -128,15 +128,20 @@
 
   .total-cell { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--navy); }
   .sector-pill { display: inline-block; font-family: 'Barlow Condensed', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 8px; background: #e8e4dc; color: var(--navy); border-radius: 2px; }
-  .sector-pill.sp-env     { background: #d1fae5; color: #065f46; }
-  .sector-pill.sp-health  { background: #dbeafe; color: #1e40af; }
-  .sector-pill.sp-labor   { background: #fef3c7; color: #92400e; }
-  .sector-pill.sp-gun     { background: #fee2e2; color: #991b1b; }
-  .sector-pill.sp-social  { background: #ede9fe; color: #5b21b6; }
-  .sector-pill.sp-econ    { background: #fef9c3; color: #854d0e; }
-  .sector-pill.sp-defense { background: #e0e7ff; color: #3730a3; }
-  .sector-pill.sp-voting  { background: #fce7f3; color: #9d174d; }
-  .sector-pill.sp-elect   { background: #f3f4f6; color: #6b7280; }
+  .sector-pill.sp-env        { background: #d1fae5; color: #065f46; }
+  .sector-pill.sp-health     { background: #dbeafe; color: #1e40af; }
+  .sector-pill.sp-labor      { background: #fef3c7; color: #92400e; }
+  .sector-pill.sp-gun-rights { background: #fee2e2; color: #b91c1c; }
+  .sector-pill.sp-gun-ctrl   { background: #dbeafe; color: #1d4ed8; }
+  .sector-pill.sp-defense    { background: #e0e7ff; color: #3730a3; }
+  .sector-pill.sp-veterans   { background: #dcfce7; color: #3f6212; }
+  .sector-pill.sp-safety     { background: #ffedd5; color: #c2410c; }
+  .sector-pill.sp-lgbtq      { background: #f3e8ff; color: #7c3aed; }
+  .sector-pill.sp-abortion   { background: #ffe4e6; color: #9f1239; }
+  .sector-pill.sp-repro      { background: #fce7f3; color: #be185d; }
+  .sector-pill.sp-econ       { background: #fef9c3; color: #854d0e; }
+  .sector-pill.sp-voting     { background: #fce7f3; color: #9d174d; }
+  .sector-pill.sp-elect      { background: #f3f4f6; color: #6b7280; }
   .num-cell { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 0.9rem; color: var(--navy); text-align: center; }
 
   .empty-row td { text-align: center; padding: 60px 20px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
@@ -252,15 +257,24 @@
   function sectorClass(issue) {
     if (!issue) return '';
     const i = issue.toLowerCase();
-    if (i.includes('environment') || i.includes('climate')) return 'sp-env';
-    if (i.includes('health'))                               return 'sp-health';
-    if (i.includes('labor'))                                return 'sp-labor';
-    if (i.includes('gun') || i.includes('firearm'))         return 'sp-gun';
-    if (i.includes('lgbtq') || i.includes('abortion') || i.includes('reproductive') || i.includes('cultural')) return 'sp-social';
+    if (i.includes('environment') || i.includes('climate'))   return 'sp-env';
+    if (i.includes('health'))                                  return 'sp-health';
+    if (i.includes('labor'))                                   return 'sp-labor';
+    if (i === 'gun rights')                                    return 'sp-gun-rights';
+    if (i === 'gun control')                                   return 'sp-gun-ctrl';
+    if (i.includes('gun') || i.includes('firearm')) {
+      return i.includes('control') ? 'sp-gun-ctrl' : 'sp-gun-rights';
+    }
+    if (i.includes('lgbtq'))                                   return 'sp-lgbtq';
+    if (i.includes('reproductive'))                            return 'sp-repro';
+    if (i.includes('abortion'))                                return 'sp-abortion';
+    if (i.includes('cultural'))                                return 'sp-abortion';
+    if (i.includes('public safety'))                           return 'sp-safety';
+    if (i.includes('veteran'))                                 return 'sp-veterans';
+    if (i.includes('defense') || i.includes('military'))      return 'sp-defense';
     if (i.includes('economic') || i.includes('real estate') || i.includes('fiscal') || i.includes('education')) return 'sp-econ';
-    if (i.includes('defense') || i.includes('veteran') || i.includes('military') || i.includes('public safety')) return 'sp-defense';
     if (i.includes('voting') || i.includes('immigration') || i.includes('foreign') || i.includes('israel'))     return 'sp-voting';
-    if (i.startsWith('electoral'))                          return 'sp-elect';
+    if (i.startsWith('electoral'))                             return 'sp-elect';
     return '';
   }
 
