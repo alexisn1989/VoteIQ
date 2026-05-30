@@ -15,6 +15,15 @@ _BASE_DIR = Path(__file__).resolve().parents[3]
 _data_dir_raw = os.getenv("DATA_DIR", str(_BASE_DIR))
 _DATA_DIR = _data_dir_raw if os.path.isdir(_data_dir_raw) else str(_BASE_DIR)
 _POLLS_DB = os.path.join(_DATA_DIR, "polls.db")
+_CACHE_FILE = _BASE_DIR / "data" / "pac_spending_cache.json"
+
+# Pre-computed cache — loaded at import time, eliminates slow queries on cold start
+try:
+    with _CACHE_FILE.open("r", encoding="utf-8") as _f:
+        _PAC_SPENDING_CACHE: list[dict] | None = json.load(_f)
+    print(f"[pacs] Cache loaded: {len(_PAC_SPENDING_CACHE)} PACs from pac_spending_cache.json")
+except Exception:
+    _PAC_SPENDING_CACHE = None
 
 
 def _conn():
@@ -83,9 +92,14 @@ def _inject(data: list[dict]) -> str:
 @router.get("/api/pac-spending")
 def api_pac_spending():
     """Return PAC independent expenditure data for VA federal races."""
+    if _PAC_SPENDING_CACHE is not None:
+        return {"pacs": _PAC_SPENDING_CACHE, "total": len(_PAC_SPENDING_CACHE)}
     conn = _conn()
     try:
-        return {"pacs": _pac_list(conn), "total": len(_pac_list(conn))}
+        data = _pac_list(conn)
+        return {"pacs": data, "total": len(data)}
+    except sqlite3.OperationalError as exc:
+        raise HTTPException(status_code=503, detail=f"PAC data not yet available: {exc}")
     finally:
         conn.close()
 
@@ -95,9 +109,13 @@ def api_pac_spending():
 @router.get("/pac-spending", response_class=HTMLResponse)
 def pac_spending_page():
     """PAC independent expenditure table for VA federal races."""
+    if _PAC_SPENDING_CACHE is not None:
+        return _inject(_PAC_SPENDING_CACHE)
     conn = _conn()
     try:
         data = _pac_list(conn)
         return _inject(data)
+    except sqlite3.OperationalError as exc:
+        raise HTTPException(status_code=503, detail=f"PAC data not yet available: {exc}")
     finally:
         conn.close()

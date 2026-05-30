@@ -304,6 +304,46 @@ def _run_fec_ingest_background() -> None:
         print(f"[fec] Ingestion error: {exc}")
 
 
+def _schedule_e_are_fresh(max_age_days: int = 7) -> bool:
+    """Return True if Schedule E independent expenditure data is recent."""
+    from datetime import datetime, timezone, timedelta
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        row = conn.execute("SELECT MAX(fetched_at) FROM fec_independent_expenditures").fetchone()
+        conn.close()
+        if row and row[0]:
+            last = datetime.fromisoformat(str(row[0]).replace("Z", "+00:00"))
+            return datetime.now(timezone.utc) - last < timedelta(days=max_age_days)
+    except Exception:
+        pass
+    return False
+
+
+def _run_schedule_e_background() -> None:
+    """Run ingest_fec_schedule_e.py if independent expenditure data is missing or stale."""
+    if _schedule_e_are_fresh():
+        print("[schedule-e] Data fresh — skipping startup ingestion.")
+        return
+    print("[schedule-e] Data missing or stale — starting background ingestion…")
+    script = os.path.join(BASE_DIR, "ingest_fec_schedule_e.py")
+    if not os.path.exists(script):
+        print("[schedule-e] ingest_fec_schedule_e.py not found — skipping.")
+        return
+    try:
+        result = subprocess.run(
+            [sys.executable, script],
+            capture_output=True, text=True, timeout=1800,  # 30 min max
+        )
+        if result.returncode == 0:
+            print("[schedule-e] Background ingestion complete.")
+        else:
+            print(f"[schedule-e] Ingestion failed (rc={result.returncode}): {result.stderr[-500:]}")
+    except subprocess.TimeoutExpired:
+        print("[schedule-e] Ingestion timed out after 30 minutes.")
+    except Exception as exc:
+        print(f"[schedule-e] Ingestion error: {exc}")
+
+
 def _committees_are_fresh() -> bool:
     """Return True if committee assignments were fetched within the last 7 days."""
     from datetime import datetime, timezone, timedelta
@@ -411,6 +451,7 @@ def _congress_ingest_background() -> None:
 async def startup_poll_ingest() -> None:
     threading.Thread(target=_poll_ingest_background, daemon=True).start()
     threading.Thread(target=_run_fec_ingest_background, daemon=True).start()
+    threading.Thread(target=_run_schedule_e_background, daemon=True).start()
     threading.Thread(target=_congress_ingest_background, daemon=True).start()
     threading.Thread(target=_run_committee_ingest_background, daemon=True).start()
 
