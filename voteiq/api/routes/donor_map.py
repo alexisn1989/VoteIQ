@@ -16,8 +16,9 @@ _BASE_DIR = Path(__file__).resolve().parents[3]
 _data_dir_raw = os.getenv("DATA_DIR", str(_BASE_DIR))
 _DATA_DIR = _data_dir_raw if os.path.isdir(_data_dir_raw) else str(_BASE_DIR)
 _POLLS_DB = os.path.join(_DATA_DIR, "polls.db")
-_CENTROIDS_FILE = _BASE_DIR / "data" / "zip_centroids.json"
-_MAPBOX_TOKEN   = os.getenv("MAPBOX_TOKEN", "")
+_CENTROIDS_FILE  = _BASE_DIR / "data" / "zip_centroids.json"
+_CACHE_FILE      = _BASE_DIR / "data" / "donor_map_cache.json"
+_MAPBOX_TOKEN    = os.getenv("MAPBOX_TOKEN", "")
 
 # Skip states/territories that aren't US states
 _SKIP_STATES = {"ZZ", "PR", "GU", "VI", "AS", "MP", "AA", "AE", "AP"}
@@ -27,6 +28,14 @@ try:
         _CENTROIDS: dict[str, list[float]] = json.load(_f)
 except FileNotFoundError:
     _CENTROIDS = {}
+
+# Pre-computed cache — eliminates slow JOIN queries at request time
+try:
+    with _CACHE_FILE.open("r", encoding="utf-8") as _f:
+        _DONOR_CACHE: dict = json.load(_f)
+    print("[donor-map] Cache loaded from donor_map_cache.json")
+except FileNotFoundError:
+    _DONOR_CACHE = {}
 
 
 def _conn():
@@ -118,6 +127,8 @@ def _state_donor_data(conn) -> dict:
 
 @router.get("/api/donor-map-state")
 def api_donor_map_state():
+    if "state" in _DONOR_CACHE:
+        return _DONOR_CACHE["state"]
     conn = _conn()
     try:
         return _state_donor_data(conn)
@@ -128,6 +139,8 @@ def api_donor_map_state():
 @router.get("/donor-map-state", response_class=HTMLResponse)
 def donor_map_state_page():
     """State-race donor heat map — US choropleth + Virginia zip detail."""
+    if "state" in _DONOR_CACHE:
+        return _inject(_DONOR_CACHE["state"], "donor_map_state.html")
     conn = _conn()
     try:
         return _inject(_state_donor_data(conn), "donor_map_state.html")
@@ -234,6 +247,8 @@ def _federal_donor_data(conn) -> dict:
 
 @router.get("/api/donor-map-federal")
 def api_donor_map_federal():
+    if "federal" in _DONOR_CACHE:
+        return _DONOR_CACHE["federal"]
     conn = _conn()
     try:
         return _federal_donor_data(conn)
@@ -244,6 +259,8 @@ def api_donor_map_federal():
 @router.get("/donor-map-federal", response_class=HTMLResponse)
 def donor_map_federal_page():
     """Federal-race donor map — US choropleth with per-candidate filter."""
+    if "federal" in _DONOR_CACHE:
+        return _inject(_DONOR_CACHE["federal"], "donor_map_federal.html")
     conn = _conn()
     try:
         return _inject(_federal_donor_data(conn), "donor_map_federal.html")
