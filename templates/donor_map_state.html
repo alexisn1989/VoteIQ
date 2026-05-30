@@ -11,12 +11,10 @@
     :root{--navy:#0d1b2a;--red:#c8102e;--cream:#f4f1eb;--gold:#b8963e;--dem:#1a52c8;--rep:#c8102e;--border:#d6d0c4;--muted:#6b6560}
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Barlow',system-ui,sans-serif;background:var(--cream);color:var(--navy);min-height:100vh}
-    header{background:var(--navy);padding:14px 28px;display:flex;align-items:center;gap:18px}
-    .logo{font-family:'Playfair Display',Georgia,serif;font-size:1.5rem;font-weight:700;color:#fff;text-decoration:none;letter-spacing:.02em}
-    .logo span{color:var(--gold)}
+    header{background:#fff;border-bottom:2px solid #ddd8cc;padding:10px 28px;display:flex;align-items:center;gap:18px}
     nav{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
-    nav a{color:rgba(255,255,255,.75);text-decoration:none;font-size:.82rem;font-weight:500;padding:5px 12px;border-radius:4px;transition:background .15s}
-    nav a:hover,nav a.active{background:rgba(255,255,255,.12);color:#fff}
+    nav a{color:#0d1b2a;text-decoration:none;font-size:.82rem;font-weight:600;padding:5px 12px;border-radius:4px;transition:background .15s}
+    nav a:hover,nav a.active{background:rgba(13,27,42,.08);color:#0d1b2a;font-weight:700}
     .page-hero{background:var(--navy);color:#fff;padding:28px 32px 24px;border-bottom:3px solid var(--red)}
     .page-hero h1{font-family:'Playfair Display',Georgia,serif;font-size:2rem;font-weight:700}
     .page-hero p{color:rgba(255,255,255,.65);font-size:.9rem;margin-top:6px}
@@ -57,7 +55,7 @@
 </head>
 <body>
 <header>
-  <a class="logo" href="/"><span>Vote</span>IQ</a>
+  <a href="/"><img src="/static/logo.png" alt="VoteIQ" style="height:72px;object-fit:contain;" /></a>
   <nav>
     <a href="/polls">Polls</a>
     <a href="/legislators">Legislators</a>
