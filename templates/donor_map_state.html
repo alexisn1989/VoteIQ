@@ -275,5 +275,40 @@
   });
 })();
 </script>
+
+<!-- ── Donor breakdown charts ─────────────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<div style="max-width:1200px;margin:0 auto;padding:20px 32px 52px;font-family:'Barlow',system-ui,sans-serif">
+  <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:18px;display:flex;align-items:center;gap:12px">
+    Donor Analysis
+    <span style="flex:1;height:1px;background:var(--border);display:inline-block"></span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px">
+    <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:20px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy);margin-bottom:14px">Donor Type — by $ raised</div>
+      <canvas id="chart-type"></canvas>
+    </div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:20px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy);margin-bottom:14px">Individual Donor — Occupation Sector</div>
+      <canvas id="chart-sector"></canvas>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  const D=window._MAP_DATA||{};
+  const PAL=['#0d1b2a','#c8102e','#1a52c8','#b8963e','#15803d','#6b21a8','#ea580c','#0891b2','#65a30d','#db2777','#7c3aed'];
+  function donut(id,labels,vals){
+    const c=document.getElementById(id);if(!c)return;
+    new Chart(c,{type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:PAL.slice(0,labels.length),borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,plugins:{legend:{position:'right',labels:{font:{family:'Barlow',size:11},padding:8,boxWidth:12}},
+    tooltip:{callbacks:{label:x=>{const t=x.dataset.data.reduce((a,b)=>a+b,0);const p=(x.parsed/t*100).toFixed(1);
+    const f=x.parsed>=1e9?'$'+(x.parsed/1e9).toFixed(1)+'B':x.parsed>=1e6?'$'+(x.parsed/1e6).toFixed(1)+'M':'$'+(x.parsed/1e3).toFixed(0)+'K';
+    return' '+x.label+': '+f+' ('+p+'%)';}}}}}});
+  }
+  const t=D.donor_types||[];if(t.length)donut('chart-type',t.map(x=>x.label),t.map(x=>x.total));
+  const s=D.occ_sectors||[];if(s.length)donut('chart-sector',s.map(x=>x.label),s.map(x=>x.total));
+})();
+</script>
 </body>
 </html>
