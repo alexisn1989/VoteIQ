@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Federal Donor Map · VoteIQ Virginia</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+  <style>
+    :root {
+      --navy:#0d1b2a; --red:#c8102e; --cream:#f4f1eb; --gold:#b8963e;
+      --border:#d6d0c4; --muted:#6b6560;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Barlow',system-ui,sans-serif;background:var(--cream);color:var(--navy);min-height:100vh}
+    header{background:var(--navy);padding:14px 28px;display:flex;align-items:center;gap:18px}
+    .logo{font-family:'Playfair Display',Georgia,serif;font-size:1.5rem;font-weight:700;color:#fff;text-decoration:none;letter-spacing:.02em}
+    .logo span{color:var(--gold)}
+    nav{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+    nav a{color:rgba(255,255,255,.75);text-decoration:none;font-size:.82rem;font-weight:500;padding:5px 12px;border-radius:4px;transition:background .15s}
+    nav a:hover,nav a.active{background:rgba(255,255,255,.12);color:#fff}
+    .page-hero{background:var(--navy);color:#fff;padding:28px 32px 24px;border-bottom:3px solid var(--red)}
+    .page-hero h1{font-family:'Playfair Display',Georgia,serif;font-size:2rem;font-weight:700}
+    .page-hero p{color:rgba(255,255,255,.65);font-size:.9rem;margin-top:6px}
+    .hero-tabs{display:flex;gap:10px;margin-top:16px}
+    .hero-tab{padding:8px 20px;border-radius:5px;font-size:.85rem;font-weight:600;text-decoration:none;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.7);transition:all .15s}
+    .hero-tab:hover{background:rgba(255,255,255,.1);color:#fff}
+    .hero-tab.current{background:var(--red);color:#fff;border-color:var(--red)}
+    .stats-bar{display:flex;background:var(--navy);border-bottom:1px solid rgba(255,255,255,.08);overflow-x:auto}
+    .stat-item{padding:14px 28px;border-right:1px solid rgba(255,255,255,.08);min-width:140px;flex-shrink:0}
+    .stat-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.5)}
+    .stat-value{font-size:1.35rem;font-weight:700;color:#fff;margin-top:3px}
+    .stat-value.gold{color:var(--gold)} .stat-value.green{color:#52b788}
+    /* controls */
+    .controls{padding:20px 32px 0;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+    label.filter-label{font-size:.82rem;font-weight:600;color:var(--navy)}
+    #cand-select{
+      padding:8px 14px;border:1px solid var(--border);border-radius:6px;
+      font-size:.88rem;background:#fff;color:var(--navy);cursor:pointer;
+      min-width:260px;
+    }
+    #cand-select:focus{outline:none;border-color:var(--navy)}
+    #view-desc{font-size:.82rem;color:var(--muted);margin-left:auto}
+    /* map */
+    .map-wrap{margin:20px 32px 32px;border-radius:10px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.18);border:1px solid var(--border)}
+    #map{height:580px}
+    .legend-bar{padding:12px 20px;background:#111e14;display:flex;align-items:center;gap:10px;font-size:.78rem;color:rgba(255,255,255,.6)}
+    .legend-gradient{flex:1;max-width:240px;height:10px;border-radius:5px;background:linear-gradient(to right,#d4edda,#95d5b2,#52b788,#2d6a4f,#1b5e20)}
+    #legend-note{margin-left:auto;font-size:.73rem;color:rgba(255,255,255,.4)}
+    /* candidate card */
+    #cand-card{
+      margin:0 32px 0;padding:14px 22px;background:#fff;border:1px solid var(--border);
+      border-radius:8px 8px 0 0;display:none;
+      border-bottom:none;
+    }
+    #cand-card.visible{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+    .cand-name{font-family:'Playfair Display',Georgia,serif;font-size:1.2rem;font-weight:700}
+    .cand-stat{font-size:.82rem;color:var(--muted)} .cand-stat strong{color:var(--navy);font-size:1rem}
+    /* popups */
+    .mapboxgl-popup-content{background:#0d1b2a!important;color:#fff!important;border-radius:8px!important;padding:12px 16px!important;box-shadow:0 4px 20px rgba(0,0,0,.5)!important;min-width:180px}
+    .mapboxgl-popup-tip{border-top-color:#0d1b2a!important;border-bottom-color:#0d1b2a!important}
+    .popup-title{font-weight:700;font-size:.95rem;margin-bottom:6px;color:#52b788}
+    .popup-row{display:flex;justify-content:space-between;gap:12px;font-size:.82rem;color:rgba(255,255,255,.7);margin-top:3px}
+    .popup-row span:last-child{color:#fff;font-weight:600}
+  </style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="/"><span>Vote</span>IQ</a>
+  <nav>
+    <a href="/polls">Polls</a>
+    <a href="/legislators">Legislators</a>
+    <a href="/federal-legislators">Federal</a>
+    <a href="/pac-spending">PACs</a>
+    <a href="/donor-map-state">State Donors</a>
+    <a href="/donor-map-federal" class="active">Federal Donors</a>
+    <a href="/elections">Elections</a>
+  </nav>
+</header>
+
+<div class="page-hero">
+  <h1>Federal Race Donor Map</h1>
+  <p>Where contributions to Virginia federal candidates originate — darker green means more money. Filter by candidate.</p>
+  <div class="hero-tabs">
+    <a class="hero-tab" href="/donor-map-state">🏛️ State Races</a>
+    <a class="hero-tab current" href="/donor-map-federal">🇺🇸 Federal Races</a>
+  </div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-item"><div class="stat-label">Total Raised</div><div class="stat-value gold" id="s-total">—</div></div>
+  <div class="stat-item"><div class="stat-label">Total Donors</div><div class="stat-value" id="s-donors">—</div></div>
+  <div class="stat-item"><div class="stat-label">Contributing States</div><div class="stat-value" id="s-states">—</div></div>
+  <div class="stat-item"><div class="stat-label">Top Donor State</div><div class="stat-value green" id="s-top-state">—</div></div>
+  <div class="stat-item"><div class="stat-label">VA Share</div><div class="stat-value" id="s-va-pct">—</div></div>
+</div>
+
+<div class="controls">
+  <label class="filter-label" for="cand-select">Candidate:</label>
+  <select id="cand-select">
+    <option value="all">All VA Federal Candidates</option>
+  </select>
+  <span id="view-desc">Showing all VA federal candidates combined</span>
+</div>
+
+<!-- Candidate summary card (shown when one is selected) -->
+<div id="cand-card"></div>
+
+<div class="map-wrap">
+  <div id="map"></div>
+  <div class="legend-bar">
+    <span>Less $</span>
+    <div class="legend-gradient"></div>
+    <span>More $</span>
+    <span id="legend-note">Hover a state for details</span>
+  </div>
+</div>
+
+<script>
+(function () {
+  const raw   = window._MAP_DATA   || { states_all:[], by_candidate:{}, candidates:[] };
+  const token = window._MAPBOX_TOKEN || '';
+  if (!token) { document.querySelector('.map-wrap').innerHTML = '<p style="padding:40px;color:#666">Map unavailable — MAPBOX_TOKEN not set.</p>'; return; }
+
+  const fmt  = v => '$' + (+v >= 1e9 ? (+v/1e9).toFixed(1)+'B' : +v >= 1e6 ? (+v/1e6).toFixed(1)+'M' : +v >= 1e3 ? (+v/1e3).toFixed(0)+'K' : (+v).toFixed(0));
+  const fmtn = v => +v >= 1e6 ? (+v/1e6).toFixed(1)+'M' : +v >= 1e3 ? (+v/1e3).toFixed(0)+'K' : (+v).toString();
+
+  const FIPS = {'01':'AL','02':'AK','04':'AZ','05':'AR','06':'CA','08':'CO','09':'CT','10':'DE','11':'DC','12':'FL','13':'GA','15':'HI','16':'ID','17':'IL','18':'IN','19':'IA','20':'KS','21':'KY','22':'LA','23':'ME','24':'MD','25':'MA','26':'MI','27':'MN','28':'MS','29':'MO','30':'MT','31':'NE','32':'NV','33':'NH','34':'NJ','35':'NM','36':'NY','37':'NC','38':'ND','39':'OH','40':'OK','41':'OR','42':'PA','44':'RI','45':'SC','46':'SD','47':'TN','48':'TX','49':'UT','50':'VT','51':'VA','53':'WA','54':'WV','55':'WI','56':'WY'};
+  const SNAMES = {'AL':'Alabama','AK':'Alaska','AZ':'Arizona','AR':'Arkansas','CA':'California','CO':'Colorado','CT':'Connecticut','DE':'Delaware','DC':'Washington D.C.','FL':'Florida','GA':'Georgia','HI':'Hawaii','ID':'Idaho','IL':'Illinois','IN':'Indiana','IA':'Iowa','KS':'Kansas','KY':'Kentucky','LA':'Louisiana','ME':'Maine','MD':'Maryland','MA':'Massachusetts','MI':'Michigan','MN':'Minnesota','MS':'Mississippi','MO':'Missouri','MT':'Montana','NE':'Nebraska','NV':'Nevada','NH':'New Hampshire','NJ':'New Jersey','NM':'New Mexico','NY':'New York','NC':'North Carolina','ND':'North Dakota','OH':'Ohio','OK':'Oklahoma','OR':'Oregon','PA':'Pennsylvania','RI':'Rhode Island','SC':'South Carolina','SD':'South Dakota','TN':'Tennessee','TX':'Texas','UT':'Utah','VT':'Vermont','VA':'Virginia','WA':'Washington','WV':'West Virginia','WI':'Wisconsin','WY':'Wyoming'};
+
+  // ── Populate candidate dropdown ─────────────────────────────────────────
+  const sel = document.getElementById('cand-select');
+  raw.candidates.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = name;
+    sel.appendChild(opt);
+  });
+
+  // ── Stats helpers ────────────────────────────────────────────────────────
+  function updateStats(data) {
+    const total     = data.reduce((a,s) => a + +s.total, 0);
+    const donors    = data.reduce((a,s) => a + +s.donors, 0);
+    const topState  = data[0];
+    const vaEntry   = data.find(s => s.state === 'VA');
+    const vaPct     = vaEntry ? (+vaEntry.total/total*100).toFixed(1)+'%' : '—';
+    document.getElementById('s-total').textContent     = fmt(total);
+    document.getElementById('s-donors').textContent    = fmtn(donors);
+    document.getElementById('s-states').textContent    = data.length;
+    document.getElementById('s-top-state').textContent = topState ? (SNAMES[topState.state]||topState.state) : '—';
+    document.getElementById('s-va-pct').textContent    = vaPct;
+    return { total, donors };
+  }
+
+  // ── Candidate card ────────────────────────────────────────────────────────
+  function updateCard(cand, data) {
+    const card = document.getElementById('cand-card');
+    if (cand === 'all') { card.className=''; card.innerHTML=''; return; }
+    const total  = data.reduce((a,s) => a + +s.total, 0);
+    const donors = data.reduce((a,s) => a + +s.donors, 0);
+    const top    = data[0];
+    card.className = 'visible';
+    card.innerHTML = `
+      <div class="cand-name">${cand}</div>
+      <div class="cand-stat">Total raised <strong>${fmt(total)}</strong></div>
+      <div class="cand-stat">Donors <strong>${fmtn(donors)}</strong></div>
+      <div class="cand-stat">States donating <strong>${data.length}</strong></div>
+      ${top ? `<div class="cand-stat">Top state <strong>${SNAMES[top.state]||top.state} (${fmt(top.total)})</strong></div>` : ''}
+    `;
+  }
+
+  // ── Color expression (scales to current max) ─────────────────────────────
+  function colorExpr(mx) {
+    if (mx < 1) return ['literal', '#1c2b1e'];
+    return ['interpolate',['linear'],['get','total'],
+      0,'#1c2b1e', 1,'#d4edda',
+      mx*0.05,'#b7e4c7', mx*0.15,'#74c69d',
+      mx*0.35,'#52b788', mx*0.65,'#2d6a4f', mx,'#1b5e20'];
+  }
+
+  // ── Initial data ──────────────────────────────────────────────────────────
+  let currentData = raw.states_all;
+  updateStats(currentData);
+
+  mapboxgl.accessToken = token;
+  const map = new mapboxgl.Map({
+    container:'map', style:'mapbox://styles/mapbox/dark-v11',
+    center:[-98.5,39.5], zoom:3.8, minZoom:2, maxZoom:10
+  });
+  map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'top-right');
+
+  const popup = new mapboxgl.Popup({closeButton:false,closeOnClick:false,offset:12});
+  let statesGeoJSON = null;
+  let totalForPct   = 0;
+
+  // ── Apply new selection to map ────────────────────────────────────────────
+  function applySelection(cand) {
+    const data = cand === 'all' ? raw.states_all : (raw.by_candidate[cand] || []);
+    currentData = data;
+    const { total } = updateStats(data);
+    totalForPct = total;
+    updateCard(cand, data);
+
+    if (!statesGeoJSON) return;  // map not loaded yet
+
+    // Build lookup
+    const byState = {};
+    data.forEach(s => { byState[s.state] = s; });
+
+    // Update feature properties
+    statesGeoJSON.features.forEach(f => {
+      const abbr = FIPS[String(f.id).padStart(2,'0')];
+      const s    = byState[abbr] || {};
+      f.properties.total  = +(s.total  || 0);
+      f.properties.donors = +(s.donors || 0);
+      f.properties.pct    = s.total && total > 0 ? (+s.total/total*100).toFixed(2) : '0.00';
+    });
+
+    map.getSource('us-states').setData(statesGeoJSON);
+
+    // Update color scale to match current max
+    const mx = Math.max(...data.map(s => +s.total), 1);
+    map.setPaintProperty('states-fill','fill-color', colorExpr(mx));
+
+    const candLabel = cand === 'all' ? 'all VA federal candidates combined' : cand;
+    document.getElementById('view-desc').textContent = `Showing ${candLabel}`;
+  }
+
+  map.on('load', () => {
+    fetch('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json').then(r=>r.json()).then(us => {
+      statesGeoJSON = topojson.feature(us, us.objects.states);
+
+      // Initial enrichment with all-candidate data
+      const byState = {};
+      currentData.forEach(s => { byState[s.state] = s; });
+      totalForPct = currentData.reduce((a,s) => a + +s.total, 0);
+      const mx = Math.max(...currentData.map(s => +s.total), 1);
+
+      statesGeoJSON.features.forEach(f => {
+        const abbr = FIPS[String(f.id).padStart(2,'0')];
+        const s    = byState[abbr] || {};
+        f.properties.abbr   = abbr || '';
+        f.properties.name   = SNAMES[abbr] || abbr || 'Unknown';
+        f.properties.total  = +(s.total  || 0);
+        f.properties.donors = +(s.donors || 0);
+        f.properties.pct    = s.total && totalForPct > 0 ? (+s.total/totalForPct*100).toFixed(2) : '0.00';
+      });
+
+      map.addSource('us-states',{type:'geojson',data:statesGeoJSON});
+      map.addLayer({id:'states-fill',type:'fill',source:'us-states',paint:{'fill-color':colorExpr(mx),'fill-opacity':0.8}},'waterway-label');
+      map.addLayer({id:'states-line',type:'line',source:'us-states',paint:{'line-color':'rgba(255,255,255,0.12)','line-width':0.6}});
+
+      map.on('mousemove','states-fill',e=>{
+        if (!e.features.length) return;
+        const p = e.features[0].properties;
+        map.getCanvas().style.cursor='pointer';
+        popup.setLngLat(e.lngLat).setHTML(`
+          <div class="popup-title">${p.name}</div>
+          <div class="popup-row"><span>Total donated</span><span>${p.total>0?fmt(p.total):'No data'}</span></div>
+          <div class="popup-row"><span>Donors</span><span>${p.donors>0?fmtn(p.donors):'—'}</span></div>
+          <div class="popup-row"><span>Share of total</span><span>${p.pct}%</span></div>
+        `).addTo(map);
+      });
+      map.on('mouseleave','states-fill',()=>{map.getCanvas().style.cursor='';popup.remove();});
+    }).catch(()=>{});
+  });
+
+  // ── Candidate dropdown change ─────────────────────────────────────────────
+  sel.addEventListener('change', () => {
+    const cand = sel.value;
+    if (map.isStyleLoaded() && map.getSource('us-states')) applySelection(cand);
+    else map.once('idle', () => applySelection(cand));
+  });
+
+})();
+</script>
+</body>
+</html>
