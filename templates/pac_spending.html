@@ -491,29 +491,70 @@
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy);margin-bottom:14px">Issue Focus — by $ spent</div>
       <canvas id="chart-issue"></canvas>
     </div>
+    <div style="background:white;border:1px solid var(--mid);padding:20px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy);margin-bottom:14px">PAC Spending Size — by tier</div>
+      <canvas id="chart-size"></canvas>
+    </div>
   </div>
 </div>
 <script>
 (function(){
   const pacs=window._PAC_DATA||[];
   const PAL=['#0d1b2a','#c8102e','#1a52c8','#b8963e','#15803d','#6b21a8','#ea580c','#0891b2','#65a30d','#db2777','#7c3aed'];
+
   function agg(key){
     const m={};
     for(const p of pacs){const k=p[key]||'Unknown';m[k]=(m[k]||0)+(p.grand_total||0);}
     return Object.entries(m).sort((a,b)=>b[1]-a[1]);
   }
-  function donut(id,entries){
+
+  function labelColors(entries, colorFn){
+    return entries.map(([label]) => colorFn(label));
+  }
+  function alignColor(label){
+    const l=(label||'').toLowerCase();
+    if(l.includes('democrat'))  return '#1a52c8';
+    if(l.includes('republican'))return '#c8102e';
+    if(l.includes('bipartisan'))return '#6b7280';
+    return '#b8963e';
+  }
+  function ideologyColor(label){
+    const l=(label||'').toLowerCase();
+    if(l.includes('progressive'))return '#1a52c8';
+    if(l.includes('conservative'))return '#c8102e';
+    if(l.includes('moderate'))   return '#6b7280';
+    if(l.includes('single'))     return '#b8963e';
+    return '#0d1b2a';
+  }
+
+  function spendingTiers(){
+    const tiers={'Large ($1M–$10M)':0,'Medium ($100K–$1M)':0,'Small (< $100K)':0};
+    for(const p of pacs){
+      const t=p.grand_total||0;
+      if(t>=1_000_000)     tiers['Large ($1M–$10M)']+=t;
+      else if(t>=100_000)  tiers['Medium ($100K–$1M)']+=t;
+      else                 tiers['Small (< $100K)']+=t;
+    }
+    return Object.entries(tiers);
+  }
+
+  function donut(id,entries,colors){
     const c=document.getElementById(id);if(!c)return;
     const labels=entries.map(e=>e[0]),vals=entries.map(e=>e[1]);
-    new Chart(c,{type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:PAL.slice(0,labels.length),borderWidth:2,borderColor:'#fff'}]},
+    const bg=colors||PAL.slice(0,labels.length);
+    new Chart(c,{type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:bg,borderWidth:2,borderColor:'#fff'}]},
     options:{responsive:true,plugins:{legend:{position:'right',labels:{font:{family:'Barlow',size:11},padding:8,boxWidth:12}},
     tooltip:{callbacks:{label:x=>{const t=x.dataset.data.reduce((a,b)=>a+b,0);const p=(x.parsed/t*100).toFixed(1);
     const f=x.parsed>=1e9?'$'+(x.parsed/1e9).toFixed(1)+'B':x.parsed>=1e6?'$'+(x.parsed/1e6).toFixed(1)+'M':'$'+(x.parsed/1e3).toFixed(0)+'K';
     return' '+x.label+': '+f+' ('+p+'%)';}}}}}});
   }
-  donut('chart-ideology', agg('ideology'));
-  donut('chart-align',    agg('alignment'));
+
+  const ideEntries=agg('ideology');
+  donut('chart-ideology', ideEntries, labelColors(ideEntries, ideologyColor));
+  const alnEntries=agg('alignment');
+  donut('chart-align',    alnEntries, labelColors(alnEntries, alignColor));
   donut('chart-issue',    agg('issue_focus').filter(e=>!e[0].toLowerCase().startsWith('electoral')));
+  donut('chart-size',     spendingTiers(), ['#0d1b2a','#b8963e','#d6d0c4']);
 })();
 </script>
 </body>
