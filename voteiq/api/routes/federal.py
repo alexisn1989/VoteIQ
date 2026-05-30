@@ -58,6 +58,7 @@ def _federal_list(conn) -> list[dict]:
             tiers = conn.execute("""
                 SELECT
                     CASE WHEN industry = 'Grassroots' THEN 'Grassroots (Small Donors)'
+                         WHEN industry = 'Other'      THEN 'Unclassified / Other'
                          ELSE 'Industry / Corporate'
                     END AS tier,
                     SUM(total_amount)      AS total,
