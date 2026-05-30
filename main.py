@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Form, Query, Depends, Header
 from civic_analyst import run_analyst, lookup_member
 from voteiq.queries.timing import get_donation_timing, get_timing_summary
@@ -62,7 +63,15 @@ def _require_admin(
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-app = FastAPI()
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    # Runs all startup logic that was previously split across two
+    # @app.on_event("startup") handlers (removed for Starlette 1.0 compat).
+    await _startup_ingest()   # defined ~line 450 — data ingestion threads
+    await _on_startup()       # defined ~line 7750 — cache/seed/embed threads
+    yield  # app runs
+
+app = FastAPI(lifespan=_lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
@@ -447,8 +456,7 @@ def _congress_ingest_background() -> None:
     print("[congress] In-memory caches reloaded from persistent disk.")
 
 
-@app.on_event("startup")
-async def startup_poll_ingest() -> None:
+async def _startup_ingest() -> None:
     threading.Thread(target=_poll_ingest_background, daemon=True).start()
     threading.Thread(target=_run_fec_ingest_background, daemon=True).start()
     threading.Thread(target=_run_schedule_e_background, daemon=True).start()
@@ -7747,7 +7755,6 @@ def _load_sd_geojson():
 # /api/timing/{member_id} — live in voteiq/api/routes/analyst.py
 
 
-@app.on_event("startup")
 async def _on_startup():
     def _embed_task():
         try:
