@@ -165,6 +165,8 @@ try:
                 _suffolk_officials["clerk"] = _entry
             elif _d == "Suffolk Council":
                 _suffolk_officials.setdefault("council", []).append(_entry)
+            elif _d == "Suffolk School Board":
+                _suffolk_officials.setdefault("school_board", []).append(_entry)
             elif _d == "School Board At-Large":
                 _vb_school_board["at_large"] = _entry
             elif _d.startswith("School Board District"):
@@ -220,6 +222,7 @@ def _polling_place_for(locality, precinct_number=None, precinct_name=None):
 def _load_city_precincts(city_names):
     for city_name in city_names:
         direct_names = (
+            f"{city_name.lower()}_precincts.geojson",
             f"{city_name.upper()}_CITY.shp",
             f"{city_name.title()}_city.shp",
             f"{city_name.lower()}_city.shp",
@@ -237,7 +240,7 @@ def _load_city_precincts(city_names):
                 if ".venv" in root.split(os.sep):
                     continue
                 for file_name in files:
-                    if file_name.lower().endswith(".shp") and city_name.lower() in file_name.lower():
+                    if file_name.lower().endswith((".shp", ".geojson")) and city_name.lower() in file_name.lower():
                         path = os.path.join(root, file_name)
                         break
                 if os.path.exists(path):

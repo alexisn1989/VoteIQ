@@ -420,7 +420,8 @@ def lookup(address: str):
             "commissioner":           _official(_suffolk_officials, "commissioner"),
             "treasurer":              _official(_suffolk_officials, "treasurer"),
             "clerk":                  _official(_suffolk_officials, "clerk"),
-            "council": [{"name": m["name"], "party": m.get("party", "")} for m in _suffolk_officials.get("council", [])],
+            "council": [{"name": m["name"], "party": m.get("party", ""), "url": m.get("url", "")} for m in _suffolk_officials.get("council", [])],
+            "school_board": [{"name": m["name"], "party": m.get("party", ""), "url": m.get("url", ""), "district": m.get("district", "")} for m in _suffolk_officials.get("school_board", [])],
         } if "suffolk" in locality else None,
         "vb_school_board": {
             "member":   (lambda o: {"name": o["name"], "party": o.get("party", ""), "url": o.get("url", "")} if o else None)(_vb_school_board.get(vb_num)),
