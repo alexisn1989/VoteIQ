@@ -46,7 +46,7 @@
     .map-wrap{margin:16px 32px 32px;border-radius:10px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.18);border:1px solid var(--border)}
     #map{height:580px}
     .legend-bar{padding:12px 20px;background:#111e14;display:flex;align-items:center;gap:10px;font-size:.78rem;color:rgba(255,255,255,.6)}
-    .legend-gradient{flex:1;max-width:240px;height:10px;border-radius:5px;background:linear-gradient(to right,#d4edda,#95d5b2,#52b788,#2d6a4f,#1b5e20)}
+    .legend-gradient{flex:1;max-width:240px;height:10px;border-radius:5px;background:linear-gradient(to right,#f7fcf5,#c7e9c0,#74c476,#31a354,#006d2c,#00441b)}
     #legend-note{margin-left:auto;font-size:.73rem;color:rgba(255,255,255,.4)}
     .mapboxgl-popup-content{background:#0d1b2a!important;color:#fff!important;border-radius:8px!important;padding:12px 16px!important;box-shadow:0 4px 20px rgba(0,0,0,.5)!important;min-width:180px}
     .mapboxgl-popup-tip{border-top-color:#0d1b2a!important;border-bottom-color:#0d1b2a!important}
@@ -131,8 +131,16 @@
   const SNAMES={'AL':'Alabama','AK':'Alaska','AZ':'Arizona','AR':'Arkansas','CA':'California','CO':'Colorado','CT':'Connecticut','DE':'Delaware','DC':'Washington D.C.','FL':'Florida','GA':'Georgia','HI':'Hawaii','ID':'Idaho','IL':'Illinois','IN':'Indiana','IA':'Iowa','KS':'Kansas','KY':'Kentucky','LA':'Louisiana','ME':'Maine','MD':'Maryland','MA':'Massachusetts','MI':'Michigan','MN':'Minnesota','MS':'Mississippi','MO':'Missouri','MT':'Montana','NE':'Nebraska','NV':'Nevada','NH':'New Hampshire','NJ':'New Jersey','NM':'New Mexico','NY':'New York','NC':'North Carolina','ND':'North Dakota','OH':'Ohio','OK':'Oklahoma','OR':'Oregon','PA':'Pennsylvania','RI':'Rhode Island','SC':'South Carolina','SD':'South Dakota','TN':'Tennessee','TX':'Texas','UT':'Utah','VT':'Vermont','VA':'Virginia','WA':'Washington','WV':'West Virginia','WI':'Wisconsin','WY':'Wyoming'};
 
   function colorExpr(mx){
+    const logMx=Math.log2(Math.max(mx,1));
     return['case',['<=',['coalesce',['get','total'],0],0],'#ffffff',
-      ['interpolate',['linear'],['get','total'],1,'#d4edda',mx*.05,'#b7e4c7',mx*.15,'#74c69d',mx*.35,'#52b788',mx*.65,'#2d6a4f',mx,'#1b5e20']
+      ['interpolate',['linear'],['log2',['max',['coalesce',['get','total'],1],1]],
+        0,        '#f7fcf5',
+        logMx*.2, '#c7e9c0',
+        logMx*.4, '#74c476',
+        logMx*.6, '#31a354',
+        logMx*.8, '#006d2c',
+        logMx,    '#00441b'
+      ]
     ];
   }
 
