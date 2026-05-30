@@ -131,7 +131,9 @@
   const SNAMES={'AL':'Alabama','AK':'Alaska','AZ':'Arizona','AR':'Arkansas','CA':'California','CO':'Colorado','CT':'Connecticut','DE':'Delaware','DC':'Washington D.C.','FL':'Florida','GA':'Georgia','HI':'Hawaii','ID':'Idaho','IL':'Illinois','IN':'Indiana','IA':'Iowa','KS':'Kansas','KY':'Kentucky','LA':'Louisiana','ME':'Maine','MD':'Maryland','MA':'Massachusetts','MI':'Michigan','MN':'Minnesota','MS':'Mississippi','MO':'Missouri','MT':'Montana','NE':'Nebraska','NV':'Nevada','NH':'New Hampshire','NJ':'New Jersey','NM':'New Mexico','NY':'New York','NC':'North Carolina','ND':'North Dakota','OH':'Ohio','OK':'Oklahoma','OR':'Oregon','PA':'Pennsylvania','RI':'Rhode Island','SC':'South Carolina','SD':'South Dakota','TN':'Tennessee','TX':'Texas','UT':'Utah','VT':'Vermont','VA':'Virginia','WA':'Washington','WV':'West Virginia','WI':'Wisconsin','WY':'Wyoming'};
 
   function colorExpr(mx){
-    return['interpolate',['linear'],['get','total'],0,'#1c2b1e',1,'#d4edda',mx*.05,'#b7e4c7',mx*.15,'#74c69d',mx*.35,'#52b788',mx*.65,'#2d6a4f',mx,'#1b5e20'];
+    return['case',['<=',['coalesce',['get','total'],0],0],'#ffffff',
+      ['interpolate',['linear'],['get','total'],1,'#d4edda',mx*.05,'#b7e4c7',mx*.15,'#74c69d',mx*.35,'#52b788',mx*.65,'#2d6a4f',mx,'#1b5e20']
+    ];
   }
 
   // Stats bar

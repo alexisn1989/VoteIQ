@@ -943,6 +943,20 @@ def _build_bills_context(
         "touches_news": any(w in (user_query or "").lower() for w in _NEWS_TERMS),
     }
     q_lower = (user_query or "").lower()
+
+    # ── Name normalization — fix common misspellings before any keyword detection ──
+    _NAME_CORRECTIONS = [
+        ("spnbereger", "spanberger"), ("spanbereger", "spanberger"),
+        ("spanburger",  "spanberger"), ("spanberburg", "spanberger"),
+        ("spanberber",  "spanberger"), ("spamberger",  "spanberger"),
+        ("spanbeeger",  "spanberger"), ("spanbergr",   "spanberger"),
+        ("spaberger",   "spanberger"), ("spanberge",   "spanberger"),
+    ]
+    for _bad, _good in _NAME_CORRECTIONS:
+        if _bad in q_lower:
+            q_lower = q_lower.replace(_bad, _good)
+            user_query = user_query.replace(_bad, _good).replace(_bad.title(), _good.title())
+
     _money_kws = [
         "fund", "donor", "pac", "money", "contribut", "financ", "pay",
         "sponsor", "lobbying", "rais", "campaign", "donation", "grassroot",
