@@ -301,7 +301,7 @@
     const f=x.parsed>=1e9?'$'+(x.parsed/1e9).toFixed(1)+'B':x.parsed>=1e6?'$'+(x.parsed/1e6).toFixed(1)+'M':'$'+(x.parsed/1e3).toFixed(0)+'K';
     return' '+x.label+': '+f+' ('+p+'%)';}}}}}});
   }
-  const s=D.emp_sectors||[];if(s.length)donut('chart-emp',s.map(x=>x.label),s.map(x=>x.total));
+  const s=(D.emp_sectors||[]).filter(x=>x.label!=='Other'&&x.label!=='Unknown');if(s.length)donut('chart-emp',s.map(x=>x.label),s.map(x=>x.total));
 })();
 </script>
 </body>
