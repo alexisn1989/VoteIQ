@@ -313,7 +313,7 @@
     return' '+x.label+': '+f+' ('+p+'%)';}}}}}});
   }
   const t=D.donor_types||[];if(t.length)donut('chart-type',t.map(x=>x.label),t.map(x=>x.total));
-  const s=D.occ_sectors||[];if(s.length)donut('chart-sector',s.map(x=>x.label),s.map(x=>x.total));
+  const s=(D.occ_sectors||[]).filter(x=>x.label!=='Other'&&x.label!=='Unknown');if(s.length)donut('chart-sector',s.map(x=>x.label),s.map(x=>x.total));
 })();
 </script>
 </body>
