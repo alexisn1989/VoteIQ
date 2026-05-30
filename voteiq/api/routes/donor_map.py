@@ -53,47 +53,67 @@ def _inject(data: dict, template: str) -> str:
 #  STATE DONOR MAP  (/donor-map-state)
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _state_donor_data(conn) -> dict:
-    state_rows = conn.execute("""
-        SELECT state_code AS state,
-               ROUND(SUM(amount), 0) AS total,
-               COUNT(*)              AS donors
-        FROM   va_cf_schedule_a
-        WHERE  state_code IS NOT NULL
-          AND  state_code != ''
-          AND  length(state_code) = 2
-        GROUP  BY state_code
-        ORDER  BY total DESC
-    """).fetchall()
-
-    zip_rows = conn.execute("""
-        SELECT substr(zip_code, 1, 5) AS z5,
-               MAX(city)              AS city,
-               ROUND(SUM(amount), 0)  AS total,
-               COUNT(*)               AS donors
-        FROM   va_cf_schedule_a
-        WHERE  state_code = 'VA'
-          AND  zip_code IS NOT NULL
-          AND  length(zip_code) >= 5
-          AND  zip_code GLOB '[0-9]*'
-        GROUP  BY z5
-        HAVING total >= 50000
-        ORDER  BY total DESC
-    """).fetchall()
-
-    va_zips = []
-    for r in zip_rows:
+def _zip_rows_to_list(rows) -> list[dict]:
+    out = []
+    for r in rows:
         coords = _CENTROIDS.get(r["z5"])
         if coords:
-            va_zips.append({
+            out.append({
                 "zip": r["z5"], "city": (r["city"] or "").title(),
                 "lat": coords[0], "lng": coords[1],
                 "total": r["total"], "donors": r["donors"],
             })
+    return out
 
-    states = [dict(r) for r in state_rows
-              if r["state"] not in _SKIP_STATES]
-    return {"source": "state", "states": states, "va_zips": va_zips}
+
+_STATE_SQL = """
+    SELECT state_code AS state, ROUND(SUM(amount),0) AS total, COUNT(*) AS donors
+    FROM   va_cf_schedule_a
+    WHERE  state_code IS NOT NULL AND state_code != '' AND length(state_code)=2
+    GROUP  BY state_code ORDER BY total DESC
+"""
+_STATE_PARTY_SQL = """
+    SELECT a.state_code AS state, ROUND(SUM(a.amount),0) AS total, COUNT(*) AS donors
+    FROM   va_cf_schedule_a a
+    JOIN   va_cf_reports r ON r.ReportUID = a.report_uid
+    WHERE  r.Party = ? AND a.state_code IS NOT NULL
+      AND  a.state_code != '' AND length(a.state_code)=2
+    GROUP  BY a.state_code ORDER BY total DESC
+"""
+_ZIP_SQL = """
+    SELECT substr(zip_code,1,5) AS z5, MAX(city) AS city,
+           ROUND(SUM(amount),0) AS total, COUNT(*) AS donors
+    FROM   va_cf_schedule_a
+    WHERE  state_code='VA' AND zip_code IS NOT NULL
+      AND  length(zip_code)>=5 AND zip_code GLOB '[0-9]*'
+    GROUP  BY z5 HAVING total>=50000 ORDER BY total DESC
+"""
+_ZIP_PARTY_SQL = """
+    SELECT substr(a.zip_code,1,5) AS z5, MAX(a.city) AS city,
+           ROUND(SUM(a.amount),0) AS total, COUNT(*) AS donors
+    FROM   va_cf_schedule_a a
+    JOIN   va_cf_reports r ON r.ReportUID = a.report_uid
+    WHERE  r.Party = ? AND a.state_code='VA'
+      AND  a.zip_code IS NOT NULL AND length(a.zip_code)>=5
+      AND  a.zip_code GLOB '[0-9]*'
+    GROUP  BY z5 HAVING total>=25000 ORDER BY total DESC
+"""
+
+
+def _state_donor_data(conn) -> dict:
+    states     = [dict(r) for r in conn.execute(_STATE_SQL).fetchall()       if r["state"] not in _SKIP_STATES]
+    states_dem = [dict(r) for r in conn.execute(_STATE_PARTY_SQL, ("Democratic",)).fetchall() if r["state"] not in _SKIP_STATES]
+    states_rep = [dict(r) for r in conn.execute(_STATE_PARTY_SQL, ("Republican",)).fetchall() if r["state"] not in _SKIP_STATES]
+
+    va_zips     = _zip_rows_to_list(conn.execute(_ZIP_SQL).fetchall())
+    va_zips_dem = _zip_rows_to_list(conn.execute(_ZIP_PARTY_SQL, ("Democratic",)).fetchall())
+    va_zips_rep = _zip_rows_to_list(conn.execute(_ZIP_PARTY_SQL, ("Republican",)).fetchall())
+
+    return {
+        "source": "state",
+        "states": states, "states_dem": states_dem, "states_rep": states_rep,
+        "va_zips": va_zips, "va_zips_dem": va_zips_dem, "va_zips_rep": va_zips_rep,
+    }
 
 
 @router.get("/api/donor-map-state")
@@ -130,6 +150,11 @@ def _norm_name(raw: str) -> str:
 
 
 def _federal_donor_data(conn) -> dict:
+    # Candidate→party lookup from congress_members
+    party_map: dict[str, str] = {}   # bioguide_id → party
+    for r in conn.execute("SELECT bioguide_id, party FROM congress_members").fetchall():
+        party_map[r["bioguide_id"]] = r["party"]
+
     rows = conn.execute("""
         SELECT candidate_name, bioguide_id, state,
                ROUND(SUM(amount), 0) AS total,
@@ -141,19 +166,20 @@ def _federal_donor_data(conn) -> dict:
         ORDER  BY total DESC
     """).fetchall()
 
-    # Merge rows by bioguide_id (where available) or normalised name
-    key_to_name: dict[str, str] = {}
-    cand_states: dict[str, dict[str, dict]] = {}
+    key_to_name:  dict[str, str]  = {}
+    key_to_party: dict[str, str]  = {}
+    cand_states:  dict[str, dict] = {}
 
     for r in rows:
         if r["state"] in _SKIP_STATES:
             continue
-        bid  = (r["bioguide_id"] or "").strip()
-        norm = _norm_name(r["candidate_name"])
-        key  = bid if bid else norm.lower()
+        bid   = (r["bioguide_id"] or "").strip()
+        norm  = _norm_name(r["candidate_name"])
+        key   = bid if bid else norm.lower()
 
         if key not in key_to_name:
-            key_to_name[key] = norm
+            key_to_name[key]  = norm
+            key_to_party[key] = party_map.get(bid, "Unknown") if bid else "Unknown"
         cname = key_to_name[key]
 
         cand_states.setdefault(cname, {})
@@ -163,29 +189,44 @@ def _federal_donor_data(conn) -> dict:
         cand_states[cname][s]["total"]  += r["total"]
         cand_states[cname][s]["donors"] += r["donors"]
 
-    # All-candidate aggregate
+    # Party-split aggregate queries
+    def _fed_party_states(party: str) -> list[dict]:
+        rows2 = conn.execute("""
+            SELECT f.state, ROUND(SUM(f.amount),0) AS total, COUNT(*) AS donors
+            FROM   fec_individual_contributions f
+            JOIN   congress_members m ON m.bioguide_id = f.bioguide_id
+            WHERE  m.party = ? AND f.state IS NOT NULL AND f.state != ''
+            GROUP  BY f.state ORDER BY total DESC
+        """, (party,)).fetchall()
+        return [dict(r) for r in rows2 if r["state"] not in _SKIP_STATES]
+
     all_rows = conn.execute("""
-        SELECT state,
-               ROUND(SUM(amount), 0) AS total,
-               COUNT(*)              AS donors
+        SELECT state, ROUND(SUM(amount),0) AS total, COUNT(*) AS donors
         FROM   fec_individual_contributions
         WHERE  state IS NOT NULL AND state != ''
-        GROUP  BY state
-        ORDER  BY total DESC
+        GROUP  BY state ORDER BY total DESC
     """).fetchall()
 
-    states_all = [dict(r) for r in all_rows
-                  if r["state"] not in _SKIP_STATES]
+    states_all = [dict(r) for r in all_rows if r["state"] not in _SKIP_STATES]
+    states_dem = _fed_party_states("Democratic")
+    states_rep = _fed_party_states("Republican")
 
     by_candidate = {
         name: sorted(states.values(), key=lambda x: -x["total"])
         for name, states in cand_states.items()
     }
-    candidates = sorted(by_candidate, key=lambda c: -sum(s["total"] for s in by_candidate[c]))
+    # candidates as list of {name, party}
+    candidates = sorted(
+        [{"name": k, "party": key_to_party[key]}
+         for key, k in key_to_name.items()],
+        key=lambda c: -sum(s["total"] for s in by_candidate[c["name"]])
+    )
 
     return {
         "source":       "federal",
         "states_all":   states_all,
+        "states_dem":   states_dem,
+        "states_rep":   states_rep,
         "by_candidate": by_candidate,
         "candidates":   candidates,
     }

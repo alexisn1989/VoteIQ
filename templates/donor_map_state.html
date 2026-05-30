@@ -8,10 +8,7 @@
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
   <style>
-    :root {
-      --navy:#0d1b2a; --red:#c8102e; --cream:#f4f1eb; --gold:#b8963e;
-      --border:#d6d0c4; --muted:#6b6560;
-    }
+    :root{--navy:#0d1b2a;--red:#c8102e;--cream:#f4f1eb;--gold:#b8963e;--dem:#1a52c8;--rep:#c8102e;--border:#d6d0c4;--muted:#6b6560}
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Barlow',system-ui,sans-serif;background:var(--cream);color:var(--navy);min-height:100vh}
     header{background:var(--navy);padding:14px 28px;display:flex;align-items:center;gap:18px}
@@ -32,13 +29,21 @@
     .stat-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.5)}
     .stat-value{font-size:1.35rem;font-weight:700;color:#fff;margin-top:3px}
     .stat-value.gold{color:var(--gold)} .stat-value.green{color:#52b788}
+    /* controls row */
     .controls{padding:20px 32px 0;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
     .tab-group{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden}
-    .tab-btn{padding:9px 22px;background:#fff;border:none;cursor:pointer;font-size:.88rem;font-weight:600;color:var(--muted);transition:all .15s}
+    .tab-btn{padding:9px 20px;background:#fff;border:none;cursor:pointer;font-size:.87rem;font-weight:600;color:var(--muted);transition:all .15s}
     .tab-btn.active{background:var(--navy);color:#fff}
-    .tab-btn:hover:not(.active){background:var(--cream);color:var(--navy)}
+    .tab-btn:hover:not(.active){background:var(--cream)}
+    /* party tabs */
+    .party-group{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+    .party-btn{padding:9px 18px;background:#fff;border:none;cursor:pointer;font-size:.85rem;font-weight:600;color:var(--muted);transition:all .15s;white-space:nowrap}
+    .party-btn:hover:not(.active){background:var(--cream)}
+    .party-btn.active-all{background:var(--navy);color:#fff}
+    .party-btn.active-dem{background:var(--dem);color:#fff}
+    .party-btn.active-rep{background:var(--rep);color:#fff}
     #view-desc{font-size:.82rem;color:var(--muted)}
-    .map-wrap{margin:20px 32px 32px;border-radius:10px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.18);border:1px solid var(--border)}
+    .map-wrap{margin:16px 32px 32px;border-radius:10px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.18);border:1px solid var(--border)}
     #map{height:580px}
     .legend-bar{padding:12px 20px;background:#111e14;display:flex;align-items:center;gap:10px;font-size:.78rem;color:rgba(255,255,255,.6)}
     .legend-gradient{flex:1;max-width:240px;height:10px;border-radius:5px;background:linear-gradient(to right,#d4edda,#95d5b2,#52b788,#2d6a4f,#1b5e20)}
@@ -51,7 +56,6 @@
   </style>
 </head>
 <body>
-
 <header>
   <a class="logo" href="/"><span>Vote</span>IQ</a>
   <nav>
@@ -83,11 +87,18 @@
 </div>
 
 <div class="controls">
+  <!-- Map view toggle -->
   <div class="tab-group">
     <button class="tab-btn active" data-view="us">🇺🇸 All States</button>
     <button class="tab-btn"        data-view="va">📍 Virginia Detail</button>
   </div>
-  <span id="view-desc">Total donations to VA state candidates by donor's home state</span>
+  <!-- Party filter -->
+  <div class="party-group">
+    <button class="party-btn active-all" data-party="all">Total</button>
+    <button class="party-btn"            data-party="dem">🔵 Democratic</button>
+    <button class="party-btn"            data-party="rep">🔴 Republican</button>
+  </div>
+  <span id="view-desc">All donations to VA state candidates by state</span>
 </div>
 
 <div class="map-wrap">
@@ -101,117 +112,163 @@
 </div>
 
 <script>
-(function () {
-  const raw   = window._MAP_DATA   || { states: [], va_zips: [] };
+(function(){
+  const raw   = window._MAP_DATA   || {};
   const token = window._MAPBOX_TOKEN || '';
-  if (!token) { document.querySelector('.map-wrap').innerHTML = '<p style="padding:40px;color:#666">Map unavailable — MAPBOX_TOKEN not set.</p>'; return; }
+  if(!token){document.querySelector('.map-wrap').innerHTML='<p style="padding:40px">Map unavailable — token not set.</p>';return;}
 
-  const fmt  = v => '$' + (+v >= 1e9 ? (+v/1e9).toFixed(1)+'B' : +v >= 1e6 ? (+v/1e6).toFixed(1)+'M' : +v >= 1e3 ? (+v/1e3).toFixed(0)+'K' : (+v).toFixed(0));
-  const fmtn = v => +v >= 1e6 ? (+v/1e6).toFixed(1)+'M' : +v >= 1e3 ? (+v/1e3).toFixed(0)+'K' : (+v).toString();
+  const fmt  = v=>'$'+(+v>=1e9?(+v/1e9).toFixed(1)+'B':+v>=1e6?(+v/1e6).toFixed(1)+'M':+v>=1e3?(+v/1e3).toFixed(0)+'K':(+v).toFixed(0));
+  const fmtn = v=>+v>=1e6?(+v/1e6).toFixed(1)+'M':+v>=1e3?(+v/1e3).toFixed(0)+'K':(+v).toString();
 
-  const totalAll  = raw.states.reduce((a,s) => a + +s.total, 0);
-  const donorsAll = raw.states.reduce((a,s) => a + +s.donors, 0);
-  const vaState   = raw.states.find(s => s.state === 'VA');
-  const vaPct     = vaState ? (+vaState.total/totalAll*100).toFixed(1)+'%' : '—';
-  document.getElementById('s-total').textContent  = fmt(totalAll);
-  document.getElementById('s-donors').textContent = fmtn(donorsAll);
-  document.getElementById('s-states').textContent = raw.states.length;
-  document.getElementById('s-va-pct').textContent = vaPct;
-  document.getElementById('s-zips').textContent   = raw.va_zips.length.toLocaleString();
-
-  const FIPS = {'01':'AL','02':'AK','04':'AZ','05':'AR','06':'CA','08':'CO','09':'CT','10':'DE','11':'DC','12':'FL','13':'GA','15':'HI','16':'ID','17':'IL','18':'IN','19':'IA','20':'KS','21':'KY','22':'LA','23':'ME','24':'MD','25':'MA','26':'MI','27':'MN','28':'MS','29':'MO','30':'MT','31':'NE','32':'NV','33':'NH','34':'NJ','35':'NM','36':'NY','37':'NC','38':'ND','39':'OH','40':'OK','41':'OR','42':'PA','44':'RI','45':'SC','46':'SD','47':'TN','48':'TX','49':'UT','50':'VT','51':'VA','53':'WA','54':'WV','55':'WI','56':'WY'};
-  const SNAMES = {'AL':'Alabama','AK':'Alaska','AZ':'Arizona','AR':'Arkansas','CA':'California','CO':'Colorado','CT':'Connecticut','DE':'Delaware','DC':'Washington D.C.','FL':'Florida','GA':'Georgia','HI':'Hawaii','ID':'Idaho','IL':'Illinois','IN':'Indiana','IA':'Iowa','KS':'Kansas','KY':'Kentucky','LA':'Louisiana','ME':'Maine','MD':'Maryland','MA':'Massachusetts','MI':'Michigan','MN':'Minnesota','MS':'Mississippi','MO':'Missouri','MT':'Montana','NE':'Nebraska','NV':'Nevada','NH':'New Hampshire','NJ':'New Jersey','NM':'New Mexico','NY':'New York','NC':'North Carolina','ND':'North Dakota','OH':'Ohio','OK':'Oklahoma','OR':'Oregon','PA':'Pennsylvania','RI':'Rhode Island','SC':'South Carolina','SD':'South Dakota','TN':'Tennessee','TX':'Texas','UT':'Utah','VT':'Vermont','VA':'Virginia','WA':'Washington','WV':'West Virginia','WI':'Wisconsin','WY':'Wyoming'};
-
-  const stateByAbbr = {};
-  raw.states.forEach(s => { stateByAbbr[s.state] = s; });
-  const maxTotal     = Math.max(...raw.states.map(s => +s.total), 1);
-  const maxZipTotal  = Math.max(...raw.va_zips.map(z => +z.total), 1);
-
-  function colorExpr(mx) {
-    return ['interpolate',['linear'],['get','total'],
-      0,'#1c2b1e', 1,'#d4edda',
-      mx*0.05,'#b7e4c7', mx*0.15,'#74c69d',
-      mx*0.35,'#52b788', mx*0.65,'#2d6a4f', mx,'#1b5e20'];
-  }
-
-  mapboxgl.accessToken = token;
-  const map = new mapboxgl.Map({ container:'map', style:'mapbox://styles/mapbox/dark-v11', center:[-98.5,39.5], zoom:3.8, minZoom:2, maxZoom:14 });
-  map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'top-right');
-
-  const zipGeoJSON = {
-    type:'FeatureCollection',
-    features: raw.va_zips.map(z => ({ type:'Feature', geometry:{type:'Point',coordinates:[+z.lng,+z.lat]}, properties:{total:+z.total,donors:+z.donors,city:z.city,zip:z.zip} }))
+  // Dataset registry
+  const PDATA = {
+    all:{ states: raw.states||[],     va_zips: raw.va_zips||[] },
+    dem:{ states: raw.states_dem||[], va_zips: raw.va_zips_dem||[] },
+    rep:{ states: raw.states_rep||[], va_zips: raw.va_zips_rep||[] },
   };
 
-  const popup = new mapboxgl.Popup({closeButton:false,closeOnClick:false,offset:12});
-  let statesGeoJSON = null;
+  const FIPS={'01':'AL','02':'AK','04':'AZ','05':'AR','06':'CA','08':'CO','09':'CT','10':'DE','11':'DC','12':'FL','13':'GA','15':'HI','16':'ID','17':'IL','18':'IN','19':'IA','20':'KS','21':'KY','22':'LA','23':'ME','24':'MD','25':'MA','26':'MI','27':'MN','28':'MS','29':'MO','30':'MT','31':'NE','32':'NV','33':'NH','34':'NJ','35':'NM','36':'NY','37':'NC','38':'ND','39':'OH','40':'OK','41':'OR','42':'PA','44':'RI','45':'SC','46':'SD','47':'TN','48':'TX','49':'UT','50':'VT','51':'VA','53':'WA','54':'WV','55':'WI','56':'WY'};
+  const SNAMES={'AL':'Alabama','AK':'Alaska','AZ':'Arizona','AR':'Arkansas','CA':'California','CO':'Colorado','CT':'Connecticut','DE':'Delaware','DC':'Washington D.C.','FL':'Florida','GA':'Georgia','HI':'Hawaii','ID':'Idaho','IL':'Illinois','IN':'Indiana','IA':'Iowa','KS':'Kansas','KY':'Kentucky','LA':'Louisiana','ME':'Maine','MD':'Maryland','MA':'Massachusetts','MI':'Michigan','MN':'Minnesota','MS':'Mississippi','MO':'Missouri','MT':'Montana','NE':'Nebraska','NV':'Nevada','NH':'New Hampshire','NJ':'New Jersey','NM':'New Mexico','NY':'New York','NC':'North Carolina','ND':'North Dakota','OH':'Ohio','OK':'Oklahoma','OR':'Oregon','PA':'Pennsylvania','RI':'Rhode Island','SC':'South Carolina','SD':'South Dakota','TN':'Tennessee','TX':'Texas','UT':'Utah','VT':'Vermont','VA':'Virginia','WA':'Washington','WV':'West Virginia','WI':'Wisconsin','WY':'Wyoming'};
 
-  map.on('load', () => {
-    // VA zip layers
-    map.addSource('va-zips', {type:'geojson', data:zipGeoJSON});
+  function colorExpr(mx){
+    return['interpolate',['linear'],['get','total'],0,'#1c2b1e',1,'#d4edda',mx*.05,'#b7e4c7',mx*.15,'#74c69d',mx*.35,'#52b788',mx*.65,'#2d6a4f',mx,'#1b5e20'];
+  }
+
+  // Stats bar
+  function updateStats(states, zips){
+    const tot = states.reduce((a,s)=>a+(+s.total),0);
+    const don = states.reduce((a,s)=>a+(+s.donors),0);
+    const va  = states.find(s=>s.state==='VA');
+    document.getElementById('s-total').textContent   = fmt(tot);
+    document.getElementById('s-donors').textContent  = fmtn(don);
+    document.getElementById('s-states').textContent  = states.length;
+    document.getElementById('s-va-pct').textContent  = va?(+va.total/tot*100).toFixed(1)+'%':'—';
+    document.getElementById('s-zips').textContent    = zips.length.toLocaleString();
+    return tot;
+  }
+
+  let curParty='all', curView='us';
+  updateStats(PDATA.all.states, PDATA.all.va_zips);
+
+  mapboxgl.accessToken = token;
+  const map = new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/dark-v11',center:[-98.5,39.5],zoom:3.8,minZoom:2,maxZoom:14});
+  map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'top-right');
+  const popup = new mapboxgl.Popup({closeButton:false,closeOnClick:false,offset:12});
+  let statesGeoJSON=null;
+
+  function buildZipGeoJSON(zips){
+    return{type:'FeatureCollection',features:zips.map(z=>({type:'Feature',geometry:{type:'Point',coordinates:[+z.lng,+z.lat]},properties:{total:+z.total,donors:+z.donors,city:z.city,zip:z.zip}}))};
+  }
+
+  function applyPartyToMap(party){
+    const d = PDATA[party];
+    const tot = updateStats(d.states, d.va_zips);
+    if(!statesGeoJSON||!map.getSource('us-states')) return;
+
+    const byState={};
+    d.states.forEach(s=>{byState[s.state]=s;});
+    const mx=Math.max(...d.states.map(s=>+s.total),1);
+
+    statesGeoJSON.features.forEach(f=>{
+      const abbr=FIPS[String(f.id).padStart(2,'0')];
+      const s=byState[abbr]||{};
+      f.properties.total  =+(s.total||0);
+      f.properties.donors =+(s.donors||0);
+      f.properties.pct    =s.total&&tot>0?(+s.total/tot*100).toFixed(2):'0.00';
+    });
+    map.getSource('us-states').setData(statesGeoJSON);
+    map.setPaintProperty('states-fill','fill-color',colorExpr(mx));
+
+    // Update zip source
+    if(map.getSource('va-zips')){
+      const maxZ=Math.max(...d.va_zips.map(z=>+z.total),1);
+      map.getSource('va-zips').setData(buildZipGeoJSON(d.va_zips));
+      map.setPaintProperty('va-circles','circle-color',colorExpr(maxZ));
+    }
+  }
+
+  map.on('load',()=>{
+    const d0   = PDATA.all;
+    const maxZ = Math.max(...d0.va_zips.map(z=>+z.total),1);
+    map.addSource('va-zips',{type:'geojson',data:buildZipGeoJSON(d0.va_zips)});
     map.addLayer({id:'va-heat',type:'heatmap',source:'va-zips',layout:{visibility:'none'},paint:{
-      'heatmap-weight':['interpolate',['linear'],['get','total'],0,0,maxZipTotal,1],
+      'heatmap-weight':['interpolate',['linear'],['get','total'],0,0,maxZ,1],
       'heatmap-intensity':['interpolate',['linear'],['zoom'],5,1.2,12,5],
-      'heatmap-color':['interpolate',['linear'],['heatmap-density'],0,'rgba(0,0,0,0)',0.05,'rgba(212,237,218,0.4)',0.2,'#95d5b2',0.45,'#52b788',0.7,'#2d6a4f',1.0,'#1b5e20'],
+      'heatmap-color':['interpolate',['linear'],['heatmap-density'],0,'rgba(0,0,0,0)',0.05,'rgba(212,237,218,0.4)',0.2,'#95d5b2',0.45,'#52b788',0.7,'#2d6a4f',1,'#1b5e20'],
       'heatmap-radius':['interpolate',['linear'],['zoom'],5,16,12,36],
       'heatmap-opacity':0.88
     }});
     map.addLayer({id:'va-circles',type:'circle',source:'va-zips',minzoom:7,layout:{visibility:'none'},paint:{
-      'circle-radius':['interpolate',['linear'],['zoom'],7,['interpolate',['linear'],['get','total'],0,3,maxZipTotal,16],12,['interpolate',['linear'],['get','total'],0,5,maxZipTotal,32]],
-      'circle-color':colorExpr(maxZipTotal),
+      'circle-radius':['interpolate',['linear'],['zoom'],7,['interpolate',['linear'],['get','total'],0,3,maxZ,16],12,['interpolate',['linear'],['get','total'],0,5,maxZ,32]],
+      'circle-color':colorExpr(maxZ),
       'circle-opacity':0.75,'circle-stroke-color':'rgba(255,255,255,0.25)','circle-stroke-width':0.8
     }});
 
-    // US states choropleth
-    fetch('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json').then(r=>r.json()).then(us => {
-      statesGeoJSON = topojson.feature(us, us.objects.states);
-      statesGeoJSON.features.forEach(f => {
-        const abbr = FIPS[String(f.id).padStart(2,'0')];
-        const s    = stateByAbbr[abbr] || {};
-        f.properties.abbr   = abbr || '';
-        f.properties.name   = SNAMES[abbr] || abbr || 'Unknown';
-        f.properties.total  = +(s.total  || 0);
-        f.properties.donors = +(s.donors || 0);
-        f.properties.pct    = s.total ? (+s.total/totalAll*100).toFixed(2) : '0.00';
+    fetch('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json').then(r=>r.json()).then(us=>{
+      statesGeoJSON=topojson.feature(us,us.objects.states);
+      const byState={}, tot=d0.states.reduce((a,s)=>a+(+s.total),0);
+      d0.states.forEach(s=>{byState[s.state]=s;});
+      const mx=Math.max(...d0.states.map(s=>+s.total),1);
+      statesGeoJSON.features.forEach(f=>{
+        const abbr=FIPS[String(f.id).padStart(2,'0')];
+        const s=byState[abbr]||{};
+        f.properties.abbr  =abbr||'';
+        f.properties.name  =SNAMES[abbr]||abbr||'Unknown';
+        f.properties.total =+(s.total||0);
+        f.properties.donors=+(s.donors||0);
+        f.properties.pct   =s.total&&tot>0?(+s.total/tot*100).toFixed(2):'0.00';
       });
       map.addSource('us-states',{type:'geojson',data:statesGeoJSON});
-      map.addLayer({id:'states-fill',type:'fill',source:'us-states',layout:{visibility:'visible'},paint:{'fill-color':colorExpr(maxTotal),'fill-opacity':0.78}},'waterway-label');
+      map.addLayer({id:'states-fill',type:'fill',source:'us-states',layout:{visibility:'visible'},paint:{'fill-color':colorExpr(mx),'fill-opacity':0.78}},'waterway-label');
       map.addLayer({id:'states-line',type:'line',source:'us-states',layout:{visibility:'visible'},paint:{'line-color':'rgba(255,255,255,0.12)','line-width':0.6}});
-
-      map.on('mousemove','states-fill', e => {
-        if (!e.features.length) return;
-        const p = e.features[0].properties;
-        map.getCanvas().style.cursor = 'pointer';
+      map.on('mousemove','states-fill',e=>{
+        if(!e.features.length)return;
+        const p=e.features[0].properties;
+        map.getCanvas().style.cursor='pointer';
         popup.setLngLat(e.lngLat).setHTML(`<div class="popup-title">${p.name}</div><div class="popup-row"><span>Total donated</span><span>${p.total>0?fmt(p.total):'No data'}</span></div><div class="popup-row"><span>Donors</span><span>${p.donors>0?fmtn(p.donors):'—'}</span></div><div class="popup-row"><span>Share of total</span><span>${p.pct}%</span></div>`).addTo(map);
       });
       map.on('mouseleave','states-fill',()=>{map.getCanvas().style.cursor='';popup.remove();});
     }).catch(()=>{});
 
     map.on('mousemove','va-circles',e=>{
-      if (!e.features.length) return;
-      const p = e.features[0].properties;
+      if(!e.features.length)return;
+      const p=e.features[0].properties;
       map.getCanvas().style.cursor='pointer';
       popup.setLngLat(e.lngLat).setHTML(`<div class="popup-title">${p.city||p.zip} · ${p.zip}</div><div class="popup-row"><span>Total donated</span><span>${fmt(p.total)}</span></div><div class="popup-row"><span>Donors</span><span>${fmtn(p.donors)}</span></div>`).addTo(map);
     });
     map.on('mouseleave','va-circles',()=>{map.getCanvas().style.cursor='';popup.remove();});
   });
 
-  const US_LAYERS=['states-fill','states-line'], VA_LAYERS=['va-heat','va-circles'];
-  function setView(view) {
-    const show=view==='us'?US_LAYERS:VA_LAYERS, hide=view==='us'?VA_LAYERS:US_LAYERS;
+  // ── View tabs ─────────────────────────────────────────────────────────────
+  const US_L=['states-fill','states-line'], VA_L=['va-heat','va-circles'];
+  function setView(view){
+    curView=view;
+    const show=view==='us'?US_L:VA_L, hide=view==='us'?VA_L:US_L;
     show.forEach(id=>{try{map.setLayoutProperty(id,'visibility','visible')}catch(e){}});
     hide.forEach(id=>{try{map.setLayoutProperty(id,'visibility','none')}catch(e){}});
     popup.remove();
-    if (view==='us') { map.flyTo({center:[-98.5,39.5],zoom:3.8,duration:900}); document.getElementById('legend-note').textContent='Hover a state for details'; document.getElementById('view-desc').textContent="Total donations to VA state candidates by donor's home state"; }
-    else             { map.flyTo({center:[-79.0,37.5],zoom:6.8,duration:900}); document.getElementById('legend-note').textContent='Hover a zip for details (zoom in for precision)'; document.getElementById('view-desc').textContent='Virginia donor heat map by zip code'; }
+    if(view==='us'){map.flyTo({center:[-98.5,39.5],zoom:3.8,duration:900});document.getElementById('legend-note').textContent='Hover a state for details';}
+    else{map.flyTo({center:[-79,37.5],zoom:6.8,duration:900});document.getElementById('legend-note').textContent='Hover a zip for details';}
   }
-
-  document.querySelectorAll('.tab-btn').forEach(btn => {
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.addEventListener('click',()=>{
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
-      if (map.isStyleLoaded()) setView(btn.dataset.view);
+      if(map.isStyleLoaded())setView(btn.dataset.view);
       else map.once('idle',()=>setView(btn.dataset.view));
+    });
+  });
+
+  // ── Party tabs ────────────────────────────────────────────────────────────
+  const PARTY_LABELS={all:'All donations to VA state candidates',dem:'Democratic candidate donations',rep:'Republican candidate donations'};
+  document.querySelectorAll('.party-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      curParty=btn.dataset.party;
+      document.querySelectorAll('.party-btn').forEach(b=>{b.className='party-btn';});
+      btn.classList.add(`active-${curParty}`);
+      document.getElementById('view-desc').textContent=PARTY_LABELS[curParty]+' by state';
+      if(map.isStyleLoaded()&&statesGeoJSON)applyPartyToMap(curParty);
+      else map.once('idle',()=>applyPartyToMap(curParty));
     });
   });
 })();
