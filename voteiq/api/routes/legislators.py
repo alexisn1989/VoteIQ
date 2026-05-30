@@ -216,6 +216,38 @@ def _fetch_profile(conn, name: str) -> dict:
         profile["finance_sectors"] = []
         profile["top_donors"]      = []
 
+    # ── Donor tiers: corporate/PAC vs individual size buckets ───────────────
+    def _donor_tiers(cand_name: str) -> list:
+        rows = conn.execute("""
+            SELECT
+                CASE
+                    WHEN is_individual = 0 THEN 'Corporate / PAC'
+                    WHEN amount < 200      THEN 'Small (< $200)'
+                    WHEN amount < 1000     THEN 'Mid ($200–$999)'
+                    WHEN amount < 2500     THEN 'Large ($1k–$2.5k)'
+                    ELSE                        'Major ($2,500+)'
+                END AS tier,
+                COUNT(*)    AS cnt,
+                SUM(amount) AS total
+            FROM va_cf_schedule_a
+            WHERE lower(candidate_name) = lower(?) AND amount > 0
+            GROUP BY tier ORDER BY total DESC
+        """, (cand_name,)).fetchall()
+        return [{"tier": r["tier"], "count": r["cnt"], "total": r["total"]} for r in rows]
+
+    tiers = _donor_tiers(bill_name) or _donor_tiers(resolved)
+    if not tiers:
+        last = (bill_name or "").strip().split()[-1] if (bill_name or "").strip() else ""
+        if last:
+            match = conn.execute(
+                "SELECT DISTINCT candidate_name FROM va_cf_schedule_a "
+                "WHERE lower(candidate_name) LIKE lower(?) LIMIT 1",
+                (f"%{last}%",)
+            ).fetchone()
+            if match:
+                tiers = _donor_tiers(match["candidate_name"])
+    profile["donor_tiers"] = tiers
+
     return profile
 
 

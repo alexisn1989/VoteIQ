@@ -592,6 +592,10 @@
         <tbody>${donorRows}</tbody>
       </table>` : ''}
 
+      ${(D.donor_tiers && D.donor_tiers.length) ? `
+      <div class="breakdown-label" style="margin:24px 0 10px">Corporate / PAC vs Individual Donors</div>
+      <div style="max-width:420px"><canvas id="chart-donor-tiers"></canvas></div>` : ''}
+
       <div class="finance-caveat">
         <strong>How to read this data:</strong> This shows who donated to this legislator's campaign overall — not who supported any specific bill they introduced. Donors did not select these bills, may not have known about them, and no link between donations and any legislative outcome is implied or shown. For lobbying activity on specific bills, see Virginia's lobbyist disclosure records. <strong>Correlation does not imply causation.</strong> Source: Virginia SBE public records.
       </div>`;
@@ -609,6 +613,45 @@
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tab));
   });
 
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+(function(){
+  const D = window._PROFILE_DATA || {};
+  const tiers = D.donor_tiers || [];
+  const canvas = document.getElementById('chart-donor-tiers');
+  if (!canvas || !tiers.length) return;
+  const COLORS = {
+    'Corporate / PAC':   '#c8102e',
+    'Major ($2,500+)':   '#0d1b2a',
+    'Large ($1k–$2.5k)': '#1a52c8',
+    'Mid ($200–$999)':   '#b8963e',
+    'Small (< $200)':    '#52b788',
+  };
+  new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: tiers.map(t => t.tier),
+      datasets: [{
+        data: tiers.map(t => t.total),
+        backgroundColor: tiers.map(t => COLORS[t.tier] || '#7a7468'),
+        borderWidth: 2, borderColor: '#fff'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'right', labels: { font: { family: 'Barlow', size: 11 }, padding: 8, boxWidth: 12 }},
+        tooltip: { callbacks: { label: x => {
+          const tot = x.dataset.data.reduce((a,b)=>a+b,0);
+          const pct = (x.parsed/tot*100).toFixed(1);
+          const f = x.parsed>=1e6 ? '$'+(x.parsed/1e6).toFixed(1)+'M' : '$'+(x.parsed/1e3).toFixed(0)+'K';
+          return ' '+x.label+': '+f+' ('+pct+'%)';
+        }}}
+      }
+    }
+  });
 })();
 </script>
 </body>
