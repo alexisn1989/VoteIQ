@@ -26,31 +26,49 @@ def _conn():
 
 
 def _federal_list(conn) -> list[dict]:
-    rows = conn.execute("""
-        SELECT m.bioguide_id,
-               m.name,
-               m.chamber,
-               m.district,
-               m.party,
-               m.website,
-               f.total_raised,
-               f.top_sector,
-               f.top_sector_pct,
-               f.latest_cycle,
-               f.by_sector_json
-        FROM congress_members m
-        LEFT JOIN campaign_finance_summary f
-               ON f.legislator_id = m.bioguide_id AND f.source = 'fec'
-        ORDER BY
-            CASE m.chamber WHEN 'Senate' THEN 0 ELSE 1 END,
-            CAST(CASE m.district WHEN 'S' THEN '0' ELSE m.district END AS INTEGER),
-            m.name
-    """).fetchall()
+    try:
+        rows = conn.execute("""
+            SELECT m.bioguide_id,
+                   m.name,
+                   m.chamber,
+                   m.district,
+                   m.party,
+                   m.website,
+                   f.total_raised,
+                   f.top_sector,
+                   f.top_sector_pct,
+                   f.latest_cycle,
+                   f.by_sector_json
+            FROM congress_members m
+            LEFT JOIN campaign_finance_summary f
+                   ON f.legislator_id = m.bioguide_id AND f.source = 'fec'
+            ORDER BY
+                CASE m.chamber WHEN 'Senate' THEN 0 ELSE 1 END,
+                CAST(CASE m.district WHEN 'S' THEN '0' ELSE m.district END AS INTEGER),
+                m.name
+        """).fetchall()
+    except sqlite3.OperationalError:
+        return []
     out = []
     for r in rows:
         d = dict(r)
-        # Parse sector list for spark display
         d["by_sector"] = json.loads(d.pop("by_sector_json") or "[]")
+        # Donor tiers: Grassroots (small donors) vs Industry/Corporate
+        try:
+            tiers = conn.execute("""
+                SELECT
+                    CASE WHEN industry = 'Grassroots' THEN 'Grassroots (Small Donors)'
+                         ELSE 'Industry / Corporate'
+                    END AS tier,
+                    SUM(total_amount)      AS total,
+                    SUM(contributor_count) AS cnt
+                FROM fec_industry_totals
+                WHERE bioguide_id = ?
+                GROUP BY tier ORDER BY total DESC
+            """, (d["bioguide_id"],)).fetchall()
+            d["donor_tiers"] = [{"tier": t["tier"], "total": t["total"], "count": t["cnt"]} for t in tiers]
+        except sqlite3.OperationalError:
+            d["donor_tiers"] = []
         out.append(d)
     return out
 

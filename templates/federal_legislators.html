@@ -132,10 +132,7 @@
 
 <header>
   <a href="/" class="logo-wrap">
-    <div>
-      <div class="logo-text">Vote<em>IQ</em></div>
-      <div class="logo-sub">Virginia Political Intelligence</div>
-    </div>
+    <img src="/static/logo.png" alt="VoteIQ" style="height:72px;object-fit:contain;" />
   </a>
   <nav class="header-nav">
     <a href="/">Chat</a>
@@ -407,6 +404,64 @@
   buildStats();
   updateSortHeaders();
   renderTable();
+})();
+</script>
+<!-- ── Donor Funding Sources chart ─────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<div style="max-width:1200px;margin:0 auto 48px;padding:0 32px">
+  <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy);margin-bottom:14px;border-top:2px solid var(--mid);padding-top:20px">
+    VA Federal Delegation — Grassroots vs Corporate Funding
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px">
+    <div style="background:white;border:1px solid var(--mid);padding:20px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.68rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:12px">All Members Combined</div>
+      <canvas id="chart-donor-agg"></canvas>
+    </div>
+    <div style="background:white;border:1px solid var(--mid);padding:20px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.68rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Democrats</div>
+      <canvas id="chart-donor-dem"></canvas>
+    </div>
+    <div style="background:white;border:1px solid var(--mid);padding:20px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.68rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Republicans</div>
+      <canvas id="chart-donor-rep"></canvas>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  const members = window._FED_DATA || [];
+  const LABELS = ['Grassroots (Small Donors)', 'Industry / Corporate'];
+  const COLORS = ['#52b788', '#c8102e'];
+
+  function aggTiers(subset) {
+    const m = {};
+    for (const mem of subset)
+      for (const t of (mem.donor_tiers || []))
+        m[t.tier] = (m[t.tier] || 0) + (t.total || 0);
+    return LABELS.map(l => m[l] || 0);
+  }
+
+  function donut(id, vals) {
+    const c = document.getElementById(id); if (!c) return;
+    if (!vals.some(v => v > 0)) { c.parentElement.style.display='none'; return; }
+    new Chart(c, {
+      type: 'doughnut',
+      data: { labels: LABELS, datasets: [{ data: vals, backgroundColor: COLORS, borderWidth: 2, borderColor: '#fff' }] },
+      options: { responsive: true, plugins: {
+        legend: { position: 'right', labels: { font: { family: 'Barlow', size: 11 }, padding: 8, boxWidth: 12 }},
+        tooltip: { callbacks: { label: x => {
+          const t = x.dataset.data.reduce((a,b)=>a+b,0);
+          const p = (x.parsed/t*100).toFixed(1);
+          const f = x.parsed>=1e6 ? '$'+(x.parsed/1e6).toFixed(1)+'M' : '$'+(x.parsed/1e3).toFixed(0)+'K';
+          return ' '+x.label+': '+f+' ('+p+'%)';
+        }}}
+      }}
+    });
+  }
+
+  donut('chart-donor-agg', aggTiers(members));
+  donut('chart-donor-dem', aggTiers(members.filter(m => (m.party||'').toLowerCase().includes('democrat'))));
+  donut('chart-donor-rep', aggTiers(members.filter(m => (m.party||'').toLowerCase().includes('republican'))));
 })();
 </script>
 </body>
