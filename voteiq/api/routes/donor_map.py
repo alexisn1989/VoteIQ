@@ -279,6 +279,13 @@ def donor_legislation_page():
     return _inject(data, "donor_legislation.html")
 
 
+@router.get("/dominion-analysis", response_class=HTMLResponse)
+def dominion_analysis_page():
+    """Dominion Energy utility donations vs energy bill votes for VA legislators."""
+    data = _DONOR_CACHE.get("state", {})
+    return _inject(data, "dominion.html")
+
+
 # ── Legacy redirect ───────────────────────────────────────────────────────────
 
 @router.get("/donor-map", response_class=HTMLResponse)

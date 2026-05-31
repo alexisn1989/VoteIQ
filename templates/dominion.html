@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dominion Energy — Legislative Influence · VoteIQ Virginia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" />
+  <style>
+    :root{--navy:#0d1b2a;--red:#c8102e;--cream:#f4f1eb;--gold:#b8963e;--dem:#1a52c8;--rep:#c8102e;--border:#d6d0c4;--muted:#6b6560;--green:#15803d;--orange:#ea580c}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Barlow',system-ui,sans-serif;background:var(--cream);color:var(--navy);min-height:100vh}
+    header{background:#fff;border-bottom:2px solid #ddd8cc;padding:10px 28px;display:flex;align-items:center;gap:18px}
+    nav{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+    nav a{color:#0d1b2a;text-decoration:none;font-size:.82rem;font-weight:600;padding:5px 12px;border-radius:4px;transition:background .15s}
+    nav a:hover,nav a.active{background:rgba(13,27,42,.08);font-weight:700}
+    .page-hero{background:var(--navy);color:#fff;padding:28px 32px 24px;border-bottom:3px solid var(--orange)}
+    .page-hero h1{font-family:'Playfair Display',Georgia,serif;font-size:2rem;font-weight:700}
+    .page-hero p{color:rgba(255,255,255,.65);font-size:.9rem;margin-top:6px;max-width:740px}
+    .hero-sub{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+    .hero-tag{padding:5px 14px;border-radius:4px;font-size:.78rem;font-weight:600;background:rgba(234,88,12,.25);color:#fca57c;border:1px solid rgba(234,88,12,.35)}
+    .stats-bar{display:flex;background:var(--navy);border-bottom:1px solid rgba(255,255,255,.08);overflow-x:auto}
+    .stat-item{padding:14px 28px;border-right:1px solid rgba(255,255,255,.08);min-width:150px;flex-shrink:0}
+    .stat-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.5)}
+    .stat-value{font-size:1.35rem;font-weight:700;color:#fff;margin-top:3px}
+    .stat-value.orange{color:#fca57c}
+    .stat-value.gold{color:var(--gold)}
+    .content{padding:28px 32px 52px}
+    .section-header{font-family:'Barlow Condensed',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:12px}
+    .section-header span{flex:1;height:1px;background:var(--border);display:inline-block}
+    /* Funding gap cards */
+    .gap-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-bottom:32px}
+    .gap-card{background:#fff;border:1px solid var(--border);border-radius:8px;padding:18px;position:relative}
+    .gap-card.highlight{border-color:var(--orange);border-top:3px solid var(--orange)}
+    .gap-bill{font-family:'Barlow Condensed',sans-serif;font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+    .gap-title{font-size:.88rem;font-weight:600;color:var(--navy);margin:4px 0 12px;line-height:1.3}
+    .gap-bars{display:flex;flex-direction:column;gap:8px}
+    .gap-row{display:flex;align-items:center;gap:10px}
+    .gap-label{font-size:.75rem;font-weight:700;min-width:28px;text-align:right}
+    .gap-label.yes{color:var(--green)}
+    .gap-label.no{color:var(--red)}
+    .gap-bar-wrap{flex:1;height:12px;background:#f0ece4;border-radius:6px;overflow:hidden}
+    .gap-bar{height:100%;border-radius:6px;transition:width .4s}
+    .gap-amt{font-size:.8rem;font-weight:700;min-width:68px;text-align:right}
+    .gap-ratio{position:absolute;top:14px;right:16px;font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:700;color:var(--orange)}
+    .gap-meta{font-size:.72rem;color:var(--muted);margin-top:8px}
+    .status-pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.68rem;font-weight:700;margin-left:6px}
+    .sp-passed{background:#dcfce7;color:var(--green)}
+    .sp-vetoed{background:#fee2e2;color:var(--red)}
+    .sp-other{background:#f3f4f6;color:#374151}
+    /* Callout */
+    .callout{background:#fff8f0;border:1px solid #f97316;border-left:4px solid #f97316;border-radius:6px;padding:14px 18px;margin-bottom:24px;font-size:.88rem;color:#7c2d12;line-height:1.6}
+    .callout strong{color:#9a3412}
+    /* Filters */
+    .filters{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+    .filter-label{font-family:'Barlow Condensed',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+    .btn-group{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+    .btn-f{padding:7px 16px;background:#fff;border:none;cursor:pointer;font-size:.82rem;font-weight:600;color:var(--muted);transition:all .15s}
+    .btn-f:hover:not(.on){background:var(--cream)}
+    .btn-f.on{background:var(--navy);color:#fff}
+    #count-label{font-size:.82rem;color:var(--muted);margin-left:auto}
+    /* Table */
+    .tbl-wrap{background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+    table{width:100%;border-collapse:collapse;font-size:.83rem}
+    thead tr{background:var(--navy);color:#fff}
+    thead th{padding:11px 14px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;cursor:pointer;user-select:none}
+    thead th:hover{background:#1a3050}
+    thead th.sort-asc::after{content:' ▲'}
+    thead th.sort-desc::after{content:' ▼'}
+    tbody tr{border-bottom:1px solid #f0ece4;transition:background .1s}
+    tbody tr:hover{background:#f9f6f0}
+    td{padding:10px 14px;vertical-align:middle}
+    .party-chip{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.72rem;font-weight:700}
+    .chip-D{background:#dbeafe;color:var(--dem)}
+    .chip-R{background:#fee2e2;color:var(--rep)}
+    .chip-I{background:#f3f4f6;color:#374151}
+    .dom-bar-wrap{display:flex;align-items:center;gap:8px}
+    .dom-bar-bg{flex:1;height:8px;border-radius:4px;background:#e5e7eb;min-width:60px;max-width:120px}
+    .dom-bar{height:100%;border-radius:4px;background:var(--orange)}
+    .vote-cell{display:flex;gap:3px;flex-wrap:wrap}
+    .vb{display:inline-block;padding:2px 5px;border-radius:3px;font-size:.68rem;font-weight:700;cursor:default}
+    .vb-yes{background:#dcfce7;color:var(--green)}
+    .vb-no{background:#fee2e2;color:var(--red)}
+    .vb-na{background:#f3f4f6;color:#9ca3af}
+    .score-badge{display:inline-block;min-width:34px;text-align:center;padding:3px 9px;border-radius:6px;font-weight:700;font-size:.82rem;color:#fff}
+    .method-note{margin-top:24px;padding:14px 18px;background:#fff;border:1px solid var(--border);border-radius:8px;font-size:.78rem;color:var(--muted);line-height:1.6}
+    .method-note strong{color:var(--navy)}
+    .independent-flag{background:#fff3cd;border:1px solid var(--gold);border-radius:6px;padding:12px 16px;margin-bottom:20px;font-size:.82rem;color:#7a5e1a;line-height:1.5}
+  </style>
+</head>
+<body>
+<header>
+  <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.2rem;font-weight:700;color:#0d1b2a">VoteIQ</div>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/donor-map-state">State Donors</a>
+    <a href="/donor-map-federal">Federal Donors</a>
+    <a href="/donor-legislation">Donor–Legislation</a>
+    <a href="/dominion-analysis" class="active">Dominion Energy</a>
+    <a href="/state-legislators">State Legislature</a>
+  </nav>
+</header>
+
+<div class="page-hero">
+  <h1>Dominion Energy — Legislative Influence Tracker</h1>
+  <p>How donations from Dominion Energy utility employees correlate with VA legislators' votes on electric utility, grid, and energy policy bills. All figures from public VA SBE campaign finance filings.</p>
+  <div class="hero-sub">
+    <span class="hero-tag">Dominion Energy · Dominion Resources · Dominion Power · ODEC</span>
+    <span class="hero-tag">2025–2026 Session</span>
+  </div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-item"><div class="stat-label">Total Dominion Utility $</div><div class="stat-value orange" id="st-total">—</div></div>
+  <div class="stat-item"><div class="stat-label">Legislators Funded</div><div class="stat-value" id="st-funded">—</div></div>
+  <div class="stat-item"><div class="stat-label">Top Funding Gap</div><div class="stat-value gold" id="st-gap">—</div></div>
+  <div class="stat-item"><div class="stat-label">Top Recipient (active)</div><div class="stat-value" id="st-top">—</div></div>
+  <div class="stat-item"><div class="stat-label">Key Bills Tracked</div><div class="stat-value" id="st-bills">—</div></div>
+</div>
+
+<div class="content">
+
+  <!-- Callout -->
+  <div class="callout" id="callout-box"></div>
+
+  <!-- Per-bill funding gap -->
+  <div class="section-header" style="margin-bottom:8px">
+    Per-Bill Funding Gap — YES vs NO Voter Avg Dominion $
+    <span></span>
+  </div>
+  <p style="font-size:.82rem;color:var(--muted);margin-bottom:16px;max-width:780px">
+    For each key energy/utility bill, the average Dominion utility donation received by legislators who voted YES vs those who voted NO.
+    A higher ratio means YES voters were more heavily funded by Dominion than NO voters.
+    <strong style="color:var(--navy)">Correlation — not causation.</strong>
+  </p>
+  <div class="gap-grid" id="gap-grid"></div>
+
+  <!-- Independent voters callout -->
+  <div class="independent-flag" id="ind-flag" style="display:none">
+    <strong>Notable: Dominion-funded legislators who voted NO on key energy bills</strong><br>
+    <span id="ind-list"></span>
+  </div>
+
+  <!-- Legislator table -->
+  <div class="section-header" style="margin-bottom:14px">
+    All Legislators — Dominion Donations &amp; Energy Votes
+    <span></span>
+  </div>
+  <div class="filters">
+    <span class="filter-label">Party</span>
+    <div class="btn-group">
+      <button class="btn-f on" id="p-all" onclick="setParty('all',this)">All</button>
+      <button class="btn-f" id="p-D" onclick="setParty('D',this)">Democrat</button>
+      <button class="btn-f" id="p-R" onclick="setParty('R',this)">Republican</button>
+    </div>
+    <span class="filter-label">Funded</span>
+    <div class="btn-group">
+      <button class="btn-f on" id="f-all" onclick="setFunded('all',this)">All</button>
+      <button class="btn-f" id="f-yes" onclick="setFunded('yes',this)">Funded only</button>
+    </div>
+    <span id="count-label"></span>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th onclick="sortBy('name')">#&nbsp;&nbsp;Legislator</th>
+          <th onclick="sortBy('party')">Party</th>
+          <th onclick="sortBy('chamber')">Chamber</th>
+          <th onclick="sortBy('dom_total')" class="sort-desc">Dominion $</th>
+          <th onclick="sortBy('yes_rate')">Energy YES%</th>
+          <th>Key Bill Votes</th>
+          <th onclick="sortBy('dom_score')" title="Dominion $ weighted by energy YES-rate">Dom. Score</th>
+        </tr>
+      </thead>
+      <tbody id="tbl-body"></tbody>
+    </table>
+  </div>
+
+  <div class="method-note">
+    <strong>Methodology:</strong>
+    Dominion utility donors are identified by matching employer names against known Dominion Energy, Dominion Resources, Dominion Power, and Old Dominion Electric Cooperative variants from VA SBE individual contribution records.
+    Non-utility "Dominion" employers (Old Dominion University, Dominion Medical Associates, Dominion Auto Group, etc.) are excluded.
+    <strong>Funding gap</strong> = average Dominion $ received by YES voters minus average by NO voters for each bill. Only legislators with recorded votes in <em>va_legislator_recent_votes</em> are included.
+    <strong>Dom. Score (0–100)</strong> = energy YES-rate weighted by log-scaled Dominion dollar amount — requires both high YES-rate AND large Dominion funding to score high.
+    <strong>Correlation does not imply causation.</strong> Many energy bills pass with broad bipartisan support, and majority-party members vote YES on most floor bills regardless of donor ties. Use alongside specific bill details, not as a standalone judgment.
+  </div>
+</div>
+
+<script>
+(function(){
+  const D   = window._MAP_DATA || {};
+  const DA  = D.dominion_analysis || {};
+  const RAW = DA.legislators || [];
+  const PB  = DA.per_bill    || [];
+  const ST  = DA.stats       || {};
+  const KB  = DA.key_bills   || {};
+
+  // ── Stats bar ──
+  function fmt(v){
+    if(!v&&v!==0) return '—';
+    if(v>=1e6) return '$'+(v/1e6).toFixed(2)+'M';
+    if(v>=1e3) return '$'+(v/1e3).toFixed(0)+'K';
+    return '$'+v;
+  }
+  document.getElementById('st-total').textContent  = fmt(ST.total_dominion_dollars||0);
+  document.getElementById('st-funded').textContent = (ST.legislators_funded||0)+' / '+(ST.legislators_analyzed||0);
+  document.getElementById('st-bills').textContent  = ST.key_bills_tracked||0;
+  const topGap = PB.length ? PB[0] : null;
+  document.getElementById('st-gap').textContent    = topGap && topGap.ratio ? topGap.ratio+'x ('+topGap.bill_id+')' : '—';
+  document.getElementById('st-top').textContent    = ST.top_recipient ? ST.top_recipient.split(' ').slice(-1)[0]+' '+fmt(ST.top_recipient_amount) : '—';
+
+  // ── Callout ──
+  if(topGap && topGap.ratio){
+    document.getElementById('callout-box').innerHTML =
+      '<strong>Key finding:</strong> On <strong>'+topGap.bill_id+'</strong> ('+topGap.description+'), '
+      +'legislators who voted YES received on average <strong>'+topGap.ratio+'× more</strong> in Dominion utility donations '
+      +'than those who voted NO — <strong>'+fmt(topGap.avg_yes_dom)+'</strong> vs <strong>'+fmt(topGap.avg_no_dom)+'</strong>. '
+      +'This does not establish causation; many factors influence votes.';
+  }
+
+  // ── Per-bill funding gap cards ──
+  const grid = document.getElementById('gap-grid');
+  const maxAmt = Math.max(...PB.map(b=>Math.max(b.avg_yes_dom||0, b.avg_no_dom||0)), 1);
+  PB.forEach((b,i)=>{
+    const highlight = i<3 ? 'highlight' : '';
+    const statusCls = b.status==='Passed'?'sp-passed':b.status==='Vetoed'?'sp-vetoed':'sp-other';
+    const yesW = Math.round((b.avg_yes_dom/maxAmt)*100);
+    const noW  = Math.round((b.avg_no_dom/maxAmt)*100);
+    const ratioTxt = b.ratio ? b.ratio+'×' : 'n/a';
+    grid.innerHTML += `
+      <div class="gap-card ${highlight}">
+        <div class="gap-ratio">${ratioTxt}</div>
+        <div class="gap-bill">${b.bill_id}<span class="status-pill ${statusCls}">${b.status||'?'}</span></div>
+        <div class="gap-title">${b.description}</div>
+        <div class="gap-bars">
+          <div class="gap-row">
+            <span class="gap-label yes">YES</span>
+            <div class="gap-bar-wrap"><div class="gap-bar" style="width:${yesW}%;background:#15803d"></div></div>
+            <span class="gap-amt" style="color:var(--green)">${fmt(b.avg_yes_dom)}</span>
+          </div>
+          <div class="gap-row">
+            <span class="gap-label no">NO</span>
+            <div class="gap-bar-wrap"><div class="gap-bar" style="width:${noW}%;background:#c8102e"></div></div>
+            <span class="gap-amt" style="color:var(--red)">${fmt(b.avg_no_dom)}</span>
+          </div>
+        </div>
+        <div class="gap-meta">Votes: ${b.yes_count} YES / ${b.no_count} NO &nbsp;|&nbsp; Dominion-funded voters: ${b.funded_yes} YES, ${b.funded_no} NO</div>
+      </div>`;
+  });
+
+  // ── Independent voters (funded but voted NO) ──
+  const indeps = RAW.filter(r=>{
+    if(!r.dom_total || r.dom_total<5000) return false;
+    const noVotes = Object.values(r.energy_votes||{}).filter(v=>v==='no').length;
+    return noVotes>=2;
+  });
+  if(indeps.length){
+    document.getElementById('ind-flag').style.display='';
+    document.getElementById('ind-list').innerHTML = indeps.map(r=>{
+      const pi=partyInitial(r.party);
+      return `<strong>${r.name}</strong> (${pi}, ${fmt(r.dom_total)} Dominion, ${r.yes_rate}% YES)`;
+    }).join(' &nbsp;·&nbsp; ');
+  }
+
+  // ── Table state ──
+  let curParty='all', curFunded='all', sortKey='dom_total', sortDir=-1;
+
+  function partyInitial(p){
+    if(!p) return '?';
+    if(p.startsWith('Dem')) return 'D';
+    if(p.startsWith('Rep')) return 'R';
+    return p[0]||'?';
+  }
+
+  function scoreColor(v){
+    if(v==null) return '#9ca3af';
+    return v>=70?'#c8102e':v>=40?'#b8963e':'#15803d';
+  }
+
+  function filtered(){
+    return RAW.filter(r=>{
+      if(curParty!=='all' && partyInitial(r.party)!==curParty) return false;
+      if(curFunded==='yes' && !r.dom_funded) return false;
+      return true;
+    }).sort((a,b)=>{
+      let av=a[sortKey], bv=b[sortKey];
+      if(av==null) av=sortDir<0?-Infinity:Infinity;
+      if(bv==null) bv=sortDir<0?-Infinity:Infinity;
+      return av<bv?sortDir:av>bv?-sortDir:0;
+    });
+  }
+
+  const BILL_IDS = Object.keys(KB);
+  const tbody = document.getElementById('tbl-body');
+
+  function render(){
+    const rows=filtered();
+    document.getElementById('count-label').textContent=rows.length+' legislators';
+    const maxDom = Math.max(...RAW.map(r=>r.dom_total||0),1);
+    tbody.innerHTML='';
+    rows.forEach((r,i)=>{
+      const pi=partyInitial(r.party);
+      const chipCls=pi==='D'?'chip-D':pi==='R'?'chip-R':'chip-I';
+      const barW=Math.round((r.dom_total||0)/maxDom*100);
+      const yrTxt=r.yes_rate!=null?r.yes_rate.toFixed(0)+'%':'—';
+      const yrCol=r.yes_rate==null?'var(--muted)':r.yes_rate>=70?'var(--green)':r.yes_rate>=40?'var(--gold)':'var(--red)';
+      // Compact key bill votes
+      const voteCells = BILL_IDS.map(b=>{
+        const v=(r.energy_votes||{})[b];
+        if(!v) return `<span class="vb vb-na" title="${b}">—</span>`;
+        return `<span class="vb vb-${v}" title="${b}">${b.replace(/[A-Z]+/,'')}</span>`;
+      }).join('');
+      const sc=r.dom_score;
+      const scoreBadge=sc!=null
+        ?`<span class="score-badge" style="background:${scoreColor(sc)}">${sc.toFixed(0)}</span>`
+        :'<span style="color:var(--muted)">—</span>';
+      tbody.innerHTML+=`<tr>
+        <td><strong style="font-size:.88rem">${r.name||'—'}</strong></td>
+        <td><span class="party-chip ${chipCls}">${pi}</span></td>
+        <td style="font-size:.8rem;color:var(--muted)">${r.chamber||'—'}</td>
+        <td>
+          <div class="dom-bar-wrap">
+            <div class="dom-bar-bg"><div class="dom-bar" style="width:${barW}%"></div></div>
+            <span style="font-weight:700;color:${r.dom_total>0?'var(--orange)':'var(--muted)'};font-size:.83rem">${r.dom_total>0?fmt(r.dom_total):'—'}</span>
+          </div>
+        </td>
+        <td><span style="font-weight:700;color:${yrCol}">${yrTxt}</span></td>
+        <td><div class="vote-cell">${voteCells}</div></td>
+        <td>${scoreBadge}</td>
+      </tr>`;
+    });
+  }
+
+  window.setParty=function(v,btn){
+    curParty=v;
+    ['p-all','p-D','p-R'].forEach(id=>{document.getElementById(id).className='btn-f';});
+    btn.className='btn-f on'; render();
+  };
+  window.setFunded=function(v,btn){
+    curFunded=v;
+    ['f-all','f-yes'].forEach(id=>{document.getElementById(id).className='btn-f';});
+    btn.className='btn-f on'; render();
+  };
+  window.sortBy=function(key){
+    if(sortKey===key) sortDir*=-1; else{sortKey=key;sortDir=-1;}
+    document.querySelectorAll('thead th').forEach(th=>th.className='');
+    render();
+  };
+
+  render();
+})();
+</script>
+</body>
+</html>
