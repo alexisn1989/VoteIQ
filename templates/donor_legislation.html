@@ -139,6 +139,19 @@
     </div>
   </div>
 
+  <!-- High-funded, low-alignment section -->
+  <div style="font-family:'Barlow Condensed',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:12px">
+    High-Funded, Low-Alignment — Counter-Signals Within Each Party
+    <span style="flex:1;height:1px;background:var(--border);display:inline-block"></span>
+  </div>
+  <p style="font-size:.82rem;color:var(--muted);margin-bottom:12px;max-width:760px">
+    Legislators who receive substantial funding from an industry yet vote YES at a rate well below their own party's median for that industry. These are the clearest cases where donor money and voting record diverge.
+  </p>
+  <div style="background:#fff8e6;border:1px solid var(--gold);border-radius:6px;padding:11px 16px;margin-bottom:16px;font-size:.79rem;color:#7a5e1a;line-height:1.5">
+    <strong>⚠ Majority/minority note:</strong> Low YES-rates in the minority party partly reflect chamber dynamics, not just donor independence. The within-party median comparison here is more meaningful than the raw alignment number.
+  </div>
+  <div id="lb-flip" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:32px"></div>
+
   <div style="font-family:'Barlow Condensed',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:12px">
     All Legislators
     <span style="flex:1;height:1px;background:var(--border);display:inline-block"></span>
@@ -491,9 +504,72 @@
     build('R','lb-rep');
   }
 
+  // ── High-funded, low-alignment (flip risk) ──
+  function renderFlipRisk(){
+    const el=document.getElementById('lb-flip');
+    if(!el) return;
+
+    // Compute within-party+industry median alignments
+    const piGroups={};
+    RAW.forEach(r=>{
+      if(r.top_alignment==null||!r.top_donor_industry||(r.top_donor_amount||0)<3000) return;
+      const k=partyInitial(r.party)+'|'+r.top_donor_industry;
+      piGroups[k]=piGroups[k]||[];
+      piGroups[k].push(r.top_alignment);
+    });
+    const piMedian={};
+    Object.entries(piGroups).forEach(([k,arr])=>{
+      arr.sort((a,b)=>a-b);
+      piMedian[k]=arr[Math.floor(arr.length/2)];
+    });
+
+    // Flip risk: top_donor_amount > 8000, top_alignment < 50
+    // Score = amount * (1 - alignment/100)
+    const flips=RAW
+      .filter(r=>(r.top_donor_amount||0)>8000 && r.top_alignment!=null && r.top_alignment<50)
+      .map(r=>{
+        const k=partyInitial(r.party)+'|'+r.top_donor_industry;
+        return {...r, flip_score:r.top_donor_amount*(1-r.top_alignment/100), party_med:piMedian[k]};
+      })
+      .sort((a,b)=>b.flip_score-a.flip_score);
+
+    if(!flips.length){
+      el.innerHTML='<div style="font-size:.82rem;color:var(--muted);font-style:italic">No legislators meet the threshold (>\$8K funded, <50% alignment).</div>';
+      return;
+    }
+
+    flips.forEach(r=>{
+      const pi=partyInitial(r.party);
+      const chipCls=pi==='D'?'chip-D':pi==='R'?'chip-R':'chip-I';
+      const medTxt=r.party_med!=null?`Party median: ${r.party_med.toFixed(0)}%`:'';
+      const gap=r.party_med!=null?Math.round(r.party_med-r.top_alignment):null;
+      const gapTxt=gap!=null&&gap>0?`<span style="color:var(--red);font-size:.72rem;font-weight:700"> (${gap}pp below ${pi} median)</span>`:'';
+      el.innerHTML+=`
+        <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:16px;border-top:3px solid var(--gold)">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px">
+            <div>
+              <div style="font-weight:700;font-size:.88rem">${r.name||'—'}</div>
+              <div style="margin-top:3px"><span class="party-chip ${chipCls}">${pi}</span> <span style="font-size:.75rem;color:var(--muted)">${r.chamber||''}</span></div>
+            </div>
+            <span class="industry-pill">${r.top_donor_industry||'—'}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:6px">
+            <span style="color:var(--muted)">Donor $</span>
+            <span style="font-weight:700;color:var(--red)">${fmt(r.top_donor_amount)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:.82rem">
+            <span style="color:var(--muted)">Alignment</span>
+            <span style="font-weight:700;color:var(--red)">${r.top_alignment.toFixed(0)}%${gapTxt}</span>
+          </div>
+          ${medTxt?`<div style="font-size:.72rem;color:var(--muted);margin-top:6px;text-align:right">${medTxt}</div>`:''}
+        </div>`;
+    });
+  }
+
   render();
   renderParty();
   renderLeaderboards();
+  renderFlipRisk();
 })();
 </script>
 </body>
