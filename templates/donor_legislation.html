@@ -232,6 +232,37 @@
     </div>
   </div>
 
+  <!-- Sponsored-bill outcome rate by industry -->
+  <div style="margin-top:36px">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:12px">
+      Sponsored-Bill Outcome Rate by Industry
+      <span style="flex:1;height:1px;background:var(--border);display:inline-block"></span>
+    </div>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:16px;max-width:760px">
+      For each industry: among legislators whose <em>top donor industry</em> is that sector and who sponsored at least one bill in it — what share of those bills actually passed? The <strong>Gap</strong> column compares above-median-funded vs below-median-funded legislators within each industry, testing whether donor dollars correlate with bill-passage success.
+    </p>
+    <div id="sponsor-stats-finding" style="margin-bottom:16px"></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Donor Industry</th>
+            <th style="text-align:right">Legislators</th>
+            <th style="text-align:right">Avg Donor $</th>
+            <th style="text-align:right">Avg Pass Rate</th>
+            <th style="text-align:right">High-funded Pass%</th>
+            <th style="text-align:right">Low-funded Pass%</th>
+            <th style="text-align:center" title="High-funded minus Low-funded sponsor pass rate">Gap</th>
+          </tr>
+        </thead>
+        <tbody id="sponsor-stats-body"></tbody>
+      </table>
+    </div>
+    <div style="font-size:.76rem;color:var(--muted);margin-top:10px;line-height:1.55">
+      <strong>How to read:</strong> "High-funded" = legislators with above-median donor $ from this industry within the group. "Pass Rate" = % of their primary-sponsored bills in that industry that reached Passed status (2025–2026 session). A <span style="color:var(--red);font-weight:700">positive gap</span> means better-funded legislators have higher bill-passage success in that industry; a <span style="color:var(--green);font-weight:700">negative gap</span> means the reverse.
+    </div>
+  </div>
+
   <div class="method-note">
     <strong>Methodology:</strong> Donor industries are classified from the employer field of VA SBE individual contribution records using keyword matching.
     Bill industries are classified from bill titles in the LegiScan VA 2025–2026 legislative session.
@@ -405,7 +436,10 @@
               ${billsHtml}
             </div>
             <div class="detail-section" style="margin-top:16px">
-              <h4>Sponsored Bills by Industry</h4>
+              <h4>Sponsored Bills by Industry
+                ${r.sponsor_success_rate!=null
+                  ? `<span style="font-weight:400;font-family:'Barlow',sans-serif;font-size:.75rem;color:var(--muted);margin-left:6px">— top-industry pass rate: <strong style="color:${r.sponsor_success_rate>=60?'var(--green)':r.sponsor_success_rate>=30?'var(--gold)':'var(--red)'}">${r.sponsor_success_rate.toFixed(0)}%</strong> (${r.sponsored_passed}/${r.sponsored_in_top} passed)</span>`
+                  : ''}</h4>
               ${sponsHtml}
             </div>
           </div>
@@ -566,10 +600,55 @@
     });
   }
 
+  // ── Sponsored-bill outcome rate by industry ──────────────────────────────
+  function renderSponsorStats(){
+    const stats = (D.industry_sponsor_stats || []);
+    if(!stats.length) return;
+
+    // Key finding: strongest positive gap (high-funded passes more)
+    const posGap = stats.filter(r=>r.high_vs_low_gap!=null && r.high_vs_low_gap>0)
+                        .sort((a,b)=>b.high_vs_low_gap - a.high_vs_low_gap);
+    const topPos = posGap[0];
+    const findEl = document.getElementById('sponsor-stats-finding');
+    if(findEl && topPos){
+      findEl.innerHTML=`
+        <div style="background:#fef2f2;border:1px solid #fca5a5;border-left:4px solid var(--red);border-radius:8px;padding:14px 18px;font-size:.84rem;line-height:1.6">
+          <strong style="color:var(--navy)">Key finding — ${topPos.industry}:</strong>
+          Legislators in the <em>top half</em> by ${topPos.industry} industry donations pass
+          <strong style="color:var(--red)">${topPos.avg_success_high!=null?topPos.avg_success_high.toFixed(0)+'%':'—'}</strong> of their sponsored ${topPos.industry} bills,
+          vs <strong>${topPos.avg_success_low!=null?topPos.avg_success_low.toFixed(0)+'%':'—'}</strong> for those in the bottom half —
+          a <strong style="color:var(--red)">+${topPos.high_vs_low_gap}pp gap</strong> across ${topPos.n} legislators analyzed.
+        </div>`;
+    }
+
+    const tbody = document.getElementById('sponsor-stats-body');
+    if(!tbody) return;
+    stats.forEach(r=>{
+      const gap    = r.high_vs_low_gap;
+      const gapCol = gap==null?'var(--muted)':gap>10?'#c8102e':gap<-10?'#15803d':'#b8963e';
+      const gapTxt = gap==null?'—':(gap>=0?'+':'')+gap+'pp';
+      const hiTxt  = r.avg_success_high!=null ? r.avg_success_high.toFixed(0)+'%' : '—';
+      const loTxt  = r.avg_success_low !=null ? r.avg_success_low.toFixed(0)+'%'  : '—';
+      tbody.innerHTML+=`
+        <tr>
+          <td><span class="industry-pill">${r.industry}</span></td>
+          <td style="text-align:right;font-size:.82rem">${r.n}</td>
+          <td style="text-align:right;font-weight:700;color:var(--red)">${fmt(r.avg_donor)}</td>
+          <td style="text-align:right;font-weight:600">${r.avg_success.toFixed(1)}%</td>
+          <td style="text-align:right;font-size:.82rem">${hiTxt}</td>
+          <td style="text-align:right;font-size:.82rem">${loTxt}</td>
+          <td style="text-align:center">
+            <span style="font-weight:700;font-size:.85rem;color:${gapCol}">${gapTxt}</span>
+          </td>
+        </tr>`;
+    });
+  }
+
   render();
   renderParty();
   renderLeaderboards();
   renderFlipRisk();
+  renderSponsorStats();
 })();
 </script>
 </body>

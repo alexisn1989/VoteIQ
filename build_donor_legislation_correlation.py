@@ -331,6 +331,13 @@ def build_correlation(conn):
         # How many sponsored bills are in the legislator's top donor industry?
         sponsored_in_top = sum(1 for b in leg_sponsored
                                if b["industry"] == top_donor_ind)
+        # Sponsor success rate: % of top-industry sponsored bills that passed
+        top_ind_bills = [b for b in leg_sponsored if b["industry"] == top_donor_ind]
+        sponsored_in_top_passed = sum(1 for b in top_ind_bills if b.get("status") == "Passed")
+        sponsor_success_rate = (
+            round(sponsored_in_top_passed / len(top_ind_bills) * 100, 1)
+            if top_ind_bills else None
+        )
 
         results.append({
             "name":              voter_nm,
@@ -343,8 +350,10 @@ def build_correlation(conn):
             "concentration":     concentration,
             "industry_votes":    industry_votes,
             "top_alignment":     top_alignment,
-            "sponsored_bills":   leg_sponsored[:10],
-            "sponsored_in_top":  sponsored_in_top,
+            "sponsored_bills":      leg_sponsored[:10],
+            "sponsored_in_top":     sponsored_in_top,
+            "sponsored_passed":     sponsored_in_top_passed,
+            "sponsor_success_rate": sponsor_success_rate,
         })
 
     # ── Conflict-of-Interest score ──────────────────────────────────────────
@@ -447,6 +456,62 @@ def build_party_comparison(correlation):
     return out
 
 
+def build_industry_sponsor_stats(correlation):
+    """
+    Per donor industry: avg sponsor success rate vs avg donor $.
+    Only includes legislators whose TOP donor industry is that industry AND who
+    have at least 1 classified sponsored bill in that industry.
+    Answers: do industries channel more $ toward legislators who actually pass
+    their bills?
+    """
+    agg = defaultdict(lambda: {"donors": [], "rates": [], "names": []})
+    for r in correlation:
+        ind  = r.get("top_donor_industry")
+        rate = r.get("sponsor_success_rate")
+        if not ind or rate is None:
+            continue
+        agg[ind]["donors"].append(r.get("top_donor_amount") or 0)
+        agg[ind]["rates"].append(rate)
+        agg[ind]["names"].append(r.get("name", ""))
+
+    out = []
+    for ind, d in agg.items():
+        n = len(d["rates"])
+        if n < 2:
+            continue
+        pairs = sorted(zip(d["donors"], d["rates"]), key=lambda x: x[0])
+        avg_donor   = round(sum(d["donors"]) / n, 0)
+        avg_success = round(sum(d["rates"]) / n, 1)
+        # Split at median: do higher-funded legislators pass more bills?
+        mid = n // 2
+        low_half  = pairs[:mid]
+        high_half = pairs[mid:]
+        avg_success_high = round(sum(r for _, r in high_half) / len(high_half), 1) if high_half else None
+        avg_success_low  = round(sum(r for _, r in low_half)  / len(low_half),  1) if low_half  else None
+        gap = round(avg_success_high - avg_success_low, 1) if (avg_success_high is not None and avg_success_low is not None) else None
+        out.append({
+            "industry":              ind,
+            "n":                     n,
+            "avg_donor":             avg_donor,
+            "avg_success":           avg_success,
+            "avg_success_high":      avg_success_high,
+            "avg_success_low":       avg_success_low,
+            "high_vs_low_gap":       gap,
+            "sample_names":          d["names"][:4],
+        })
+    out.sort(key=lambda x: -x["avg_donor"])
+
+    print(f"\nIndustry sponsor stats — {len(out)} industries (≥2 legislators with sponsored bills in that industry)")
+    print(f"{'Industry':<22} {'n':>3}  {'Avg Donor$':>11}  {'Avg Pass%':>10}  {'High$ Pass%':>12}  {'Low$ Pass%':>11}  {'Gap':>6}")
+    print("-" * 85)
+    for r in out:
+        hi  = f"{r['avg_success_high']:.0f}%" if r['avg_success_high'] is not None else "  n/a"
+        lo  = f"{r['avg_success_low']:.0f}%"  if r['avg_success_low']  is not None else "  n/a"
+        gap = f"{r['high_vs_low_gap']:+.0f}pp" if r['high_vs_low_gap'] is not None else "  n/a"
+        print(f"  {r['industry']:<20} {r['n']:>3}  ${r['avg_donor']:>9,.0f}  {r['avg_success']:>9.1f}%  {hi:>12}  {lo:>11}  {gap:>6}")
+    return out
+
+
 if __name__ == "__main__":
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -454,16 +519,19 @@ if __name__ == "__main__":
     correlation = build_correlation(conn)
     conn.close()
 
-    party_comparison = build_party_comparison(correlation)
+    party_comparison       = build_party_comparison(correlation)
+    industry_sponsor_stats = build_industry_sponsor_stats(correlation)
 
     with open(CACHE_PATH, "r", encoding="utf-8") as f:
         cache = json.load(f)
 
-    cache["state"]["donor_legislation"]       = correlation
-    cache["state"]["donor_legislation_party"] = party_comparison
+    cache["state"]["donor_legislation"]          = correlation
+    cache["state"]["donor_legislation_party"]    = party_comparison
+    cache["state"]["industry_sponsor_stats"]     = industry_sponsor_stats
 
     with open(CACHE_PATH, "w", encoding="utf-8") as f:
         json.dump(cache, f, separators=(",", ":"))
 
     print(f"\nCache updated — donor_legislation ({len(correlation)} legislators) "
-          f"+ party comparison ({len(party_comparison)} industries).")
+          f"+ party comparison ({len(party_comparison)} industries) "
+          f"+ industry sponsor stats ({len(industry_sponsor_stats)} industries).")
