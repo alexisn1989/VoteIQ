@@ -213,6 +213,22 @@ def main() -> None:
     conn.row_factory = sqlite3.Row
     try:
         fed = _federal_donor_data(conn)
+
+        # Dedup candidates by name: multiple FEC name spellings can produce two
+        # entries with the same display name (e.g. "Tim Kaine" from "Kaine, Tim" with
+        # bioguide and "Tim Kaine" without). Prefer the entry whose party != "Unknown".
+        seen_names: dict[str, int] = {}   # name -> index in deduped list
+        deduped: list[dict] = []
+        for c in fed["candidates"]:
+            n = c["name"]
+            if n not in seen_names:
+                seen_names[n] = len(deduped)
+                deduped.append(c)
+            elif c["party"] != "Unknown":
+                # upgrade the existing entry to the better-party version
+                deduped[seen_names[n]] = c
+        fed["candidates"] = deduped
+
         fed["emp_sectors"] = build_emp_sectors(conn)
         fed["candidate_tiers"] = build_candidate_tiers(conn)
     finally:
