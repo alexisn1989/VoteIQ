@@ -199,6 +199,7 @@
 
   function showCandCard(cand,data){
     const card=document.getElementById('cand-card');
+    if(window.renderTierChart) window.renderTierChart((!cand||cand==='all')?null:cand);
     if(!cand||cand==='all'){card.className='';card.innerHTML='';return;}
     const tot=data.reduce((a,s)=>a+(+s.total),0);
     const don=data.reduce((a,s)=>a+(+s.donors),0);
@@ -287,7 +288,13 @@
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy);margin-bottom:14px">Employer Sector — by $ donated</div>
       <canvas id="chart-emp"></canvas>
     </div>
+    <div id="tiers-card" style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:20px;display:none">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy);margin-bottom:4px">Large-Donor Tiers — <span id="tiers-cand"></span></div>
+      <div style="font-size:0.72rem;color:var(--muted);margin-bottom:14px">Itemized receipts by gift size. FEC itemized data here is all ≥$1,000 — no small-donor tier exists.</div>
+      <canvas id="chart-tiers"></canvas>
+    </div>
   </div>
+  <div id="tiers-hint" style="font-size:0.8rem;color:var(--muted);margin-top:14px;max-width:680px">Select a candidate from the dropdown above to see how their itemized large-dollar receipts split across gift-size tiers.</div>
 </div>
 <script>
 (function(){
@@ -302,6 +309,39 @@
     return' '+x.label+': '+f+' ('+p+'%)';}}}}}});
   }
   const s=(D.emp_sectors||[]).filter(x=>x.label!=='Other'&&x.label!=='Unknown');if(s.length)donut('chart-emp',s.map(x=>x.label),s.map(x=>x.total));
+
+  // ── Per-candidate donor-tier doughnut (driven by candidate dropdown) ──
+  const TIERS = D.candidate_tiers || {};
+  const TIER_COLORS = {
+    'Mid-Level ($1K-$3.3K)':'#15803d',
+    'Max-Out ($3.3K-$6.6K)':'#b8963e',
+    'Super-Max ($6.6K+)':'#c8102e',
+  };
+  let tierChart=null;
+  window.renderTierChart=function(cand){
+    const card=document.getElementById('tiers-card');
+    const hint=document.getElementById('tiers-hint');
+    const rows=(cand && TIERS[cand]) ? TIERS[cand] : null;
+    if(!rows || !rows.length){
+      if(tierChart){tierChart.destroy();tierChart=null;}
+      card.style.display='none';
+      if(hint) hint.style.display='';
+      return;
+    }
+    if(hint) hint.style.display='none';
+    card.style.display='';
+    document.getElementById('tiers-cand').textContent=cand;
+    const labels=rows.map(r=>r.tier);
+    const vals=rows.map(r=>r.total);
+    const cols=labels.map((l,i)=>TIER_COLORS[l]||PAL[i%PAL.length]);
+    if(tierChart) tierChart.destroy();
+    const c=document.getElementById('chart-tiers');
+    tierChart=new Chart(c,{type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:cols,borderWidth:2,borderColor:'#fff'}]},
+      options:{responsive:true,plugins:{legend:{position:'right',labels:{font:{family:'Barlow',size:11},padding:8,boxWidth:12}},
+      tooltip:{callbacks:{label:x=>{const t=x.dataset.data.reduce((a,b)=>a+b,0);const p=(x.parsed/t*100).toFixed(1);
+      const f=x.parsed>=1e9?'$'+(x.parsed/1e9).toFixed(1)+'B':x.parsed>=1e6?'$'+(x.parsed/1e6).toFixed(1)+'M':'$'+(x.parsed/1e3).toFixed(0)+'K';
+      return' '+x.label+': '+f+' ('+p+'%)';}}}}}});
+  };
 })();
 </script>
 </body>
