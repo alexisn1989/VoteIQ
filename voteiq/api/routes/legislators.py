@@ -14,6 +14,20 @@ from fastapi.responses import HTMLResponse
 router = APIRouter(tags=["legislators"])
 
 _BASE_DIR = Path(__file__).resolve().parents[3]
+
+# ── Donor-legislation correlation cache ───────────────────────────────────────
+# Pre-loaded once; silently absent if cache not yet built.
+_DONOR_ANALYSIS_LOOKUP: dict[str, dict] = {}
+try:
+    _cache = json.loads(
+        (_BASE_DIR / "data" / "donor_map_cache.json").read_text(encoding="utf-8")
+    )
+    for _rec in _cache.get("state", {}).get("donor_legislation", []):
+        _nm = (_rec.get("name") or "").strip().lower()
+        if _nm:
+            _DONOR_ANALYSIS_LOOKUP[_nm] = _rec
+except Exception:
+    pass
 _data_dir_raw = os.getenv("DATA_DIR", str(_BASE_DIR))
 _DATA_DIR = _data_dir_raw if os.path.isdir(_data_dir_raw) else str(_BASE_DIR)
 _POLLS_DB = os.path.join(_DATA_DIR, "polls.db")
@@ -247,6 +261,18 @@ def _fetch_profile(conn, name: str) -> dict:
             if match:
                 tiers = _donor_tiers(match["candidate_name"])
     profile["donor_tiers"] = tiers
+
+    # ── Donor-industry analysis (from pre-computed correlation cache) ──────────
+    # Try exact name match first, then last-name fuzzy fallback.
+    resolved_lower = resolved.strip().lower()
+    donor_rec = _DONOR_ANALYSIS_LOOKUP.get(resolved_lower)
+    if not donor_rec and resolved_lower.split():
+        last_lower = resolved_lower.split()[-1].rstrip(".,")
+        donor_rec = next(
+            (v for k, v in _DONOR_ANALYSIS_LOOKUP.items() if k.split()[-1] == last_lower),
+            None,
+        )
+    profile["donor_analysis"] = donor_rec  # None if no match
 
     return profile
 

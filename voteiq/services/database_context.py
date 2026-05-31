@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 import sqlite3
@@ -1469,6 +1470,122 @@ def _add_generic_sql_search_context(blocks: list[str], query: str, terms: list[s
     blocks.append("\n".join(lines))
 
 
+# ── Donor-Influence Analysis Cache ───────────────────────────────────────────
+# Loaded once at module import; silently absent if cache not yet built.
+_ANALYSIS_CACHE: dict = {}
+try:
+    _cache_path = BASE_DIR / "data" / "donor_map_cache.json"
+    _ANALYSIS_CACHE = json.loads(_cache_path.read_text(encoding="utf-8"))
+except Exception:
+    pass
+
+_ANALYSIS_TRIGGER = re.compile(
+    r'\b(coi|conflict.of.interest|industry.influence|donor.alignment|dominion.energy|'
+    r'dominion.donor|energy.donor|donor.industry|industry.donor|top.donor.industry|'
+    r'most.funded|sponsor.rate|bill.success.rate|legislative.success|'
+    r'finance.donor|funded.legislator|who.funds|what.industry|alignment.score)\b',
+    re.I,
+)
+
+
+def _add_donor_analysis_context(blocks: list[str], query: str) -> None:
+    """Inject pre-computed donor-influence analysis into the chat context.
+    Includes aggregate findings (top CoI, Dominion, sponsor outcomes) and
+    per-legislator breakdown when a known name appears in the query.
+    """
+    state = _ANALYSIS_CACHE.get("state", {})
+    if not state:
+        return
+
+    dl  = state.get("donor_legislation", [])
+    dom = state.get("dominion_analysis", {})
+    iss = state.get("industry_sponsor_stats", [])
+    q_lower = query.lower()
+
+    lines: list[str] = ["=== Donor-Influence Analysis (VA 2025-2026 Session) ==="]
+
+    # ── Per-legislator lookup when a name is mentioned ──
+    matched_leg = None
+    for r in dl:
+        name = (r.get("name") or "").lower()
+        if not name:
+            continue
+        last = name.split()[-1]
+        if len(last) >= 4 and last in q_lower:
+            matched_leg = r
+            break
+
+    if matched_leg:
+        r = matched_leg
+        lines.append(f"\n-- {r['name']} — Donor-Industry Profile --")
+        lines.append(f"Top donor industry : {r.get('top_donor_industry', 'N/A')}")
+        lines.append(f"Funds from top industry : ${r.get('top_donor_amount', 0):,.0f}")
+        lines.append(f"Concentration : {r.get('concentration', 'N/A')}% of classified donor $")
+        lines.append(f"Vote alignment in top industry : {r.get('top_alignment', 'N/A')}%")
+        lines.append(f"CoI Score (0-100) : {r.get('coi_score', 'N/A')}")
+        lines.append(
+            f"Within-party CoI rank : "
+            f"{r.get('party_rank', 'N/A')} of {r.get('party_total', 'N/A')} ({r.get('party', '?')[:3]})"
+        )
+        lines.append(f"Sponsored bills in top industry : {r.get('sponsored_in_top', 0)}")
+        lines.append(f"Sponsor success rate (top industry) : {r.get('sponsor_success_rate', 'N/A')}%")
+        for d in (r.get("donor_industries") or [])[:5]:
+            lines.append(f"  {d['label']}: ${d['total']:,.0f} ({d['donors']} donors)")
+
+    # ── Top CoI legislators (always included) ──
+    top_coi = sorted(
+        [r for r in dl if r.get("coi_score") is not None],
+        key=lambda x: -x["coi_score"],
+    )[:10]
+    if top_coi:
+        lines.append("\n-- Top 10 Legislators by Conflict-of-Interest Score --")
+        lines.append("CoI Score = (% YES votes in top donor industry) × (log-scaled donor $)")
+        for r in top_coi:
+            lines.append(
+                f"  {r['name']} ({r.get('party','?')[:3]}, {r.get('chamber','?')}): "
+                f"CoI={r['coi_score']}  |  {r.get('top_donor_industry','?')} "
+                f"${r.get('top_donor_amount',0):,.0f}  |  alignment {r.get('top_alignment','?')}%"
+            )
+
+    # ── Dominion headline ──
+    dom_stats = dom.get("stats", {})
+    if dom_stats:
+        lines.append("\n-- Dominion Energy Influence --")
+        lines.append(f"Total Dominion utility donations : ${dom_stats.get('total_dominion_dollars',0):,.0f}")
+        lines.append(
+            f"Legislators with Dominion funding : "
+            f"{dom_stats.get('legislators_funded',0)} of {dom_stats.get('legislators_analyzed',0)}"
+        )
+        lines.append(
+            f"Top Dominion recipient : {dom_stats.get('top_recipient','')} "
+            f"(${dom_stats.get('top_recipient_amount',0):,.0f})"
+        )
+        top_bill = max(
+            (b for b in dom.get("per_bill", []) if b.get("ratio")),
+            key=lambda x: x["ratio"],
+            default=None,
+        )
+        if top_bill:
+            lines.append(
+                f"Largest YES/NO Dominion funding gap : {top_bill['bill_id']} — "
+                f"YES voters received {top_bill['ratio']}x more Dominion $ than NO voters"
+            )
+
+    # ── Sponsored-bill outcome rates ──
+    if iss:
+        lines.append("\n-- Sponsored-Bill Pass Rate by Donor Industry --")
+        lines.append("Gap = high-funded legislator pass rate minus low-funded legislator pass rate")
+        for r in iss:
+            gap = r.get("high_vs_low_gap")
+            gap_str = (f"+{gap}pp" if gap >= 0 else f"{gap}pp") if gap is not None else "n/a"
+            lines.append(
+                f"  {r['industry']}: {r['n']} legislators, avg donor ${r['avg_donor']:,.0f}, "
+                f"avg pass rate {r['avg_success']}%, gap {gap_str}"
+            )
+
+    blocks.append("\n".join(lines))
+
+
 def build_database_context(query: str, max_chars: int = 22000) -> str:
     q = query or ""
     blocks: list[str] = []
@@ -1495,6 +1612,12 @@ def build_database_context(query: str, max_chars: int = 22000) -> str:
         _add_campaign_finance_context(blocks, q, terms)
     _add_person_vote_context(blocks, q, terms, session)
     _add_keyword_context(blocks, q, terms, session)
+
+    # Donor-influence analysis for CoI / Dominion / industry sponsor queries
+    # Also triggered by any campaign-finance query so named-legislator lookups
+    # can return their donor-industry breakdown.
+    if _ANALYSIS_TRIGGER.search(q) or _is_campaign_finance_query(q):
+        _add_donor_analysis_context(blocks, q)
 
     # Add comprehensive SQL table search as fallback for any unmatched keywords
     # This ensures all SQL tables are searched before RAG context

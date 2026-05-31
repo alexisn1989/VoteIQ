@@ -224,6 +224,7 @@
       <button class="tab-btn" data-tab="bills">Bills Introduced <span class="tab-count" id="tc-bills"></span></button>
       <button class="tab-btn" data-tab="cosponsor">Co-Sponsored <span class="tab-count" id="tc-cosponsor"></span></button>
       <button class="tab-btn" data-tab="finance">Campaign Funding</button>
+      <button class="tab-btn" data-tab="donor-analysis">Industry Analysis</button>
     </div>
 
     <!-- Recent Votes panel -->
@@ -282,6 +283,13 @@
     <div class="tab-panel" id="panel-finance">
       <div class="data-table-wrap" style="padding:24px">
         <div id="finance-content"></div>
+      </div>
+    </div>
+
+    <!-- Industry Analysis panel -->
+    <div class="tab-panel" id="panel-donor-analysis">
+      <div class="data-table-wrap" style="padding:24px">
+        <div id="donor-analysis-content"></div>
       </div>
     </div>
 
@@ -600,6 +608,93 @@
         <strong>How to read this data:</strong> This shows who donated to this legislator's campaign overall — not who supported any specific bill they introduced. Donors did not select these bills, may not have known about them, and no link between donations and any legislative outcome is implied or shown. For lobbying activity on specific bills, see Virginia's lobbyist disclosure records. <strong>Correlation does not imply causation.</strong> Source: Virginia SBE public records.
       </div>`;
   }
+
+  // ── Industry Analysis tab ─────────────────────────────────────────────────────
+  (function(){
+    const da  = D.donor_analysis || null;
+    const div = document.getElementById('donor-analysis-content');
+    if (!da) {
+      div.innerHTML = '<div style="color:var(--muted);font-size:.83rem;font-style:italic;padding:8px 0">No donor-industry analysis data available for this legislator.</div>';
+      return;
+    }
+    function fmtM(v){ if(!v) return '$0'; if(v>=1e6) return '$'+(v/1e6).toFixed(2)+'M'; if(v>=1e3) return '$'+(v/1e3).toFixed(0)+'K'; return '$'+Math.round(v); }
+    const coiCol = da.coi_score!=null ? (da.coi_score>=85?'#c8102e':da.coi_score>=60?'#b8963e':'#15803d') : '#7a7468';
+    const alnCol = da.top_alignment!=null ? (da.top_alignment>=90?'#c8102e':da.top_alignment>=70?'#b8963e':'#15803d') : '#9ca3af';
+    const domFlag = (da.dom_total>0)
+      ? `<div style="background:#fff7ed;border:1px solid #fdba74;border-radius:6px;padding:10px 14px;font-size:.8rem;color:#7c2d12;margin-bottom:16px">
+           <strong>⚡ Dominion Energy funding:</strong> ${fmtM(da.dom_total)} received from Dominion utility employer records
+           ${da.energy_votes && Object.keys(da.energy_votes).length ? ' · ' + Object.values(da.energy_votes).filter(v=>v==='yes').length + ' YES / ' + Object.values(da.energy_votes).filter(v=>v==='no').length + ' NO on tracked energy bills' : ''}
+         </div>`
+      : '';
+
+    // Key stat row
+    const sponsTag = da.sponsor_success_rate!=null
+      ? `<div style="text-align:center;padding:12px 16px;background:#fff;border:1px solid #d6d0c4;border-radius:8px;min-width:110px;flex:1">
+           <div style="font-size:1.2rem;font-weight:700;color:${da.sponsor_success_rate>=60?'#15803d':da.sponsor_success_rate>=30?'#b8963e':'#c8102e'}">${da.sponsor_success_rate.toFixed(0)}%</div>
+           <div style="font-size:.66rem;color:#6b6560;text-transform:uppercase;letter-spacing:.07em;margin-top:2px">Sponsor Pass Rate</div>
+           <div style="font-size:.7rem;color:#6b6560">${da.sponsored_passed||0}/${da.sponsored_in_top||0} bills</div>
+         </div>`
+      : '';
+
+    const statsRow = `
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">
+        <div style="text-align:center;padding:12px 16px;background:#fff;border:1px solid #d6d0c4;border-radius:8px;min-width:110px;flex:1">
+          <div style="font-size:1.2rem;font-weight:700;color:${coiCol}">${da.coi_score!=null?da.coi_score.toFixed(0):'—'}</div>
+          <div style="font-size:.66rem;color:#6b6560;text-transform:uppercase;letter-spacing:.07em;margin-top:2px">CoI Score</div>
+          <div style="font-size:.7rem;color:#6b6560">Party rank: ${da.party_rank||'—'} / ${da.party_total||'—'}</div>
+        </div>
+        <div style="text-align:center;padding:12px 16px;background:#fff;border:1px solid #d6d0c4;border-radius:8px;min-width:110px;flex:1">
+          <div style="font-size:1.2rem;font-weight:700;color:${alnCol}">${da.top_alignment!=null?da.top_alignment.toFixed(0)+'%':'—'}</div>
+          <div style="font-size:.66rem;color:#6b6560;text-transform:uppercase;letter-spacing:.07em;margin-top:2px">Vote Alignment</div>
+          <div style="font-size:.7rem;color:#6b6560">${da.top_donor_industry||'—'}</div>
+        </div>
+        <div style="text-align:center;padding:12px 16px;background:#fff;border:1px solid #d6d0c4;border-radius:8px;min-width:110px;flex:1">
+          <div style="font-size:1.2rem;font-weight:700;color:#c8102e">${fmtM(da.top_donor_amount)}</div>
+          <div style="font-size:.66rem;color:#6b6560;text-transform:uppercase;letter-spacing:.07em;margin-top:2px">Top Industry $</div>
+          <div style="font-size:.7rem;color:#6b6560">Conc. ${da.concentration!=null?da.concentration.toFixed(0)+'%':'—'}</div>
+        </div>
+        ${sponsTag}
+      </div>`;
+
+    // Industry breakdown bars
+    const inds = (da.donor_industries || []).slice(0, 6);
+    const maxInd = Math.max(...inds.map(d=>d.total), 1);
+    const ICOLS = {Finance:'#0e7490',Energy:'#c8102e',Healthcare:'#1a52c8',
+      'Real Estate':'#b45309',Education:'#6b21a8',Defense:'#374151',
+      Legal:'#2a6035',Technology:'#0369a1',Labor:'#166534'};
+    const indBars = inds.map(d=>{
+      const pct = Math.round(d.total/maxInd*100);
+      const col = ICOLS[d.label] || '#7a7468';
+      const isTop = d.label === da.top_donor_industry;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f0ece4">
+        <div style="min-width:100px;font-size:.78rem;font-weight:${isTop?'700':'400'};color:${isTop?'#0d1b2a':'#6b6560'}">${d.label}</div>
+        <div style="flex:1;height:9px;border-radius:5px;background:#e5e7eb;min-width:80px">
+          <div style="width:${pct}%;height:100%;border-radius:5px;background:${col}"></div>
+        </div>
+        <div style="min-width:52px;text-align:right;font-size:.78rem;font-weight:600;color:#c8102e">${fmtM(d.total)}</div>
+        <div style="min-width:42px;text-align:right;font-size:.72rem;color:#6b6560">${d.donors} donors</div>
+      </div>`;
+    }).join('');
+
+    div.innerHTML = `
+      ${statsRow}
+      ${domFlag}
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6b6560;margin-bottom:10px">
+        Donor Industries (VA SBE Individual Contributions)
+      </div>
+      <div style="background:#fff;border:1px solid #d6d0c4;border-radius:8px;padding:14px;margin-bottom:16px">
+        ${indBars||'<div style="color:#6b6560;font-size:.82rem;font-style:italic">No classified industry data.</div>'}
+      </div>
+      <div style="font-size:.76rem;color:#6b6560;line-height:1.55;background:#fff;border:1px solid #d6d0c4;border-radius:6px;padding:12px 16px">
+        <strong style="color:#0d1b2a">How to read:</strong>
+        <strong>CoI Score</strong> = (% YES votes on bills in top donor industry) × (log-scaled $ magnitude) — combines both dollars and votes.
+        <strong>Vote Alignment</strong> = % of YES votes on bills classified in this legislator's top donor industry.
+        <strong>Sponsor Pass Rate</strong> = % of primary-sponsored bills in the top donor industry that passed.
+        All figures are observational correlations — this does not imply donor influence, causation, or improper conduct.
+        <a href="/analysis" style="color:#0d1b2a;font-weight:600">→ Full analysis page</a> ·
+        <a href="/donor-legislation" style="color:#0d1b2a;font-weight:600">All legislators →</a>
+      </div>`;
+  })();
 
   // ── Show tabs ─────────────────────────────────────────────────────────────────
   document.getElementById('tabs-wrap').style.display = 'block';
