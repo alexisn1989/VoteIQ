@@ -432,12 +432,45 @@ def build_retired_sectors(conn):
     return result
 
 
+def build_top_employers(conn, n=20):
+    """Top N named employers by total donation, skipping status entries."""
+    rows = conn.execute("""
+        SELECT employer, ROUND(SUM(amount),0) AS total, COUNT(*) AS donors
+        FROM va_cf_schedule_a
+        WHERE is_individual=1 AND amount>0
+          AND employer IS NOT NULL AND employer != ''
+        GROUP BY lower(trim(employer))
+        ORDER BY total DESC
+        LIMIT 500
+    """).fetchall()
+
+    results = []
+    for r in rows:
+        emp = (r["employer"] or "").strip()
+        if _SKIP_PATTERNS.match(emp.lower()):
+            continue
+        results.append({
+            "rank": len(results) + 1,
+            "name": emp,
+            "total": round(r["total"], 0),
+            "donors": r["donors"],
+        })
+        if len(results) == n:
+            break
+
+    print(f"\n[top_employers] Top {len(results)} named employers:")
+    for e in results:
+        print(f"  {e['rank']:>2}. {e['name']:<45} ${e['total']:>12,.0f}  ({e['donors']:,} donors)")
+    return results
+
+
 if __name__ == "__main__":
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
 
     emp_sectors     = build_emp_sectors(conn)
     retired_sectors = build_retired_sectors(conn)
+    top_employers   = build_top_employers(conn, n=20)
     conn.close()
 
     with open(CACHE_PATH, "r", encoding="utf-8") as f:
@@ -445,8 +478,9 @@ if __name__ == "__main__":
 
     cache["state"]["emp_sectors"]     = emp_sectors
     cache["state"]["retired_sectors"] = retired_sectors
+    cache["state"]["top_employers"]   = top_employers
 
     with open(CACHE_PATH, "w", encoding="utf-8") as f:
         json.dump(cache, f, separators=(",", ":"))
 
-    print(f"\nCache updated — {len(emp_sectors)} employer sectors, {len(retired_sectors)} retired occupation sectors written.")
+    print(f"\nCache updated — {len(emp_sectors)} employer sectors, {len(retired_sectors)} retired sectors, {len(top_employers)} top employers written.")

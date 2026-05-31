@@ -304,6 +304,21 @@
       <canvas id="chart-retired"></canvas>
     </div>
   </div>
+  <!-- Top 20 Employers Table -->
+  <div style="margin-top:24px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:20px">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy);margin-bottom:16px">Top 20 Employers — by $ Donated</div>
+    <table id="tbl-top-emp" style="width:100%;border-collapse:collapse;font-family:'Barlow',sans-serif;font-size:0.82rem">
+      <thead>
+        <tr style="border-bottom:2px solid var(--border);color:var(--muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em">
+          <th style="text-align:left;padding:4px 8px 8px 4px;width:28px">#</th>
+          <th style="text-align:left;padding:4px 8px 8px">Employer</th>
+          <th style="text-align:right;padding:4px 8px 8px">Total Donated</th>
+          <th style="text-align:right;padding:4px 4px 8px 8px">Donors</th>
+        </tr>
+      </thead>
+      <tbody id="tbl-top-emp-body"></tbody>
+    </table>
+  </div>
 </div>
 <script>
 (function(){
@@ -320,6 +335,18 @@
   const t=D.donor_types||[];if(t.length)donut('chart-type',t.map(x=>x.label),t.map(x=>x.total));
   const s=(D.emp_sectors||[]).filter(x=>x.label!=='Other'&&x.label!=='Unknown');if(s.length)donut('chart-sector',s.map(x=>x.label),s.map(x=>x.total));
   const r=(D.retired_sectors||[]).filter(x=>x.label!=='Other'&&x.label!=='Unknown');if(r.length)donut('chart-retired',r.map(x=>x.label),r.map(x=>x.total));
+  // Top employers table
+  const tbody=document.getElementById('tbl-top-emp-body');
+  if(tbody)(D.top_employers||[]).forEach((e,i)=>{
+    const fmt=v=>v>=1e6?'$'+(v/1e6).toFixed(2)+'M':v>=1e3?'$'+(v/1e3).toFixed(0)+'K':'$'+v;
+    const bg=i%2===0?'#f9fafb':'#fff';
+    tbody.innerHTML+=`<tr style="background:${bg};border-bottom:1px solid #f0f0f0">
+      <td style="padding:7px 8px 7px 4px;color:var(--muted);font-size:0.75rem">${e.rank}</td>
+      <td style="padding:7px 8px;font-weight:500;color:var(--navy)">${e.name}</td>
+      <td style="padding:7px 8px;text-align:right;font-weight:600;color:var(--red)">${fmt(e.total)}</td>
+      <td style="padding:7px 4px 7px 8px;text-align:right;color:var(--muted)">${e.donors.toLocaleString()}</td>
+    </tr>`;
+  });
 })();
 </script>
 </body>
