@@ -148,9 +148,10 @@
           <th onclick="sortBy('party')">Party</th>
           <th onclick="sortBy('chamber')">Chamber</th>
           <th onclick="sortBy('top_donor_industry')">Top Donor Industry</th>
-          <th onclick="sortBy('top_donor_amount')" class="sort-desc">$ from Industry</th>
+          <th onclick="sortBy('top_donor_amount')">$ from Industry</th>
           <th>Votes (Y / N)</th>
           <th onclick="sortBy('top_alignment')">Alignment %</th>
+          <th onclick="sortBy('coi_score')" class="sort-desc" title="Dollar-weighted conflict-of-interest score (0–100)">CoI Score</th>
           <th></th>
         </tr>
       </thead>
@@ -158,12 +159,49 @@
     </table>
   </div>
 
+  <!-- Party Comparison -->
+  <div style="margin-top:36px">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:12px">
+      Party Alignment by Industry
+      <span style="flex:1;height:1px;background:var(--border);display:inline-block"></span>
+    </div>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:16px;max-width:760px">
+      For each policy industry: aggregate YES-rate on related bills and total $ received from that industry's donors, split by party.
+    </p>
+    <div style="background:#fff8e6;border:1px solid var(--gold);border-radius:8px;padding:14px 18px;margin-bottom:18px;font-size:.8rem;color:#7a5e1a;line-height:1.55">
+      <strong>⚠ Read with caution — majority/minority confound:</strong> In the 2026 session Democrats hold the majority in both the House and Senate.
+      The majority party passes its agenda, so its members show high YES-rates on bills that reach the floor while the minority votes NO.
+      The large Dem-vs-Rep alignment gaps below <strong>primarily reflect who controls the chamber, not donor influence.</strong>
+      Compare donor dollars and alignment <em>within</em> a party for a more meaningful signal.
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Policy Industry</th>
+            <th style="text-align:center" colspan="2">Democrat</th>
+            <th style="text-align:center" colspan="2">Republican</th>
+          </tr>
+          <tr style="background:#1a3050">
+            <th></th>
+            <th style="text-align:right">YES-rate</th>
+            <th style="text-align:right">Donor $</th>
+            <th style="text-align:right">YES-rate</th>
+            <th style="text-align:right">Donor $</th>
+          </tr>
+        </thead>
+        <tbody id="party-body"></tbody>
+      </table>
+    </div>
+  </div>
+
   <div class="method-note">
     <strong>Methodology:</strong> Donor industries are classified from the employer field of VA SBE individual contribution records using keyword matching.
     Bill industries are classified from bill titles in the LegiScan VA 2025–2026 legislative session.
     <strong>Alignment score</strong> = % of YES votes on bills classified in the legislator's top donor industry (from <em>va_legislator_recent_votes</em>, final floor votes only).
-    A 100% score means the legislator voted YES on every bill in that industry — common on bipartisan measures.
-    <strong>Higher scores are not inherently problematic</strong> — many industry bills pass with broad support. Use in conjunction with donor amounts and bill specifics.
+    <strong>CoI Score (0–100)</strong> = alignment weighted by the log-scaled dollar magnitude of the top donor industry — a legislator needs both a high YES-rate <em>and</em> large donations from that industry to score high.
+    A 100% alignment means the legislator voted YES on every bill in that industry — common on bipartisan measures.
+    <strong>Higher scores are not inherently problematic</strong> — many industry bills pass with broad support, and majority-party members vote YES on most floor bills regardless of donors. Use alongside donor amounts and bill specifics, not as a standalone judgment.
   </div>
 </div>
 
@@ -176,7 +214,7 @@
   let curParty    = 'all';
   let curChamber  = 'all';
   let curIndustry = 'all';
-  let sortKey     = 'top_alignment';
+  let sortKey     = 'coi_score';
   let sortDir     = -1; // -1 = desc
 
   // ── Populate industry dropdown ──
@@ -209,6 +247,11 @@
     if(p.startsWith('Dem')) return 'D';
     if(p.startsWith('Rep')) return 'R';
     return p[0];
+  }
+  function coiCell(v){
+    if(v==null) return '<span style="color:var(--muted)">—</span>';
+    const col = v>=85?'#c8102e':v>=60?'#b8963e':'#15803d';
+    return `<span style="display:inline-block;min-width:34px;text-align:center;padding:3px 9px;border-radius:6px;font-weight:700;font-size:.82rem;color:#fff;background:${col}">${v.toFixed(0)}</span>`;
   }
 
   // ── Filter + sort ──
@@ -262,10 +305,11 @@
               <span class="aln-pct ${alnCls}">${alnTxt}</span>
             </div>
           </td>
+          <td>${coiCell(r.coi_score)}</td>
           <td><button class="expand-btn" onclick="toggleDetail(${i})">Detail</button></td>
         </tr>
         <tr id="detail-${i}" class="detail-row" style="display:none">
-          <td colspan="8">${buildDetail(r)}</td>
+          <td colspan="9">${buildDetail(r)}</td>
         </tr>`;
     });
   }
@@ -365,7 +409,30 @@
     el.style.display=el.style.display==='none'?'table-row':'none';
   };
 
+  // ── Party comparison table ──
+  function renderParty(){
+    const pbody = document.getElementById('party-body');
+    if(!pbody) return;
+    const PC = (D.donor_legislation_party || []);
+    function alnHtml(a){
+      if(a==null) return '<span style="color:var(--muted)">n/a</span>';
+      const col=a>=85?'#c8102e':a>=60?'#b8963e':'#15803d';
+      return `<span style="font-weight:700;color:${col}">${a.toFixed(0)}%</span>`;
+    }
+    PC.forEach((r,i)=>{
+      const bg=i%2===0?'#f9f6f0':'#fff';
+      pbody.innerHTML+=`<tr style="background:${bg}">
+        <td><span class="industry-pill">${r.industry}</span></td>
+        <td style="text-align:right">${alnHtml(r.Dem.alignment)}<span style="color:var(--muted);font-size:.72rem"> (${r.Dem.yes}/${r.Dem.yes+r.Dem.no})</span></td>
+        <td style="text-align:right;font-weight:600;color:var(--dem)">${fmt(r.Dem.donor_total||0)}</td>
+        <td style="text-align:right">${alnHtml(r.Rep.alignment)}<span style="color:var(--muted);font-size:.72rem"> (${r.Rep.yes}/${r.Rep.yes+r.Rep.no})</span></td>
+        <td style="text-align:right;font-weight:600;color:var(--rep)">${fmt(r.Rep.donor_total||0)}</td>
+      </tr>`;
+    });
+  }
+
   render();
+  renderParty();
 })();
 </script>
 </body>

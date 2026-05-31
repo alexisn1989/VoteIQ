@@ -10,7 +10,7 @@ For each legislator:
 
 Output written to cache["state"]["donor_legislation"] in donor_map_cache.json
 """
-import sqlite3, json, re, sys
+import sqlite3, json, re, sys, math
 from collections import defaultdict
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -336,17 +336,89 @@ def build_correlation(conn):
             "sponsored_bills":   leg_sponsored[:10],
         })
 
-    # Sort by top_alignment descending (nulls last), then by donor amount
-    results.sort(key=lambda x: (-(x["top_alignment"] or -1), -x["top_donor_amount"]))
+    # ── Conflict-of-Interest score ──────────────────────────────────────────
+    # Combines vote alignment with the dollar magnitude of the top donor industry.
+    # CoI = (alignment/100) * dollar_factor * 100, where dollar_factor is a
+    # log-scaled normalization of the donor amount (0..1). Both high alignment
+    # AND high dollars are required for a high score.
+    max_amt = max((r["top_donor_amount"] for r in results
+                   if r["top_alignment"] is not None), default=0)
+    log_max = math.log10(max_amt + 1) if max_amt > 0 else 1
+    for r in results:
+        if r["top_alignment"] is None or r["top_donor_amount"] <= 0:
+            r["coi_score"] = None
+            continue
+        dollar_factor = math.log10(r["top_donor_amount"] + 1) / log_max
+        r["coi_score"] = round((r["top_alignment"] / 100) * dollar_factor * 100, 1)
+
+    # Sort by CoI score descending (nulls last), then donor amount
+    results.sort(key=lambda x: (-(x["coi_score"] if x["coi_score"] is not None else -1),
+                                -x["top_donor_amount"]))
 
     print(f"\nBuilt correlation for {len(results)} legislators")
-    print(f"{'Legislator':<30} {'Party':<5} {'Top Donor Industry':<20} {'$':>10}  {'Alignment':>10}")
-    print("-" * 80)
+    print(f"{'Legislator':<28} {'P':<2} {'Top Donor Industry':<18} {'$':>10}  {'Aln':>5}  {'CoI':>5}")
+    print("-" * 78)
     for r in results[:25]:
-        aln = f"{r['top_alignment']:.0f}%" if r['top_alignment'] is not None else "  n/a"
-        print(f"  {r['name']:<28} {r['party'][:1]:<5} {(r['top_donor_industry'] or ''):<20} "
-              f"${r['top_donor_amount']:>9,.0f}  {aln:>8}")
+        aln = f"{r['top_alignment']:.0f}%" if r['top_alignment'] is not None else " n/a"
+        coi = f"{r['coi_score']:.0f}" if r['coi_score'] is not None else " n/a"
+        print(f"  {r['name']:<26} {r['party'][:1]:<2} {(r['top_donor_industry'] or ''):<18} "
+              f"${r['top_donor_amount']:>9,.0f}  {aln:>5}  {coi:>5}")
     return results
+
+
+def build_party_comparison(correlation):
+    """
+    Aggregate vote alignment and donor dollars by policy industry, split by party.
+    Shows whether Dems vs Reps vote more favorably toward industries that fund them.
+    """
+    # industry -> party -> {yes, no, donor_total, donor_count, legislators}
+    agg = defaultdict(lambda: defaultdict(
+        lambda: {"yes": 0, "no": 0, "donor_total": 0.0, "n": 0}))
+
+    for r in correlation:
+        p = r["party"]
+        party = "Dem" if (p or "").startswith("Dem") else \
+                "Rep" if (p or "").startswith("Rep") else "Other"
+        if party == "Other":
+            continue
+        # Vote alignment per industry
+        for ind, d in (r.get("industry_votes") or {}).items():
+            agg[ind][party]["yes"] += d["yes"]
+            agg[ind][party]["no"]  += d["no"]
+        # Donor dollars by industry
+        for d in (r.get("donor_industries") or []):
+            agg[d["label"]][party]["donor_total"] += d["total"]
+            agg[d["label"]][party]["n"] += 1
+
+    out = []
+    for ind, parties in agg.items():
+        row = {"industry": ind}
+        for party in ("Dem", "Rep"):
+            pd = parties.get(party, {"yes": 0, "no": 0, "donor_total": 0.0, "n": 0})
+            tv = pd["yes"] + pd["no"]
+            row[party] = {
+                "yes": pd["yes"], "no": pd["no"],
+                "alignment": round(pd["yes"] / tv * 100, 1) if tv else None,
+                "donor_total": round(pd["donor_total"], 0),
+                "legislators": pd["n"],
+            }
+        # Only keep industries with some vote data on either side
+        if (row["Dem"]["yes"] + row["Dem"]["no"] +
+                row["Rep"]["yes"] + row["Rep"]["no"]) > 0:
+            out.append(row)
+
+    # Sort by total donor dollars descending
+    out.sort(key=lambda x: -(x["Dem"]["donor_total"] + x["Rep"]["donor_total"]))
+
+    print(f"\nParty comparison across {len(out)} industries")
+    print(f"{'Industry':<22} {'Dem Aln':>8} {'Dem $':>12}   {'Rep Aln':>8} {'Rep $':>12}")
+    print("-" * 72)
+    for r in out[:15]:
+        da = f"{r['Dem']['alignment']:.0f}%" if r['Dem']['alignment'] is not None else "  n/a"
+        ra = f"{r['Rep']['alignment']:.0f}%" if r['Rep']['alignment'] is not None else "  n/a"
+        print(f"  {r['industry']:<20} {da:>8} ${r['Dem']['donor_total']:>10,.0f}   "
+              f"{ra:>8} ${r['Rep']['donor_total']:>10,.0f}")
+    return out
 
 
 if __name__ == "__main__":
@@ -356,12 +428,16 @@ if __name__ == "__main__":
     correlation = build_correlation(conn)
     conn.close()
 
+    party_comparison = build_party_comparison(correlation)
+
     with open(CACHE_PATH, "r", encoding="utf-8") as f:
         cache = json.load(f)
 
-    cache["state"]["donor_legislation"] = correlation
+    cache["state"]["donor_legislation"]       = correlation
+    cache["state"]["donor_legislation_party"] = party_comparison
 
     with open(CACHE_PATH, "w", encoding="utf-8") as f:
         json.dump(cache, f, separators=(",", ":"))
 
-    print(f"\nCache updated — donor_legislation written ({len(correlation)} legislators).")
+    print(f"\nCache updated — donor_legislation ({len(correlation)} legislators) "
+          f"+ party comparison ({len(party_comparison)} industries).")
