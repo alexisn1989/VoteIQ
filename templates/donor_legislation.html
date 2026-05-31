@@ -120,6 +120,29 @@
 </div>
 
 <div class="content">
+  <!-- Within-party leaderboards (the meaningful signal) -->
+  <div style="font-family:'Barlow Condensed',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:12px">
+    Highest Conflict-of-Interest — Within Each Party
+    <span style="flex:1;height:1px;background:var(--border);display:inline-block"></span>
+  </div>
+  <p style="font-size:.82rem;color:var(--muted);margin-bottom:16px;max-width:760px">
+    Ranked within party to remove the majority-control confound. These legislators have the strongest combination of donor dollars and voting alignment in their top donor industry, relative to their own caucus.
+  </p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:20px;margin-bottom:32px">
+    <div style="background:#fff;border:1px solid var(--border);border-top:3px solid var(--dem);border-radius:8px;padding:18px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--dem);margin-bottom:12px">Democrats — Top 8 by CoI</div>
+      <div id="lb-dem"></div>
+    </div>
+    <div style="background:#fff;border:1px solid var(--border);border-top:3px solid var(--rep);border-radius:8px;padding:18px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--rep);margin-bottom:12px">Republicans — Top 8 by CoI</div>
+      <div id="lb-rep"></div>
+    </div>
+  </div>
+
+  <div style="font-family:'Barlow Condensed',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:12px">
+    All Legislators
+    <span style="flex:1;height:1px;background:var(--border);display:inline-block"></span>
+  </div>
   <div class="filters">
     <span class="filter-label">Party</span>
     <div class="btn-group">
@@ -149,6 +172,7 @@
           <th onclick="sortBy('chamber')">Chamber</th>
           <th onclick="sortBy('top_donor_industry')">Top Donor Industry</th>
           <th onclick="sortBy('top_donor_amount')">$ from Industry</th>
+          <th onclick="sortBy('concentration')" title="Share of this legislator's classified donor dollars that come from their single top industry">Conc.</th>
           <th>Votes (Y / N)</th>
           <th onclick="sortBy('top_alignment')">Alignment %</th>
           <th onclick="sortBy('coi_score')" class="sort-desc" title="Dollar-weighted conflict-of-interest score (0–100)">CoI Score</th>
@@ -291,13 +315,20 @@
         ? `<span class="v-yes">✓ ${topIv.yes}</span> / <span class="v-no">✗ ${topIv.no}</span>`
         : '<span style="color:var(--muted)">—</span>';
 
+      // Sponsored-in-top-industry badge
+      const sponsTag = (r.sponsored_in_top && r.sponsored_in_top > 0)
+        ? `<span title="Sponsored ${r.sponsored_in_top} bill${r.sponsored_in_top>1?'s':''} in this same industry" style="display:inline-block;margin-left:5px;padding:1px 6px;border-radius:10px;font-size:.66rem;font-weight:700;background:#fde68a;color:#7a5e1a;vertical-align:middle">✎ ${r.sponsored_in_top}</span>`
+        : '';
+      const concTxt = (r.concentration!=null) ? r.concentration.toFixed(0)+'%' : '—';
+
       tbody.innerHTML+=`
         <tr id="row-${i}">
           <td><strong style="font-size:.88rem">${r.name||'—'}</strong></td>
           <td><span class="party-chip ${chipCls}">${pi}</span></td>
           <td style="font-size:.8rem;color:var(--muted)">${r.chamber||'—'}</td>
-          <td><span class="industry-pill">${r.top_donor_industry||'—'}</span></td>
+          <td><span class="industry-pill">${r.top_donor_industry||'—'}</span>${sponsTag}</td>
           <td style="font-weight:700;color:var(--red)">${fmt(r.top_donor_amount||0)}</td>
+          <td style="font-size:.8rem;color:var(--muted)">${concTxt}</td>
           <td><div class="vote-counts">${voteStr}</div></td>
           <td>
             <div class="aln-wrap">
@@ -309,7 +340,7 @@
           <td><button class="expand-btn" onclick="toggleDetail(${i})">Detail</button></td>
         </tr>
         <tr id="detail-${i}" class="detail-row" style="display:none">
-          <td colspan="9">${buildDetail(r)}</td>
+          <td colspan="10">${buildDetail(r)}</td>
         </tr>`;
     });
   }
@@ -431,8 +462,38 @@
     });
   }
 
+  // ── Within-party CoI leaderboards ──
+  function renderLeaderboards(){
+    function build(prefix, elId){
+      const el = document.getElementById(elId);
+      if(!el) return;
+      const members = RAW
+        .filter(r=>partyInitial(r.party)===prefix && r.coi_score!=null && r.party_rank!=null)
+        .sort((a,b)=>a.party_rank-b.party_rank)
+        .slice(0,8);
+      if(!members.length){ el.innerHTML='<div class="no-data">No data</div>'; return; }
+      el.innerHTML = members.map(r=>{
+        const sponsTag = (r.sponsored_in_top && r.sponsored_in_top>0)
+          ? `<span title="Sponsored ${r.sponsored_in_top} bill${r.sponsored_in_top>1?'s':''} in this industry" style="margin-left:5px;padding:0 5px;border-radius:8px;font-size:.62rem;font-weight:700;background:#fde68a;color:#7a5e1a">✎ ${r.sponsored_in_top}</span>`
+          : '';
+        return `
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0ece4">
+            <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--muted);min-width:18px;font-size:.85rem">${r.party_rank}</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:700;font-size:.84rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.name||'—'}</div>
+              <div style="font-size:.72rem;color:var(--muted)">${r.top_donor_industry||'—'} · ${fmt(r.top_donor_amount||0)}${sponsTag}</div>
+            </div>
+            ${coiCell(r.coi_score)}
+          </div>`;
+      }).join('');
+    }
+    build('D','lb-dem');
+    build('R','lb-rep');
+  }
+
   render();
   renderParty();
+  renderLeaderboards();
 })();
 </script>
 </body>

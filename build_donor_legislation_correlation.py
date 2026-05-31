@@ -321,8 +321,16 @@ def build_correlation(conn):
         if top_donor_ind and top_donor_ind in industry_votes:
             top_alignment = industry_votes[top_donor_ind]["alignment"]
 
+        # Donor concentration: top industry $ as a share of all classified industry $
+        classified_total = sum(d["total"] for d in donor_inds)
+        concentration = round(top_donor_amount / classified_total * 100, 1) \
+            if classified_total > 0 else None
+
         # Sponsored bills classified
         leg_sponsored = [b for b in sponsored.get(key, []) if b["industry"]]
+        # How many sponsored bills are in the legislator's top donor industry?
+        sponsored_in_top = sum(1 for b in leg_sponsored
+                               if b["industry"] == top_donor_ind)
 
         results.append({
             "name":              voter_nm,
@@ -331,9 +339,12 @@ def build_correlation(conn):
             "donor_industries":  donor_inds[:5],
             "top_donor_industry": top_donor_ind,
             "top_donor_amount":  top_donor_amount,
+            "classified_total":  round(classified_total, 0),
+            "concentration":     concentration,
             "industry_votes":    industry_votes,
             "top_alignment":     top_alignment,
             "sponsored_bills":   leg_sponsored[:10],
+            "sponsored_in_top":  sponsored_in_top,
         })
 
     # ── Conflict-of-Interest score ──────────────────────────────────────────
@@ -354,6 +365,21 @@ def build_correlation(conn):
     # Sort by CoI score descending (nulls last), then donor amount
     results.sort(key=lambda x: (-(x["coi_score"] if x["coi_score"] is not None else -1),
                                 -x["top_donor_amount"]))
+
+    # ── Within-party CoI rank ───────────────────────────────────────────────
+    # The cross-party gap is confounded by chamber control, so within-party
+    # rank is the more meaningful signal. Rank by CoI inside each party.
+    for party_prefix in ("Dem", "Rep"):
+        members = [r for r in results
+                   if (r["party"] or "").startswith(party_prefix)
+                   and r["coi_score"] is not None]
+        members.sort(key=lambda x: -x["coi_score"])
+        for rank, r in enumerate(members, 1):
+            r["party_rank"]  = rank
+            r["party_total"] = len(members)
+    for r in results:
+        r.setdefault("party_rank", None)
+        r.setdefault("party_total", None)
 
     print(f"\nBuilt correlation for {len(results)} legislators")
     print(f"{'Legislator':<28} {'P':<2} {'Top Donor Industry':<18} {'$':>10}  {'Aln':>5}  {'CoI':>5}")
