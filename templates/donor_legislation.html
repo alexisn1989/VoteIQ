@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Donor–Legislation Alignment · VoteIQ Virginia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" />
+  <style>
+    :root{--navy:#0d1b2a;--red:#c8102e;--cream:#f4f1eb;--gold:#b8963e;--dem:#1a52c8;--rep:#c8102e;--border:#d6d0c4;--muted:#6b6560;--green:#15803d}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Barlow',system-ui,sans-serif;background:var(--cream);color:var(--navy);min-height:100vh}
+    header{background:#fff;border-bottom:2px solid #ddd8cc;padding:10px 28px;display:flex;align-items:center;gap:18px}
+    nav{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+    nav a{color:#0d1b2a;text-decoration:none;font-size:.82rem;font-weight:600;padding:5px 12px;border-radius:4px;transition:background .15s}
+    nav a:hover,nav a.active{background:rgba(13,27,42,.08);font-weight:700}
+    .page-hero{background:var(--navy);color:#fff;padding:28px 32px 24px;border-bottom:3px solid var(--red)}
+    .page-hero h1{font-family:'Playfair Display',Georgia,serif;font-size:2rem;font-weight:700}
+    .page-hero p{color:rgba(255,255,255,.65);font-size:.9rem;margin-top:6px;max-width:700px}
+    .hero-tabs{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+    .hero-tab{padding:8px 20px;border-radius:5px;font-size:.85rem;font-weight:600;text-decoration:none;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.7);transition:all .15s}
+    .hero-tab:hover{background:rgba(255,255,255,.1);color:#fff}
+    .hero-tab.current{background:var(--red);color:#fff;border-color:var(--red)}
+    .stats-bar{display:flex;background:var(--navy);border-bottom:1px solid rgba(255,255,255,.08);overflow-x:auto}
+    .stat-item{padding:14px 28px;border-right:1px solid rgba(255,255,255,.08);min-width:140px;flex-shrink:0}
+    .stat-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.5)}
+    .stat-value{font-size:1.35rem;font-weight:700;color:#fff;margin-top:3px}
+    .stat-value.gold{color:var(--gold)}
+    .content{padding:28px 32px 48px}
+    /* Filters */
+    .filters{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:20px}
+    .filter-label{font-family:'Barlow Condensed',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+    .btn-group{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+    .btn-f{padding:7px 16px;background:#fff;border:none;cursor:pointer;font-size:.82rem;font-weight:600;color:var(--muted);transition:all .15s}
+    .btn-f:hover:not(.on){background:var(--cream)}
+    .btn-f.on{background:var(--navy);color:#fff}
+    .btn-f.on-dem{background:var(--dem);color:#fff}
+    .btn-f.on-rep{background:var(--rep);color:#fff}
+    select.filter-sel{padding:7px 12px;border:1px solid var(--border);border-radius:6px;background:#fff;font-family:'Barlow',sans-serif;font-size:.82rem;color:var(--navy);cursor:pointer}
+    /* Table */
+    .tbl-wrap{background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+    table{width:100%;border-collapse:collapse;font-size:.83rem}
+    thead tr{background:var(--navy);color:#fff}
+    thead th{padding:12px 14px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;cursor:pointer;user-select:none}
+    thead th:hover{background:#1a3050}
+    thead th.sort-asc::after{content:' ▲'}
+    thead th.sort-desc::after{content:' ▼'}
+    tbody tr{border-bottom:1px solid #f0ece4;transition:background .1s}
+    tbody tr:hover{background:#f9f6f0}
+    tbody tr.detail-row{background:#f4f1eb;border-bottom:2px solid var(--border)}
+    td{padding:11px 14px;vertical-align:middle}
+    .party-chip{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.72rem;font-weight:700;letter-spacing:.06em}
+    .chip-D{background:#dbeafe;color:var(--dem)}
+    .chip-R{background:#fee2e2;color:var(--rep)}
+    .chip-I{background:#f3f4f6;color:#374151}
+    .industry-pill{display:inline-block;padding:3px 10px;border-radius:12px;font-size:.75rem;font-weight:600;background:#e8e4dc;color:var(--navy)}
+    /* Alignment bar */
+    .aln-wrap{display:flex;align-items:center;gap:8px}
+    .aln-bar-bg{flex:1;height:8px;border-radius:4px;background:#e5e7eb;min-width:60px;max-width:120px}
+    .aln-bar{height:100%;border-radius:4px;transition:width .3s}
+    .aln-pct{font-size:.8rem;font-weight:700;min-width:36px}
+    .aln-high{color:var(--red)}
+    .aln-mid{color:var(--gold)}
+    .aln-low{color:var(--green)}
+    /* Vote counts */
+    .vote-counts{display:flex;gap:6px;font-size:.75rem;font-weight:600}
+    .v-yes{color:var(--green)}
+    .v-no{color:var(--red)}
+    /* Expand */
+    .expand-btn{background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:3px 8px;font-size:.75rem;color:var(--muted);transition:all .15s}
+    .expand-btn:hover{background:var(--navy);color:#fff;border-color:var(--navy)}
+    /* Detail panel */
+    .detail-panel{padding:16px 20px}
+    .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+    .detail-section h4{font-family:'Barlow Condensed',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+    .bill-item{padding:6px 0;border-bottom:1px solid #e8e4dc;display:flex;align-items:flex-start;gap:8px}
+    .bill-item:last-child{border-bottom:none}
+    .bill-vote{font-size:.72rem;font-weight:700;padding:1px 6px;border-radius:3px}
+    .bv-yes{background:#dcfce7;color:var(--green)}
+    .bv-no{background:#fee2e2;color:var(--red)}
+    .bill-title{font-size:.78rem;color:var(--navy);line-height:1.3}
+    .bill-id{font-size:.7rem;color:var(--muted)}
+    .donor-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0ece4;font-size:.8rem}
+    .donor-row:last-child{border-bottom:none}
+    .no-data{color:var(--muted);font-size:.8rem;font-style:italic}
+    /* Methodology note */
+    .method-note{margin-top:20px;padding:14px 18px;background:#fff;border:1px solid var(--border);border-radius:8px;font-size:.78rem;color:var(--muted);line-height:1.6}
+    .method-note strong{color:var(--navy)}
+    #count-label{font-size:.82rem;color:var(--muted);margin-left:auto}
+  </style>
+</head>
+<body>
+<header>
+  <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.2rem;font-weight:700;color:#0d1b2a">VoteIQ</div>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/donor-map-state">State Donors</a>
+    <a href="/donor-map-federal">Federal Donors</a>
+    <a href="/donor-legislation" class="active">Donor–Legislation</a>
+    <a href="/federal-legislators">Congress</a>
+    <a href="/state-legislators">State Legislature</a>
+  </nav>
+</header>
+
+<div class="page-hero">
+  <h1>Donor–Legislation Alignment</h1>
+  <p>How VA state legislators' top donor industries correlate with their voting records. Higher alignment scores indicate legislators who vote YES on bills in the same industry that funds their campaigns.</p>
+  <div class="hero-tabs">
+    <a href="/donor-map-state" class="hero-tab">State Donor Map</a>
+    <a href="/donor-map-federal" class="hero-tab">Federal Donor Map</a>
+    <a href="/donor-legislation" class="hero-tab current">Donor–Legislation Alignment</a>
+  </div>
+</div>
+
+<div class="stats-bar" id="stats-bar">
+  <div class="stat-item"><div class="stat-label">Legislators Analyzed</div><div class="stat-value" id="st-total">—</div></div>
+  <div class="stat-item"><div class="stat-label">Avg Alignment Score</div><div class="stat-value gold" id="st-avg">—</div></div>
+  <div class="stat-item"><div class="stat-label">100% Aligned</div><div class="stat-value" id="st-100">—</div></div>
+  <div class="stat-item"><div class="stat-label">Top Industry (donors)</div><div class="stat-value" id="st-top-ind">—</div></div>
+</div>
+
+<div class="content">
+  <div class="filters">
+    <span class="filter-label">Party</span>
+    <div class="btn-group">
+      <button class="btn-f on" id="p-all" onclick="setParty('all',this)">All</button>
+      <button class="btn-f" id="p-D" onclick="setParty('D',this)">Democrat</button>
+      <button class="btn-f" id="p-R" onclick="setParty('R',this)">Republican</button>
+    </div>
+    <span class="filter-label">Chamber</span>
+    <div class="btn-group">
+      <button class="btn-f on" id="c-all" onclick="setChamber('all',this)">All</button>
+      <button class="btn-f" id="c-House" onclick="setChamber('House',this)">House</button>
+      <button class="btn-f" id="c-Senate" onclick="setChamber('Senate',this)">Senate</button>
+    </div>
+    <span class="filter-label">Donor Industry</span>
+    <select class="filter-sel" id="ind-sel" onchange="setIndustry(this.value)">
+      <option value="all">All Industries</option>
+    </select>
+    <span id="count-label"></span>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th onclick="sortBy('name')">#&nbsp;&nbsp;Legislator</th>
+          <th onclick="sortBy('party')">Party</th>
+          <th onclick="sortBy('chamber')">Chamber</th>
+          <th onclick="sortBy('top_donor_industry')">Top Donor Industry</th>
+          <th onclick="sortBy('top_donor_amount')" class="sort-desc">$ from Industry</th>
+          <th>Votes (Y / N)</th>
+          <th onclick="sortBy('top_alignment')">Alignment %</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbl-body"></tbody>
+    </table>
+  </div>
+
+  <div class="method-note">
+    <strong>Methodology:</strong> Donor industries are classified from the employer field of VA SBE individual contribution records using keyword matching.
+    Bill industries are classified from bill titles in the LegiScan VA 2025–2026 legislative session.
+    <strong>Alignment score</strong> = % of YES votes on bills classified in the legislator's top donor industry (from <em>va_legislator_recent_votes</em>, final floor votes only).
+    A 100% score means the legislator voted YES on every bill in that industry — common on bipartisan measures.
+    <strong>Higher scores are not inherently problematic</strong> — many industry bills pass with broad support. Use in conjunction with donor amounts and bill specifics.
+  </div>
+</div>
+
+<script>
+(function(){
+  const D = window._MAP_DATA || {};
+  const RAW = (D.donor_legislation || []);
+
+  // ── State ──
+  let curParty    = 'all';
+  let curChamber  = 'all';
+  let curIndustry = 'all';
+  let sortKey     = 'top_alignment';
+  let sortDir     = -1; // -1 = desc
+
+  // ── Populate industry dropdown ──
+  const industries = [...new Set(RAW.map(r=>r.top_donor_industry).filter(Boolean))].sort();
+  const sel = document.getElementById('ind-sel');
+  industries.forEach(ind=>{
+    const o=document.createElement('option');
+    o.value=ind; o.textContent=ind; sel.appendChild(o);
+  });
+
+  // ── Stats ──
+  const withAln = RAW.filter(r=>r.top_alignment!=null);
+  document.getElementById('st-total').textContent = RAW.length;
+  document.getElementById('st-avg').textContent   = withAln.length
+    ? (withAln.reduce((s,r)=>s+r.top_alignment,0)/withAln.length).toFixed(1)+'%' : '—';
+  document.getElementById('st-100').textContent   = withAln.filter(r=>r.top_alignment===100).length;
+  const indCounts={};
+  RAW.forEach(r=>{if(r.top_donor_industry)indCounts[r.top_donor_industry]=(indCounts[r.top_donor_industry]||0)+1;});
+  const topInd = Object.entries(indCounts).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('st-top-ind').textContent = topInd ? topInd[0] : '—';
+
+  // ── Helpers ──
+  function fmt(v){
+    if(v>=1e6) return '$'+(v/1e6).toFixed(2)+'M';
+    if(v>=1e3) return '$'+(v/1e3).toFixed(0)+'K';
+    return '$'+v;
+  }
+  function partyInitial(p){
+    if(!p) return '?';
+    if(p.startsWith('Dem')) return 'D';
+    if(p.startsWith('Rep')) return 'R';
+    return p[0];
+  }
+
+  // ── Filter + sort ──
+  function filtered(){
+    return RAW.filter(r=>{
+      if(curParty!=='all' && partyInitial(r.party)!==curParty) return false;
+      if(curChamber!=='all' && r.chamber!==curChamber) return false;
+      if(curIndustry!=='all' && r.top_donor_industry!==curIndustry) return false;
+      return true;
+    }).sort((a,b)=>{
+      let av=a[sortKey], bv=b[sortKey];
+      if(av==null) av=sortDir<0?-Infinity:Infinity;
+      if(bv==null) bv=sortDir<0?-Infinity:Infinity;
+      return av<bv?sortDir:av>bv?-sortDir:0;
+    });
+  }
+
+  // ── Render ──
+  const tbody = document.getElementById('tbl-body');
+  function render(){
+    const rows = filtered();
+    document.getElementById('count-label').textContent = rows.length+' legislators';
+    tbody.innerHTML='';
+    rows.forEach((r,i)=>{
+      const pi     = partyInitial(r.party);
+      const chipCls= pi==='D'?'chip-D':pi==='R'?'chip-R':'chip-I';
+      const aln    = r.top_alignment;
+      const alnTxt = aln!=null ? aln.toFixed(0)+'%' : '—';
+      const alnCls = aln==null?'aln-mid':aln>=90?'aln-high':aln>=70?'aln-mid':'aln-low';
+      const barW   = aln!=null ? aln : 0;
+      const barCol = aln==null?'#9ca3af':aln>=90?'#c8102e':aln>=70?'#b8963e':'#15803d';
+
+      // Vote counts for top donor industry
+      const iv = r.industry_votes||{};
+      const topIv = r.top_donor_industry && iv[r.top_donor_industry];
+      const voteStr = topIv
+        ? `<span class="v-yes">✓ ${topIv.yes}</span> / <span class="v-no">✗ ${topIv.no}</span>`
+        : '<span style="color:var(--muted)">—</span>';
+
+      tbody.innerHTML+=`
+        <tr id="row-${i}">
+          <td><strong style="font-size:.88rem">${r.name||'—'}</strong></td>
+          <td><span class="party-chip ${chipCls}">${pi}</span></td>
+          <td style="font-size:.8rem;color:var(--muted)">${r.chamber||'—'}</td>
+          <td><span class="industry-pill">${r.top_donor_industry||'—'}</span></td>
+          <td style="font-weight:700;color:var(--red)">${fmt(r.top_donor_amount||0)}</td>
+          <td><div class="vote-counts">${voteStr}</div></td>
+          <td>
+            <div class="aln-wrap">
+              <div class="aln-bar-bg"><div class="aln-bar" style="width:${barW}%;background:${barCol}"></div></div>
+              <span class="aln-pct ${alnCls}">${alnTxt}</span>
+            </div>
+          </td>
+          <td><button class="expand-btn" onclick="toggleDetail(${i})">Detail</button></td>
+        </tr>
+        <tr id="detail-${i}" class="detail-row" style="display:none">
+          <td colspan="8">${buildDetail(r)}</td>
+        </tr>`;
+    });
+  }
+
+  function buildDetail(r){
+    const iv = r.industry_votes || {};
+    const topInd = r.top_donor_industry;
+    const topIv  = topInd && iv[topInd];
+
+    // Bills in top donor industry
+    let billsHtml = '<div class="no-data">No classified votes in this industry</div>';
+    if(topIv && topIv.bills && topIv.bills.length){
+      billsHtml = topIv.bills.map(b=>`
+        <div class="bill-item">
+          <span class="bill-vote ${b.option==='yes'?'bv-yes':'bv-no'}">${b.option.toUpperCase()}</span>
+          <div>
+            <div class="bill-title">${b.title}</div>
+            <div class="bill-id">${b.bill_id}</div>
+          </div>
+        </div>`).join('');
+    }
+
+    // All donor industries
+    const dRows = (r.donor_industries||[]).map(d=>`
+      <div class="donor-row">
+        <span>${d.label}</span>
+        <span style="font-weight:600;color:var(--red)">${fmt(d.total)}<span style="color:var(--muted);font-weight:400"> (${d.donors.toLocaleString()} donors)</span></span>
+      </div>`).join('');
+
+    // Sponsored bills
+    const spons = (r.sponsored_bills||[]).filter(b=>b.industry);
+    const sponsHtml = spons.length
+      ? spons.map(b=>`
+          <div class="bill-item">
+            <span class="bill-vote" style="background:#f3f4f6;color:var(--navy)">SPONSOR</span>
+            <div>
+              <div class="bill-title">${b.title}</div>
+              <div class="bill-id">${b.bill_number} · ${b.industry} · ${b.status||'Unknown'}</div>
+            </div>
+          </div>`).join('')
+      : '<div class="no-data">No classified sponsored bills</div>';
+
+    return `
+      <div class="detail-panel">
+        <div class="detail-grid">
+          <div>
+            <div class="detail-section">
+              <h4>Votes in "${topInd||'N/A'}" Bills (Top Donor Industry)</h4>
+              ${billsHtml}
+            </div>
+            <div class="detail-section" style="margin-top:16px">
+              <h4>Sponsored Bills by Industry</h4>
+              ${sponsHtml}
+            </div>
+          </div>
+          <div>
+            <div class="detail-section">
+              <h4>All Donor Industries</h4>
+              ${dRows||'<div class="no-data">No data</div>'}
+            </div>
+            <div class="detail-section" style="margin-top:16px">
+              <h4>Vote Alignment by Industry</h4>
+              ${Object.entries(iv).sort((a,b)=>b[1].yes+b[1].no-a[1].yes-a[1].no).map(([ind,d])=>`
+                <div class="donor-row">
+                  <span style="font-size:.78rem">${ind}</span>
+                  <span style="font-size:.78rem"><span class="v-yes">✓${d.yes}</span> <span class="v-no">✗${d.no}</span> <strong style="margin-left:4px">${d.alignment}%</strong></span>
+                </div>`).join('')||'<div class="no-data">No data</div>'}
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // ── Controls ──
+  window.setParty=function(v,btn){
+    curParty=v;
+    ['p-all','p-D','p-R'].forEach(id=>document.getElementById(id).className='btn-f');
+    btn.className='btn-f on';
+    render();
+  };
+  window.setChamber=function(v,btn){
+    curChamber=v;
+    ['c-all','c-House','c-Senate'].forEach(id=>document.getElementById(id).className='btn-f');
+    btn.className='btn-f on';
+    render();
+  };
+  window.setIndustry=function(v){ curIndustry=v; render(); };
+
+  window.sortBy=function(key){
+    if(sortKey===key) sortDir*=-1; else{sortKey=key;sortDir=-1;}
+    document.querySelectorAll('thead th').forEach(th=>th.className='');
+    render();
+  };
+
+  window.toggleDetail=function(i){
+    const el=document.getElementById('detail-'+i);
+    el.style.display=el.style.display==='none'?'table-row':'none';
+  };
+
+  render();
+})();
+</script>
+</body>
+</html>

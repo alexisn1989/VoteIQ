@@ -268,6 +268,17 @@ def donor_map_federal_page():
         conn.close()
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+#  DONOR–LEGISLATION CORRELATION  (/donor-legislation)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/donor-legislation", response_class=HTMLResponse)
+def donor_legislation_page():
+    """Donor-to-legislation alignment for VA state legislators."""
+    data = _DONOR_CACHE.get("state", {})
+    return _inject(data, "donor_legislation.html")
+
+
 # ── Legacy redirect ───────────────────────────────────────────────────────────
 
 @router.get("/donor-map", response_class=HTMLResponse)
