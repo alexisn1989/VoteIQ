@@ -402,8 +402,9 @@ def _insert_bill_matched(
     conn: sqlite3.Connection, sessions: list[str]
 ) -> int:
     """Match bills from legiscan_va_bills (2024+) and openstates_va (2022-2023)."""
-    legiscan_sessions  = [s for s in sessions if s >= "2024"]
-    openstates_sessions = [s for s in sessions if s < "2024"]
+    # LegiScan now has 2021 in legiscan_va_bills as well as 2024-2026
+    legiscan_sessions  = [s for s in sessions if s >= "2024" or s == "2021"]
+    openstates_sessions = [s for s in sessions if s < "2024" and s != "2021"]
 
     bills: list[tuple[str, str, str, str]] = []
     if legiscan_sessions:
