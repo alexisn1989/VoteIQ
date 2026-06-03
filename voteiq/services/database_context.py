@@ -1479,6 +1479,17 @@ try:
 except Exception:
     pass
 
+_DONOR_TREND_TRIGGER = re.compile(
+    r'\b('
+    r'spike|ramp|surge|trend|historically|multi.cycle|year.over.year|'
+    r'over.time|over.the.years|donation.history|giving.history|'
+    r'rate.case|regulatory.fight|invest|increas|'
+    r'dominion|appalachian.power|clean.virginia|everytown|'
+    r'seiu|afscme|altria|reynolds|league.of.conservation'
+    r')\b',
+    re.I,
+)
+
 _ANALYSIS_TRIGGER = re.compile(
     r'\b(coi|conflict.of.interest|industry.influence|donor.alignment|dominion.energy|'
     r'dominion.donor|energy.donor|donor.industry|industry.donor|top.donor.industry|'
@@ -1586,6 +1597,155 @@ def _add_donor_analysis_context(blocks: list[str], query: str) -> None:
     blocks.append("\n".join(lines))
 
 
+def _add_donor_trend_context(blocks: list[str], query: str) -> None:
+    """
+    Add multi-cycle donor trend data to the retrieval context.
+    Searches donor_cycle_trends, donor_entity_map, and cycle_context in polls.db.
+    Triggered by spike/trend/ramp keywords or named major donors.
+    Available to all tiers (this is SQLite retrieval, not analyst overlay).
+    """
+    if not (_DONOR_TREND_TRIGGER.search(query) or _is_campaign_finance_query(query)):
+        return
+
+    conn = _connect("polls")
+    if not conn:
+        return
+
+    if not _table_exists(conn, "donor_cycle_trends"):
+        conn.close()
+        return
+
+    q_lower = (query or "").lower()
+    has_money = any(m in q_lower for m in ("donat", "contribut", "money", "fund", "gave", "giving"))
+
+    # ── Named donor lookup ────────────────────────────────────────────────────
+    if _table_exists(conn, "donor_entity_map"):
+        # Try to match a canonical donor name from the query
+        try:
+            entity_rows = conn.execute(
+                "SELECT donor_key, canonical_name, total_all_cycles, first_cycle, last_cycle "
+                "FROM donor_entity_map WHERE total_all_cycles >= 100000 "
+                "ORDER BY total_all_cycles DESC LIMIT 300"
+            ).fetchall()
+
+            matched_key = matched_name = None
+            for e in entity_rows:
+                cname = (e["canonical_name"] or "").lower()
+                dkey  = (e["donor_key"] or "").replace("_", " ")
+                if cname in q_lower or dkey in q_lower or any(
+                    word in q_lower for word in cname.split() if len(word) > 4
+                ):
+                    matched_key  = e["donor_key"]
+                    matched_name = e["canonical_name"]
+                    total        = e["total_all_cycles"]
+                    first        = e["first_cycle"]
+                    last         = e["last_cycle"]
+                    break
+
+            if matched_key:
+                cycles = conn.execute(
+                    "SELECT election_cycle, cycle_parity, total_amount, "
+                    "pct_change_prior, ratio_vs_mean, is_spike "
+                    "FROM donor_cycle_trends WHERE donor_key = ? "
+                    "ORDER BY election_cycle",
+                    (matched_key,),
+                ).fetchall()
+
+                if cycles:
+                    odd_amts  = [c["total_amount"] for c in cycles if c["cycle_parity"] == "odd"]
+                    even_amts = [c["total_amount"] for c in cycles if c["cycle_parity"] == "even"]
+                    odd_mean  = sum(odd_amts)  / len(odd_amts)  if odd_amts  else 0
+                    even_mean = sum(even_amts) / len(even_amts) if even_amts else 0
+
+                    # Get legislative context for elevated cycles
+                    elevated = [c["election_cycle"] for c in cycles if c["is_spike"]]
+                    ctx_map: dict[str, list[str]] = {}
+                    if elevated and _table_exists(conn, "cycle_context"):
+                        ph = ",".join("?" for _ in elevated)
+                        for row in conn.execute(
+                            f"SELECT election_cycle, title, donor_sector FROM cycle_context "
+                            f"WHERE election_cycle IN ({ph}) AND significance = 'high' "
+                            f"ORDER BY election_cycle, donor_sector",
+                            elevated,
+                        ):
+                            ctx_map.setdefault(row["election_cycle"], []).append(
+                                f"{row['title'][:60]} [{row['donor_sector'] or 'general'}]"
+                            )
+
+                    lines = [
+                        f"[Database Context - donor cycle trends: {matched_name}]",
+                        f"Source: Virginia SBE campaign finance, 2012-2026 public records",
+                        f"Total donated ({first}-{last}): ${total:,.0f}",
+                        f"Typical giving: ${odd_mean:,.0f} in state-election years (odd), "
+                        f"${even_mean:,.0f} in federal-election years (even)",
+                        "Note: Virginia holds state elections in odd years; odd-year giving is "
+                        "typically 5-50x higher than even years. Spikes measured against this "
+                        "donor's own same-parity average.",
+                        "Giving history:",
+                    ]
+                    for c in cycles:
+                        base  = odd_mean if c["cycle_parity"] == "odd" else even_mean
+                        ratio = c["total_amount"] / base if base else 0
+                        pct_s = f", up {c['pct_change_prior']:.0f}% from prior comparable cycle" \
+                                if c["pct_change_prior"] else ""
+                        yr_label = "state-election yr" if c["cycle_parity"] == "odd" else "federal-election yr"
+
+                        if c["is_spike"]:
+                            ctx_str = ""
+                            if c["election_cycle"] in ctx_map:
+                                ctx_str = " | Active legislation: " + "; ".join(ctx_map[c["election_cycle"]][:2])
+                            lines.append(
+                                f"  {c['election_cycle']} ({yr_label}): ${c['total_amount']:,.0f} "
+                                f"[NOTABLY ELEVATED: {ratio:.1f}x typical{pct_s}]{ctx_str}"
+                            )
+                        elif ratio >= 1.5:
+                            lines.append(
+                                f"  {c['election_cycle']} ({yr_label}): ${c['total_amount']:,.0f} "
+                                f"[elevated: {ratio:.1f}x typical{pct_s}]"
+                            )
+                        else:
+                            lines.append(
+                                f"  {c['election_cycle']} ({yr_label}): ${c['total_amount']:,.0f}"
+                            )
+                    blocks.append("\n".join(lines))
+
+        except Exception:
+            pass
+
+    # ── Top institutional spikes (always show when trend query) ───────────────
+    if _DONOR_TREND_TRIGGER.search(query):
+        try:
+            spikes = conn.execute("""
+                SELECT canonical_name, election_cycle, total_amount,
+                       pct_change_prior, ratio_vs_mean, cycle_parity
+                FROM donor_cycle_trends
+                WHERE is_spike = 1 AND is_individual = 0 AND total_amount >= 500000
+                ORDER BY zscore DESC LIMIT 8
+            """).fetchall()
+
+            if spikes:
+                lines = [
+                    "[Database Context - top institutional donation spikes, Virginia 2012-2026]",
+                    "Source: Virginia SBE campaign finance public records",
+                    "These donors gave notably more than their own historical average in these cycles:",
+                ]
+                for s in spikes:
+                    yr_type = "state-election yr" if s["cycle_parity"] == "odd" else "federal-election yr"
+                    ratio_s = f"{s['ratio_vs_mean']:.1f}x their typical {yr_type} spending" \
+                              if s["ratio_vs_mean"] else ""
+                    pct_s   = f"up {s['pct_change_prior']:.0f}% from prior comparable cycle" \
+                              if s["pct_change_prior"] else "first cycle on record"
+                    lines.append(
+                        f"- {s['canonical_name']} gave ${s['total_amount']:,.0f} in "
+                        f"{s['election_cycle']} ({yr_type}): {ratio_s}, {pct_s}"
+                    )
+                blocks.append("\n".join(lines))
+        except Exception:
+            pass
+
+    conn.close()
+
+
 def build_database_context(query: str, max_chars: int = 22000) -> str:
     q = query or ""
     blocks: list[str] = []
@@ -1618,6 +1778,10 @@ def build_database_context(query: str, max_chars: int = 22000) -> str:
     # can return their donor-industry breakdown.
     if _ANALYSIS_TRIGGER.search(q) or _is_campaign_finance_query(q):
         _add_donor_analysis_context(blocks, q)
+
+    # Multi-cycle donor trend / investment-return signal
+    # Available to all tiers via standard SQLite retrieval path
+    _add_donor_trend_context(blocks, q)
 
     # Add comprehensive SQL table search as fallback for any unmatched keywords
     # This ensures all SQL tables are searched before RAG context
