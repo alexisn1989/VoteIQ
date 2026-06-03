@@ -62,7 +62,7 @@ def _names(items: list[dict]) -> list[str]:
     return names
 
 
-def _request(path: str, params: dict | None = None) -> dict:
+def _request(path: str, params: dict | None = None, _max_retries: int = 8) -> dict:
     if not OPENSTATES_API_KEY:
         raise RuntimeError("OPENSTATES_API_KEY is not set in .env")
 
@@ -71,9 +71,27 @@ def _request(path: str, params: dict | None = None) -> dict:
         "X-API-KEY": OPENSTATES_API_KEY,
         "User-Agent": "VoteIQ/1.0 (+https://voteiq.io)",
     }
-    response = requests.get(url, headers=headers, params=params or {}, timeout=60)
-    response.raise_for_status()
-    return response.json()
+    for attempt in range(_max_retries):
+        try:
+            response = requests.get(url, headers=headers, params=params or {}, timeout=90)
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exc:
+            wait = min(30 * (2 ** attempt), 300)
+            print(f"  [retry {attempt+1}/{_max_retries}] network error: {exc} — sleeping {wait}s")
+            time.sleep(wait)
+            continue
+        if response.status_code == 429:
+            wait = int(response.headers.get("Retry-After", 60)) + 10
+            print(f"  [rate-limit] 429 — sleeping {wait}s (attempt {attempt+1}/{_max_retries})")
+            time.sleep(wait)
+            continue
+        if response.status_code in (500, 502, 503, 504):
+            wait = min(15 * (2 ** attempt), 120)
+            print(f"  [server-error] {response.status_code} — sleeping {wait}s (attempt {attempt+1}/{_max_retries})")
+            time.sleep(wait)
+            continue
+        response.raise_for_status()
+        return response.json()
+    raise RuntimeError(f"OpenStates request failed after {_max_retries} retries: {url}")
 
 
 def _include_values(value: str) -> list[str]:
@@ -136,7 +154,7 @@ def search_bills(
         if not _has_next_page(payload, page, page_size, len(items)):
             return bills
         page += 1
-        time.sleep(0.25)
+        time.sleep(1.5)  # stay well under OpenStates rate limit
 
 
 def fetch_bill_detail(jurisdiction: str, session: str, identifier: str) -> dict:

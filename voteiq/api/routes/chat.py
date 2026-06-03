@@ -1125,6 +1125,11 @@ def _build_bills_context(
             if member_analyst_context and member_analyst_context not in seen_docs:
                 seen_docs.add(member_analyst_context)
                 context_blocks.insert(0, member_analyst_context)
+
+            gatekeeper_context = _m._fetch_gatekeeper_analyst_context(user_query)
+            if gatekeeper_context and gatekeeper_context not in seen_docs:
+                seen_docs.add(gatekeeper_context)
+                context_blocks.insert(0, gatekeeper_context)
         elif _gov_money_q:
             _teaser = (
                 "[Campaign Correlation Note — Pro/Newsroom Feature]\n"
@@ -1136,6 +1141,23 @@ def _build_bills_context(
             if _teaser not in seen_docs:
                 seen_docs.add(_teaser)
                 context_blocks.append(_teaser)
+
+        _is_committee_q = any(t in q_lower for t in (
+            "committee", "chair", "gatekeeper", "blocked", "killed", "left in", "tabled",
+            "who killed", "who blocked", "who stops", "stricken",
+        ))
+        if not _premium_analyst_enabled(req) and _is_committee_q:
+            _gk_teaser = (
+                "[Committee Gatekeeper Note — Pro/Newsroom Feature]\n"
+                "VoteIQ has committee chair × donor-sector × bills-killed analysis for the Virginia General Assembly "
+                "(47 committee chairs, 3 sessions: 2024, 2025, 2026 — same chairs all years). "
+                "Key public-record pattern: bills killed in committees whose chairs receive funding from "
+                "regulated industries — 1,098 bills killed in 2026, 1,413 in 2025, 723 in 2024. "
+                "Full gatekeeper analysis available to Pro and Newsroom subscribers."
+            )
+            if _gk_teaser not in seen_docs:
+                seen_docs.add(_gk_teaser)
+                context_blocks.append(_gk_teaser)
 
         if _premium_analyst_enabled(req) and _is_money_q and _m._PAC_CACHE:
             _fec_bgids: list[str] = []
@@ -3926,9 +3948,11 @@ async def chat(req: ChatRequest):
     if _premium_analyst_enabled(req):
         analyst_context = _m._fetch_governor_action_money_analyst_context(last_question)
         member_analyst_context = _m._fetch_member_analyst_context(last_question)
+        gatekeeper_context = _m._fetch_gatekeeper_analyst_context(last_question)
     else:
         analyst_context = ""
         member_analyst_context = ""
+        gatekeeper_context = ""
     governor_context = _m._fetch_governor_action_context(last_question)
     governor_eo_context = _m._fetch_governor_eo_context(last_question)
     database_context = build_database_context(last_question)
@@ -4050,6 +4074,8 @@ If the context below includes "Profile Markdown Link", use that exact Markdown l
 
 {member_analyst_context if member_analyst_context else ""}
 
+{gatekeeper_context if gatekeeper_context else ""}
+
 {ie_context if ie_context else ""}
 
 {foreign_ie_context if foreign_ie_context and query_context.get("touches_foreign_policy_donors") else ""}
@@ -4088,6 +4114,7 @@ When citing a vote, include the bill name and Yea/Nay. When citing donors or ind
         pac_context or "",
         analyst_context or "",
         member_analyst_context or "",
+        gatekeeper_context or "",
         ie_context or "",
         foreign_ie_context or "",
         governor_context or "",

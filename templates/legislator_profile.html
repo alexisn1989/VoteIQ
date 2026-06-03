@@ -483,13 +483,51 @@
     if (n >= 1e3) return '$' + Math.round(n / 1e3) + 'K';
     return '$' + Math.round(n).toLocaleString();
   }
+  // VA% split-bar helpers
+  function sectorGradient(color, vapct) {
+    if (vapct == null) return color;
+    const hex = color.replace('#','');
+    const r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16);
+    const fade = `rgba(${r},${g},${b},0.28)`;
+    if (vapct >= 100) return color;
+    if (vapct <= 0)   return fade;
+    return `linear-gradient(to right,${color} ${vapct}%,${fade} ${vapct}%)`;
+  }
+  function vaBadge(vapct) {
+    if (vapct == null) return '';
+    const clr = vapct >= 70 ? '#15803d' : vapct >= 50 ? '#b45309' : '#b91c1c';
+    return `<span style="flex:0 0 32px;font-size:0.58rem;color:${clr};text-align:right;font-weight:600;line-height:1.2;white-space:nowrap">${vapct}%<br><span style="font-weight:400;opacity:0.65;font-size:0.52rem">VA</span></span>`;
+  }
 
   const SECTOR_COLORS = {
-    'Energy': '#c8102e', 'Healthcare': '#1a52c8', 'Legal': '#2a6035',
+    'Energy': '#c8102e', 'Healthcare': '#16a34a',
+    'Health Insurance': '#65a30d', 'Pharma': '#14b8a6', 'Hospitals': '#15803d', 'Health Professionals': '#16a34a',
+    'Legal': '#2a6035',
     'Ideological': '#7c3aed', 'Finance': '#0e7490', 'Real Estate': '#b45309',
     'Technology': '#0369a1', 'Transportation': '#b16300', 'Labor/Union': '#166534',
     'Education': '#6b21a8', 'Retail': '#be185d', 'Manufacturing': '#6b7280',
     'Agriculture': '#3f6212', 'Defense': '#374151', 'Individual/Other': '#0d1b2a',
+    // Finance sub-sectors
+    'Insurance': '#6d28d9', 'Investment & Securities': '#0891b2', 'Banking': '#0c4a6e',
+    'Financial Services': '#0e7490',
+    // Technology sub-sectors
+    'Software & IT': '#7c3aed', 'Telecom': '#0369a1', 'IT & Engineering': '#475569',
+    'Artificial Intelligence': '#6366f1', 'Crypto/Blockchain': '#f59e0b',
+    // Energy sub-sectors
+    'Fossil Fuels': '#92400e', 'Utilities': '#1d4ed8', 'Renewables': '#22c55e',
+    // Labor sub-sectors
+    'Healthcare Worker Unions': '#0d9488', 'Education Unions': '#4f46e5',
+    'Public Employee Unions': '#d97706', 'Building & Industrial Unions': '#b91c1c', 'Service & Retail Workers': '#ea580c',
+    // Defense sub-sectors
+    'Aerospace & Weapons': '#1c2b3b', 'Defense IT & Services': '#4a5568',
+    // Real Estate sub-sectors
+    'Realtors': '#dc2626', 'Homebuilders': '#a16207', 'Commercial Real Estate': '#b45309',
+    // Agriculture sub-sectors
+    'Tobacco': '#44403c', 'Wine & Spirits': '#881337', 'Livestock & Poultry': '#854d0e', 'Agribusiness': '#3f6212',
+    // Legal sub-sectors
+    'Trial Lawyers': '#b91c1c', 'Corporate Law': '#1e3a5f',
+    // Gambling
+    'Gambling/Casinos': '#065f46',
   };
 
   const finMeta    = D.finance_meta    || null;
@@ -532,10 +570,13 @@
         topSectors.map(s => {
           const pct   = Math.round(s.total / maxAmt * 100);
           const color = SECTOR_COLORS[s.sector] || '#7a7468';
+          const vapct = s.va_pct != null ? s.va_pct : null;
+          const vaTitle = vapct != null ? `${vapct}% from Virginia donors · ${100-vapct}% out-of-state` : '';
           return `<div class="topic-row">
             <div class="topic-label" title="${esc(s.sector)}">${esc(s.sector)}</div>
-            <div class="topic-track"><div class="topic-fill" style="width:${pct}%;background:${color}"></div></div>
+            <div class="topic-track" title="${vaTitle}"><div class="topic-fill" style="width:${pct}%;background:${sectorGradient(color,vapct)}"></div></div>
             <div class="topic-count" style="flex:0 0 52px">${fmtMoney(s.total)}</div>
+            ${vaBadge(vapct)}
           </div>`;
         }).join('');
     } else {
@@ -556,18 +597,22 @@
     const sectorBars = finSectors.map(s => {
       const pct = Math.round(s.total / maxSector * 100);
       const color = SECTOR_COLORS[s.sector] || '#7a7468';
+      const vapct = s.va_pct != null ? s.va_pct : null;
+      const vaTitle = vapct != null ? `${vapct}% from Virginia donors · ${100-vapct}% out-of-state` : '';
       return `<div class="sector-row">
         <div class="sector-label" title="${esc(s.sector)}">${esc(s.sector)}</div>
-        <div class="sector-track"><div class="sector-fill" style="width:${pct}%;background:${color}"></div></div>
+        <div class="sector-track" title="${vaTitle}"><div class="sector-fill" style="width:${pct}%;background:${sectorGradient(color,vapct)}"></div></div>
         <div class="sector-amount">${fmtMoney(s.total)}</div>
+        ${vaBadge(vapct)}
       </div>`;
     }).join('');
 
-    const donorRows = topDonors.map(d => `<tr>
+    const donorRows = topDonors.map(d => `<tr data-donor-name="${esc(d.contributor_name || '')}">
       <td>${esc(d.contributor_name || '—')}</td>
       <td><span class="bill-id" style="color:${SECTOR_COLORS[d.sector]||'var(--muted)'}">${esc(d.sector || '—')}</span></td>
       <td style="text-align:right;font-family:'Barlow Condensed',sans-serif;font-size:0.8rem">${fmtMoney(d.total)}</td>
       <td style="text-align:right;font-family:'Barlow Condensed',sans-serif;font-size:0.76rem;color:var(--muted)">${d.count || ''}</td>
+      <td class="lobbyist-cell" style="text-align:right;font-size:0.76rem;color:var(--muted)"></td>
     </tr>`).join('');
 
     finDiv.innerHTML = `
@@ -588,17 +633,58 @@
           <span class="finance-meta-num">${esc(finMeta.latest_cycle || '—')}</span>
           <span class="finance-meta-lbl">Latest Cycle</span>
         </div>
+        ${finMeta.overall_va_pct != null ? `<div class="finance-meta-box">
+          <span class="finance-meta-num" style="color:${finMeta.overall_va_pct>=70?'#15803d':finMeta.overall_va_pct>=50?'#b45309':'#b91c1c'}">${finMeta.overall_va_pct}%</span>
+          <span class="finance-meta-lbl">Virginia Donors</span>
+        </div>` : ''}
       </div>
 
-      <div class="breakdown-label" style="margin-bottom:12px">Funding by Sector (Virginia SBE public records)</div>
+      <div class="breakdown-label" style="margin-bottom:12px">Funding by Sector — solid bar = Virginia donors · faded = out-of-state (Virginia SBE public records)</div>
       ${sectorBars}
 
       ${topDonors.length ? `
       <div class="breakdown-label" style="margin:20px 0 10px">Top Donors</div>
-      <table class="donor-table">
-        <thead><tr><th>Donor</th><th>Sector</th><th style="text-align:right">Total</th><th style="text-align:right">Contributions</th></tr></thead>
+      <table class="donor-table" id="top-donors-table">
+        <thead><tr><th>Donor</th><th>Sector</th><th style="text-align:right">Total</th><th style="text-align:right">Contributions</th><th style="text-align:right" title="Registered lobbyists in Virginia (2025-2026 session)">Lobbyists</th></tr></thead>
         <tbody>${donorRows}</tbody>
       </table>` : ''}
+
+      ${(D.donor_alignment && D.donor_alignment.length) ? `
+      <div class="breakdown-label" style="margin:24px 0 6px">Donor-Vote Alignment</div>
+      <div style="font-size:0.65rem;color:var(--muted);margin-bottom:12px;line-height:1.5">
+        How this legislator's bill sponsorship &amp; floor votes compare to their top donor industries.
+        100% = consistently supports donor industry interests &nbsp;·&nbsp; 0% = consistently opposed.
+        Based on Virginia legislative records (multiple sessions).
+      </div>
+      ${D.donor_alignment.slice(0,8).map(a => {
+        const clr = a.score>=75?'#15803d':a.score>=55?'#65a30d':a.score>=40?'#b45309':a.score>=25?'#c2410c':'#b91c1c';
+        const evLines = a.evidence.slice(0,3).map(e => {
+          // isAligned: did this action benefit the donor industry?
+          // voted_no on a PRO-industry bill = NOT aligned; voted_no on ANTI-industry = aligned
+          const isAligned = e.type==='voted_no' ? !e.pro : e.pro;
+          const typeLabel = e.type==='sponsored'   ? (isAligned?'Sponsored (+)':'Sponsored (-)') :
+                           e.type==='cosponsored' ? (isAligned?'Co-sponsored (+)':'Co-sponsored (-)') :
+                           e.type==='voted_yes'   ? (isAligned?'Voted YES (+)':'Voted YES (-)') :
+                           e.type==='voted_no'    ? (isAligned?'Voted NO (+)':'Voted NO (-)') : e.type;
+          const evClr = isAligned ? 'var(--muted)' : '#b91c1c';
+          return '<div style="font-size:0.59rem;color:'+evClr+';margin:1px 0 0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:420px">'
+            + typeLabel + ': '
+            + esc((e.title||'').substring(0,70)) + (e.title&&e.title.length>70?'...':'') + '</div>';
+        }).join('');
+        return '<div style="margin-bottom:10px">'
+          + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">'
+          + '<div style="flex:0 0 148px;font-size:0.74rem;color:var(--navy);font-family:Barlow,sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(a.sector)+'">'+esc(a.sector)+'</div>'
+          + '<div style="flex:1;height:7px;background:var(--mid);border-radius:2px;overflow:hidden">'
+          + '<div style="width:'+a.score+'%;height:100%;background:'+clr+';border-radius:2px;transition:width 0.5s ease"></div></div>'
+          + '<div style="flex:0 0 30px;font-size:0.65rem;font-weight:700;color:'+clr+';text-align:right">'+a.score+'%</div>'
+          + '<div style="flex:0 0 105px;font-size:0.59rem;color:'+clr+';font-weight:600">'+esc(a.label)+'</div>'
+          + '</div>' + evLines + '</div>';
+      }).join('')}
+      <div style="font-size:0.58rem;color:var(--muted);margin-top:8px;font-style:italic">
+        Alignment is based on bill sponsorship (primary signal) and available floor vote records.
+        A high score means this legislator's legislative record tends to benefit their donor industries.
+        Correlation only — this does not imply quid pro quo.
+      </div>` : ''}
 
       ${(D.donor_tiers && D.donor_tiers.length) ? `
       <div class="breakdown-label" style="margin:24px 0 10px">Corporate / PAC vs Individual Donors</div>
@@ -607,6 +693,41 @@
       <div class="finance-caveat">
         <strong>How to read this data:</strong> This shows who donated to this legislator's campaign overall — not who supported any specific bill they introduced. Donors did not select these bills, may not have known about them, and no link between donations and any legislative outcome is implied or shown. For lobbying activity on specific bills, see Virginia's lobbyist disclosure records. <strong>Correlation does not imply causation.</strong> Source: Virginia SBE public records.
       </div>`;
+
+    // ── Async: enrich top donors with registered lobbyist counts ────────────────
+    if (topDonors.length && D.voter_name) {
+      const voterEnc = encodeURIComponent(D.voter_name);
+      const cycleEnc = encodeURIComponent(finMeta && finMeta.latest_cycle ? finMeta.latest_cycle : '2026');
+      fetch('/api/lobbyist-crossref/' + voterEnc + '?cycle=' + cycleEnc)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data || !data.donors) return;
+          // Build a map: normalized donor name -> total_lobbyists + principal names
+          const lobbyMap = {};
+          for (const d of data.donors) {
+            if (d.total_lobbyists > 0) {
+              lobbyMap[d.donor_name.trim().toLowerCase()] = d;
+            }
+          }
+          // Update table cells
+          const rows = document.querySelectorAll('#top-donors-table tbody tr[data-donor-name]');
+          rows.forEach(row => {
+            const dn = (row.getAttribute('data-donor-name') || '').trim().toLowerCase();
+            const cell = row.querySelector('.lobbyist-cell');
+            if (!cell) return;
+            const match = lobbyMap[dn];
+            if (match && match.total_lobbyists > 0) {
+              const principals = match.lobbyist_data.slice(0,2).map(p =>
+                p.principal_name + ' (' + p.lobbyist_count + ')'
+              ).join(', ');
+              cell.innerHTML = '<span style="color:#1d4ed8;font-weight:600;font-family:Barlow Condensed,sans-serif" title="' +
+                principals.replace(/"/g,'&quot;') + '">' +
+                match.total_lobbyists + ' lobbyists</span>';
+            }
+          });
+        })
+        .catch(() => {});
+    }
   }
 
   // ── Industry Analysis tab ─────────────────────────────────────────────────────
@@ -659,9 +780,21 @@
     // Industry breakdown bars
     const inds = (da.donor_industries || []).slice(0, 6);
     const maxInd = Math.max(...inds.map(d=>d.total), 1);
-    const ICOLS = {Finance:'#0e7490',Energy:'#c8102e',Healthcare:'#1a52c8',
+    const ICOLS = {Finance:'#0e7490',Energy:'#c8102e',Healthcare:'#16a34a',
+      'Health Insurance':'#65a30d',Pharma:'#14b8a6',Hospitals:'#15803d','Health Professionals':'#16a34a',
       'Real Estate':'#b45309',Education:'#6b21a8',Defense:'#374151',
-      Legal:'#2a6035',Technology:'#0369a1',Labor:'#166534'};
+      Legal:'#2a6035',Technology:'#0369a1',Labor:'#166534',
+      Insurance:'#6d28d9','Investment & Securities':'#0891b2',Banking:'#0c4a6e','Financial Services':'#0e7490',
+      'Software & IT':'#7c3aed',Telecom:'#0369a1','IT & Engineering':'#475569',
+      'Artificial Intelligence':'#6366f1','Crypto/Blockchain':'#f59e0b',
+      'Realtors':'#dc2626','Homebuilders':'#a16207','Commercial Real Estate':'#b45309',
+      'Tobacco':'#44403c','Wine & Spirits':'#881337','Livestock & Poultry':'#854d0e','Agribusiness':'#3f6212',
+      'Trial Lawyers':'#b91c1c','Corporate Law':'#1e3a5f',
+      'Gambling/Casinos':'#065f46',
+      'Fossil Fuels':'#92400e',Utilities:'#1d4ed8',Renewables:'#22c55e',
+      'Healthcare Worker Unions':'#0d9488','Education Unions':'#4f46e5',
+      'Public Employee Unions':'#d97706','Building & Industrial Unions':'#b91c1c','Service & Retail Workers':'#ea580c',
+      'Aerospace & Weapons':'#1c2b3b','Defense IT & Services':'#4a5568'};
     const indBars = inds.map(d=>{
       const pct = Math.round(d.total/maxInd*100);
       const col = ICOLS[d.label] || '#7a7468';

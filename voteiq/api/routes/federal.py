@@ -70,6 +70,23 @@ def _federal_list(conn) -> list[dict]:
             d["donor_tiers"] = [{"tier": t["tier"], "total": t["total"], "count": t["cnt"]} for t in tiers]
         except sqlite3.OperationalError:
             d["donor_tiers"] = []
+        # Granular industry breakdown (excludes Grassroots / Other buckets)
+        try:
+            ind_rows = conn.execute("""
+                SELECT industry, SUM(total_amount) AS total
+                FROM fec_industry_totals
+                WHERE bioguide_id = ?
+                  AND industry NOT IN ('Grassroots', 'Other')
+                  AND industry IS NOT NULL AND industry != ''
+                GROUP BY industry
+                ORDER BY total DESC
+                LIMIT 10
+            """, (d["bioguide_id"],)).fetchall()
+            d["industry_breakdown"] = [
+                {"industry": r["industry"], "total": r["total"]} for r in ind_rows
+            ]
+        except sqlite3.OperationalError:
+            d["industry_breakdown"] = []
         out.append(d)
     return out
 

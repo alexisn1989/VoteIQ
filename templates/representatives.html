@@ -539,7 +539,11 @@ const FEC_CANDIDATE_IDS = {
 
 const INDUSTRY_COLORS = {
   'Defense':        '#3d405b',
-  'Healthcare':     '#2d7dd2',
+  'Healthcare':     '#16a34a',
+  'Health Insurance': '#65a30d',
+  'Pharma':         '#14b8a6',
+  'Hospitals':      '#15803d',
+  'Health Professionals': '#16a34a',
   'Energy':         '#f18f01',
   'Finance':        '#1a936f',
   'Technology':     '#8338ec',
@@ -558,6 +562,27 @@ const INDUSTRY_COLORS = {
   'Manufacturing':  '#6c757d',
   'Grassroots':     '#43aa8b',
   'Other':          '#adb5bd',
+  // Finance sub-sectors
+  'Insurance':      '#6d28d9', 'Investment & Securities': '#0891b2', 'Banking': '#0c4a6e',
+  'Financial Services': '#0e7490',
+  // Technology sub-sectors
+  'Software & IT':  '#7c3aed', 'IT & Engineering': '#475569',
+  'Artificial Intelligence': '#6366f1', 'Crypto/Blockchain': '#f59e0b',
+  // Energy sub-sectors
+  'Fossil Fuels':   '#92400e', 'Utilities': '#1d4ed8', 'Renewables': '#22c55e',
+  // Labor sub-sectors
+  'Healthcare Worker Unions': '#0d9488', 'Education Unions': '#4f46e5',
+  'Public Employee Unions': '#d97706', 'Building & Industrial Unions': '#b91c1c', 'Service & Retail Workers': '#ea580c',
+  // Real Estate sub-sectors
+  'Realtors': '#dc2626', 'Homebuilders': '#a16207', 'Commercial Real Estate': '#b45309',
+  // Agriculture sub-sectors
+  'Tobacco': '#44403c', 'Wine & Spirits': '#881337', 'Livestock & Poultry': '#854d0e', 'Agribusiness': '#3f6212',
+  // Legal sub-sectors
+  'Trial Lawyers': '#b91c1c', 'Corporate Law': '#1e3a5f',
+  // Gambling
+  'Gambling/Casinos': '#065f46',
+  // Defense sub-sectors
+  'Aerospace & Weapons': '#1c2b3b', 'Defense IT & Services': '#4a5568',
 };
 
 const donorsCache = {};
@@ -671,7 +696,10 @@ function switchChartView(bid, view) {
 const _CORPORATE_INDUSTRIES = new Set([
   'Finance','Healthcare','Defense','Energy','Real Estate','Telecom','Automotive',
   'Agriculture','Technology','Manufacturing','Transportation','Hospitality',
-  'Small Business','Alcohol/Tobacco','Legal','Guns/NRA','Ideological'
+  'Small Business','Alcohol/Tobacco','Legal','Guns/NRA','Ideological',
+  'Tobacco','Wine & Spirits','Livestock & Poultry','Agribusiness',
+  'Realtors','Homebuilders','Commercial Real Estate',
+  'Trial Lawyers','Corporate Law','Gambling/Casinos'
 ]);
 
 function buildRatioHeadline(rows) {

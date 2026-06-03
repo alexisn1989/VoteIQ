@@ -32,6 +32,34 @@ _data_dir_raw = os.getenv("DATA_DIR", str(_BASE_DIR))
 _DATA_DIR = _data_dir_raw if os.path.isdir(_data_dir_raw) else str(_BASE_DIR)
 _POLLS_DB = os.path.join(_DATA_DIR, "polls.db")
 
+# Name prefixes/suffixes stripped when normalizing a full legal name to a
+# "first last" lookup key. Mirrors the logic used to build cf_candidate_keys.
+_NAME_PREFIXES = {"mr", "mrs", "ms", "miss", "dr", "rev", "hon", "sen", "rep",
+                  "the", "honorable"}
+_NAME_SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "v", "md", "phd", "esq", "esquire"}
+
+
+def _norm_cand_key(name: str) -> str:
+    """Normalize a full name to a 'first last' key (lowercased, titles dropped).
+
+    'Mr. Aaron Roosevelt Rouse' -> 'aaron rouse'; 'Aaron R. Rouse' -> 'aaron rouse'.
+    Used to match a legislator against the donor table via the indexed
+    cf_candidate_keys lookup instead of a slow leading-wildcard LIKE scan.
+    """
+    if not name:
+        return ""
+    toks = [t.strip(".,").lower() for t in name.split()]
+    toks = [t for t in toks if t]
+    while toks and toks[0] in _NAME_PREFIXES:
+        toks.pop(0)
+    while toks and toks[-1] in _NAME_SUFFIXES:
+        toks.pop()
+    if not toks:
+        return ""
+    if len(toks) == 1:
+        return toks[0]
+    return toks[0] + " " + toks[-1]
+
 
 def _polls_conn():
     path = _POLLS_DB
@@ -82,35 +110,61 @@ def _inject(template: str, key: str, data) -> str:
     return html.replace("</head>", f"<script>window.{key}={safe};</script></head>", 1)
 
 
+def _bill_match_key(voter_name: str) -> str:
+    """Normalize a vote-summary name to the short form used in the bill tables.
+
+    Replicates the SQL CASE expression formerly used in the join:
+    "Aaron R. Rouse" -> "aaron rouse" (drops the middle initial). Names without
+    a "<initial>. " pattern are simply lowercased.
+    """
+    if ". " in voter_name:
+        first_space = voter_name.find(" ")
+        dot = voter_name.find(". ")
+        return (voter_name[:first_space] + voter_name[dot + 1:]).lower()
+    return voter_name.lower()
+
+
 def _legislators_list(conn) -> list[dict]:
+    # NOTE: This was previously a single query with two LEFT JOINs whose ON
+    # clauses matched on a computed expression (lower(substr(...)||substr(...)))
+    # on both sides. SQLite could not use any index for that, producing a full
+    # cross-product (~145 x 7.3k x 24k rows) that took ~160s. We now run three
+    # fast indexed scans and merge the bill counts in Python — identical output,
+    # sub-second runtime.
     rows = conn.execute("""
-        SELECT v.voter_name, v.chamber, v.party,
-               v.yes_count, v.no_count, v.not_voting, v.abstain, v.total_votes,
-               ROUND(CAST(v.yes_count AS REAL) / MAX(v.total_votes, 1) * 100, 1) AS yes_rate,
-               COUNT(DISTINCT sb.bill_id) AS bills_introduced,
-               COUNT(DISTINCT cb.bill_id) AS bills_cosponsored
-        FROM va_legislator_vote_summary v
-        LEFT JOIN va_legislator_sponsored_bills sb
-               ON lower(sb.legislator_name) = CASE
-                      WHEN instr(v.voter_name, '. ') > 0
-                      THEN lower(substr(v.voter_name, 1, instr(v.voter_name, ' ')-1)
-                               || substr(v.voter_name, instr(v.voter_name, '. ')+1))
-                      ELSE lower(v.voter_name)
-                  END
-              AND sb.session = v.session
-        LEFT JOIN va_legislator_cosponsor_bills cb
-               ON lower(cb.legislator_name) = CASE
-                      WHEN instr(v.voter_name, '. ') > 0
-                      THEN lower(substr(v.voter_name, 1, instr(v.voter_name, ' ')-1)
-                               || substr(v.voter_name, instr(v.voter_name, '. ')+1))
-                      ELSE lower(v.voter_name)
-                  END
-              AND cb.session = v.session
-        WHERE v.session = '2026'
-        GROUP BY v.voter_name
-        ORDER BY v.chamber, v.party, v.voter_name
+        SELECT voter_name, chamber, party,
+               yes_count, no_count, not_voting, abstain, total_votes,
+               ROUND(CAST(yes_count AS REAL) / MAX(total_votes, 1) * 100, 1) AS yes_rate
+        FROM va_legislator_vote_summary
+        WHERE session = '2026'
+        ORDER BY chamber, party, voter_name
     """).fetchall()
-    return [dict(r) for r in rows]
+
+    sponsored = {
+        r[0]: r[1] for r in conn.execute("""
+            SELECT lower(legislator_name), COUNT(DISTINCT bill_id)
+            FROM va_legislator_sponsored_bills
+            WHERE session = '2026'
+            GROUP BY lower(legislator_name)
+        """).fetchall()
+    }
+    cosponsored = {
+        r[0]: r[1] for r in conn.execute("""
+            SELECT lower(legislator_name), COUNT(DISTINCT bill_id)
+            FROM va_legislator_cosponsor_bills
+            WHERE session = '2026'
+            GROUP BY lower(legislator_name)
+        """).fetchall()
+    }
+
+    out = []
+    for r in rows:
+        d = dict(r)
+        key = _bill_match_key(d["voter_name"])
+        d["bills_introduced"] = sponsored.get(key, 0)
+        d["bills_cosponsored"] = cosponsored.get(key, 0)
+        out.append(d)
+    return out
 
 
 def _fetch_profile(conn, name: str) -> dict:
@@ -194,7 +248,7 @@ def _fetch_profile(conn, name: str) -> dict:
     # ── Campaign finance sectors ─────────────────────────────────────────────
     fin_row = conn.execute("""
         SELECT total_raised, top_sector, top_sector_pct, latest_cycle,
-               by_sector_json, top_donors_json
+               by_sector_json, top_donors_json, overall_va_pct, alignment_json
         FROM campaign_finance_summary
         WHERE lower(name) = lower(?)
         LIMIT 1
@@ -209,7 +263,7 @@ def _fetch_profile(conn, name: str) -> dict:
         if target_key:
             for cand in conn.execute("""
                 SELECT total_raised, top_sector, top_sector_pct, latest_cycle,
-                       by_sector_json, top_donors_json, name
+                       by_sector_json, top_donors_json, overall_va_pct, alignment_json, name
                 FROM campaign_finance_summary
             """).fetchall():
                 if _name_key(cand["name"]) == target_key:
@@ -218,21 +272,34 @@ def _fetch_profile(conn, name: str) -> dict:
 
     if fin_row:
         profile["finance_meta"] = {
-            "total_raised": fin_row["total_raised"],
-            "top_sector":   fin_row["top_sector"],
+            "total_raised":   fin_row["total_raised"],
+            "top_sector":     fin_row["top_sector"],
             "top_sector_pct": fin_row["top_sector_pct"],
-            "latest_cycle": fin_row["latest_cycle"],
+            "latest_cycle":   fin_row["latest_cycle"],
+            "overall_va_pct": fin_row["overall_va_pct"],
         }
         profile["finance_sectors"] = json.loads(fin_row["by_sector_json"] or "[]")
         profile["top_donors"]      = json.loads(fin_row["top_donors_json"] or "[]")[:10]
+        profile["donor_alignment"] = json.loads(fin_row["alignment_json"] or "[]")
     else:
         profile["finance_meta"]    = None
         profile["finance_sectors"] = []
         profile["top_donors"]      = []
+        profile["donor_alignment"] = []
 
     # ── Donor tiers: corporate/PAC vs individual size buckets ───────────────
-    def _donor_tiers(cand_name: str) -> list:
-        rows = conn.execute("""
+    def _donor_tiers(cand_names) -> list:
+        """Aggregate donor tiers across one or more exact candidate_name values.
+
+        Each name hits the lower(candidate_name) functional index, so an IN-list
+        of variants stays index-fast (no full-table scan)."""
+        if isinstance(cand_names, str):
+            cand_names = [cand_names]
+        cand_names = [n for n in cand_names if n]
+        if not cand_names:
+            return []
+        placeholders = ",".join("lower(?)" for _ in cand_names)
+        rows = conn.execute(f"""
             SELECT
                 CASE
                     WHEN is_individual = 0 THEN 'Corporate / PAC'
@@ -244,22 +311,30 @@ def _fetch_profile(conn, name: str) -> dict:
                 COUNT(*)    AS cnt,
                 SUM(amount) AS total
             FROM va_cf_schedule_a
-            WHERE lower(candidate_name) = lower(?) AND amount > 0
+            WHERE lower(candidate_name) IN ({placeholders}) AND amount > 0
             GROUP BY tier ORDER BY total DESC
-        """, (cand_name,)).fetchall()
+        """, cand_names).fetchall()
         return [{"tier": r["tier"], "count": r["cnt"], "total": r["total"]} for r in rows]
 
     tiers = _donor_tiers(bill_name) or _donor_tiers(resolved)
     if not tiers:
-        last = (bill_name or "").strip().split()[-1] if (bill_name or "").strip() else ""
-        if last:
-            match = conn.execute(
-                "SELECT DISTINCT candidate_name FROM va_cf_schedule_a "
-                "WHERE lower(candidate_name) LIKE lower(?) LIMIT 1",
-                (f"%{last}%",)
-            ).fetchone()
-            if match:
-                tiers = _donor_tiers(match["candidate_name"])
+        # Indexed fuzzy fallback: normalize the legislator name to a
+        # "first last" key and pull every matching donor-name variant from the
+        # pre-built cf_candidate_keys table, then aggregate them in one shot.
+        # Replaces a 15s leading-wildcard LIKE scan over 2.2M rows.
+        key = _norm_cand_key(bill_name) or _norm_cand_key(resolved)
+        if key:
+            try:
+                variants = [
+                    m["candidate_name"] for m in conn.execute(
+                        "SELECT candidate_name FROM cf_candidate_keys WHERE cand_key = ?",
+                        (key,)
+                    ).fetchall()
+                ]
+            except sqlite3.OperationalError:
+                variants = []
+            if variants:
+                tiers = _donor_tiers(variants)
     profile["donor_tiers"] = tiers
 
     # ── Donor-industry analysis (from pre-computed correlation cache) ──────────

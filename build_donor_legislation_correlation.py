@@ -93,6 +93,8 @@ BILL_MAP = [
     ("utility",           "Energy"),("utilities",     "Energy"),
     ("net metering",      "Energy"),("energy storage","Energy"),
     ("rate case",         "Energy"),("rate increase", "Energy"),
+    ("coal mine",         "Energy"),("coalfield",     "Energy"),
+    ("coal surface mining","Energy"),("fossil fuel",  "Energy"),
     # Healthcare / Pharma
     ("medicaid",          "Healthcare"),("medicare",   "Healthcare"),
     ("health insurance",  "Healthcare"),("health benefit","Healthcare"),
@@ -131,6 +133,7 @@ BILL_MAP = [
     ("labor",             "Labor"),("workforce",     "Labor"),
     ("paid leave",        "Labor"),("overtime",      "Labor"),
     ("workplace",         "Labor"),("unemployment",  "Labor"),
+    ("mining safety",     "Labor"),("mine safety",   "Labor"),
     # Environment
     ("environment",       "Environment"),("climate",  "Environment"),
     ("pollution",         "Environment"),("carbon",   "Environment"),

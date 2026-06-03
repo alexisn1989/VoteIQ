@@ -152,17 +152,50 @@
 
 <script>
 const INDUSTRY_COLORS = {
-  'Grassroots':'#43aa8b','Finance':'#264653','Healthcare':'#e76f51',
+  'Grassroots':'#43aa8b','Finance':'#264653','Healthcare':'#16a34a',
+  'Health Insurance':'#65a30d','Pharma':'#14b8a6','Hospitals':'#15803d','Health Professionals':'#16a34a',
   'Defense':'#2a9d8f','Energy':'#e9c46a','Real Estate':'#f4a261',
   'Labor':'#e07b39','Telecom':'#457b9d','Automotive':'#1d3557',
   'Agriculture':'#6a994e','Technology':'#7209b7','Manufacturing':'#6c757d',
   'Legal':'#8d6e63','Alcohol/Tobacco':'#795548','Transportation':'#00796b',
   'Hospitality':'#f06292','Small Business':'#26a69a','Guns/NRA':'#b71c1c',
   'Ideological':'#9c27b0','Other':'#adb5bd',
+  // Finance sub-sectors
+  'Insurance':'#6d28d9','Investment & Securities':'#0891b2','Banking':'#0c4a6e',
+  'Financial Services':'#0e7490',
+  // Technology sub-sectors
+  'Software & IT':'#7c3aed','IT & Engineering':'#475569',
+  'Artificial Intelligence':'#6366f1','Crypto/Blockchain':'#f59e0b',
+  'Realtors':'#dc2626','Homebuilders':'#a16207','Commercial Real Estate':'#b45309',
+  // Energy sub-sectors
+  'Fossil Fuels':'#92400e','Utilities':'#1d4ed8','Renewables':'#22c55e',
+  // Labor sub-sectors
+  'Healthcare Worker Unions':'#0d9488','Education Unions':'#4f46e5',
+  'Public Employee Unions':'#d97706','Building & Industrial Unions':'#b91c1c','Service & Retail Workers':'#ea580c',
+  // Defense sub-sectors
+  'Aerospace & Weapons':'#1c2b3b','Defense IT & Services':'#4a5568',
+  // Real Estate sub-sectors
+  'Realtors':'#dc2626','Homebuilders':'#a16207','Commercial Real Estate':'#b45309',
+  // Agriculture sub-sectors
+  'Tobacco':'#44403c','Wine & Spirits':'#881337','Livestock & Poultry':'#854d0e','Agribusiness':'#3f6212',
+  // Legal sub-sectors
+  'Trial Lawyers':'#b91c1c','Corporate Law':'#1e3a5f',
+  // Gambling
+  'Gambling/Casinos':'#065f46',
 };
 const CORPORATE = new Set(['Finance','Healthcare','Defense','Energy','Real Estate','Telecom',
   'Automotive','Agriculture','Technology','Manufacturing','Transportation','Hospitality',
-  'Small Business','Alcohol/Tobacco','Legal','Guns/NRA','Ideological']);
+  'Small Business','Alcohol/Tobacco','Legal','Guns/NRA','Ideological',
+  'Artificial Intelligence','Crypto/Blockchain',
+  'Insurance','Investment & Securities','Banking','Financial Services',
+  'Software & IT','IT & Engineering','Fossil Fuels','Utilities','Renewables',
+  'Healthcare Worker Unions','Education Unions',
+  'Public Employee Unions','Building & Industrial Unions','Service & Retail Workers',
+  'Aerospace & Weapons','Defense IT & Services',
+  'Health Insurance','Pharma','Hospitals','Health Professionals',
+  'Tobacco','Wine & Spirits','Livestock & Poultry','Agribusiness',
+  'Realtors','Homebuilders','Commercial Real Estate',
+  'Trial Lawyers','Corporate Law','Gambling/Casinos']);
 
 function fmtM(n) {
   if (n >= 1e6) return '$' + (n/1e6).toFixed(1) + 'M';

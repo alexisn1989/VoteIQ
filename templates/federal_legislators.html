@@ -124,6 +124,19 @@
     .leg-table thead th:nth-child(4),
     .leg-table td:nth-child(4) { display: none; }
   }
+
+  /* ── Industry detail panel ── */
+  .expand-icon { display: inline-block; font-size: 0.55rem; color: var(--muted); margin-right: 6px; transition: transform 0.15s ease; line-height: 1; vertical-align: middle; }
+  .expand-icon.open { transform: rotate(90deg); color: var(--navy); }
+  tr.detail-row > td { padding: 0; border-bottom: 2px solid var(--navy) !important; }
+  .ind-panel { padding: 18px 24px 20px 24px; background: #f0ede4; }
+  .ind-panel-title { font-family: 'Barlow Condensed', sans-serif; font-size: 0.63rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; border-bottom: 1px solid var(--mid); padding-bottom: 8px; }
+  .ind-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 9px 32px; }
+  .ind-row { display: flex; align-items: center; gap: 10px; }
+  .ind-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.8rem; font-weight: 600; color: var(--navy); width: 130px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ind-bar-bg { flex: 1; height: 7px; background: var(--mid); border-radius: 2px; overflow: hidden; min-width: 40px; }
+  .ind-bar-fill { height: 100%; border-radius: 2px; }
+  .ind-val { font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; color: var(--navy); width: 62px; text-align: right; flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -149,7 +162,7 @@
 <div class="page-hero">
   <div class="page-hero-eyebrow">119th Congress</div>
   <h1>Virginia <em>Federal Delegation</em></h1>
-  <p>Campaign finance and district data for Virginia's 2 U.S. Senators and 11 House members. Finance figures are from FEC filings. Click any row to visit the member's official website.</p>
+  <p>Campaign finance and district data for Virginia's 2 U.S. Senators and 11 House members. Finance figures are from FEC filings. Click any row to expand its industry donor breakdown.</p>
 </div>
 
 <div class="section-wrap">
@@ -219,16 +232,56 @@
 
   // ── Sector colours ─────────────────────────────────────────────────────────
   const SECTOR_COLORS = {
-    'Energy': '#c8102e', 'Healthcare': '#1a52c8', 'Legal': '#2a6035',
+    'Energy': '#c8102e', 'Healthcare': '#16a34a', 'Legal': '#2a6035',
+    'Health Insurance': '#65a30d', 'Pharma': '#14b8a6', 'Hospitals': '#15803d', 'Health Professionals': '#16a34a',
     'Ideological': '#7c3aed', 'Finance': '#0e7490', 'Real Estate': '#b45309',
     'Technology': '#0369a1', 'Education': '#047857', 'Defense': '#6b4f12',
     'Labor/Union': '#9d174d', 'Agriculture': '#3d6b21', 'Manufacturing': '#374151',
     'Transportation': '#1e3a5f', 'Hospitality': '#c2410c', 'Retail': '#6d28d9',
     'Individual/Other': '#7a7468', 'Other': '#7a7468', 'Retired': '#7a7468',
     'Self-Employed': '#9ca3af',
+    // fec_industry_totals-specific industries
+    'Telecom': '#0369a1', 'Automotive': '#374151', 'Alcohol/Tobacco': '#92400e',
+    'Small Business': '#047857', 'Misc Business': '#6b7280', 'Construction': '#b45309',
+    'Electronics': '#1d4ed8', 'Gambling': '#7c3aed', 'Chemicals': '#065f46',
+    'Waste Mgmt': '#4b5563',
+    // Finance sub-sectors
+    'Insurance': '#6d28d9', 'Investment & Securities': '#0891b2', 'Banking': '#0c4a6e',
+    'Financial Services': '#0e7490',
+    // Technology sub-sectors
+    'Software & IT': '#7c3aed', 'IT & Engineering': '#475569',
+    'Artificial Intelligence': '#6366f1', 'Crypto/Blockchain': '#f59e0b',
+    // Energy sub-sectors
+    'Fossil Fuels': '#92400e', 'Utilities': '#1d4ed8', 'Renewables': '#22c55e',
+    // Labor sub-sectors
+    'Healthcare Worker Unions': '#0d9488', 'Education Unions': '#4f46e5',
+    'Public Employee Unions': '#d97706', 'Building & Industrial Unions': '#b91c1c', 'Service & Retail Workers': '#ea580c',
+    // Defense sub-sectors
+    'Aerospace & Weapons': '#1c2b3b', 'Defense IT & Services': '#4a5568',
+    // Real Estate sub-sectors
+    'Realtors': '#dc2626', 'Homebuilders': '#a16207', 'Commercial Real Estate': '#b45309',
+    // Agriculture sub-sectors
+    'Tobacco': '#44403c', 'Wine & Spirits': '#881337', 'Livestock & Poultry': '#854d0e', 'Agribusiness': '#3f6212',
+    // Legal sub-sectors
+    'Trial Lawyers': '#b91c1c', 'Corporate Law': '#1e3a5f',
+    // Gambling
+    'Gambling/Casinos': '#065f46',
   };
 
   function sectorColor(s) { return SECTOR_COLORS[s] || '#7a7468'; }
+
+  // Expose toggle handler globally (called from inline onclick in dynamically-rendered rows)
+  window.toggleDetail = function (id) {
+    const det  = document.getElementById('det-' + id);
+    const icon = document.getElementById('exp-' + id);
+    if (!det) return;
+    const isOpen = det.style.display !== 'none';
+    det.style.display = isOpen ? 'none' : '';
+    if (icon) {
+      icon.textContent = isOpen ? '▶' : '▼';
+      icon.classList.toggle('open', !isOpen);
+    }
+  };
 
   function partyClass(p) {
     if (!p) return 'other';
@@ -317,21 +370,41 @@
       return;
     }
 
-    tbody.innerHTML = rows.map(r => {
+    tbody.innerHTML = rows.flatMap(r => {
       const pc   = partyClass(r.party);
       const pct  = r.total_raised ? Math.round(r.total_raised / MAX_RAISED * 100) : 0;
       const site = r.website || '';
       const siteClick = site
         ? `onclick="event.stopPropagation();window.open('${esc(site)}','_blank')"`
         : '';
-      const rowClick = site ? `onclick="window.open('${esc(site)}','_blank')"` : '';
       const sectorLabel = r.top_sector && r.top_sector !== 'Individual/Other' && r.top_sector !== 'Other'
         ? r.top_sector : (r.top_sector || '—');
       const cycle = r.latest_cycle ? ` <span style="font-weight:400;color:var(--muted);font-size:0.75rem">'${String(r.latest_cycle).slice(-2)}</span>` : '';
+      const bid = esc(r.bioguide_id || r.name);
 
-      return `<tr ${rowClick} style="${site ? 'cursor:pointer' : ''}">
+      // ── Build industry breakdown panel content ──────────────────────────────
+      const breakdown = r.industry_breakdown || [];
+      const maxInd = Math.max(...breakdown.map(i => i.total || 0), 1);
+      let indContent;
+      if (breakdown.length) {
+        const bars = breakdown.map(i => {
+          const w   = Math.round((i.total || 0) / maxInd * 100);
+          const col = sectorColor(i.industry);
+          return '<div class="ind-row">'
+            + '<span class="ind-label">' + esc(i.industry) + '</span>'
+            + '<div class="ind-bar-bg"><div class="ind-bar-fill" style="width:' + w + '%;background:' + col + '"></div></div>'
+            + '<span class="ind-val">' + fmtMoney(i.total) + '</span>'
+            + '</div>';
+        }).join('');
+        indContent = '<div class="ind-grid">' + bars + '</div>';
+      } else {
+        indContent = '<span style="color:var(--muted);font-size:0.82rem;font-style:italic">No granular industry data available</span>';
+      }
+
+      const mainRow = `<tr onclick="toggleDetail('${bid}')" style="cursor:pointer">
         <td class="stripe-cell"><span class="party-stripe-td ${pc}"></span></td>
         <td>
+          <span class="expand-icon" id="exp-${bid}">&#9658;</span>
           <span class="leg-name">${esc(r.name)}</span>
           <span class="leg-badge chamber">${chamberShort(r.chamber)}</span>
         </td>
@@ -350,9 +423,18 @@
           ? `<span class="sector-pill" style="background:${sectorColor(r.top_sector)}18;color:${sectorColor(r.top_sector)}">${esc(sectorLabel)}</span>`
           : '<span style="color:var(--muted);font-size:0.8rem">—</span>'}</td>
         <td>${site
-          ? `<a class="site-link" href="${esc(site)}" target="_blank" rel="noopener" ${siteClick}>Official site ↗</a>`
+          ? `<a class="site-link" href="${esc(site)}" target="_blank" rel="noopener" ${siteClick}>Official site &#8599;</a>`
           : '<span style="color:var(--muted);font-size:0.8rem">—</span>'}</td>
       </tr>`;
+
+      const detailRow = `<tr class="detail-row" id="det-${bid}" style="display:none">
+        <td colspan="8"><div class="ind-panel">
+          <div class="ind-panel-title">Donor Industries &#8212; ${esc(r.name)}</div>
+          ${indContent}
+        </div></td>
+      </tr>`;
+
+      return [mainRow, detailRow];
     }).join('');
   }
 

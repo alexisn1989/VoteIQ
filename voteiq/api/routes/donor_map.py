@@ -286,6 +286,403 @@ def analysis_page():
     return _inject(data, "analysis.html")
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+#  FOLLOW THE MONEY  (/follow-the-money)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _build_money_vs_bills_data() -> dict:
+    """Compute scatter data (donated $, bills sponsored) per sector per legislator."""
+    import math as _math
+    from collections import defaultdict
+
+    conn = _conn()
+
+    BILL_TAGS: dict[str, list[str]] = {
+        "Commercial Real Estate":    ["zoning", "landlord", "eviction", "land use",
+                                       "commercial development", "mixed use"],
+        "Agribusiness":              ["agriculture", "farmer", "farm bureau", "agricultural",
+                                       "pesticide", "crop insurance"],
+        "Trial Lawyers":             ["wrongful death", "consumer protection",
+                                       "personal injury", "class action", "plaintiff"],
+        "Fossil Fuels":              ["coal", "natural gas pipeline", "fossil fuel",
+                                       "petroleum", "fracking", "compressor station"],
+        "Renewables":                ["renewable energy", "solar energy", "clean energy",
+                                       "electric vehicle", "net metering"],
+        "Service & Retail Workers":  ["minimum wage", "paid sick leave", "gig worker",
+                                       "retail worker"],
+        "Building & Industrial Unions": ["prevailing wage", "building trade",
+                                          "project labor agreement"],
+        "Gambling/Casinos":          ["casino", "gaming license", "sports betting",
+                                       "horse racing"],
+        "Health Professionals":      ["physician", "nurse practitioner", "medical licensure",
+                                       "prior authorization"],
+        "Banking":                   ["bank regulation", "lending", "credit union", "mortgage"],
+    }
+
+    def _tag(title: str, desc: str = "") -> set[str]:
+        text = (title + " " + (desc or "")).lower()
+        found: set[str] = set()
+        for ind, kws in BILL_TAGS.items():
+            for kw in kws:
+                if kw in text:
+                    found.add(ind)
+                    break
+        return found
+
+    # Bill counts: legislator_name → sector → float (sponsor=1, cosponsor=0.5)
+    bill_counts: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
+    for r in conn.execute("""
+        SELECT s.legislator_name, b.title, b.summary
+        FROM va_legislator_sponsored_bills s
+        JOIN legiscan_va_bills b ON b.bill_id = s.bill_id
+        WHERE b.title IS NOT NULL
+    """):
+        for ind in _tag(r["title"], r["summary"] or ""):
+            bill_counts[r["legislator_name"].strip()][ind] += 1.0
+    for r in conn.execute("""
+        SELECT s.legislator_name, b.title, b.summary
+        FROM va_legislator_cosponsor_bills s
+        JOIN legiscan_va_bills b ON b.bill_id = s.bill_id
+        WHERE b.title IS NOT NULL
+    """):
+        for ind in _tag(r["title"], r["summary"] or ""):
+            bill_counts[r["legislator_name"].strip()][ind] += 0.5
+
+    def _get_bills(name: str, sector: str) -> float:
+        parts = name.replace(".", "").split()
+        best = 0.0
+        for v in {name, f"{parts[0]} {parts[-1]}" if len(parts) >= 2 else name}:
+            best = max(best, bill_counts[v].get(sector, 0.0))
+        return round(best, 1)
+
+    # Load legislators
+    legs = []
+    for r in conn.execute("""
+        SELECT name, party, chamber, by_sector_json
+        FROM campaign_finance_summary WHERE source LIKE '%sbe%'
+    """):
+        secs = json.loads(r["by_sector_json"] or "[]")
+        party = r["party"] or ""
+        p = "D" if "emocrat" in party else "R" if "epublican" in party else "I"
+        legs.append({
+            "name":    r["name"],
+            "party":   p,
+            "chamber": r["chamber"] or "",
+            "sec_map": {e["sector"]: e["total"] for e in secs},
+            "top_sector": secs[0]["sector"] if secs else None,
+        })
+
+    # Individual-donor totals per legislator per sector (for PAC vs. individual split)
+    import re as _re
+    _SECTOR_IND_KWS: list[tuple[str, list[str]]] = [
+        ("Commercial Real Estate", ["real estate", "property management", "realty",
+                                    "reit", "apartment", "homebuilder", "land develop"]),
+        ("Agribusiness",           ["farm bureau", "agriculture", "farm", "dairy",
+                                    "cattle", "poultry", "tyson", "smithfield", "perdue"]),
+        ("Trial Lawyers",          ["trial lawyer", "plaintiff", "personal injury",
+                                    "law firm", "attorney", "lawyer"]),
+        ("Fossil Fuels",           ["coal", "natural gas", "petroleum", "dominion energy",
+                                    "appalachian power", "columbia gas", "oil company"]),
+        ("Renewables",             ["solar", "clean energy", "renewable", "wind energy",
+                                    "apex clean"]),
+        ("Service & Retail Workers", ["retail", "restaurant", "hotel", "hospitality",
+                                      "food service"]),
+        ("Building & Industrial Unions", ["union", "labor council", "teamster", "ibew",
+                                          "carpenters", "plumbers", "sheet metal"]),
+        ("Gambling/Casinos",       ["casino", "gaming", "draftkings", "fanduel",
+                                    "caesars", "hard rock"]),
+        ("Health Professionals",   ["hospital", "medical", "physician", "healthcare",
+                                    "pharmacy", "dentist", "optometrist"]),
+        ("Banking",                ["bank", "credit union", "financial services",
+                                    "investment", "securities"]),
+    ]
+
+    def _norm_cand(s: str) -> str:
+        return " ".join(_re.sub(r"[^a-z ]", "", s.lower()).split())
+
+    def _classify_ind(emp: str, occ: str, co: str) -> str | None:
+        text = " ".join([emp or "", occ or "", co or ""]).lower()
+        for sect, kws in _SECTOR_IND_KWS:
+            for kw in kws:
+                if kw in text:
+                    return sect
+        return None
+
+    # ind_totals[norm_name][sector] = sum of individual donations
+    ind_totals: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
+    for r in conn.execute("""
+        SELECT candidate_name, employer, occupation, last_or_company, amount
+        FROM va_cf_schedule_a
+        WHERE is_individual = 1 AND amount > 0
+    """):
+        if not r["candidate_name"]:
+            continue
+        sect = _classify_ind(r["employer"] or "", r["occupation"] or "",
+                              r["last_or_company"] or "")
+        if sect:
+            ind_totals[_norm_cand(r["candidate_name"])][sect] += r["amount"]
+
+    # Build scatter points per sector
+    scatter_sectors: dict[str, list[dict]] = {}
+    for sector in BILL_TAGS:
+        pts = []
+        for leg in legs:
+            donated = leg["sec_map"].get(sector, 0)
+            bills   = _get_bills(leg["name"], sector)
+            if donated > 200 or bills > 0:
+                nk      = _norm_cand(leg["name"])
+                ind_d   = round(min(ind_totals[nk].get(sector, 0), donated))
+                pac_d   = max(0, donated - ind_d)
+                pts.append({
+                    "name":        leg["name"],
+                    "party":       leg["party"],
+                    "chamber":     leg["chamber"],
+                    "donated":     donated,
+                    "pac_donated": pac_d,
+                    "ind_donated": ind_d,
+                    "bills":       bills,
+                })
+        if pts:
+            scatter_sectors[sector] = pts
+
+    # Pearson r (log-x for donations)
+    def _pearson(pts: list[dict]) -> dict:
+        valid = [p for p in pts if p["donated"] > 0]
+        n = len(valid)
+        if n < 5:
+            return {"r": None, "p": None, "sig": "n/a", "n": n}
+        xs = [_math.log10(p["donated"]) for p in valid]
+        ys = [p["bills"] for p in valid]
+        mx, my = sum(xs)/n, sum(ys)/n
+        num = sum((x-mx)*(y-my) for x,y in zip(xs, ys))
+        dx  = sum((x-mx)**2 for x in xs) ** 0.5
+        dy  = sum((y-my)**2 for y in ys) ** 0.5
+        if dx == 0 or dy == 0:
+            return {"r": 0.0, "p": 1.0, "sig": "n.s.", "n": n}
+        r = num / (dx * dy)
+        t = r * (n-2)**0.5 / max(1e-10, (1-r*r)**0.5)
+        p = 2*(1 - 0.5*(1 + _math.erf(abs(t)/_math.sqrt(2))))
+        sig = "***" if p < 0.001 else "**" if p < 0.01 else "*" if p < 0.05 else "n.s."
+        # regression coefficients (log-x linear)
+        slope = num / (dx**2) if dx > 0 else 0
+        intercept = my - slope * mx
+        return {
+            "r": round(r, 3), "p": round(p, 4), "sig": sig, "n": n,
+            "slope": round(slope, 4), "intercept": round(intercept, 4),
+        }
+
+    correlations = {s: _pearson(pts) for s, pts in scatter_sectors.items()}
+
+    # Gatekeeper: top CRE donors with 0 bills
+    cre_pts = sorted(scatter_sectors.get("Commercial Real Estate", []),
+                     key=lambda x: -x["donated"])[:12]
+    gatekeeper = {
+        "sector":               "Commercial Real Estate",
+        "total_donated_top10":  sum(p["donated"] for p in cre_pts[:10]),
+        "bills_top10":          sum(p["bills"]   for p in cre_pts[:10]),
+        "top_donors":           cre_pts[:10],
+    }
+
+    # Party alignment stats
+    party_stats = {
+        "D": {"aligned": 0, "opposed": 0, "legs": []},
+        "R": {"aligned": 0, "opposed": 0, "legs": []},
+    }
+    for r in conn.execute("""
+        SELECT name, party, alignment_json FROM campaign_finance_summary
+        WHERE alignment_json IS NOT NULL AND source LIKE '%sbe%'
+    """):
+        party = r["party"] or ""
+        p = "D" if "emocrat" in party else "R" if "epublican" in party else None
+        if not p:
+            continue
+        for a in json.loads(r["alignment_json"]):
+            if a["score"] >= 75:
+                party_stats[p]["aligned"] += 1
+            elif a["score"] <= 25:
+                party_stats[p]["opposed"] += 1
+                party_stats[p]["legs"].append(
+                    {"name": r["name"], "sector": a["sector"], "score": a["score"]}
+                )
+
+    conn.close()
+
+    return {
+        "scatter_sectors": scatter_sectors,
+        "correlations":    correlations,
+        "gatekeeper":      gatekeeper,
+        "party_stats":     party_stats,
+        "sector_order": [
+            "Commercial Real Estate", "Agribusiness", "Trial Lawyers",
+            "Fossil Fuels", "Renewables", "Service & Retail Workers",
+            "Building & Industrial Unions", "Gambling/Casinos",
+            "Health Professionals", "Banking",
+        ],
+    }
+
+
+def _build_timing_data() -> dict:
+    """Compute contribution-timing analysis: session vs off-season, bundling, monthly."""
+    from collections import defaultdict
+    import re as _re
+
+    conn = _conn()
+
+    # Virginia GA session = January–March
+    SESSION_MONTHS = {1, 2, 3}
+
+    # Lightweight sector classifier for raw donor rows
+    _TIMING_SECTORS: list[tuple[str, list[str]]] = [
+        ("Fossil Fuels",           ["dominion energy", "appalachian power", "coal",
+                                    "natural gas", "petroleum", "columbia gas"]),
+        ("Renewables",             ["solar", "apex clean", "clean energy", "wind energy"]),
+        ("Commercial Real Estate", ["real estate", "property management", "realty",
+                                    "reit", "apartment assoc"]),
+        ("Gambling/Casinos",       ["casino", "gaming", "draftkings", "fanduel",
+                                    "caesars", "hard rock", "penn gaming", "pamunkey"]),
+        ("Trial Lawyers",          ["trial lawyer", "plaintiff", "personal injury",
+                                    "allen & allen", "marks & harrison"]),
+        ("Corporate Law",          ["mcguirewoods", "hunton", "williams mullen",
+                                    "troutman", "reed smith", "gentry locke"]),
+        ("Homebuilders",           ["homebuilder", "home builder", "nvr ", "ryan homes",
+                                    "kb home", "lennar", "pulte"]),
+        ("Agribusiness",           ["farm bureau", "virginia farm", "tyson",
+                                    "smithfield", "perdue"]),
+        ("Banking",                ["bank of america", "wells fargo", "jpmorgan",
+                                    "bb&t", "truist", "credit union"]),
+        ("Health Professionals",   ["virginia hospital", "vhha", "medical society",
+                                    "hca health", "inova", "sentara", "bon secours"]),
+        ("Telecom",                ["at&t", "verizon", "comcast", "cox comm", "lumen"]),
+        ("Defense",                ["lockheed", "northrop", "raytheon",
+                                    "general dynamics", "booz allen", "leidos"]),
+        ("Insurance",              ["state farm", "allstate", "aetna", "cigna",
+                                    "anthem", "geico", "nationwide ins"]),
+    ]
+
+    def _classify(employer: str, occ: str, company: str) -> str | None:
+        text = " ".join([employer or "", occ or "", company or ""]).lower()
+        for sector, kws in _TIMING_SECTORS:
+            for kw in kws:
+                if kw in text:
+                    return sector
+        return None
+
+    # ── 1. Session premium (PAC/corporate only, 2018+) ──────────────────────
+    timing: dict[str, dict] = defaultdict(
+        lambda: {"s_amt": 0.0, "o_amt": 0.0, "s_n": 0, "o_n": 0}
+    )
+    monthly_by_sector: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
+
+    for r in conn.execute("""
+        SELECT transaction_date, amount, employer, occupation, last_or_company
+        FROM va_cf_schedule_a
+        WHERE is_individual = 0
+          AND transaction_date IS NOT NULL
+          AND amount > 0
+          AND election_cycle >= 2018
+    """):
+        sector = _classify(r["employer"], r["occupation"], r["last_or_company"])
+        if not sector:
+            continue
+        try:
+            mo = int(r["transaction_date"][5:7])
+            ym = r["transaction_date"][:7]
+        except (TypeError, ValueError):
+            continue
+        key = "s" if mo in SESSION_MONTHS else "o"
+        timing[sector][key + "_amt"] += r["amount"]
+        timing[sector][key + "_n"]   += 1
+        if r["transaction_date"] >= "2023-01":
+            monthly_by_sector[sector][ym] += r["amount"]
+
+    session_premium = []
+    for sector, d in timing.items():
+        total = d["s_amt"] + d["o_amt"]
+        if total < 5_000:
+            continue
+        avg_s = d["s_amt"] / max(d["s_n"], 1)
+        avg_o = d["o_amt"] / max(d["o_n"], 1)
+        ratio = round(avg_s / avg_o, 3) if avg_o > 0 else None
+        session_premium.append({
+            "sector":      sector,
+            "session_amt": round(d["s_amt"]),
+            "off_amt":     round(d["o_amt"]),
+            "session_pct": round(d["s_amt"] / total * 100, 1),
+            "avg_session": round(avg_s),
+            "avg_off":     round(avg_o),
+            "ratio":       ratio,
+        })
+    session_premium.sort(key=lambda x: -(x["ratio"] or 0))
+
+    # Monthly series — only keep key sectors, last 24 months of data
+    MONTHLY_SECTORS = [
+        "Fossil Fuels", "Gambling/Casinos", "Commercial Real Estate",
+        "Trial Lawyers", "Renewables", "Homebuilders",
+    ]
+    monthly_series: dict[str, list[dict]] = {}
+    for sector in MONTHLY_SECTORS:
+        raw = monthly_by_sector.get(sector, {})
+        monthly_series[sector] = [
+            {"ym": ym, "amount": round(amt), "session": int(ym[5:7]) in SESSION_MONTHS}
+            for ym, amt in sorted(raw.items())
+        ]
+
+    # ── 2. Session bundling events ────────────────────────────────────────────
+    bundling_rows = []
+    for r in conn.execute("""
+        SELECT
+            COALESCE(last_or_company, employer) as entity,
+            candidate_name,
+            COUNT(*)    as n,
+            SUM(amount) as total,
+            MIN(transaction_date) as first_dt,
+            CAST(substr(MIN(transaction_date),6,2) AS INTEGER) as mo
+        FROM va_cf_schedule_a
+        WHERE is_individual = 0
+          AND transaction_date IS NOT NULL
+          AND election_cycle >= 2020
+          AND amount >= 500
+          AND CAST(substr(transaction_date,6,2) AS INTEGER) BETWEEN 1 AND 3
+          AND length(COALESCE(last_or_company, employer, '')) > 5
+          AND lower(COALESCE(last_or_company, employer,'')) NOT LIKE '%retired%'
+          AND lower(COALESCE(last_or_company, employer,'')) NOT LIKE '%not employ%'
+          AND lower(COALESCE(last_or_company, employer,'')) NOT LIKE '%self emp%'
+        GROUP BY lower(COALESCE(last_or_company, employer)),
+                 lower(candidate_name),
+                 substr(transaction_date, 1, 7)
+        HAVING n >= 2 AND total >= 10000
+        ORDER BY total DESC
+        LIMIT 30
+    """):
+        # Classify the entity
+        entity = r["entity"] or ""
+        sector = _classify(entity, "", entity)
+        bundling_rows.append({
+            "entity":    entity[:40],
+            "candidate": r["candidate_name"] or "",
+            "n":         r["n"],
+            "total":     round(r["total"]),
+            "month":     r["first_dt"][:7] if r["first_dt"] else "",
+            "sector":    sector or "Other",
+        })
+
+    conn.close()
+
+    return {
+        "timing_session_premium": session_premium,
+        "timing_monthly":         monthly_series,
+        "timing_bundling":        bundling_rows,
+    }
+
+
+@router.get("/follow-the-money", response_class=HTMLResponse)
+def follow_the_money_page():
+    """Donor $ vs. bill sponsorship scatter analysis for VA state legislators."""
+    data = _build_money_vs_bills_data()
+    data.update(_build_timing_data())
+    return _inject(data, "follow_the_money.html")
+
+
 @router.get("/dominion-analysis", response_class=HTMLResponse)
 def dominion_analysis_page():
     """Dominion Energy utility donations vs energy bill votes for VA legislators."""
