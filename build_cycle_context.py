@@ -361,26 +361,65 @@ def _insert_hardcoded(conn: sqlite3.Connection) -> int:
     return count
 
 
-def _insert_bill_matched(
+def _bills_from_legiscan(
     conn: sqlite3.Connection, sessions: list[str]
-) -> int:
-    """Match bills from legiscan_va_bills against BILL_MATCH_RULES."""
-    # Load bills for the requested sessions
+) -> list[tuple[str, str, str, str]]:
+    """Return (bill_id, session, bill_number, title) from legiscan_va_bills."""
     placeholders = ",".join("?" for _ in sessions)
-    bills = conn.execute(
+    rows = conn.execute(
         f"""
-        SELECT bill_id, session, bill_number, title, subject
+        SELECT bill_id, session, bill_number, title
         FROM legiscan_va_bills
-        WHERE session IN ({placeholders})
-          AND title IS NOT NULL
+        WHERE session IN ({placeholders}) AND title IS NOT NULL
         """,
         sessions,
     ).fetchall()
-    print(f"  Matching {len(bills):,} bills across sessions {sessions}")
+    return [(r[0], r[1], r[2], r[3]) for r in rows]
+
+
+def _bills_from_openstates(sessions: list[str]) -> list[tuple[str, str, str, str]]:
+    """Return (bill_id, session, bill_number, title) from openstates_va.db."""
+    os_db = BASE_DIR / "openstates_va.db"
+    if not os_db.exists():
+        print("  WARN openstates_va.db not found — skipping OpenStates sessions")
+        return []
+    conn = sqlite3.connect(os_db)
+    placeholders = ",".join("?" for _ in sessions)
+    rows = conn.execute(
+        f"""
+        SELECT bill_id, session, bill_id, title
+        FROM bills
+        WHERE session IN ({placeholders}) AND title IS NOT NULL
+        """,
+        sessions,
+    ).fetchall()
+    conn.close()
+    # bill_id serves as both id and bill_number in OpenStates (e.g. "HB653")
+    return [(r[0], r[1], r[0], r[3]) for r in rows]
+
+
+def _insert_bill_matched(
+    conn: sqlite3.Connection, sessions: list[str]
+) -> int:
+    """Match bills from legiscan_va_bills (2024+) and openstates_va (2022-2023)."""
+    legiscan_sessions  = [s for s in sessions if s >= "2024"]
+    openstates_sessions = [s for s in sessions if s < "2024"]
+
+    bills: list[tuple[str, str, str, str]] = []
+    if legiscan_sessions:
+        leg_bills = _bills_from_legiscan(conn, legiscan_sessions)
+        bills.extend(leg_bills)
+        print(f"  LegiScan ({legiscan_sessions}): {len(leg_bills):,} bills")
+    if openstates_sessions:
+        os_bills = _bills_from_openstates(openstates_sessions)
+        bills.extend(os_bills)
+        print(f"  OpenStates ({openstates_sessions}): {len(os_bills):,} bills")
+
+    print(f"  Matching {len(bills):,} total bills …")
 
     count = 0
-    for bill_id, session, bill_num, title, subject in bills:
-        search_text = ((title or "") + " " + (subject or "")).lower()
+    for bill_id, session, bill_num, title in bills:
+        search_text = (title or "").lower()
 
         for rule in BILL_MATCH_RULES:
             matched_kw = next(
@@ -388,10 +427,6 @@ def _insert_bill_matched(
             )
             if matched_kw is None:
                 continue
-
-            # Use the VA legislative cycle: session year is the election_cycle
-            # VA elects in odd years; session years map directly to cycles
-            cycle = session  # "2022", "2023", "2024", "2025", "2026"
 
             entry_title = f"{bill_num}: {title[:80]}" if title else bill_num
 
@@ -408,7 +443,7 @@ def _insert_bill_matched(
                         source     = excluded.source
                     """,
                     (
-                        cycle,
+                        session,
                         rule["donor_sector"],
                         rule["event_type"],
                         entry_title,
@@ -422,7 +457,7 @@ def _insert_bill_matched(
                 count += 1
             except sqlite3.Error:
                 pass
-            break  # only first matching rule per bill
+            break  # first matching rule per bill wins
 
     conn.commit()
     return count
@@ -440,6 +475,7 @@ def main(bill_match_sessions: list[str] | None = None) -> None:
     print(f"  {n_hard} rows written")
 
     sessions = bill_match_sessions or ["2022", "2023", "2024", "2025", "2026"]
+    # 2022/2023 sourced from openstates_va.db; 2024+ from legiscan_va_bills
     print(f"Bill-matching for sessions {sessions} …")
     n_match = _insert_bill_matched(conn, sessions)
     print(f"  {n_match} rows written")
