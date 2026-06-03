@@ -1130,6 +1130,11 @@ def _build_bills_context(
             if gatekeeper_context and gatekeeper_context not in seen_docs:
                 seen_docs.add(gatekeeper_context)
                 context_blocks.insert(0, gatekeeper_context)
+
+            donor_trend_context = _m._fetch_donor_trend_context(user_query)
+            if donor_trend_context and donor_trend_context not in seen_docs:
+                seen_docs.add(donor_trend_context)
+                context_blocks.insert(0, donor_trend_context)
         elif _gov_money_q:
             _teaser = (
                 "[Campaign Correlation Note — Pro/Newsroom Feature]\n"
@@ -3949,10 +3954,12 @@ async def chat(req: ChatRequest):
         analyst_context = _m._fetch_governor_action_money_analyst_context(last_question)
         member_analyst_context = _m._fetch_member_analyst_context(last_question)
         gatekeeper_context = _m._fetch_gatekeeper_analyst_context(last_question)
+        donor_trend_context = _m._fetch_donor_trend_context(last_question)
     else:
         analyst_context = ""
         member_analyst_context = ""
         gatekeeper_context = ""
+        donor_trend_context = ""
     governor_context = _m._fetch_governor_action_context(last_question)
     governor_eo_context = _m._fetch_governor_eo_context(last_question)
     database_context = build_database_context(last_question)
@@ -4076,6 +4083,8 @@ If the context below includes "Profile Markdown Link", use that exact Markdown l
 
 {gatekeeper_context if gatekeeper_context else ""}
 
+{donor_trend_context if donor_trend_context else ""}
+
 {ie_context if ie_context else ""}
 
 {foreign_ie_context if foreign_ie_context and query_context.get("touches_foreign_policy_donors") else ""}
@@ -4115,6 +4124,7 @@ When citing a vote, include the bill name and Yea/Nay. When citing donors or ind
         analyst_context or "",
         member_analyst_context or "",
         gatekeeper_context or "",
+        donor_trend_context or "",
         ie_context or "",
         foreign_ie_context or "",
         governor_context or "",

@@ -5788,6 +5788,129 @@ def _rerank_articles(question: str, candidates: list[dict], limit: int = 4) -> l
         return candidates[:limit]
 
 
+def _fetch_donor_trend_context(question: str = "") -> str:
+    """
+    Return analyst context for multi-cycle donor trend / investment-return questions.
+    Activates on spike/trend/ramp keywords or when a known institutional donor is named.
+    Restricted to Pro and Newsroom tiers (caller's responsibility).
+    """
+    q = (question or "").lower()
+
+    _trend_terms = (
+        "spike", "spik", "ramp", "ramp up", "surge", "surged",
+        "investment return", "investment signal",
+        "donation trend", "donor trend", "donation history", "donor history",
+        "historically", "over the years", "multi-cycle", "year over year",
+        "increased donation", "donation increase", "when did",
+        "how much has", "how long has", "pattern of giving",
+    )
+    _money_terms = ("donat", "contribut", "money", "fund", "gave", "giving", "pay")
+
+    trend_triggered = any(t in q for t in _trend_terms)
+    # Also trigger if question mentions money AND a year range / history implication
+    money_and_history = (
+        any(m in q for m in _money_terms) and
+        any(t in q for t in ("year", "cycle", "history", "years", "2013", "2015",
+                             "2017", "2019", "2021", "2023", "pattern"))
+    )
+
+    if not (trend_triggered or money_and_history):
+        return ""
+
+    try:
+        p_conn = sqlite3.connect(os.path.join(BASE_DIR, "polls.db"))
+        p_conn.row_factory = sqlite3.Row
+
+        lines = [
+            "[VoteIQ Analyst Context — Multi-Cycle Donor Trends]",
+            "Use for investment-return / donation-ramp questions.",
+            "Correlation does not imply causation. Use cautious language.",
+            "Z-scores are computed within odd/even parity groups separately "
+            "(VA odd-year elections drive 5-50x more activity than even years).",
+            "",
+        ]
+
+        # ── Top current institutional spikes ──────────────────────────────
+        spikes = p_conn.execute("""
+            SELECT t.canonical_name, t.election_cycle, t.total_amount,
+                   t.zscore, t.pct_change_prior, t.ratio_vs_mean, t.cycle_parity
+            FROM donor_cycle_trends t
+            WHERE t.is_spike = 1 AND t.is_individual = 0 AND t.total_amount >= 500000
+            ORDER BY t.zscore DESC LIMIT 8
+        """).fetchall()
+
+        if spikes:
+            lines.append("Top institutional donation spikes (z >= 1.5, amount >= $500K):")
+            for s in spikes:
+                pct_s   = f"+{s['pct_change_prior']:.0f}% vs prior {s['cycle_parity']}-yr" if s["pct_change_prior"] else "first cycle"
+                ratio_s = f"{s['ratio_vs_mean']:.1f}x {s['cycle_parity']}-yr mean" if s["ratio_vs_mean"] else ""
+                lines.append(
+                    f"- {s['canonical_name']} ({s['election_cycle']}): "
+                    f"{_fmt_money(s['total_amount'])}  z={s['zscore']:.2f}  {pct_s}  {ratio_s}"
+                )
+            lines.append("")
+
+        # ── Named donor sparkline ──────────────────────────────────────────
+        # Check if any canonical donor name appears in the question
+        entity_names = p_conn.execute(
+            "SELECT donor_key, canonical_name FROM donor_entity_map "
+            "WHERE total_all_cycles >= 500000 ORDER BY total_all_cycles DESC LIMIT 200"
+        ).fetchall()
+
+        matched_key = None
+        matched_name = None
+        for e in entity_names:
+            if e["canonical_name"].lower() in q or e["donor_key"].replace("_", " ") in q:
+                matched_key  = e["donor_key"]
+                matched_name = e["canonical_name"]
+                break
+
+        if matched_key:
+            cycles = p_conn.execute("""
+                SELECT election_cycle, total_amount, cycle_parity,
+                       zscore, pct_change_prior, ratio_vs_mean, is_spike
+                FROM donor_cycle_trends
+                WHERE donor_key = ?
+                ORDER BY election_cycle
+            """, (matched_key,)).fetchall()
+
+            if cycles:
+                spike_yrs = [c["election_cycle"] for c in cycles if c["is_spike"]]
+                ctx_map: dict[str, list[str]] = {}
+                if spike_yrs:
+                    ph = ",".join("?" for _ in spike_yrs)
+                    for row in p_conn.execute(
+                        f"SELECT election_cycle, title FROM cycle_context "
+                        f"WHERE election_cycle IN ({ph}) ORDER BY election_cycle, significance DESC",
+                        spike_yrs,
+                    ):
+                        ctx_map.setdefault(row["election_cycle"], []).append(row["title"][:70])
+
+                # Compute parity means for narrative
+                odd_amts  = [c["total_amount"] for c in cycles if c["cycle_parity"] == "odd"]
+                even_amts = [c["total_amount"] for c in cycles if c["cycle_parity"] == "even"]
+                odd_mean  = sum(odd_amts)  / len(odd_amts)  if odd_amts  else 0
+                even_mean = sum(even_amts) / len(even_amts) if even_amts else 0
+
+                lines.append(f"Donor spotlight — {matched_name}:")
+                lines.append(f"  Odd-year mean: {_fmt_money(odd_mean)}  "
+                              f"Even-year mean: {_fmt_money(even_mean)}")
+                for c in cycles:
+                    flag = "  *** SPIKE ***" if c["is_spike"] else ""
+                    ctx_titles = "; ".join(ctx_map.get(c["election_cycle"], [])[:2])
+                    ctx_str    = f"  [{ctx_titles}]" if ctx_titles else ""
+                    lines.append(
+                        f"  {c['election_cycle']} [{c['cycle_parity'][:3]}]  "
+                        f"{_fmt_money(c['total_amount'])}  z={c['zscore']:.2f}{flag}{ctx_str}"
+                    )
+
+        p_conn.close()
+        return "\n".join(lines) if len(lines) > 6 else ""
+
+    except Exception:
+        return ""
+
+
 def _fetch_relevant_news(question: str, politician_names: list[str] | None = None, limit: int = 4) -> str:
     """Find relevant news using Cohere semantic search + rerank, falling back to keyword scoring."""
     if not os.path.exists(_POLLS_DB):
