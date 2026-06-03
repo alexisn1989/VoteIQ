@@ -212,6 +212,8 @@ from voteiq.api.routes.gatekeeper import router as _gatekeeper_router
 app.include_router(_gatekeeper_router)
 from voteiq.api.routes.lobbyist import router as _lobbyist_router
 app.include_router(_lobbyist_router, prefix="/api")
+from voteiq.api.routes.donor_vote_alignment import router as _dva_router
+app.include_router(_dva_router, prefix="/api")
 
 # DATA_DIR: set to Render persistent disk mount path (e.g. /var/data) in production.
 # Falls back to project root if DATA_DIR directory doesn't exist (e.g. after disk deletion).
