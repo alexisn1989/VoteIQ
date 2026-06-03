@@ -5800,21 +5800,37 @@ def _fetch_donor_trend_context(question: str = "") -> str:
         "spike", "spik", "ramp", "ramp up", "surge", "surged",
         "investment return", "investment signal",
         "donation trend", "donor trend", "donation history", "donor history",
-        "historically", "over the years", "multi-cycle", "year over year",
-        "increased donation", "donation increase", "when did",
-        "how much has", "how long has", "pattern of giving",
+        "historically", "over the years", "multi-cycle", "multi cycle",
+        "year over year", "increased donation", "donation increase",
+        "when did", "how much has", "how long has", "pattern of giving",
+        "giving increas", "increas", "rate case", "regulatory fight",
+        "proceeding", "regul", "legislat", "over time", "through the years",
+        "history of giving", "history of donat",
     )
-    _money_terms = ("donat", "contribut", "money", "fund", "gave", "giving", "pay")
+    _money_terms = ("donat", "contribut", "money", "fund", "gave", "giving", "paid", "spend")
+
+    # Known high-profile institutional donors whose names in a question
+    # should always trigger the context when combined with any money term
+    _known_donors = (
+        "dominion", "appalachian power", "clean virginia", "everytown",
+        "nra", "league of conservation", "seiu", "afscme",
+        "virginia trial lawyers", "auto dealer", "automobile dealer",
+        "reynolds", "altria", "philip morris",
+    )
 
     trend_triggered = any(t in q for t in _trend_terms)
-    # Also trigger if question mentions money AND a year range / history implication
-    money_and_history = (
-        any(m in q for m in _money_terms) and
-        any(t in q for t in ("year", "cycle", "history", "years", "2013", "2015",
-                             "2017", "2019", "2021", "2023", "pattern"))
-    )
+    # Trigger if money term + named donor or year/history context
+    has_money = any(m in q for m in _money_terms)
+    has_history = any(t in q for t in (
+        "year", "cycle", "history", "years", "2013", "2015",
+        "2017", "2019", "2021", "2023", "pattern", "time",
+        "over the", "through", "session", "fight", "proceeding",
+        "regul", "legislat", "when", "how long", "how much",
+    ))
+    named_donor_money = has_money and any(d in q for d in _known_donors)
+    money_and_history = has_money and has_history
 
-    if not (trend_triggered or money_and_history):
+    if not (trend_triggered or money_and_history or named_donor_money):
         return ""
 
     try:
