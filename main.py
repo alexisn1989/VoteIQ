@@ -5823,10 +5823,13 @@ def _fetch_donor_trend_context(question: str = "") -> str:
 
         lines = [
             "[VoteIQ Analyst Context — Multi-Cycle Donor Trends]",
-            "Use for investment-return / donation-ramp questions.",
-            "Correlation does not imply causation. Use cautious language.",
-            "Z-scores are computed within odd/even parity groups separately "
-            "(VA odd-year elections drive 5-50x more activity than even years).",
+            "Use this data to answer questions about donation patterns, spending surges, "
+            "and whether giving increased during specific legislative fights.",
+            "Important: report patterns and timing as public-record observations only. "
+            "Do not assert motive, pressure, or cause-and-effect.",
+            "Note on Virginia cycles: state elections happen in odd years, so odd-year "
+            "donations are typically 5-50x higher than even years. Spikes are measured "
+            "against each donor's own odd-year or even-year average — not mixed together.",
             "",
         ]
 
@@ -5840,13 +5843,14 @@ def _fetch_donor_trend_context(question: str = "") -> str:
         """).fetchall()
 
         if spikes:
-            lines.append("Top institutional donation spikes (z >= 1.5, amount >= $500K):")
+            lines.append("Recent institutional donors with unusually elevated giving:")
             for s in spikes:
-                pct_s   = f"+{s['pct_change_prior']:.0f}% vs prior {s['cycle_parity']}-yr" if s["pct_change_prior"] else "first cycle"
-                ratio_s = f"{s['ratio_vs_mean']:.1f}x {s['cycle_parity']}-yr mean" if s["ratio_vs_mean"] else ""
+                yr_type = "state election" if s["cycle_parity"] == "odd" else "federal election"
+                ratio_s = f"{s['ratio_vs_mean']:.1f}x their typical {yr_type}-year spending" if s["ratio_vs_mean"] else ""
+                pct_s   = f"up {s['pct_change_prior']:.0f}% from the prior comparable cycle" if s["pct_change_prior"] else "first cycle on record"
                 lines.append(
-                    f"- {s['canonical_name']} ({s['election_cycle']}): "
-                    f"{_fmt_money(s['total_amount'])}  z={s['zscore']:.2f}  {pct_s}  {ratio_s}"
+                    f"- {s['canonical_name']} gave {_fmt_money(s['total_amount'])} in {s['election_cycle']} "
+                    f"({yr_type} year) — {ratio_s}, {pct_s}."
                 )
             lines.append("")
 
@@ -5875,34 +5879,79 @@ def _fetch_donor_trend_context(question: str = "") -> str:
             """, (matched_key,)).fetchall()
 
             if cycles:
-                spike_yrs = [c["election_cycle"] for c in cycles if c["is_spike"]]
-                ctx_map: dict[str, list[str]] = {}
-                if spike_yrs:
-                    ph = ",".join("?" for _ in spike_yrs)
-                    for row in p_conn.execute(
-                        f"SELECT election_cycle, title FROM cycle_context "
-                        f"WHERE election_cycle IN ({ph}) ORDER BY election_cycle, significance DESC",
-                        spike_yrs,
-                    ):
-                        ctx_map.setdefault(row["election_cycle"], []).append(row["title"][:70])
-
-                # Compute parity means for narrative
+                # Compute parity means first
                 odd_amts  = [c["total_amount"] for c in cycles if c["cycle_parity"] == "odd"]
                 even_amts = [c["total_amount"] for c in cycles if c["cycle_parity"] == "even"]
                 odd_mean  = sum(odd_amts)  / len(odd_amts)  if odd_amts  else 0
                 even_mean = sum(even_amts) / len(even_amts) if even_amts else 0
 
-                lines.append(f"Donor spotlight — {matched_name}:")
-                lines.append(f"  Odd-year mean: {_fmt_money(odd_mean)}  "
-                              f"Even-year mean: {_fmt_money(even_mean)}")
+                # Infer donor sector from name for context filtering
+                _nlo = matched_name.lower()
+                if any(w in _nlo for w in ("dominion", "appalachian power", "electric", "energy", "solar", "gas", "grid")):
+                    ctx_sector = "Energy/Utilities"
+                elif any(w in _nlo for w in ("health", "hospital", "medical", "pharma", "nurse")):
+                    ctx_sector = "Healthcare"
+                elif any(w in _nlo for w in ("casino", "gaming", "beer", "wine", "spirits", "cannabis")):
+                    ctx_sector = "Alcohol/Gambling"
+                elif any(w in _nlo for w in ("transport", "highway", "transit", "toll")):
+                    ctx_sector = "Transportation"
+                elif any(w in _nlo for w in ("farm", "agri", "crop", "livestock")):
+                    ctx_sector = "Agriculture"
+                elif any(w in _nlo for w in ("bank", "financ", "insur", "credit", "loan")):
+                    ctx_sector = "Finance"
+                elif any(w in _nlo for w in ("hous", "rent", "zoning", "landlord")):
+                    ctx_sector = "Housing"
+                else:
+                    ctx_sector = None
+
+                # Fetch context for any cycle that is notably elevated (spike OR >1.5x mean)
+                elevated_yrs = []
                 for c in cycles:
-                    flag = "  *** SPIKE ***" if c["is_spike"] else ""
+                    base  = odd_mean if c["cycle_parity"] == "odd" else even_mean
+                    ratio = c["total_amount"] / base if base else 0
+                    if c["is_spike"] or ratio >= 1.5:
+                        elevated_yrs.append(c["election_cycle"])
+
+                ctx_map: dict[str, list[str]] = {}
+                if elevated_yrs:
+                    ph = ",".join("?" for _ in elevated_yrs)
+                    sector_filter = "AND donor_sector = ?" if ctx_sector else "AND significance = 'high'"
+                    ctx_params = elevated_yrs + ([ctx_sector] if ctx_sector else [])
+                    for row in p_conn.execute(
+                        f"SELECT election_cycle, title FROM cycle_context "
+                        f"WHERE election_cycle IN ({ph}) {sector_filter} "
+                        f"ORDER BY election_cycle, significance DESC",
+                        ctx_params,
+                    ):
+                        ctx_map.setdefault(row["election_cycle"], []).append(row["title"][:72])
+
+                lines.append(f"Giving history -- {matched_name}:")
+                lines.append(
+                    f"  Typical spending: {_fmt_money(odd_mean)} in state-election years, "
+                    f"{_fmt_money(even_mean)} in federal-election years."
+                )
+                for c in cycles:
+                    base    = odd_mean if c["cycle_parity"] == "odd" else even_mean
+                    yr_type = "state-election year" if c["cycle_parity"] == "odd" else "federal-election year"
+                    ratio   = c["total_amount"] / base if base else 0
+                    pct_s   = f", up {c['pct_change_prior']:.0f}% from prior comparable cycle" if c["pct_change_prior"] else ""
                     ctx_titles = "; ".join(ctx_map.get(c["election_cycle"], [])[:2])
-                    ctx_str    = f"  [{ctx_titles}]" if ctx_titles else ""
-                    lines.append(
-                        f"  {c['election_cycle']} [{c['cycle_parity'][:3]}]  "
-                        f"{_fmt_money(c['total_amount'])}  z={c['zscore']:.2f}{flag}{ctx_str}"
-                    )
+                    ctx_str = f"\n    Active legislation that session: {ctx_titles}" if ctx_titles else ""
+
+                    if c["is_spike"]:
+                        lines.append(
+                            f"  {c['election_cycle']} ({yr_type}): {_fmt_money(c['total_amount'])} "
+                            f"[NOTABLY ELEVATED -- {ratio:.1f}x typical{pct_s}]{ctx_str}"
+                        )
+                    elif ratio >= 1.5:
+                        lines.append(
+                            f"  {c['election_cycle']} ({yr_type}): {_fmt_money(c['total_amount'])} "
+                            f"[elevated -- {ratio:.1f}x typical{pct_s}]{ctx_str}"
+                        )
+                    else:
+                        lines.append(
+                            f"  {c['election_cycle']} ({yr_type}): {_fmt_money(c['total_amount'])}"
+                        )
 
         p_conn.close()
         return "\n".join(lines) if len(lines) > 6 else ""
