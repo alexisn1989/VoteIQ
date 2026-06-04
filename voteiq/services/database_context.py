@@ -1747,6 +1747,59 @@ def _add_donor_trend_context(blocks: list[str], query: str) -> None:
     conn.close()
 
 
+def _add_legislator_narrative_context(blocks: list[str], query: str) -> None:
+    """
+    When a specific legislator name appears in the query, inject their
+    pre-generated civic profile narrative from legislator_narratives.
+    Falls back to narrative_short for adjacent name matches.
+    """
+    conn = _connect("polls")
+    if not conn:
+        return
+    if not _table_exists(conn, "legislator_narratives"):
+        conn.close()
+        return
+
+    q_lower = (query or "").lower()
+
+    # Try to find a legislator whose name appears in the query
+    # Load all names once (small table, ~200 rows)
+    try:
+        rows = conn.execute(
+            "SELECT legislator_id, name, narrative, narrative_short "
+            "FROM legislator_narratives WHERE name IS NOT NULL"
+        ).fetchall()
+    except Exception:
+        conn.close()
+        return
+
+    matched = None
+    matched_len = 0
+    for row in rows:
+        name = (row["name"] or "").lower()
+        last = name.split()[-1] if name.split() else ""
+        # Match on full name or last name (at least 4 chars to avoid false matches)
+        if (name in q_lower or (len(last) >= 4 and last in q_lower)):
+            if len(name) > matched_len:
+                matched = row
+                matched_len = len(name)
+
+    if not matched:
+        conn.close()
+        return
+
+    narrative = matched["narrative"] or matched["narrative_short"] or ""
+    if not narrative:
+        conn.close()
+        return
+
+    blocks.append(
+        f"[RETRIEVED RECORD - Legislator Civic Profile: {matched['name']}]\n"
+        f"{narrative}"
+    )
+    conn.close()
+
+
 def build_database_context(query: str, max_chars: int = 22000) -> str:
     q = query or ""
     blocks: list[str] = []
@@ -1762,6 +1815,8 @@ def build_database_context(query: str, max_chars: int = 22000) -> str:
     session = _session_year(q)
     terms = _keywords(q)
     _add_known_person_scope_context(blocks, q)
+    # Pre-generated civic profile — injected early so it always fits within max_chars
+    _add_legislator_narrative_context(blocks, q)
     _add_bill_context(blocks, bills, session)
     _add_pac_context(blocks, q, terms)
     _add_federal_vote_context(blocks, q, terms)

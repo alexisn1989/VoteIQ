@@ -29,6 +29,55 @@ LEG_DB   = BASE_DIR / "legislative_intelligence.db"
 
 # ── Bill sector classifier (same keyword approach as build_donor_vote_alignment) ─
 
+import hashlib
+
+import re as _re
+
+# Leading prefixes — strip the phrase, keep what follows
+_LEADING_COMMITTEE = _re.compile(
+    r"^(friends\s+of|committee\s+to\s+elect|re-?elect|citizens\s+for|"
+    r"virginians\s+for|volunteers\s+for|elect)\s+",
+    _re.IGNORECASE,
+)
+# Trailing suffixes — strip phrase and everything after
+_TRAILING_COMMITTEE = _re.compile(
+    r"\s*\b(campaign\s+fund|campaign\s+committee|campaign\s+account|"
+    r"political\s+action\s+committee|political\s+committee|"
+    r"for\s+delegate|for\s+senate|for\s+house|for\s+virginia|"
+    r"for\s+governor|for\s+attorney|for\s+lt\b|for\s+state\s+senate|"
+    r"for\s+house\s+of\s+delegates)\b.*$",
+    _re.IGNORECASE,
+)
+_PERSON_SUFFIX = _re.compile(r"\b(jr|sr|ii|iii|iv)\b\.?$", _re.I)
+_LEADING_INITIAL = _re.compile(r"^([A-Z]\.?\s+){1,2}(?=[A-Z])", _re.I)  # "L. " or "L Louise "
+
+
+def _norm_name(name: str) -> str:
+    """
+    Robust last_first-initial key that handles:
+      'Louise Lucas'                     → lucas_l
+      'L Louise Lucas'                   → lucas_l
+      'L Louise Lucas Campaign Fund'     → lucas_l
+      'Friends of Terry Kilgore'         → kilgore_t
+      'Committee to Elect George Barker' → barker_g
+    """
+    s = (name or "").strip()
+    s = _LEADING_COMMITTEE.sub("", s).strip()   # strip leading "Friends of" etc.
+    s = _TRAILING_COMMITTEE.sub("", s).strip()  # strip trailing "Campaign Fund" etc.
+    s = _PERSON_SUFFIX.sub("", s).strip()
+    # Strip leading single initial(s): "L Louise Lucas" → "Louise Lucas"
+    s = _LEADING_INITIAL.sub("", s).strip()
+    parts = _re.split(r"[\s,]+", s)
+    parts = [p.rstrip(".") for p in parts if p and len(p.rstrip(".")) > 0]
+    if not parts:
+        return ""
+    if "," in name:
+        last = parts[0]; first_init = parts[1][0] if len(parts) > 1 else ""
+    else:
+        last = parts[-1]; first_init = parts[0][0] if parts else ""
+    return f"{last.lower()}_{first_init.lower()}"
+
+
 BILL_SECTOR_KEYWORDS: dict[str, list[str]] = {
     "Energy/Utilities": [
         "clean economy", "offshore wind", "electric utility", "electric utilities",
@@ -179,9 +228,11 @@ def _load_sponsored_bills(
 
 def _load_sector_donations(
     p_conn: sqlite3.Connection, election_cycle: str
-) -> dict[str, dict[str, float]]:
+) -> tuple[dict[str, dict[str, float]], dict[str, str]]:
     """
-    Returns {candidate_name -> {sector -> total_donated, 'total' -> grand_total}}
+    Returns:
+      exact_map  : {candidate_name -> {sector -> total, 'total' -> grand_total}}
+      norm_map   : {norm_key -> candidate_name}  (for fuzzy fallback)
     """
     rows = p_conn.execute("""
         SELECT candidate_name, last_or_company, SUM(amount) as total
@@ -192,19 +243,25 @@ def _load_sector_donations(
         ORDER BY candidate_name, total DESC
     """, (election_cycle,)).fetchall()
 
-    result: dict[str, dict[str, float]] = {}
+    exact: dict[str, dict[str, float]] = {}
     for cand, donor, amt in rows:
         donor_lower = donor.lower()
-        result.setdefault(cand, {})
-        result[cand]["total"] = result[cand].get("total", 0) + amt
-
-        # Classify donor into sector
+        exact.setdefault(cand, {})
+        exact[cand]["total"] = exact[cand].get("total", 0) + amt
         for sector, kws in DONOR_SECTOR_KEYWORDS.items():
             if any(kw in donor_lower for kw in kws):
-                result[cand][sector] = result[cand].get(sector, 0) + amt
+                exact[cand][sector] = exact[cand].get(sector, 0) + amt
                 break
 
-    return result
+    # Build normalized-key lookup: keep only the record with highest total per key
+    norm: dict[str, str] = {}
+    for cand, data in exact.items():
+        key = _norm_name(cand)
+        if key and (key not in norm or
+                    data.get("total", 0) > exact[norm[key]].get("total", 0)):
+            norm[key] = cand
+
+    return exact, norm
 
 
 def _load_top_sector_donor(
@@ -262,22 +319,23 @@ def main(years: list[str]) -> None:
         print(f"  {len(sponsored):,} legislators with sponsored sector bills")
 
         print(f"  Loading {cycle} campaign finance...")
-        donations = _load_sector_donations(p_conn, cycle)
+        donations, norm_lookup = _load_sector_donations(p_conn, cycle)
         print(f"  {len(donations):,} candidates with donation records")
 
         now = datetime.now(timezone.utc).isoformat()
         rows_written = 0
 
         for leg_name, sector_bills in sponsored.items():
-            # Try to match legislator to their finance record
+            # 1. Exact name match
+            sbe_name = leg_name  # canonical SBE candidate name for DB queries
             leg_finance = donations.get(leg_name, {})
             if not leg_finance:
-                # Try last-name fuzzy match
-                last = leg_name.split()[-1].lower() if leg_name.split() else ""
-                for cand_name, fin in donations.items():
-                    if last and last in cand_name.lower() and len(last) > 3:
-                        leg_finance = fin
-                        break
+                # 2. Normalized key match (handles "L Louise Lucas" vs "Louise Lucas")
+                key = _norm_name(leg_name)
+                matched_cand = norm_lookup.get(key, "")
+                if matched_cand:
+                    leg_finance = donations.get(matched_cand, {})
+                    sbe_name = matched_cand   # use SBE name for DB queries
 
             total_raised = leg_finance.get("total", 0.0)
 
@@ -287,7 +345,7 @@ def main(years: list[str]) -> None:
                               if total_raised > 0 else None
 
                 top_donor, top_amt = _load_top_sector_donor(
-                    p_conn, leg_name, cycle, sector
+                    p_conn, sbe_name, cycle, sector
                 ) if from_sector > 0 else ("", 0.0)
 
                 label = _alignment_label(sector_pct, len(bill_nums))
