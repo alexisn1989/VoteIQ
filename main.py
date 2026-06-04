@@ -8462,4 +8462,12 @@ async def _on_startup():
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+    # reload=True watches for file changes and auto-restarts during development.
+    # On Render / production (PORT is set), disable reload for stability.
+    _dev = not os.environ.get("PORT")
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 8000)),
+        reload=_dev,
+    )
