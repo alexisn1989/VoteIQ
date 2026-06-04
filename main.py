@@ -214,6 +214,8 @@ from voteiq.api.routes.lobbyist import router as _lobbyist_router
 app.include_router(_lobbyist_router, prefix="/api")
 from voteiq.api.routes.donor_vote_alignment import router as _dva_router
 app.include_router(_dva_router, prefix="/api")
+from voteiq.api.routes.follow_the_money import router as _ftm_router
+app.include_router(_ftm_router, prefix="/api")
 from voteiq.api.routes.donor_trend import router as _donor_trend_router
 app.include_router(_donor_trend_router, prefix="/api")
 

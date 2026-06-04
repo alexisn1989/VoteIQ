@@ -1747,6 +1747,141 @@ def _add_donor_trend_context(blocks: list[str], query: str) -> None:
     conn.close()
 
 
+_FTM_MONEY = re.compile(
+    r"\b(donor|donat|fund|money|contribut|who paid|who funded|follow the money|"
+    r"sponsor.*donor|donor.*sponsor|lobbyi|finance|financ)\b",
+    re.I,
+)
+_FTM_BILL = re.compile(r"\b(HB|SB|HJ|SJ|HR|SR)\s*-?\s*(\d{1,5})\b", re.I)
+
+
+def _add_follow_the_money_context(blocks: list[str], query: str) -> None:
+    """
+    When a bill number + money/donor terms appear in the query, inject a
+    Follow-the-Money summary: bill → sponsors → top donors → lobbyist count.
+    """
+    bill_match = _FTM_BILL.search(query or "")
+    if not bill_match:
+        return
+    if not _FTM_MONEY.search(query or ""):
+        # Also trigger on explicit "follow the money" without separate money keyword
+        if "follow" not in (query or "").lower():
+            return
+
+    bill_number = (bill_match.group(1).upper() + bill_match.group(2)).replace(" ", "")
+
+    conn = _connect("polls")
+    li   = _connect("legislative_intelligence")
+    if not conn:
+        return
+
+    try:
+        # Resolve bill
+        bill_row = conn.execute(
+            "SELECT bill_id, session, title, status_label, primary_sponsor "
+            "FROM legiscan_va_bills WHERE bill_number = ? "
+            "ORDER BY session DESC LIMIT 1",
+            (bill_number,),
+        ).fetchone()
+        if not bill_row:
+            return
+
+        session = bill_row["session"]
+        title   = bill_row["title"] or ""
+        status  = bill_row["status_label"] or ""
+
+        # Get sponsors
+        sponsor_names: list[str] = []
+        if li:
+            sp_rows = li.execute(
+                """SELECT bs.legislator_name FROM va_bill_sponsors bs
+                   JOIN va_bills vb ON bs.bill_id = vb.bill_id
+                   WHERE vb.bill_number = ? AND vb.session = ?
+                     AND bs.legislator_name != ''
+                   ORDER BY bs.sponsor_order LIMIT 4""",
+                (bill_number, session),
+            ).fetchall()
+            sponsor_names = [r["legislator_name"] for r in sp_rows]
+        if not sponsor_names and bill_row["primary_sponsor"]:
+            sponsor_names = [bill_row["primary_sponsor"]]
+
+        lines = [
+            f"[RETRIEVED RECORD - Follow the Money: {bill_number} ({session})]",
+            f"Bill: {title[:80]}",
+            f"Status: {status}",
+            f"Sponsor(s): {', '.join(sponsor_names) if sponsor_names else 'unknown'}",
+            "",
+        ]
+
+        # For each sponsor, pull top donors + lobbyist count
+        for sp_name in sponsor_names[:3]:
+            last = sp_name.split()[-1] if sp_name.split() else ""
+            fin = conn.execute(
+                "SELECT total_raised, top_sector, top_donors_json, by_sector_json "
+                "FROM campaign_finance_summary "
+                "WHERE name LIKE ? AND source = 'va_sbe' "
+                "ORDER BY total_raised DESC LIMIT 1",
+                (f"%{last}%",),
+            ).fetchone()
+            if not fin:
+                continue
+
+            try:
+                top_donors = json.loads(fin["top_donors_json"] or "[]")
+            except Exception:
+                top_donors = []
+            try:
+                by_sector = json.loads(fin["by_sector_json"] or "[]")
+            except Exception:
+                by_sector = []
+
+            # Skip vague top sector
+            _SKIP = {"ideological", "individual/other"}
+            top_sector = fin["top_sector"] or ""
+            if top_sector.lower() in _SKIP:
+                for s in by_sector[1:]:
+                    if s.get("sector", "").lower() not in _SKIP:
+                        top_sector = s["sector"]
+                        break
+
+            lines.append(f"{sp_name} — raised ${(fin['total_raised'] or 0):,.0f} total | "
+                         f"top sector: {top_sector}")
+
+            for d in top_donors[:4]:
+                dname = d.get("contributor_name") or d.get("employer") or ""
+                damt  = d.get("total", 0)
+                if not dname or not damt:
+                    continue
+                # Lobbyist count
+                words = [w for w in dname.lower().split() if len(w) >= 4][:2]
+                n_lob = 0
+                if words:
+                    cl = " AND ".join(f"lower(principal_name) LIKE ?" for _ in words)
+                    lrow = conn.execute(
+                        f"SELECT COUNT(DISTINCT lobbyist_name) FROM lobbyist_registrations WHERE {cl}",
+                        [f"%{w}%" for w in words],
+                    ).fetchone()
+                    n_lob = lrow[0] if lrow else 0
+                lob_s = f" | {n_lob} registered lobbyist{'s' if n_lob != 1 else ''}" if n_lob else ""
+                lines.append(f"  Donor: {dname[:45]} — ${damt:,.0f}{lob_s}")
+
+            lines.append("")
+
+        lines.append(
+            "Virginia SBE campaign finance public records. "
+            "Correlation does not imply causation."
+        )
+
+        blocks.append("\n".join(lines))
+
+    except Exception:
+        pass
+    finally:
+        conn.close()
+        if li:
+            li.close()
+
+
 def _add_legislator_narrative_context(blocks: list[str], query: str) -> None:
     """
     When a specific legislator name appears in the query, inject their
@@ -1817,6 +1952,8 @@ def build_database_context(query: str, max_chars: int = 22000) -> str:
     _add_known_person_scope_context(blocks, q)
     # Pre-generated civic profile — injected early so it always fits within max_chars
     _add_legislator_narrative_context(blocks, q)
+    # Follow-the-money chain — fires when a bill number + money terms appear
+    _add_follow_the_money_context(blocks, q)
     _add_bill_context(blocks, bills, session)
     _add_pac_context(blocks, q, terms)
     _add_federal_vote_context(blocks, q, terms)

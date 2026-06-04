@@ -314,7 +314,7 @@ def _build_narrative(
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main(source_filter: str | None = None) -> None:
-    conn = sqlite3.connect(POLLS_DB, timeout=30)
+    conn = sqlite3.connect(POLLS_DB, timeout=120)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     _ensure_tables(conn)

@@ -337,7 +337,23 @@ def main(years: list[str]) -> None:
                     leg_finance = donations.get(matched_cand, {})
                     sbe_name = matched_cand   # use SBE name for DB queries
 
-            total_raised = leg_finance.get("total", 0.0)
+            # Compute total_raised directly from DB using name-fragment match
+            # (committee name formats vary by cycle; LIKE is more reliable than dict lookup)
+            name_parts = leg_name.split()
+            first_init = name_parts[0][0].lower() if name_parts else ""
+            last_word  = name_parts[-1].lower()   if name_parts else ""
+            total_raised = 0.0
+            if last_word and len(last_word) > 3:
+                tr_row = p_conn.execute(
+                    "SELECT SUM(amount) FROM va_cf_schedule_a "
+                    "WHERE lower(candidate_name) LIKE ? "
+                    "  AND lower(candidate_name) LIKE ? "
+                    "  AND election_cycle = ?",
+                    (f"%{last_word}%", f"%{first_init}%", cycle),
+                ).fetchone()
+                total_raised = tr_row[0] or 0.0
+            if total_raised == 0:
+                total_raised = leg_finance.get("total", 0.0)
 
             for sector, bill_nums in sector_bills.items():
                 from_sector = leg_finance.get(sector, 0.0)
