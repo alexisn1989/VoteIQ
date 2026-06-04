@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Follow the Money · VoteIQ Virginia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet"/>
+  <style>
+    :root{
+      --navy:#0d1b2a;--red:#c8102e;--cream:#f4f1eb;--gold:#b8963e;
+      --dem:#1a52c8;--rep:#c8102e;--border:#d6d0c4;--muted:#6b6560;
+      --green:#15803d;--orange:#ea580c;--mid:#e5e1d8;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Barlow',system-ui,sans-serif;background:var(--cream);color:var(--navy);min-height:100vh}
+    a{color:inherit}
+
+    /* ── Header ── */
+    header{background:#fff;border-bottom:2px solid #ddd8cc;padding:10px 28px;display:flex;align-items:center;gap:18px}
+    .logo{font-family:'Playfair Display',Georgia,serif;font-size:1.2rem;font-weight:700;color:#0d1b2a;text-decoration:none}
+    nav{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+    nav a{color:#0d1b2a;text-decoration:none;font-size:.8rem;font-weight:600;padding:5px 11px;border-radius:4px;transition:background .15s}
+    nav a:hover,nav a.active{background:rgba(13,27,42,.08);font-weight:700}
+
+    /* ── Hero ── */
+    .page-hero{background:var(--navy);color:#fff;padding:28px 32px 24px;border-bottom:3px solid var(--red)}
+    .page-hero h1{font-family:'Playfair Display',Georgia,serif;font-size:2rem;font-weight:700;line-height:1.15}
+    .page-hero p{color:rgba(255,255,255,.65);font-size:.88rem;margin-top:7px;max-width:720px;line-height:1.6}
+    .hero-tabs{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+    .hero-tab{padding:7px 18px;border-radius:5px;font-size:.82rem;font-weight:600;text-decoration:none;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.7);transition:all .15s;cursor:pointer;background:none}
+    .hero-tab:hover{background:rgba(255,255,255,.1);color:#fff}
+
+    /* ── Stats bar ── */
+    .stats-bar{display:flex;background:var(--navy);border-bottom:1px solid rgba(255,255,255,.08);overflow-x:auto}
+    .stat-item{padding:14px 26px;border-right:1px solid rgba(255,255,255,.08);min-width:150px;flex-shrink:0}
+    .stat-label{font-size:.67rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.5)}
+    .stat-value{font-size:1.25rem;font-weight:700;color:#fff;margin-top:3px}
+    .stat-value.gold{color:var(--gold)}
+    .stat-value.orange{color:#fb923c}
+    .stat-value.red{color:#f87171}
+    .stat-value.green{color:#86efac}
+
+    /* ── Section nav ── */
+    .section-nav{background:#fff;border-bottom:1px solid var(--border);padding:0 28px;display:flex;gap:2px;position:sticky;top:0;z-index:50;overflow-x:auto}
+    .snav-a{padding:12px 16px;font-family:'Barlow Condensed',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-decoration:none;border-bottom:3px solid transparent;white-space:nowrap;transition:all .15s}
+    .snav-a:hover{color:var(--navy);border-bottom-color:rgba(13,27,42,.2)}
+
+    /* ── Sections ── */
+    .section{padding:30px 32px 36px;border-bottom:1px solid var(--border)}
+    .sec-head{font-family:'Barlow Condensed',sans-serif;font-size:.67rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;display:flex;align-items:center;gap:10px}
+    .sec-head::after{content:'';flex:1;height:1px;background:var(--border)}
+    .sec-title{font-family:'Playfair Display',Georgia,serif;font-size:1.35rem;font-weight:700;margin-bottom:8px;line-height:1.2}
+    .sec-desc{font-size:.83rem;color:var(--muted);max-width:780px;line-height:1.6;margin-bottom:18px}
+
+    /* ── Buttons ── */
+    .btn-f{padding:6px 15px;background:#fff;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:.8rem;font-weight:600;color:var(--muted);transition:all .15s;font-family:'Barlow',sans-serif;margin-right:4px}
+    .btn-f:hover:not(.on){background:var(--cream)}
+    .btn-f.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+    .btn-f.on-D{background:var(--dem);color:#fff;border-color:var(--dem)}
+    .btn-f.on-R{background:var(--rep);color:#fff;border-color:var(--rep)}
+
+    /* ── Sector tabs ── */
+    .sector-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}
+    .stab{padding:5px 13px;background:#fff;border:1px solid var(--border);border-radius:20px;cursor:pointer;font-size:.77rem;font-weight:600;color:var(--muted);transition:all .15s;font-family:'Barlow',sans-serif}
+    .stab:hover{background:var(--cream);color:var(--navy)}
+    .stab.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+    /* ── Scatter container ── */
+    .scatter-wrap{background:#fff;border:1px solid var(--border);border-radius:10px;padding:22px 24px;box-shadow:0 2px 8px rgba(0,0,0,.05);position:relative}
+    .scatter-svg-wrap{overflow-x:auto}
+    svg.scatter{display:block}
+    .scatter-legend{display:flex;gap:20px;margin-top:12px;font-size:.77rem;align-items:center;flex-wrap:wrap}
+    .legend-dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:middle}
+    .corr-line{display:flex;align-items:center;gap:6px;font-size:.77rem;margin-top:6px}
+    .corr-line svg{flex-shrink:0}
+
+    /* ── Tooltip ── */
+    #scatter-tooltip{
+      position:fixed;pointer-events:none;z-index:200;
+      background:#fff;border:1px solid var(--border);border-radius:6px;
+      padding:9px 13px;font-size:.77rem;box-shadow:0 4px 14px rgba(0,0,0,.12);
+      max-width:260px;display:none;line-height:1.5
+    }
+    #scatter-tooltip .tt-name{font-weight:700;font-size:.82rem;margin-bottom:3px}
+    #scatter-tooltip .tt-party-D{color:var(--dem)}
+    #scatter-tooltip .tt-party-R{color:var(--rep)}
+
+    /* ── Corr stats ── */
+    .corr-stats{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
+    .corr-stat{background:var(--cream);border:1px solid var(--border);border-radius:7px;padding:10px 16px;min-width:110px}
+    .corr-stat-label{font-size:.64rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:2px}
+    .corr-stat-value{font-size:1.1rem;font-weight:700}
+
+    /* ── Finding callout ── */
+    .finding{border-radius:8px;padding:14px 18px;font-size:.83rem;line-height:1.6;margin-bottom:16px}
+    .finding-red{background:#fef2f2;border:1px solid #fca5a5;border-left:4px solid var(--red)}
+    .finding-gold{background:#fffbeb;border:1px solid #fcd34d;border-left:4px solid var(--gold)}
+    .finding-blue{background:#eff6ff;border:1px solid #93c5fd;border-left:4px solid var(--dem)}
+    .finding-green{background:#f0fdf4;border:1px solid #86efac;border-left:4px solid var(--green)}
+    .finding strong{font-weight:700}
+
+    /* ── Gatekeeper table ── */
+    .tbl-wrap{background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+    table{width:100%;border-collapse:collapse;font-size:.82rem}
+    thead tr{background:var(--navy);color:#fff}
+    thead th{padding:11px 13px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:.67rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+    tbody tr{border-bottom:1px solid #f0ece4}
+    tbody tr:hover{background:#f9f6f0}
+    td{padding:9px 13px;vertical-align:middle}
+    .chip-D{display:inline-block;padding:2px 7px;border-radius:12px;font-size:.7rem;font-weight:700;background:#dbeafe;color:var(--dem)}
+    .chip-R{display:inline-block;padding:2px 7px;border-radius:12px;font-size:.7rem;font-weight:700;background:#fee2e2;color:var(--rep)}
+    .chip-I{display:inline-block;padding:2px 7px;border-radius:12px;font-size:.7rem;font-weight:700;background:#f3f4f6;color:#374151}
+    .zero-pill{display:inline-block;padding:2px 9px;border-radius:12px;font-size:.72rem;font-weight:700;background:#fee2e2;color:#991b1b}
+    .bills-pill{display:inline-block;padding:2px 9px;border-radius:12px;font-size:.72rem;font-weight:700;background:#f0fdf4;color:#166534}
+
+    /* ── Party comparison ── */
+    .party-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+    @media(max-width:640px){.party-grid{grid-template-columns:1fr}}
+    .party-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:18px 20px}
+    .party-card-D{border-top:4px solid var(--dem)}
+    .party-card-R{border-top:4px solid var(--rep)}
+    .party-card-title{font-family:'Barlow Condensed',sans-serif;font-size:.8rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px}
+    .party-stat-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0ece4;font-size:.82rem}
+    .party-stat-row:last-child{border-bottom:none}
+    .party-num{font-weight:700;font-size:1rem}
+
+    /* ── Opposed cases list ── */
+    .opposed-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0ece4;font-size:.81rem}
+    .opposed-row:last-child{border-bottom:none}
+    .opposed-score{font-weight:700;font-size:.85rem;color:var(--red)}
+
+    /* ── Method note ── */
+    .method-note{margin:28px 32px 40px;padding:14px 18px;background:#fff;border:1px solid var(--border);border-radius:8px;font-size:.77rem;color:var(--muted);line-height:1.6}
+    .method-note strong{color:var(--navy)}
+
+    /* ── More link ── */
+    .more-link{font-size:.81rem;color:var(--navy);font-weight:600;text-decoration:none;border-bottom:1px solid var(--border);padding-bottom:1px}
+    .more-link:hover{border-bottom-color:var(--navy)}
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/" class="logo">VoteIQ</a>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/donor-map-state">State Donors</a>
+    <a href="/analysis">Analysis</a>
+    <a href="/follow-the-money" class="active">Follow the Money</a>
+    <a href="/gatekeeper">Gatekeeper Effect</a>
+    <a href="/donor-legislation">Donor–Legislation</a>
+    <a href="/legislators">State Legislature</a>
+  </nav>
+</header>
+
+<div class="page-hero">
+  <h1>Follow the Money</h1>
+  <p>Does donor money buy bills? For each industry sector, we plot every Virginia state
+     legislator's donation total against how many bills they sponsored in that industry.
+     The answer is more complicated — and more revealing — than you'd expect.</p>
+  <div class="hero-tabs">
+    <button class="hero-tab" onclick="jumpTo('#scatter')">Scatter Plots</button>
+    <button class="hero-tab" onclick="jumpTo('#gatekeeper')">Gatekeeper Effect</button>
+    <button class="hero-tab" onclick="jumpTo('#party')">Party Breakdown</button>
+    <button class="hero-tab" onclick="jumpTo('#timing')">Contribution Timing</button>
+    <button class="hero-tab" onclick="jumpTo('#method')">Methodology</button>
+  </div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-item">
+    <div class="stat-label">Sectors Analyzed</div>
+    <div class="stat-value gold" id="st-sectors">—</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-label">Significant Correlations</div>
+    <div class="stat-value orange" id="st-sig">—</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-label">CRE Money, Zero Bills</div>
+    <div class="stat-value red" id="st-gate">—</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-label">Strongest Link (r)</div>
+    <div class="stat-value" id="st-best-r">—</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-label">Democrat "Opposed" Cases</div>
+    <div class="stat-value" id="st-opposed">—</div>
+  </div>
+</div>
+
+<div class="section-nav">
+  <a href="#bill-lookup" class="snav-a" style="color:var(--red);font-weight:800">🔍 Bill Lookup</a>
+  <a href="#scatter"    class="snav-a">Scatter Plots</a>
+  <a href="#gatekeeper" class="snav-a">Gatekeeper Effect</a>
+  <a href="#party"      class="snav-a">Party Breakdown</a>
+  <a href="#timing"     class="snav-a">Contribution Timing</a>
+  <a href="#method"     class="snav-a">Methodology</a>
+</div>
+
+<!-- ═══ Section 1: Scatter Plots ══════════════════════════════════════════════ -->
+<section id="scatter" class="section">
+  <div class="sec-head">Donor Dollars vs. Bill Sponsorship</div>
+  <div class="sec-title">Does More Money Mean More Industry Bills?</div>
+  <div class="sec-desc">
+    Each dot is one Virginia state legislator. X axis = total donations received from that industry
+    (log scale). Y axis = number of bills sponsored or co-sponsored in that industry.
+    The dashed line is the least-squares trend. A flat or downward-sloping line means the money
+    does not predict bill activity. Only 2 of 10 sectors show a statistically significant relationship.
+  </div>
+
+  <!-- Donor type filter -->
+  <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <span style="font-size:.77rem;color:var(--muted);font-weight:600;min-width:80px">Donor type:</span>
+    <button class="btn-f on" id="dt-all" onclick="setDonorType('donated',this)">All donations</button>
+    <button class="btn-f"    id="dt-pac" onclick="setDonorType('pac_donated',this)">PAC / Corporate only</button>
+    <button class="btn-f"    id="dt-ind" onclick="setDonorType('ind_donated',this)">Individual only</button>
+  </div>
+
+  <!-- Party filter -->
+  <div style="margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <span style="font-size:.77rem;color:var(--muted);font-weight:600;min-width:80px">Legislature:</span>
+    <button class="btn-f on" id="pf-all" onclick="setParty('all',this)">All legislators</button>
+    <button class="btn-f"    id="pf-D"   onclick="setParty('D',this)">Democrats only</button>
+    <button class="btn-f"    id="pf-R"   onclick="setParty('R',this)">Republicans only</button>
+  </div>
+
+  <!-- Sector tabs -->
+  <div class="sector-tabs" id="sector-tabs"></div>
+
+  <!-- Scatter plot -->
+  <div class="scatter-wrap">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+      <div>
+        <div id="scatter-sector-label" style="font-family:'Barlow Condensed',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)">Sector</div>
+        <div id="scatter-sector-name" style="font-size:1.05rem;font-weight:700;margin-top:2px"></div>
+      </div>
+      <div id="scatter-corr-row" style="text-align:right;font-size:.77rem;color:var(--muted)"></div>
+    </div>
+    <div class="scatter-svg-wrap">
+      <svg id="scatter-svg" class="scatter" width="580" height="340"></svg>
+    </div>
+    <div class="scatter-legend">
+      <span><span class="legend-dot" style="background:var(--dem)"></span>Democrat</span>
+      <span><span class="legend-dot" style="background:var(--rep)"></span>Republican</span>
+      <span><span class="legend-dot" style="background:#9ca3af"></span>Independent / Other</span>
+      <span style="color:var(--muted);margin-left:8px">— — trend line (log-linear regression)</span>
+    </div>
+    <div class="corr-stats" id="corr-stats"></div>
+  </div>
+
+  <div style="margin-top:14px;font-size:.76rem;color:var(--muted);line-height:1.55;max-width:720px">
+    Hover a dot to see the legislator. Click to open their profile.
+    Bills include primary sponsorships (weight 1.0) and co-sponsorships (weight 0.5).
+    X axis uses log scale because donation amounts span 3 orders of magnitude ($200 – $1.9M).
+  </div>
+</section>
+
+<!-- ═══ Section 2: Gatekeeper Effect ══════════════════════════════════════════ -->
+<section id="gatekeeper" class="section">
+  <div class="sec-head">The Gatekeeper Effect</div>
+  <div class="sec-title">Virginia's Top Real Estate Donors Gave Millions — and Sponsored Zero Bills</div>
+  <div class="sec-desc">
+    Commercial Real Estate is the sector with the <em>most negative</em> correlation between
+    donation amounts and bill sponsorship (r = −0.19, p &lt; 0.05). The biggest donors don't fund
+    bill champions — they fund caucus leaders and committee chairs who control which bills ever reach a vote.
+    Influence exercised through scheduling, agenda-setting, and committee assignments leaves no public paper trail.
+  </div>
+
+  <div class="finding finding-red" style="margin-bottom:20px">
+    <strong>The finding:</strong> Virginia's top 10 Commercial Real Estate donors collectively gave
+    <strong id="gate-total">—</strong> to state legislators in the SBE dataset.
+    Those same 10 legislators sponsored a combined <strong id="gate-bills">—</strong> real estate bills.
+    The money went to <em>gatekeepers</em>, not sponsors.
+  </div>
+
+  <div class="finding finding-gold" style="margin-bottom:22px">
+    <strong>What leadership money actually buys:</strong> Committee chairmanships control which bills
+    receive hearings. A single committee chair can table a tenant-protection bill without a single
+    floor vote. The donor never needs to ask for a specific "no" — they just need to fund the person
+    who decides what the full chamber ever gets to see.
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Legislator</th>
+          <th>Party</th>
+          <th>Chamber</th>
+          <th style="text-align:right">CRE Donations</th>
+          <th style="text-align:center">CRE Bills</th>
+          <th>Role Signal</th>
+        </tr>
+      </thead>
+      <tbody id="gate-tbody"></tbody>
+    </table>
+  </div>
+  <div style="margin-top:12px;font-size:.76rem;color:var(--muted)">
+    "CRE Bills" = number of bills sponsored or co-sponsored tagged to Commercial Real Estate
+    (zoning, landlord/tenant, land use, commercial development). A 0 does not mean inactivity —
+    it means the legislator's real estate influence operates through non-public channels.
+  </div>
+</section>
+
+<!-- ═══ Section 3: Party Breakdown ════════════════════════════════════════════ -->
+<section id="party" class="section">
+  <div class="sec-head">Party Breakdown</div>
+  <div class="sec-title">Party Identity Explains More Than Dollar Amount</div>
+  <div class="sec-desc">
+    After controlling for sector, party affiliation is a far stronger predictor of legislative behavior
+    than the size of donations. Every legislator whose votes diverge from their top donor's interests
+    is a Democrat. No Republican in our dataset shows a divergence score below 50%.
+    This doesn't mean Republicans are "bought" — it means their ideology already aligned with their donors
+    before the money arrived. For Democrats, some take industry money while maintaining progressive records.
+  </div>
+
+  <div class="party-grid" id="party-grid"></div>
+
+  <div class="finding finding-blue" style="margin-bottom:20px">
+    <strong>The investment model vs. the purchase model:</strong>
+    Political science distinguishes two theories of donor behavior.
+    The <em>investment model</em> (Goldstein, 1999; Ansolabehere et al., 2003) holds that donors back
+    legislators who already agree with them — ideology comes first. The <em>purchase model</em> holds
+    that donations cause changed legislative behavior. Our data is consistent with the investment model:
+    party identity predicts bill sponsorship far better than donation amounts do.
+    The 8 "strongly opposed" Democratic cases are legislators whose base constituency pulls them
+    further left than their donor mix would predict.
+  </div>
+
+  <div style="margin-bottom:8px;font-family:'Barlow Condensed',sans-serif;font-size:.67rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)">
+    Legislators whose record diverges from their top donor sector (score &lt; 25%)
+  </div>
+  <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:16px" id="opposed-list"></div>
+
+  <div class="finding finding-green">
+    <strong>What "opposed" actually means:</strong>
+    A 0% alignment score does not mean a legislator is corrupt or naive — it means their
+    legislative record is orthogonal to (or actively counter to) that donor's policy interests.
+    Dave Marsden takes fossil fuel money and sponsors clean energy legislation.
+    Kathy Tran takes corporate law money and sponsors class action expansion.
+    These are legislators whose progressive base is strong enough that they can
+    afford to take broad-market donations without changing their behavior.
+  </div>
+</section>
+
+<!-- ═══ Section 4: Contribution Timing ════════════════════════════════════════ -->
+<section id="timing" class="section">
+  <div class="sec-head">Contribution Timing</div>
+  <div class="sec-title">Session Money vs. Campaign Money — A Different Signal</div>
+  <div class="sec-desc">
+    Virginia's General Assembly meets January–March. Contributions that arrive during that window
+    — while committee hearings are active and floor votes are scheduled — carry a different meaning
+    than fundraiser checks written in October. A <strong>session premium above 1.0×</strong> means the
+    average check written during session is larger than the average off-season check: lobbyists are
+    paying an access premium when it matters most.
+    A ratio <strong>below 1.0×</strong> is equally revealing — those industries give continuously
+    throughout the year, buying ongoing relationships rather than timing specific votes.
+  </div>
+
+  <!-- Session premium table -->
+  <div style="margin-bottom:8px;font-family:'Barlow Condensed',sans-serif;font-size:.67rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)">
+    Average check size: session (Jan–Mar) vs. off-season — corporate &amp; PAC contributions only, 2018+
+  </div>
+  <div style="background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:24px" id="sess-premium-wrap"></div>
+
+  <!-- Finding callouts -->
+  <div class="finding finding-red" style="margin-bottom:14px">
+    <strong>Renewables: 1.76× session premium</strong> — Clean energy lobbyists write checks 76% larger
+    during the legislative session than during campaigns. This is the strongest timing signal in the
+    data: these donors are buying access at the moment solar permitting and clean energy mandate bills
+    are in committee.
+  </div>
+  <div class="finding finding-gold" style="margin-bottom:24px">
+    <strong>Gambling/Casinos (0.89×) and Commercial Real Estate (0.96×)</strong> give
+    <em>less</em> per check during session. These industries maintain continuous year-round relationships
+    rather than timing contributions to specific hearings. Their influence operates through permanent
+    access — not episodic pressure.
+  </div>
+
+  <!-- Monthly timeline -->
+  <div style="margin-bottom:8px;font-family:'Barlow Condensed',sans-serif;font-size:.67rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)">
+    Monthly PAC/corporate contribution volume by sector — 2023 to present
+    &nbsp;·&nbsp; <span style="background:var(--navy);color:#fff;padding:1px 6px;border-radius:3px;font-size:.62rem">darker bars = session months</span>
+  </div>
+
+  <div style="margin-bottom:14px;display:flex;gap:6px;flex-wrap:wrap" id="timing-sector-tabs"></div>
+  <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:18px 20px;overflow-x:auto" id="timing-chart-wrap">
+    <svg id="timing-svg" width="620" height="180"></svg>
+  </div>
+  <div style="margin-top:8px;font-size:.75rem;color:var(--muted)">
+    Hover a bar to see the month and amount. Session months (Jan–Mar) shown in navy.
+  </div>
+
+  <!-- Session bundling table -->
+  <div style="margin-top:28px;margin-bottom:8px;font-family:'Barlow Condensed',sans-serif;font-size:.67rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)">
+    Top session contributions: same entity → same candidate in the same session month (Jan–Mar), 2020+
+  </div>
+  <div class="finding finding-red" style="margin-bottom:14px">
+    <strong>Dominion Energy gave $375,000 to House Speaker Don Scott in January 2024 — the first month
+    of the legislative session.</strong> The same PAC returned $123K to Scott in March 2023 and $150K
+    to Senate Majority Leader Scott Surovell in January 2024. These are not small-dollar access checks —
+    they are six-figure session-timed transfers to the legislators who control the energy committee calendar.
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Entity</th>
+          <th>Recipient</th>
+          <th style="text-align:center">Transactions</th>
+          <th style="text-align:right">Total</th>
+          <th>Month</th>
+          <th>Sector</th>
+        </tr>
+      </thead>
+      <tbody id="bundling-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══ Section 5: Methodology ════════════════════════════════════════════════ -->
+<div id="method" class="method-note">
+  <strong>Data sources &amp; methodology</strong><br>
+  Donor data from Virginia State Board of Elections (SBE) Schedule A filings, 2023–2025 cycles,
+  classified into industries by employer/occupation keyword matching.
+  Bill data from LegiScan VA 2025–2026 session (7,149 bills); industries tagged by title/summary keyword matching.
+  <strong>Correlation method:</strong> Pearson r on (log₁₀ donated, bills sponsored). Log scale used because
+  donation distributions are right-skewed across 3 orders of magnitude.
+  <strong>Bill weight:</strong> Primary sponsorship = 1.0, co-sponsorship = 0.5.
+  <strong>Alignment score:</strong> Weighted ratio of aligned vs. opposed legislative actions
+  (sponsor = 3×, cosponsor = 2×, vote = 1×) using cross-sector bill tagging.
+  <br><br>
+  <strong>Honest limitations:</strong>
+  This analysis captures only publicly traceable actions — sponsorships and floor votes.
+  The most consequential legislative influence — committee scheduling, amendment negotiations,
+  regulatory appointments, caucus messaging — leaves no public paper trail and cannot be measured here.
+  Correlations are observational. This analysis does not infer causation, improper influence, or intent.
+  The presence of industry donations does not imply that a legislator acted improperly.
+  <br><br>
+  <a href="/analysis" style="color:var(--navy)">→ Full conflict-of-interest analysis</a> &nbsp;·&nbsp;
+  <a href="/donor-legislation" style="color:var(--navy)">→ Per-legislator donor–legislation table</a> &nbsp;·&nbsp;
+  <a href="/legislators" style="color:var(--navy)">→ Browse individual legislator profiles</a>
+</div>
+
+<!-- Tooltip -->
+<div id="scatter-tooltip">
+  <div class="tt-name" id="tt-name"></div>
+  <div id="tt-party"></div>
+  <div id="tt-donated"></div>
+  <div id="tt-bills"></div>
+  <div id="tt-breakdown" style="font-size:.72rem;color:var(--muted);margin-top:5px;padding-top:5px;border-top:1px solid #e5e1d8;display:none"></div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  const D = window._MAP_DATA || {};
+  const SECTORS  = D.sector_order  || [];
+  const SCATTER  = D.scatter_sectors || {};
+  const CORR     = D.correlations   || {};
+  const GATE     = D.gatekeeper     || {};
+  const PSTATS   = D.party_stats    || {};
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function fmtM(v){
+    if(v==null||v===0) return '$0';
+    if(v>=1e6) return '$'+(v/1e6).toFixed(2)+'M';
+    if(v>=1e3) return '$'+(v/1e3).toFixed(0)+'K';
+    return '$'+Math.round(v);
+  }
+  function partyChip(p){
+    return p==='D'?'<span class="chip-D">D</span>':p==='R'?'<span class="chip-R">R</span>':'<span class="chip-I">I</span>';
+  }
+  window.jumpTo = function(id){ document.querySelector(id)?.scrollIntoView({behavior:'smooth'}); };
+
+  // ── Stats bar ─────────────────────────────────────────────────────────────
+  document.getElementById('st-sectors').textContent = SECTORS.length;
+  const sigCount = Object.values(CORR).filter(c=>c.sig&&c.sig!=='n.s.'&&c.sig!=='n/a').length;
+  document.getElementById('st-sig').textContent = sigCount + ' of ' + SECTORS.length;
+  document.getElementById('st-gate').textContent = fmtM(GATE.total_donated_top10||0);
+  const bestR = Object.entries(CORR).sort((a,b)=>Math.abs(b[1].r||0)-Math.abs(a[1].r||0))[0];
+  if(bestR) document.getElementById('st-best-r').textContent = (bestR[1].r>0?'+':'')+bestR[1].r+' ('+bestR[0].split(' ')[0]+')';
+  const totalOpposed = (PSTATS.D?.legs||[]).length + (PSTATS.R?.legs||[]).length;
+  document.getElementById('st-opposed').textContent = totalOpposed + ' (all Dems)';
+
+  // ── Section 2: Gatekeeper ─────────────────────────────────────────────────
+  document.getElementById('gate-total').textContent = fmtM(GATE.total_donated_top10);
+  const gBills = GATE.bills_top10||0;
+  document.getElementById('gate-bills').textContent = gBills === 0 ? 'zero (0)' : gBills.toFixed(0);
+  const tbody = document.getElementById('gate-tbody');
+  if(GATE.top_donors){
+    tbody.innerHTML = GATE.top_donors.map(row=>{
+      const bills = row.bills||0;
+      const billCell = bills===0
+        ? '<span class="zero-pill">0 bills</span>'
+        : `<span class="bills-pill">${bills.toFixed(0)} bill${bills!==1?'s':''}</span>`;
+      const role = bills===0
+        ? '<span style="font-size:.76rem;color:var(--muted);font-style:italic">Gatekeeper / leadership</span>'
+        : '<span style="font-size:.76rem;color:var(--green);font-weight:600">Active sponsor</span>';
+      return `<tr>
+        <td><a href="/legislators/${encodeURIComponent(row.name)}" style="font-weight:700;color:var(--navy);text-decoration:none">${esc(row.name)}</a></td>
+        <td>${partyChip(row.party)}</td>
+        <td style="font-size:.78rem;color:var(--muted)">${esc(row.chamber||'—')}</td>
+        <td style="text-align:right;font-weight:700">${fmtM(row.donated)}</td>
+        <td style="text-align:center">${billCell}</td>
+        <td>${role}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Section 3: Party breakdown ────────────────────────────────────────────
+  const pgrid = document.getElementById('party-grid');
+  ['D','R'].forEach(p=>{
+    const ps = PSTATS[p] || {aligned:0, opposed:0, legs:[]};
+    const label = p==='D' ? 'Democrats' : 'Republicans';
+    const color = p==='D' ? 'var(--dem)' : 'var(--rep)';
+    const total = ps.aligned + ps.opposed;
+    pgrid.innerHTML += `
+      <div class="party-card party-card-${p}">
+        <div class="party-card-title" style="color:${color}">${label}</div>
+        <div class="party-stat-row">
+          <span>Strongly aligned entries</span>
+          <span class="party-num" style="color:var(--green)">${ps.aligned}</span>
+        </div>
+        <div class="party-stat-row">
+          <span>Strongly opposed entries</span>
+          <span class="party-num" style="color:var(--red)">${ps.opposed}</span>
+        </div>
+        <div class="party-stat-row">
+          <span>Divergence rate</span>
+          <span class="party-num">${total>0?(ps.opposed/total*100).toFixed(0)+'%':'—'}</span>
+        </div>
+        <div style="margin-top:10px;font-size:.76rem;color:var(--muted);line-height:1.5">
+          ${p==='D'
+            ? 'Some Democrats take broad-market donations while maintaining progressive legislative records — their base pulls them left regardless of donor mix.'
+            : 'No Republican in the dataset shows a divergence between top donor sector and legislative record. Ideology and donor selection are already aligned.'}
+        </div>
+      </div>`;
+  });
+
+  const oppList = document.getElementById('opposed-list');
+  const allOpposed = [...(PSTATS.D?.legs||[]), ...(PSTATS.R?.legs||[])];
+  if(allOpposed.length){
+    oppList.innerHTML = allOpposed.map(row=>`
+      <div class="opposed-row">
+        <span class="opposed-score">${row.score}%</span>
+        <a href="/legislators/${encodeURIComponent(row.name)}" style="font-weight:700;text-decoration:none;color:var(--navy);min-width:190px">${esc(row.name)}</a>
+        <span style="font-size:.77rem;background:var(--cream);border:1px solid var(--border);border-radius:12px;padding:2px 9px">${esc(row.sector)}</span>
+        <span style="font-size:.75rem;color:var(--muted)">takes ${esc(row.sector)} money, votes against it</span>
+      </div>`).join('');
+  } else {
+    oppList.innerHTML = '<div style="color:var(--muted);font-style:italic;font-size:.82rem">No divergence cases found in current data.</div>';
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  SCATTER PLOT ENGINE
+  // ══════════════════════════════════════════════════════════════════════════
+  let activeSector = SECTORS[0] || '';
+  let activeParty  = 'all';
+  let donorField   = 'donated'; // 'donated' | 'pac_donated' | 'ind_donated'
+
+  // Donor type toggle
+  window.setDonorType = function(field, btn){
+    donorField = field;
+    document.querySelectorAll('#dt-all,#dt-pac,#dt-ind').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+    drawScatter();
+  };
+
+  // JS-side Pearson r (used when donor type is filtered away from pre-computed totals)
+  function _erf(x){
+    const t=1/(1+0.3275911*Math.abs(x));
+    const v=t*(0.254829592+t*(-0.284496736+t*(1.421413741+t*(-1.453152027+t*1.061405429))));
+    const r=1-v*Math.exp(-x*x);
+    return x<0?-r:r;
+  }
+  function _pearsonJS(pts){
+    const valid = pts.filter(p=>(p[donorField]||0)>0);
+    const n = valid.length;
+    if(n<5) return {r:null,p:null,sig:'n/a',n};
+    const xs = valid.map(p=>Math.log10(p[donorField]));
+    const ys = valid.map(p=>p.bills);
+    const mx=xs.reduce((a,b)=>a+b,0)/n, my=ys.reduce((a,b)=>a+b,0)/n;
+    const num=xs.reduce((s,x,i)=>s+(x-mx)*(ys[i]-my),0);
+    const dx=Math.sqrt(xs.reduce((s,x)=>s+(x-mx)**2,0));
+    const dy=Math.sqrt(ys.reduce((s,y)=>s+(y-my)**2,0));
+    if(dx===0||dy===0) return {r:0,p:1,sig:'n.s.',n};
+    const r=num/(dx*dy);
+    const t=r*Math.sqrt(n-2)/Math.max(1e-10,Math.sqrt(1-r*r));
+    const pv=2*(1-0.5*(1+_erf(Math.abs(t)/Math.SQRT2)));
+    const sig=pv<0.001?'***':pv<0.01?'**':pv<0.05?'*':'n.s.';
+    return {r:parseFloat(r.toFixed(3)),p:parseFloat(pv.toFixed(4)),sig,n};
+  }
+  const W=580, H=340;
+  const PAD={top:22, right:28, bottom:54, left:72};
+  const PW = W-PAD.left-PAD.right;
+  const PH = H-PAD.top-PAD.bottom;
+
+  // Build sector tabs
+  const tabWrap = document.getElementById('sector-tabs');
+  SECTORS.forEach(s=>{
+    const btn = document.createElement('button');
+    btn.className = 'stab' + (s===activeSector?' on':'');
+    btn.textContent = s;
+    btn.onclick = ()=>{ activeSector=s; updateTabs(); drawScatter(); };
+    tabWrap.appendChild(btn);
+  });
+  function updateTabs(){
+    tabWrap.querySelectorAll('.stab').forEach(b=>b.classList.toggle('on', b.textContent===activeSector));
+  }
+
+  // Party filter
+  window.setParty = function(p, btn){
+    activeParty = p;
+    document.querySelectorAll('#pf-all,#pf-D,#pf-R').forEach(b=>{
+      b.classList.remove('on','on-D','on-R');
+    });
+    if(p==='all') btn.classList.add('on');
+    else if(p==='D') btn.classList.add('on-D');
+    else btn.classList.add('on-R');
+    drawScatter();
+  };
+
+  // Scales
+  function logX(d){ return Math.log10(Math.max(d,1)); }
+
+  function makeScales(pts){
+    const valid = pts.filter(p=>(p[donorField]||0)>0);
+    const logVals = valid.length ? valid.map(p=>logX(p[donorField])) : [3];
+    const minLog = Math.min(...logVals, 2.3);   // at least $200
+    const maxLog = Math.max(...logVals, 4);      // at least $10K
+    const maxB   = Math.max(...pts.map(p=>p.bills), 1);
+    return {
+      xFn: d => PAD.left + (logX(Math.max(d,1)) - minLog) / (maxLog - minLog) * PW,
+      yFn: b => PAD.top  + PH - (b / maxB) * PH,
+      minLog, maxLog, maxB
+    };
+  }
+
+  function axisTicksX(minLog, maxLog){
+    const candidates = [2,2.3,2.5,3,3.5,3.7,4,4.5,4.7,5,5.3,5.5,6];
+    const labels = {2:'$100',2.3:'$200',2.5:'$300',3:'$1K',3.5:'$3K',3.7:'$5K',4:'$10K',4.5:'$30K',4.7:'$50K',5:'$100K',5.3:'$200K',5.5:'$300K',6:'$1M'};
+    return candidates.filter(v=>v>=minLog-0.05&&v<=maxLog+0.05)
+      .map(v=>({log:v, label:labels[v]||''}));
+  }
+
+  // Regression
+  function regression(pts){
+    const valid = pts.filter(p=>(p[donorField]||0)>0);
+    const n = valid.length;
+    if(n<3) return null;
+    const xs = valid.map(p=>logX(p[donorField]));
+    const ys = valid.map(p=>p.bills);
+    const mx = xs.reduce((a,b)=>a+b,0)/n;
+    const my = ys.reduce((a,b)=>a+b,0)/n;
+    const num = xs.reduce((s,x,i)=>s+(x-mx)*(ys[i]-my),0);
+    const den = xs.reduce((s,x)=>s+(x-mx)**2,0);
+    if(den===0) return null;
+    const slope = num/den;
+    const intercept = my - slope*mx;
+    return {slope, intercept};
+  }
+
+  function svgEl(tag, attrs){
+    const ns='http://www.w3.org/2000/svg';
+    const el=document.createElementNS(ns,tag);
+    // camelCase → kebab-case so strokeWidth→stroke-width, textAnchor→text-anchor, etc.
+    Object.entries(attrs).forEach(([k,v])=>{
+      const attr = k.replace(/([A-Z])/g, m=>'-'+m.toLowerCase());
+      el.setAttribute(attr, v);
+    });
+    return el;
+  }
+
+  function drawScatter(){
+    const raw  = SCATTER[activeSector] || [];
+    const pts  = activeParty==='all' ? raw : raw.filter(p=>p.party===activeParty);
+    // Use pre-computed correlations for total; recompute in JS when filtered by donor type
+    const corr = donorField==='donated' ? (CORR[activeSector]||{}) : _pearsonJS(pts);
+    const fallbackPt = {bills:0,donated:1000,pac_donated:1000,ind_donated:100};
+    const sc   = makeScales(pts.length>0?pts:[fallbackPt]);
+
+    document.getElementById('scatter-sector-name').textContent = activeSector;
+
+    // Corr row
+    const rSign = (corr.r||0)>=0?'+':'';
+    const pDisp = corr.p!=null ? (corr.p<0.001?'<0.001':corr.p.toFixed(3)) : '—';
+    document.getElementById('scatter-corr-row').innerHTML =
+      `<span style="font-weight:700;font-size:.9rem;color:${Math.abs(corr.r||0)>0.2?'var(--navy)':'var(--muted)'}">`+
+      `r = ${rSign}${(corr.r||0).toFixed(3)}</span><br>`+
+      `p = ${pDisp} &nbsp;·&nbsp; <strong style="color:${corr.sig==='n.s.'?'var(--muted)':'var(--red)'}">${corr.sig||'—'}</strong>`+
+      `<br><span style="font-size:.72rem">n = ${corr.n||pts.length} legislators</span>`;
+
+    // Corr stats
+    const sigLabel = corr.sig==='n.s.' ? 'Not significant'
+      : corr.sig==='*' ? 'Significant (p<0.05)'
+      : corr.sig==='**' ? 'Significant (p<0.01)'
+      : corr.sig==='***' ? 'Highly significant (p<0.001)' : corr.sig||'—';
+    const rColor = Math.abs(corr.r||0)>=0.2 ? (corr.r>0?'var(--green)':'var(--red)') : 'var(--muted)';
+    document.getElementById('corr-stats').innerHTML = `
+      <div class="corr-stat">
+        <div class="corr-stat-label">Pearson r</div>
+        <div class="corr-stat-value" style="color:${rColor}">${rSign}${(corr.r||0).toFixed(3)}</div>
+      </div>
+      <div class="corr-stat">
+        <div class="corr-stat-label">p-value</div>
+        <div class="corr-stat-value" style="color:${corr.sig&&corr.sig!=='n.s.'?'var(--red)':'var(--muted)'}">${pDisp}</div>
+      </div>
+      <div class="corr-stat">
+        <div class="corr-stat-label">Significance</div>
+        <div class="corr-stat-value" style="font-size:.82rem;color:${corr.sig&&corr.sig!=='n.s.'?'var(--red)':'var(--muted)'}">${sigLabel}</div>
+      </div>
+      <div class="corr-stat">
+        <div class="corr-stat-label">Legislators plotted</div>
+        <div class="corr-stat-value">${pts.length}</div>
+      </div>`;
+
+    // Build SVG
+    const svg = document.getElementById('scatter-svg');
+    while(svg.firstChild) svg.removeChild(svg.firstChild);
+
+    // Background
+    svg.appendChild(svgEl('rect',{x:PAD.left,y:PAD.top,width:PW,height:PH,fill:'#fafaf8',rx:4}));
+
+    // Grid lines + X axis ticks
+    const ticks = axisTicksX(sc.minLog, sc.maxLog);
+    ticks.forEach(t=>{
+      const x = PAD.left + (t.log - sc.minLog)/(sc.maxLog - sc.minLog)*PW;
+      svg.appendChild(svgEl('line',{x1:x,y1:PAD.top,x2:x,y2:PAD.top+PH,stroke:'#e5e1d8',strokeWidth:1}));
+      if(t.label){
+        const lbl = svgEl('text',{x:x,y:PAD.top+PH+16,textAnchor:'middle',fontSize:'10',fill:'#9ca3af',fontFamily:'Barlow,sans-serif'});
+        lbl.textContent = t.label;
+        svg.appendChild(lbl);
+      }
+    });
+
+    // Y axis ticks
+    const yTicks = Math.ceil(sc.maxB);
+    for(let i=0;i<=yTicks;i++){
+      const y = sc.yFn(i);
+      svg.appendChild(svgEl('line',{x1:PAD.left,y1:y,x2:PAD.left+PW,y2:y,stroke:'#e5e1d8',strokeWidth:i===0?1.5:1}));
+      const lbl = svgEl('text',{x:PAD.left-6,y:y+4,textAnchor:'end',fontSize:'10',fill:'#9ca3af',fontFamily:'Barlow,sans-serif'});
+      lbl.textContent = i;
+      svg.appendChild(lbl);
+    }
+
+    // Axes
+    svg.appendChild(svgEl('line',{x1:PAD.left,y1:PAD.top+PH,x2:PAD.left+PW,y2:PAD.top+PH,stroke:'#6b6560',strokeWidth:1.5}));
+    svg.appendChild(svgEl('line',{x1:PAD.left,y1:PAD.top,x2:PAD.left,y2:PAD.top+PH,stroke:'#6b6560',strokeWidth:1.5}));
+
+    // Axis labels
+    const xLbl = svgEl('text',{x:PAD.left+PW/2,y:H-4,textAnchor:'middle',fontSize:'11',fill:'#6b6560',fontFamily:'Barlow,sans-serif',fontWeight:'600'});
+    xLbl.textContent = donorField==='pac_donated' ? 'PAC / Corporate donations (log scale)'
+                     : donorField==='ind_donated'  ? 'Individual donations (log scale)'
+                     : 'Total donations from sector (log scale)';
+    svg.appendChild(xLbl);
+
+    const yLblG = svgEl('g',{transform:`translate(14,${PAD.top+PH/2}) rotate(-90)`});
+    const yLbl = svgEl('text',{textAnchor:'middle',fontSize:'11',fill:'#6b6560',fontFamily:'Barlow,sans-serif',fontWeight:'600'});
+    yLbl.textContent = 'Bills sponsored';
+    yLblG.appendChild(yLbl);
+    svg.appendChild(yLblG);
+
+    // Regression line
+    const reg = regression(pts.length>1?pts:[]);
+    if(reg){
+      const x0=sc.minLog, x1=sc.maxLog;
+      const y0=reg.intercept+reg.slope*x0;
+      const y1=reg.intercept+reg.slope*x1;
+      const px0=PAD.left, px1=PAD.left+PW;
+      const py0=sc.yFn(Math.max(0,y0)), py1=sc.yFn(Math.max(0,y1));
+      const regLine = svgEl('line',{x1:px0,y1:py0,x2:px1,y2:py1,stroke:'#9ca3af',strokeWidth:1.5,strokeDasharray:'5,3'});
+      svg.appendChild(regLine);
+    }
+
+    // Data points
+    const tip = document.getElementById('scatter-tooltip');
+    pts.forEach(p=>{
+      const fieldVal = p[donorField] || 0;
+      const cx = sc.xFn(fieldVal || 1);
+      const cy = sc.yFn(p.bills||0);
+      // Fade out dots where the active field is zero (they anchor on x=1)
+      const opacity = fieldVal > 0 ? '0.72' : '0.18';
+      const col = p.party==='D'?'#1a52c8':p.party==='R'?'#c8102e':'#9ca3af';
+      const circle = svgEl('circle',{cx,cy,r:6,fill:col,fillOpacity:opacity,stroke:col,strokeWidth:'1.5',style:'cursor:pointer'});
+      circle.addEventListener('mouseenter', e=>{
+        tip.style.display='block';
+        document.getElementById('tt-name').textContent = p.name;
+        document.getElementById('tt-party').innerHTML = `<span class="tt-party-${p.party}">${p.party} · ${p.chamber}</span>`;
+        const activeAmt = fmtM(fieldVal);
+        const label = donorField==='pac_donated'?'PAC / corp':donorField==='ind_donated'?'Individual':'Total';
+        document.getElementById('tt-donated').textContent = label+': '+activeAmt;
+        document.getElementById('tt-bills').textContent = 'Bills: '+p.bills;
+        const bd = document.getElementById('tt-breakdown');
+        if(bd && donorField!=='donated'){
+          bd.innerHTML = 'Total: '+fmtM(p.donated)
+            +' &nbsp;·&nbsp; PAC: '+fmtM(p.pac_donated||0)
+            +' &nbsp;·&nbsp; Ind: '+fmtM(p.ind_donated||0);
+          bd.style.display = 'block';
+        } else if(bd){
+          bd.innerHTML = 'PAC: '+fmtM(p.pac_donated||0)+' &nbsp;·&nbsp; Individual: '+fmtM(p.ind_donated||0);
+          bd.style.display = (p.pac_donated||0)+(p.ind_donated||0) > 0 ? 'block' : 'none';
+        }
+        positionTip(e);
+      });
+      circle.addEventListener('mousemove', positionTip);
+      circle.addEventListener('mouseleave', ()=>{ tip.style.display='none'; });
+      circle.addEventListener('click', ()=>{ window.location='/legislators/'+encodeURIComponent(p.name); });
+      svg.appendChild(circle);
+    });
+  }
+
+  function positionTip(e){
+    const tip = document.getElementById('scatter-tooltip');
+    const x = e.clientX+16, y = e.clientY-10;
+    tip.style.left = Math.min(x, window.innerWidth-280)+'px';
+    tip.style.top  = Math.min(y, window.innerHeight-120)+'px';
+  }
+
+  // Initial render
+  drawScatter();
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  TIMING SECTION
+  // ══════════════════════════════════════════════════════════════════════════
+  const TPREM = D.timing_session_premium || [];
+  const TMON  = D.timing_monthly         || {};
+  const TBUND = D.timing_bundling        || [];
+
+  // ── Session premium table ─────────────────────────────────────────────────
+  (function buildPremiumTable(){
+    const wrap = document.getElementById('sess-premium-wrap');
+    if(!wrap || !TPREM.length) return;
+
+    const maxRatio = Math.max(...TPREM.map(r=>r.ratio||0), 2.0);
+    let html = '<table style="width:100%;border-collapse:collapse;font-size:.81rem">';
+    html += `<thead><tr style="background:var(--navy);color:#fff">
+      <th style="padding:10px 13px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:.67rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase">Sector</th>
+      <th style="padding:10px 13px;text-align:right;font-family:'Barlow Condensed',sans-serif;font-size:.67rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap">Avg Session Check</th>
+      <th style="padding:10px 13px;text-align:right;font-family:'Barlow Condensed',sans-serif;font-size:.67rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap">Avg Off-Season</th>
+      <th style="padding:10px 13px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:.67rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;min-width:220px">Session Premium</th>
+      <th style="padding:10px 13px;text-align:right;font-family:'Barlow Condensed',sans-serif;font-size:.67rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap">Session Vol %</th>
+    </tr></thead><tbody>`;
+
+    TPREM.forEach((row, i) => {
+      const ratio   = row.ratio || 0;
+      const isHigh  = ratio >= 1.2;
+      const isLow   = ratio < 0.9;
+      const barClr  = isHigh ? 'var(--green)' : isLow ? '#9ca3af' : 'var(--gold)';
+      const barW    = Math.min((ratio / maxRatio) * 100, 100).toFixed(1);
+      const ratioLbl= ratio ? ratio.toFixed(2) + '×' : '—';
+      const signal  = isHigh ? 'Session-timed' : isLow ? 'Continuous' : 'Moderate';
+      const sigClr  = isHigh ? 'var(--green)'  : isLow ? 'var(--muted)' : 'var(--gold)';
+      const avgSClr = ratio >= 1.0 ? 'var(--green)' : 'var(--muted)';
+
+      html += `<tr style="border-bottom:1px solid #f0ece4;background:${i%2===0?'#fff':'#fafaf8'}">
+        <td style="padding:9px 13px;font-weight:600">${esc(row.sector)}</td>
+        <td style="padding:9px 13px;text-align:right;font-weight:700;color:${avgSClr}">${fmtM(row.avg_session)}</td>
+        <td style="padding:9px 13px;text-align:right;color:var(--muted)">${fmtM(row.avg_off)}</td>
+        <td style="padding:9px 13px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="flex:1;background:#f0ece4;border-radius:3px;height:8px;overflow:hidden;min-width:80px">
+              <div style="width:${barW}%;height:100%;background:${barClr};border-radius:3px"></div>
+            </div>
+            <span style="font-weight:700;min-width:38px;color:${barClr};font-size:.82rem">${ratioLbl}</span>
+            <span style="font-size:.7rem;color:${sigClr};white-space:nowrap">${signal}</span>
+          </div>
+        </td>
+        <td style="padding:9px 13px;text-align:right;font-size:.77rem;color:var(--muted)">${row.session_pct}%</td>
+      </tr>`;
+    });
+
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+  })();
+
+  // ── Monthly bar chart ─────────────────────────────────────────────────────
+  const _TSECTORS = Object.keys(TMON);
+  let _activeTSec = _TSECTORS[0] || '';
+
+  function _buildTimingTabs(){
+    const wrap = document.getElementById('timing-sector-tabs');
+    if(!wrap) return;
+    wrap.innerHTML = '';
+    _TSECTORS.forEach(s => {
+      const btn = document.createElement('button');
+      btn.className = 'stab' + (s === _activeTSec ? ' on' : '');
+      btn.textContent = s;
+      btn.onclick = () => _setTimingSec(s);
+      wrap.appendChild(btn);
+    });
+  }
+
+  window._setTimingSec = function(s){
+    _activeTSec = s;
+    _buildTimingTabs();
+    _drawTimingChart();
+  };
+
+  function _drawTimingChart(){
+    const svg = document.getElementById('timing-svg');
+    if(!svg) return;
+    while(svg.firstChild) svg.removeChild(svg.firstChild);
+
+    const series = (TMON[_activeTSec] || []);
+    const TW=620, TH=180;
+    const TP={top:14, right:16, bottom:46, left:62};
+    const TPW = TW - TP.left - TP.right;
+    const TPH = TH - TP.top  - TP.bottom;
+
+    if(!series.length){
+      const m = svgEl('text',{x:TW/2,y:TH/2,textAnchor:'middle',fontSize:'12',fill:'#9ca3af',fontFamily:'Barlow,sans-serif'});
+      m.textContent = 'No data for this sector';
+      svg.appendChild(m);
+      return;
+    }
+
+    const n      = series.length;
+    const slot   = TPW / n;
+    const barW   = Math.max(3, slot - 2);
+    const maxAmt = Math.max(...series.map(r=>r.amount), 1);
+    const tipDiv = document.getElementById('scatter-tooltip');
+
+    // Y grid + labels
+    const ySteps = 4;
+    for(let i=0; i<=ySteps; i++){
+      const yv = (maxAmt / ySteps) * i;
+      const y  = TP.top + TPH - (yv / maxAmt) * TPH;
+      svg.appendChild(svgEl('line',{x1:TP.left,y1:y,x2:TP.left+TPW,y2:y,stroke:'#e5e1d8',strokeWidth:i===0?1.5:1}));
+      const lbl = svgEl('text',{x:TP.left-5,y:y+3,textAnchor:'end',fontSize:'9',fill:'#9ca3af',fontFamily:'Barlow,sans-serif'});
+      lbl.textContent = fmtM(yv);
+      svg.appendChild(lbl);
+    }
+
+    // Bars
+    const showEvery = n <= 14 ? 1 : Math.ceil(n / 14);
+    series.forEach((row, i) => {
+      const x    = TP.left + i * slot + (slot - barW) / 2;
+      const barH = Math.max(2, (row.amount / maxAmt) * TPH);
+      const y    = TP.top + TPH - barH;
+      const fill = row.session ? 'var(--navy)' : '#93c5fd';
+      const bar  = svgEl('rect',{x,y,width:barW,height:barH,fill,rx:2,style:'cursor:pointer'});
+
+      bar.addEventListener('mouseenter', e=>{
+        tipDiv.style.display = 'block';
+        document.getElementById('tt-name').textContent    = row.ym + (row.session ? ' ★ Session' : '');
+        document.getElementById('tt-party').textContent   = row.session ? 'Active session month (Jan–Mar)' : 'Off-season';
+        document.getElementById('tt-donated').textContent = fmtM(row.amount) + ' PAC / corporate';
+        document.getElementById('tt-bills').textContent   = '';
+        positionTip(e);
+      });
+      bar.addEventListener('mousemove', positionTip);
+      bar.addEventListener('mouseleave', ()=>{ tipDiv.style.display='none'; });
+      svg.appendChild(bar);
+
+      if(i % showEvery === 0){
+        const lx  = x + barW / 2;
+        const ly  = TP.top + TPH + 13;
+        const rot = n > 18 ? `rotate(-40,${lx},${ly})` : '';
+        const lbl = svgEl('text',{
+          x:lx, y:ly,
+          textAnchor: n > 18 ? 'end' : 'middle',
+          fontSize:'8',
+          fill: row.session ? 'var(--navy)' : '#9ca3af',
+          fontFamily:'Barlow,sans-serif',
+          fontWeight: row.session ? '700' : '400',
+          transform: rot,
+        });
+        lbl.textContent = row.ym.slice(2); // "23-01"
+        svg.appendChild(lbl);
+      }
+    });
+
+    // X axis
+    svg.appendChild(svgEl('line',{x1:TP.left,y1:TP.top+TPH,x2:TP.left+TPW,y2:TP.top+TPH,stroke:'#6b6560',strokeWidth:1.5}));
+  }
+
+  _buildTimingTabs();
+  _drawTimingChart();
+
+  // ── Session bundling table ────────────────────────────────────────────────
+  (function buildBundlingTable(){
+    const tbody = document.getElementById('bundling-tbody');
+    if(!tbody) return;
+
+    if(!TBUND.length){
+      tbody.innerHTML = '<tr><td colspan="6" style="padding:18px;text-align:center;color:var(--muted);font-style:italic">No bundling events found in dataset</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = TBUND.map((row, i) => {
+      const isDom  = /dominion/i.test(row.entity);
+      const rowBg  = isDom ? '#fffbeb' : (i%2===0 ? '' : '#fafaf8');
+      const star   = isDom ? '<span style="margin-left:5px;font-size:.62rem;color:var(--gold);font-weight:700;vertical-align:middle">★</span>' : '';
+      return `<tr style="border-bottom:1px solid #f0ece4;background:${rowBg}">
+        <td style="padding:9px 13px;font-weight:${isDom?'700':'500'}">${esc(row.entity)}${star}</td>
+        <td style="padding:9px 13px">
+          <a href="/legislators/${encodeURIComponent(row.candidate)}" style="color:var(--navy);font-weight:600;text-decoration:none">${esc(row.candidate)}</a>
+        </td>
+        <td style="padding:9px 13px;text-align:center;color:var(--muted);font-size:.82rem">${row.n}</td>
+        <td style="padding:9px 13px;text-align:right;font-weight:700">${fmtM(row.total)}</td>
+        <td style="padding:9px 13px;font-size:.78rem;color:var(--muted);white-space:nowrap">${esc(row.month)}</td>
+        <td style="padding:9px 13px">
+          <span style="font-size:.7rem;background:var(--cream);border:1px solid var(--border);border-radius:12px;padding:2px 8px;white-space:nowrap">${esc(row.sector)}</span>
+        </td>
+      </tr>`;
+    }).join('');
+  })();
+
+})();
+
+</script>
+
+<!-- ═══ Bill Lookup section ══════════════════════════════════════════════════ -->
+<section id="bill-lookup" class="section" style="background:#f9f6f0">
+  <div class="sec-head">Trace Any Bill</div>
+  <div class="sec-title">Follow the Money — Bill Lookup</div>
+  <div class="sec-desc">
+    Enter a Virginia bill number to trace the full money chain:
+    who sponsored it, who funded those sponsors, whether those donors have
+    registered lobbyists, and what other bills are moving in the same sector.
+  </div>
+
+  <!-- Search bar -->
+  <div style="display:flex;gap:10px;flex-wrap:wrap;max-width:560px;margin-bottom:24px">
+    <input id="ftm-bill-input" type="text" placeholder="e.g. HB628 or SB255"
+      style="flex:1;min-width:160px;padding:10px 14px;border:1px solid var(--border);
+             border-radius:7px;font-size:.9rem;font-family:'Barlow',sans-serif;
+             background:#fff;outline:none"
+      onkeydown="if(event.key==='Enter')ftmLookup()"/>
+    <select id="ftm-session-select"
+      style="padding:10px 14px;border:1px solid var(--border);border-radius:7px;
+             font-size:.88rem;font-family:'Barlow',sans-serif;background:#fff;cursor:pointer">
+      <option value="2026">2026 Session</option>
+      <option value="2025">2025 Session</option>
+      <option value="2024">2024 Session</option>
+      <option value="2021">2021 Session</option>
+    </select>
+    <button onclick="ftmLookup()"
+      style="padding:10px 22px;background:var(--navy);color:#fff;border:none;
+             border-radius:7px;font-size:.88rem;font-weight:700;cursor:pointer;
+             font-family:'Barlow',sans-serif;transition:opacity .15s"
+      onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+      Follow the Money
+    </button>
+  </div>
+
+  <!-- Quick bill chips -->
+  <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:22px;font-size:.78rem">
+    <span style="color:var(--muted);font-weight:600;align-self:center">Try:</span>
+    <button class="stab" onclick="ftmQuick('HB628','2026')">HB628 Renewable Energy</button>
+    <button class="stab" onclick="ftmQuick('SB255','2026')">SB255 Portable Solar</button>
+    <button class="stab" onclick="ftmQuick('HB1031','2026')">HB1031 RPS Requirements</button>
+    <button class="stab" onclick="ftmQuick('HB1812','2021')">HB1812 Casino Gaming 2021</button>
+  </div>
+
+  <!-- Result area -->
+  <div id="ftm-result"></div>
+</section>
+
+<script>
+(function(){
+  const fmt = n => n >= 1e6 ? '$'+(n/1e6).toFixed(1)+'M'
+                 : n >= 1e3 ? '$'+(n/1e3).toFixed(0)+'K'
+                 : '$'+Math.round(n).toLocaleString();
+  const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  window.ftmQuick = function(bill, session){
+    document.getElementById('ftm-bill-input').value = bill;
+    document.getElementById('ftm-session-select').value = session;
+    ftmLookup();
+  };
+
+  window.ftmLookup = async function(){
+    const bill    = (document.getElementById('ftm-bill-input').value||'').trim().toUpperCase();
+    const session = document.getElementById('ftm-session-select').value;
+    const out     = document.getElementById('ftm-result');
+    if (!bill){ out.innerHTML='<p style="color:var(--muted);font-size:.83rem">Enter a bill number above.</p>'; return; }
+
+    out.innerHTML = '<p style="color:var(--muted);font-size:.83rem;padding:8px 0">Loading…</p>';
+    try {
+      const resp = await fetch(`/api/follow-the-money/${encodeURIComponent(bill)}?session=${session}`);
+      if (!resp.ok){ out.innerHTML=`<p style="color:var(--red);font-size:.83rem">Bill ${bill} not found in ${session} session.</p>`; return; }
+      const data = await resp.json();
+      out.innerHTML = renderFTM(data);
+    } catch(e){
+      out.innerHTML = '<p style="color:var(--red);font-size:.83rem">Error loading data.</p>';
+    }
+  };
+
+  function renderFTM(d){
+    const bill = d.bill;
+    const statusColor = bill.status === 'Passed' ? 'var(--green)' : bill.status === 'Failed' ? 'var(--red)' : 'var(--muted)';
+    let html = `
+    <!-- Bill card -->
+    <div style="background:#fff;border:1px solid var(--border);border-left:5px solid var(--navy);
+                border-radius:8px;padding:16px 20px;margin-bottom:18px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+        <span style="font-family:'Barlow Condensed',sans-serif;font-size:.65rem;font-weight:700;
+                     letter-spacing:.15em;text-transform:uppercase;color:var(--muted)">${esc(bill.session)} Virginia</span>
+        <span style="font-size:.72rem;font-weight:700;padding:2px 9px;border-radius:12px;
+                     background:#f0f4ff;color:var(--navy)">${esc(bill.sector||'General')}</span>
+        <span style="font-size:.72rem;font-weight:700;color:${statusColor}">${esc(bill.status)}</span>
+      </div>
+      <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.15rem;font-weight:700;line-height:1.3;margin-bottom:4px">
+        ${esc(bill.bill_number)}
+      </div>
+      <div style="font-size:.84rem;color:var(--muted);line-height:1.5">${esc(bill.title)}</div>
+    </div>`;
+
+    // Sponsors
+    if(d.sponsors && d.sponsors.length){
+      html += `<div style="font-family:'Barlow Condensed',sans-serif;font-size:.65rem;font-weight:700;
+               letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">
+               Step 1 — Bill Sponsors & Their Funding</div>`;
+      html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:22px">`;
+      d.sponsors.forEach(sp => {
+        const fin = sp.finance || {};
+        const dva = sp.vote_alignment;
+        const dvaHtml = dva && dva.delta != null ? (() => {
+          const dir = dva.delta >= 0 ? 'above' : 'below';
+          const col = dva.delta >= 5 ? 'var(--orange)' : dva.delta <= -5 ? 'var(--dem)' : 'var(--muted)';
+          return `<div style="margin-top:6px;font-size:.76rem;color:${col};font-weight:600">
+            Votes YES on ${esc(dva.sector)} bills ${Math.abs(dva.delta).toFixed(1)}pp ${dir} average
+          </div>`;
+        })() : '';
+        const topDonorsHtml = (fin.top_donors||[]).slice(0,3).map(d => {
+          const dname = d.contributor_name||d.employer||'';
+          return dname ? `<div style="font-size:.74rem;color:var(--muted);padding:2px 0;border-bottom:1px solid #f4f0e8">
+            <span style="font-weight:600">${esc(dname.substring(0,38))}</span>
+            ${d.total ? ' — '+fmt(d.total) : ''}
+          </div>` : '';
+        }).join('');
+        html += `<div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px 16px">
+          <div style="font-weight:700;font-size:.88rem;margin-bottom:4px">${esc(sp.name)}</div>
+          ${fin.total_raised ? `<div style="font-size:.77rem;color:var(--muted)">Raised: <strong>${fmt(fin.total_raised)}</strong>
+            ${fin.top_sector ? ` · Top sector: <strong>${esc(fin.top_sector)}</strong>` : ''}</div>` : ''}
+          ${dvaHtml}
+          ${topDonorsHtml ? `<div style="margin-top:8px;border-top:1px solid #f0ece4;padding-top:6px">
+            <div style="font-size:.67rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px">Top Donors</div>
+            ${topDonorsHtml}</div>` : ''}
+        </div>`;
+      });
+      html += `</div>`;
+    }
+
+    // Donor web with lobbyists
+    const lobDonors = (d.donor_web||[]).filter(x => x.lobbyist_count > 0);
+    if(lobDonors.length){
+      html += `<div style="font-family:'Barlow Condensed',sans-serif;font-size:.65rem;font-weight:700;
+               letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">
+               Step 2 — Donors with Registered Lobbyists</div>
+      <div class="tbl-wrap" style="margin-bottom:22px">
+        <table>
+          <thead><tr>
+            <th>Donor</th><th>Gave to Sponsors</th>
+            <th>Lobbyists</th><th>Also Funded</th>
+          </tr></thead><tbody>`;
+      lobDonors.slice(0,10).forEach(lob => {
+        html += `<tr>
+          <td><span style="font-weight:600">${esc(lob.donor_name.substring(0,45))}</span>
+              ${lob.sector ? `<br><span style="font-size:.72rem;color:var(--muted)">${esc(lob.sector)}</span>` : ''}
+          </td>
+          <td style="font-weight:700">${fmt(lob.total_to_sponsors||0)}</td>
+          <td><span class="bills-pill">${lob.lobbyist_count} lobbyist${lob.lobbyist_count!==1?'s':''}</span></td>
+          <td style="color:var(--muted);font-size:.8rem">${(lob.also_funded_count||0).toLocaleString()} legislators</td>
+        </tr>`;
+      });
+      html += `</tbody></table></div>`;
+    }
+
+    // Related bills
+    if(d.related_bills && d.related_bills.length){
+      html += `<div style="font-family:'Barlow Condensed',sans-serif;font-size:.65rem;font-weight:700;
+               letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">
+               Step 3 — Related Bills This Session (${d.related_bills.length})</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;margin-bottom:18px">`;
+      d.related_bills.forEach(rb => {
+        html += `<div style="background:#fff;border:1px solid var(--border);border-radius:7px;padding:10px 13px;font-size:.8rem">
+          <a href="javascript:ftmQuick('${esc(rb.bill_number)}','${esc(bill.session)}')"
+             style="font-weight:700;color:var(--navy);text-decoration:none">${esc(rb.bill_number)}</a>
+          <span style="color:var(--muted);margin-left:4px">${rb.status_label ? '· '+esc(rb.status_label) : ''}</span>
+          <div style="color:var(--muted);margin-top:3px;line-height:1.4">${esc((rb.title||'').substring(0,60))}</div>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+
+    // Disclaimer
+    html += `<div style="font-size:.73rem;color:var(--muted);padding:10px 0;border-top:1px solid var(--border)">
+      All data from Virginia SBE campaign finance and lobbyist registration public records.
+      Correlation does not imply causation or intent.
+    </div>`;
+
+    return html;
+  }
+})();
+</script>
+
+</body>
+</html>
