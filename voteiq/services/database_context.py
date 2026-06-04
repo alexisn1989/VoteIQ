@@ -1673,8 +1673,9 @@ def _add_donor_trend_context(blocks: list[str], query: str) -> None:
                             )
 
                     lines = [
-                        f"[Database Context - donor cycle trends: {matched_name}]",
-                        f"Source: Virginia SBE campaign finance, 2012-2026 public records",
+                        f"[RETRIEVED RECORD - Virginia Campaign Finance: Multi-Cycle Donor Trend]",
+                        f"Donor: {matched_name}",
+                        f"Source: Virginia SBE campaign finance public records, 2012-2026",
                         f"Total donated ({first}-{last}): ${total:,.0f}",
                         f"Typical giving: ${odd_mean:,.0f} in state-election years (odd), "
                         f"${even_mean:,.0f} in federal-election years (even)",
@@ -1725,9 +1726,9 @@ def _add_donor_trend_context(blocks: list[str], query: str) -> None:
 
             if spikes:
                 lines = [
-                    "[Database Context - top institutional donation spikes, Virginia 2012-2026]",
+                    "[RETRIEVED RECORD - Virginia Campaign Finance: Top Institutional Donation Spikes 2012-2026]",
                     "Source: Virginia SBE campaign finance public records",
-                    "These donors gave notably more than their own historical average in these cycles:",
+                    "The following donors gave notably more than their own historical average in these cycles:",
                 ]
                 for s in spikes:
                     yr_type = "state-election yr" if s["cycle_parity"] == "odd" else "federal-election yr"
@@ -1773,15 +1774,15 @@ def build_database_context(query: str, max_chars: int = 22000) -> str:
     _add_person_vote_context(blocks, q, terms, session)
     _add_keyword_context(blocks, q, terms, session)
 
+    # Multi-cycle donor trend / investment-return signal — run FIRST so it
+    # is never truncated by the generic SQL dump that comes later
+    _add_donor_trend_context(blocks, q)
+
     # Donor-influence analysis for CoI / Dominion / industry sponsor queries
     # Also triggered by any campaign-finance query so named-legislator lookups
     # can return their donor-industry breakdown.
     if _ANALYSIS_TRIGGER.search(q) or _is_campaign_finance_query(q):
         _add_donor_analysis_context(blocks, q)
-
-    # Multi-cycle donor trend / investment-return signal
-    # Available to all tiers via standard SQLite retrieval path
-    _add_donor_trend_context(blocks, q)
 
     # Add comprehensive SQL table search as fallback for any unmatched keywords
     # This ensures all SQL tables are searched before RAG context

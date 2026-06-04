@@ -540,8 +540,11 @@ def build_lobbyist_chunks(conn: sqlite3.Connection) -> list[dict]:
             )
         lines.append(f"{DISCLAIMER}")
 
+        import hashlib
+        safe_id = re.sub(r'[^a-z0-9]', '_', name.lower())[:32]
+        uid = hashlib.sha1(name.encode()).hexdigest()[:6]
         chunks.append({
-            "chunk_id":       f"lobbyist_{re.sub(r'[^a-z0-9]', '_', name.lower())[:40]}",
+            "chunk_id":       f"lobbyist_{safe_id}_{uid}",
             "text":           "\n".join(lines),
             "source_type":    "lobbyist_crossref",
             "principal_name": name,
