@@ -216,6 +216,8 @@ from voteiq.api.routes.donor_vote_alignment import router as _dva_router
 app.include_router(_dva_router, prefix="/api")
 from voteiq.api.routes.follow_the_money import router as _ftm_router
 app.include_router(_ftm_router, prefix="/api")
+from voteiq.api.routes.narratives import router as _narratives_router
+app.include_router(_narratives_router, prefix="/api")
 from voteiq.api.routes.donor_trend import router as _donor_trend_router
 app.include_router(_donor_trend_router, prefix="/api")
 

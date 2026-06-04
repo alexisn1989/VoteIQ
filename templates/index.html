@@ -533,6 +533,8 @@
         executive: vaStatewide.filter(r => r.title === 'Governor').map(r => ({ title: 'Gov.', name: r.name, party: r.party, district: 'Virginia' }))
       };
       initViqChat(districtCode, d.locality, del ? del.district_number : null, sen ? sen.district_number : null, repNames, repData);
+      // Load funding profiles for state reps immediately after address lookup
+      loadRepProfiles(repNames);
       if (window.viqSaveDistrictContext) {
         window.viqSaveDistrictContext({
           districtCode: districtCode,
@@ -656,6 +658,59 @@
       try { localStorage.removeItem(VIQ_DISTRICT_STORAGE_KEY); } catch (e) {}
       location.reload();
     };
+
+    /* ── Rep Funding Profiles panel ───────────────────────────────────────── */
+    async function loadRepProfiles(repNames) {
+      if (!repNames || !repNames.length) return;
+      // Only include state assembly members (not senators Warner/Kaine or governor)
+      const stateReps = repNames.filter(n =>
+        !['Mark Warner','Tim Kaine','Abigail Spanberger','Abigail D. Spanberger'].includes(n)
+      );
+      if (!stateReps.length) return;
+      try {
+        const resp = await fetch('/api/legislator-narratives/batch?names=' +
+          encodeURIComponent(stateReps.slice(0,4).join(',')));
+        if (!resp.ok) return;
+        const profiles = await resp.json();
+        if (!profiles.length) return;
+        renderRepProfiles(profiles);
+      } catch(e) {}
+    }
+
+    function renderRepProfiles(profiles) {
+      const result = document.getElementById('result');
+      if (!result) return;
+      const partyColor = p => p === 'R' ? '#c8102e' : p === 'D' ? '#1a52c8' : '#555';
+      const fmt = n => !n ? '' : n >= 1e6 ? '$'+(n/1e6).toFixed(1)+'M' : n >= 1e3 ? '$'+(n/1e3).toFixed(0)+'K' : '$'+Math.round(n).toLocaleString();
+      let html = `<div style="margin-top:16px;border:1px solid #ddd8cc;border-top:4px solid #b8963e;background:#fff;padding:16px 20px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#7a7468;margin-bottom:12px">
+          Your Representatives — Funding Profiles
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">`;
+      profiles.forEach(p => {
+        const stats = p.key_stats || {};
+        const delta = stats.alignment_delta;
+        const deltaHtml = delta != null && Math.abs(delta) >= 3 ? `
+          <div style="font-size:.74rem;margin-top:5px;font-weight:600;color:${delta > 0 ? '#ea580c' : '#1a52c8'}">
+            Votes ${Math.abs(delta).toFixed(1)}pp ${delta > 0 ? 'more' : 'less'} on ${viqEsc(stats.top_sector||'')} bills than average
+          </div>` : '';
+        html += `<div style="border:1px solid #e8e4dc;border-radius:8px;padding:12px 14px;font-size:.82rem">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
+            <span style="font-weight:700">${viqEsc(p.name)}</span>
+            <span style="font-size:.68rem;font-weight:700;padding:1px 7px;border-radius:10px;background:${partyColor(p.party)}22;color:${partyColor(p.party)}">${viqEsc(p.party)}</span>
+            <span style="font-size:.7rem;color:#7a7468">${viqEsc(p.chamber||'')} ${p.district ? '· Dist '+viqEsc(p.district) : ''}</span>
+          </div>
+          ${p.narrative_short ? `<div style="font-size:.78rem;color:#4a4540;line-height:1.5;margin-bottom:5px">${viqEsc(p.narrative_short)}</div>` : ''}
+          ${stats.total_raised ? `<div style="font-size:.74rem;color:#7a7468">Raised: <strong>${fmt(stats.total_raised)}</strong>${stats.top_sector ? ' · Top sector: <strong>'+viqEsc(stats.top_sector)+'</strong>' : ''}</div>` : ''}
+          ${deltaHtml}
+          <div style="margin-top:8px">
+            <a href="javascript:viqSendMessage('Tell me about '+${JSON.stringify(p.name)})" style="font-size:.72rem;font-weight:700;color:#0d1b2a;border:1px solid #ddd8cc;padding:3px 10px;border-radius:4px;text-decoration:none;margin-right:5px">Ask →</a>
+          </div>
+        </div>`;
+      });
+      html += `</div><div style="font-size:.68rem;color:#9a9490;margin-top:10px">Public records only · Correlation ≠ causation</div></div>`;
+      result.innerHTML += html;
+    }
     function viqSavedDistrictNotice(ctx) {
       const result = document.getElementById('result');
       if (!result) return;
@@ -670,6 +725,8 @@
         '<p style="font-size:0.9rem;line-height:1.55;margin-bottom:8px;"><strong>' + viqEsc(ctx.locality || ctx.districtCode || 'Virginia') + '</strong>' + (districtBits ? ' · ' + viqEsc(districtBits) : '') + '<br/>VoteIQ is ready with context for ' + reps + '.</p>' +
         '<button type="button" onclick="viqClearSavedDistrict()" style="font-family:Barlow Condensed,sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;background:transparent;color:#c8102e;border:1px solid #c8102e;padding:7px 14px;cursor:pointer;">Use a different address</button>' +
         '</div>';
+      // Auto-load funding profiles for state reps
+      if (ctx.repNames && ctx.repNames.length) loadRepProfiles(ctx.repNames);
     }
     window.initViqChat = function (districtCode, locality, hod, sd, repNames, repData) {
       viqDistrict = districtCode || 'VA-00';
