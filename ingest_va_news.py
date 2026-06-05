@@ -85,37 +85,59 @@ except Exception:
     _db_lookup = lambda name: {}  # noqa: E731  — fallback if polls module unavailable
 
 NEWS_FEEDS = [
-    # Statewide / political (best quality, full article text)
+    # ── Statewide / political (best quality, full article text) ──────────────
     "https://www.virginiamercury.com/feed/",
-    "https://cardinalnews.org/feed/",         # Southwest VA — excellent journalism
-    "https://bluevirginia.us/feed",            # VA political blog, very active
-    "https://www.vpm.org/news.rss",            # Virginia Public Media
+    "https://cardinalnews.org/feed/",              # Southwest VA — excellent journalism
+    "https://cardinalnews.org/category/politics/feed/",  # politics-specific subset
+    "https://bluevirginia.us/feed",                # VA political blog, very active
+    "https://www.vpm.org/news.rss",                # Virginia Public Media (NPR)
 
-    # Richmond area
+    # ── Business / economy ────────────────────────────────────────────────────
+    "https://virginiabusiness.com/feed/",          # Virginia Business Magazine
+
+    # ── Civic journalism / nonpartisan ────────────────────────────────────────
+    "https://augustafreepress.com/feed/",          # Augusta Free Press — free, Shenandoah Valley
+    "https://www.cvilletomorrow.org/feed/",        # Charlottesville Tomorrow — land use, local govt
+
+    # ── DC-area / Northern Virginia ───────────────────────────────────────────
+    "https://www.loudountimes.com/search/?f=rss",
+    "https://www.arlnow.com/feed/",                # Arlington local politics
+    "https://www.insidenova.com/search/?f=rss",    # Prince William, Manassas, NoVA suburbs
+    "https://wamu.org/topic/virginia/feed/",       # WAMU (NPR DC) Virginia coverage
+
+    # ── Richmond area ─────────────────────────────────────────────────────────
     "https://www.wric.com/feed/",
 
-    # Hampton Roads
+    # ── Hampton Roads ─────────────────────────────────────────────────────────
     "https://www.wavy.com/feed/",
     "https://www.13newsnow.com/feeds/syndication/rss/news/",
 
-    # Northern Virginia
-    "https://www.loudountimes.com/search/?f=rss",
-    "https://www.arlnow.com/feed/",           # Arlington local politics
+    # ── Southwest Virginia ────────────────────────────────────────────────────
+    "https://www.bristolnews.com/search/?f=rss",   # Bristol Herald Courier
+    "https://www.theroanokestar.com/feed/",        # Roanoke Star — local politics
 
-    # Fredericksburg / Central VA
+    # ── Fredericksburg / Central VA ───────────────────────────────────────────
     "https://www.fredericksburg.com/search/?f=rss&t=article&c=news&l=50&s=start_time&sd=desc",
 
-    # Google News — paywalled outlets covered via headlines
+    # ── Journalism school wires (free, GA coverage) ───────────────────────────
+    "https://cnsmaryland.org/feed/",               # Capital News Service (UMD) — covers VA/DC
+
+    # ── Google News — paywalled outlets covered via headlines ─────────────────
     "https://news.google.com/rss/search?q=" + quote_plus("Richmond Times-Dispatch Virginia politics legislature"),
     "https://news.google.com/rss/search?q=" + quote_plus("Roanoke Times Virginia politics Southwest"),
     "https://news.google.com/rss/search?q=" + quote_plus("Virginian-Pilot Hampton Roads Virginia politics"),
     "https://news.google.com/rss/search?q=" + quote_plus("Daily Progress Charlottesville Virginia politics"),
+    "https://news.google.com/rss/search?q=" + quote_plus("Winchester Star Virginia politics Shenandoah"),
+    "https://news.google.com/rss/search?q=" + quote_plus("Martinsville Bulletin Danville Register Virginia"),
+    "https://news.google.com/rss/search?q=" + quote_plus("Fredericksburg Free Lance-Star Virginia politics"),
 
-    # Google News — topic searches
+    # ── Google News — topic searches ──────────────────────────────────────────
     "https://news.google.com/rss/search?q=" + quote_plus("Virginia politics governor legislature"),
-    "https://news.google.com/rss/search?q=" + quote_plus("Virginia Spanberger election 2025 2026"),
+    "https://news.google.com/rss/search?q=" + quote_plus("Virginia Spanberger Hashmi Jones 2025 2026"),
     "https://news.google.com/rss/search?q=" + quote_plus("Virginia Senate House delegates budget"),
     "https://news.google.com/rss/search?q=" + quote_plus("Virginia General Assembly 2026"),
+    "https://news.google.com/rss/search?q=" + quote_plus("Virginia campaign finance Dominion energy legislation"),
+    "https://news.google.com/rss/search?q=" + quote_plus("Virginia local government county board supervisors"),
 ]
 
 VIRGINIA_TERMS = re.compile(
