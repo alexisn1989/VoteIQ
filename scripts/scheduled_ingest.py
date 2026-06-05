@@ -32,6 +32,10 @@ OPTIONAL: list[tuple[str, list[str], int, str]] = [
                                                               1800, "VOTEIQ_BUILD_STATE_FINANCE"),
     ("build_va_state_finance.py",  ["--since", os.getenv("VA_FINANCE_BUILD_SINCE", "2023")],
                                                               1800, "VOTEIQ_BUILD_STATE_FINANCE"),
+    # Refresh multi-cycle donor trends after any SBE finance update
+    ("build_donor_cycle_trends.py", [],                       600,  "VOTEIQ_BUILD_STATE_FINANCE"),
+    # Run spike watchlist — writes alerts for donors that crossed thresholds
+    ("run_spike_watchlist.py",     [],                         120,  "VOTEIQ_BUILD_STATE_FINANCE"),
     ("bulk_download_va_reports.py", ["--start", os.getenv("VA_FINANCE_REPORT_START", "2023_01"),
                                      "--end", os.getenv("VA_FINANCE_REPORT_END", "2026_05")],
                                                               1800, "VOTEIQ_BUILD_STATE_FINANCE"),

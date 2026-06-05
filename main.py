@@ -220,6 +220,8 @@ from voteiq.api.routes.narratives import router as _narratives_router
 app.include_router(_narratives_router, prefix="/api")
 from voteiq.api.routes.export import router as _export_router
 app.include_router(_export_router, prefix="/api")
+from voteiq.api.routes.watchlist import router as _watchlist_router
+app.include_router(_watchlist_router, prefix="/api")
 from voteiq.api.routes.donor_trend import router as _donor_trend_router
 app.include_router(_donor_trend_router, prefix="/api")
 
