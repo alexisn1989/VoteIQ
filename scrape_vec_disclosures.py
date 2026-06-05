@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import http.cookiejar
+import io
 import json
 import re
 import sqlite3
@@ -39,6 +40,11 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
+
+try:
+    from pypdf import PdfReader
+except ImportError:
+    PdfReader = None
 
 BASE_DIR = Path(__file__).resolve().parent
 POLLS_DB = BASE_DIR / "polls.db"
@@ -213,13 +219,13 @@ _SECTION_PATTERNS = {
 
 
 def parse_disclosure(html: str, legislator: str, filing_id: str, year: str) -> list[dict]:
-    """Parse an SOEI HTML disclosure into structured records."""
+    """Parse VEC SOEI HTML disclosure (server renders PDF as HTML) into structured records."""
     text = _strip_tags(html)
     now  = datetime.now(timezone.utc).isoformat()
     records = []
 
     # Extract name from disclosure
-    name_m = re.search(r"NAME:\s*([A-Za-z\s\.,'-]{5,50})\s+OFFICE", text)
+    name_m = re.search(r"NAME:\s*([A-Za-z\s\.,'-]{5,50})\s+(?:OFFICE|POSITION)", text, re.I)
     if name_m:
         reported_name = name_m.group(1).strip()
     else:
@@ -240,12 +246,12 @@ def parse_disclosure(html: str, legislator: str, filing_id: str, year: str) -> l
 
         section_text = text[section_start:section_end]
 
-        # Check if answered Yes
-        yes_m = re.search(r"Yes\s*\[X\]", section_text, re.I)
-        no_m  = re.search(r"No\s*\[X\]",  section_text, re.I)
+        # Check if answered Yes or No
+        yes_m = re.search(r"Yes\s*\[?\s*X\s*\]", section_text, re.I)
+        no_m  = re.search(r"No\s*\[?\s*X\s*\]",  section_text, re.I)
 
+        # If No is answered (or No comes before Yes), skip this section
         if no_m and (not yes_m or no_m.start() < yes_m.start()):
-            # No disclosures in this section — record a "none" row
             records.append({
                 "legislator_name": reported_name, "filing_year": year,
                 "filing_id": filing_id, "part": part,
@@ -258,35 +264,76 @@ def parse_disclosure(html: str, legislator: str, filing_id: str, year: str) -> l
         if not yes_m:
             continue
 
-        # Try to extract table rows
-        # Look for patterns like "CompanyName\s+Role\s+CompensationRange"
+        # Extract after Yes answer — look for actual table rows, not instructions
         after_yes = section_text[yes_m.end():]
 
-        # Extract employer/entity name candidates (capitalized words/phrases)
-        entities = re.findall(
-            r"\b([A-Z][A-Za-z0-9&\s,\.'-]{5,50}(?:LLC|Inc|Corp|Co\.|Company|Bank|Group|Fund|Associates|Partners|Authority|Services|Solutions|Healthcare|Energy|Properties)?)\b",
-            after_yes
-        )
-        # Filter noise words
-        SKIP = {"Schedule", "Complete", "Instructions", "Disclose", "Virginia",
-                 "General Assembly", "Board", "Commission", "Statement", "Exclude"}
-        clean_entities = [e.strip() for e in entities
-                         if e.strip() and e.strip() not in SKIP
-                         and len(e.strip()) > 4][:5]
+        # Extract entity names: Look for capitalized phrases that aren't instructions
+        # Pattern: Company name patterns (has & | LLC | Inc | Corp | Co. | Company, Bank, Fund, etc.)
+        entity_patterns = [
+            r"([A-Z][A-Za-z0-9&\s,\.''-]{8,}?(?:LLC|Inc|Corp|Co\.|Company|Bank|Group|Fund|Associates|Partners|Authority|Services|Solutions))\b",
+            r"([A-Z][A-Z][A-Za-z0-9&\s,\.'-]{6,})\s+(?:Inc|LLC|Corp|Co|Ltd|LLP)",  # Multi-word entity
+        ]
 
+        entities = []
+        for pattern in entity_patterns:
+            entities.extend(re.findall(pattern, after_yes))
+
+        # Filter out instruction/noise text and column headers
+        SKIP = {
+            "schedule", "complete", "instructions", "disclose", "virginia",
+            "general assembly", "board", "commission", "statement", "exclude",
+            "include", "table", "form", "office", "position", "member",
+            "family", "received", "salary", "compensation", "wages",
+            "do you", "if yes", "if no", "has a", "owns", "holds",
+            "gross income", "entity name", "nature of", "percentage",
+            "type of", "location", "address", "amount", "value",
+        }
+
+        clean_entities = []
+        for e in entities:
+            e = e.strip()
+            e_lower = e.lower()
+
+            # Strip column header prefixes like "GROSS INCOME", "ENTITY NAME", etc.
+            for header in ["gross income", "entity name", "nature of", "percentage", "type of", "location", "address"]:
+                if e_lower.startswith(header):
+                    e = e[len(header):].strip()
+                    e_lower = e.lower()
+                    break
+
+            # Skip if it's just noise/instructions, but NOT if it looks like a company name
+            is_noise = any(skip in e_lower for skip in {"do you", "if yes", "if no", "has a", "owns", "holds",
+                          "complete", "disclose", "instructions", "table", "form"})
+
+            if is_noise:
+                continue
+            if len(e) > 4 and not e.isupper():
+                clean_entities.append(e)
+
+        # Remove duplicates while preserving order
+        clean_entities = list(dict.fromkeys(clean_entities))
+
+        # If no entities found and we have instruction text, it means "No" disclosure
         if not clean_entities:
-            # Fallback: grab first substantial phrase after Yes
-            lines = [l.strip() for l in after_yes.split() if len(l.strip()) > 3][:10]
-            if lines:
-                clean_entities = [" ".join(lines[:3])]
+            continue
 
-        for entity in clean_entities[:3]:
+        # Extract amounts from the section (values like "$10K-$50K", "$50,000-$100,000")
+        amount_pattern = r"\$[\d,]+(K|M)?(?:-\$[\d,]+(K|M)?)?"
+        amounts = re.findall(amount_pattern, after_yes[:1000])
+
+        for i, entity in enumerate(clean_entities[:5]):  # Max 5 per section
             sector = classify_sector(entity)
+            amount_range = amounts[i] if i < len(amounts) else ""
+
             records.append({
-                "legislator_name": reported_name, "filing_year": year,
-                "filing_id": filing_id, "part": part,
-                "entity_name": entity[:120], "role_or_type": "",
-                "sector": sector, "amount_range": "",
+                "legislator_name": reported_name,
+                "filing_year": year,
+                "filing_id": filing_id,
+                "part": part,
+                "entity_name": entity[:120],
+                "role_or_type": "",
+                "sector": sector,
+                "amount_range": amount_range,
                 "raw_text": after_yes[:300],
                 "scraped_at": now,
             })
@@ -297,6 +344,7 @@ def parse_disclosure(html: str, legislator: str, filing_id: str, year: str) -> l
 def download_and_parse(
     opener, filing_id: str, legislator: str, year: str
 ) -> list[dict]:
+    """Download disclosure HTML (VEC renders PDF as HTML) and parse it."""
     url = (f"{BASE_URL}/ViewFormBinary.aspx"
            f"?filingid={filing_id}&contentType=application/pdf&type=SOEI")
     html = _get(opener, url, referer=f"{BASE_URL}/Search.aspx")
