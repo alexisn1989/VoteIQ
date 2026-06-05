@@ -574,8 +574,12 @@ def main(year: str, target_name: str | None, dry_run: bool) -> None:
     legislators = [r["name"] for r in all_legs]
 
     if target_name:
-        legislators = [l for l in legislators
-                       if target_name.lower() in l.lower()]
+        filtered = [l for l in legislators if target_name.lower() in l.lower()]
+        if filtered:
+            legislators = filtered
+        else:
+            # Name not in GA finance DB — search VEC directly (statewide officials, etc.)
+            legislators = [target_name]
 
     print(f"Scraping {len(legislators)} legislators for year {year}…")
 
