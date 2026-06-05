@@ -720,13 +720,46 @@ def _add_keyword_context(blocks: list[str], query: str, terms: list[str], sessio
 
         if any(term in q_lower for term in ("news", "article", "reported", "recent", "latest")):
             clause, params = _like_clause(["title", "gemini_json", "source"], terms[:4])
-            _query_rows(conn, f"""
-                SELECT source, title, published_at, url, gemini_json
-                FROM va_news
-                WHERE {clause}
-                ORDER BY COALESCE(published_at, fetched_at) DESC
-                LIMIT 6
-            """, params, "polls.va_news keyword", blocks, limit=6)
+            try:
+                news_rows = conn.execute(f"""
+                    SELECT source, title, published_at, url, gemini_json
+                    FROM va_news
+                    WHERE {clause}
+                    ORDER BY COALESCE(published_at, fetched_at) DESC
+                    LIMIT 6
+                """, tuple(params)).fetchall()
+                if news_rows:
+                    import json as _json
+                    lines = ["[Recent Virginia News Coverage]"]
+                    for row in news_rows:
+                        gj = {}
+                        try:
+                            gj = _json.loads(row[4] or "{}")
+                        except Exception:
+                            pass
+                        # Extract attribution fields
+                        outlet  = gj.get("outlet") or row[0] or "Unknown outlet"
+                        author  = gj.get("author")
+                        headline = gj.get("headline") or row[1] or ""
+                        summary  = gj.get("summary") or ""
+                        pub_date = (row[2] or "")[:10]
+                        url      = row[3] or ""
+                        quote    = gj.get("key_quote") or ""
+                        # Format with clear attribution
+                        byline = f"{author}, {outlet}" if author else outlet
+                        line = f'- "{headline}" — {byline}'
+                        if pub_date:
+                            line += f" ({pub_date})"
+                        if summary:
+                            line += f". {summary}"
+                        if quote:
+                            line += f' Key quote: "{quote}"'
+                        if url:
+                            line += f" [{url}]"
+                        lines.append(line)
+                    blocks.append("\n".join(lines))
+            except Exception:
+                pass
 
         conn.close()
 
