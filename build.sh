@@ -73,6 +73,17 @@ fi
 
 echo "✓ polls.db ready"
 
+# ── STEP 2b: Seed legislator vote/bill summary tables ────────────────────────
+echo ""
+echo "[STEP 2b] Seeding legislator vote summary tables..."
+if python3 -c "import sqlite3; sqlite3.connect('polls.db').execute('SELECT 1 FROM va_legislator_vote_summary LIMIT 1')" 2>/dev/null; then
+    echo "  va_legislator_vote_summary already present — skipping seed"
+else
+    echo "  Building legislator seed data..."
+    python3 generate_legislators_seed.py 2>&1 | tail -5
+    echo "  ✓ Legislator tables seeded"
+fi
+
 # ── STEP 3: Seed governor tables — always runs, writes to DATA_DIR ────────────
 echo ""
 echo "[STEP 3] Seeding governor tables (governor_actions + governor_executive_orders)..."

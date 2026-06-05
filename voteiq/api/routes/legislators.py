@@ -391,9 +391,11 @@ def legislators_page():
     conn = _polls_conn()
     try:
         data = _legislators_list(conn)
-        return _inject("legislators.html", "_LEG_DATA", data)
+    except Exception:
+        data = []   # table not yet built on this deployment — show empty page
     finally:
         conn.close()
+    return _inject("legislators.html", "_LEG_DATA", data)
 
 
 @router.get("/legislators/{name}", response_class=HTMLResponse)
