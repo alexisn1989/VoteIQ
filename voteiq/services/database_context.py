@@ -745,7 +745,7 @@ def _add_keyword_context(blocks: list[str], query: str, terms: list[str], sessio
                         pub_date = (row[2] or "")[:10]
                         url      = row[3] or ""
                         quote    = gj.get("key_quote") or ""
-                        # Format with clear attribution
+                        # Format with clear attribution and clickable link
                         byline = f"{author}, {outlet}" if author else outlet
                         line = f'- "{headline}" — {byline}'
                         if pub_date:
@@ -755,7 +755,7 @@ def _add_keyword_context(blocks: list[str], query: str, terms: list[str], sessio
                         if quote:
                             line += f' Key quote: "{quote}"'
                         if url:
-                            line += f" [{url}]"
+                            line += f"\n  Read full article: {url}"
                         lines.append(line)
                     blocks.append("\n".join(lines))
             except Exception:
