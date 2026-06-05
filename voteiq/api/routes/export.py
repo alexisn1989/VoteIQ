@@ -458,3 +458,106 @@ def export_follow_the_money(
     conn.close(); li.close()
     fname = f"voteiq_follow_the_money_{bill_upper}_{sess}.csv"
     return _respond(flat_rows, fname, format)
+
+
+# ── 8. Committee testimony proxy ──────────────────────────────────────────────
+
+@router.get("/export/testimony-proxy")
+def export_testimony_proxy(
+    format:     str           = Query("csv", description="csv | tsv | json"),
+    session:    str           = Query("2026", description="Legislative session year"),
+    sector:     Optional[str] = Query(None, description="e.g. Energy/Utilities, Healthcare"),
+    bill:       Optional[str] = Query(None, description="Filter to one bill, e.g. HB628"),
+    principal:  Optional[str] = Query(None, description="Partial principal name match"),
+    position:   Optional[str] = Query(None, description="support | unknown"),
+    confidence: Optional[str] = Query(None, description="high | medium | low"),
+    min_lobbyists: Optional[int] = Query(None, description="Min registered lobbyists"),
+    donated_only:  bool = Query(False, description="Only rows with donation-backed support"),
+):
+    """
+    Committee testimony proxy — organizations likely present at hearings.
+
+    Cross-references registered lobbyist principals with bills in the same
+    sector and session. Donation records to bill sponsors indicate likely
+    support position.
+
+    Columns:
+      session, bill_number, bill_title, bill_sector,
+      principal_name, principal_sector, lobbyist_count,
+      likely_position, position_basis, confidence,
+      total_donated_to_sponsors, sponsor_names
+
+    Note: This is a PROXY, not actual testimony. Virginia does not require
+    lobbyists to file bill-specific position disclosures. Sector matching +
+    donation records = best available public signal.
+    """
+    conn = _conn()
+
+    # Check table exists
+    tbl = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='committee_testimony_proxy'"
+    ).fetchone()
+    if not tbl:
+        conn.close()
+        return _respond([], "voteiq_testimony_proxy.csv", format)
+
+    where: list[str] = ["session = ?"]
+    params: list = [session]
+
+    if sector:
+        where.append("lower(bill_sector) LIKE lower(?)")
+        params.append(f"%{sector}%")
+    if bill and isinstance(bill, str):
+        where.append("upper(bill_number) = upper(?)")
+        params.append(bill.strip())
+    if principal:
+        where.append("lower(principal_name) LIKE lower(?)")
+        params.append(f"%{principal}%")
+    if position:
+        where.append("likely_position = ?")
+        params.append(position.lower())
+    if confidence:
+        where.append("confidence = ?")
+        params.append(confidence.lower())
+    if min_lobbyists:
+        where.append("lobbyist_count >= ?")
+        params.append(min_lobbyists)
+    if donated_only:
+        where.append("total_donated_to_sponsors > 0")
+
+    sql = f"""
+        SELECT
+            session,
+            bill_number,
+            bill_title,
+            bill_sector,
+            principal_name,
+            principal_sector,
+            lobbyist_count,
+            likely_position,
+            position_basis,
+            confidence,
+            ROUND(total_donated_to_sponsors, 0)  AS total_donated_to_sponsors,
+            sponsor_names
+        FROM committee_testimony_proxy
+        WHERE {" AND ".join(where)}
+        ORDER BY bill_number, lobbyist_count DESC, likely_position
+        LIMIT 5000
+    """
+
+    rows = conn.execute(sql, params).fetchall()
+    conn.close()
+
+    out = []
+    for r in rows:
+        d = dict(r)
+        # Parse sponsor_names JSON → readable string
+        try:
+            sponsors = json.loads(d.get("sponsor_names") or "[]")
+            d["sponsor_names"] = "; ".join(sponsors[:3])
+        except Exception:
+            d["sponsor_names"] = ""
+        out.append(d)
+
+    fname = f"voteiq_testimony_proxy_{session}.csv"
+    return _respond(out, fname, format)
