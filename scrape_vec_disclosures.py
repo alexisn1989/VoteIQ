@@ -46,6 +46,15 @@ try:
 except ImportError:
     PdfReader = None
 
+try:
+    from google import genai as _genai
+    from google.genai import types as _genai_types
+    _GEMINI_CLIENT = None  # initialized lazily
+except ImportError:
+    _genai = None
+    _genai_types = None
+    _GEMINI_CLIENT = None
+
 BASE_DIR = Path(__file__).resolve().parent
 POLLS_DB = BASE_DIR / "polls.db"
 BASE_URL = "https://ethicssearch.dls.virginia.gov"
@@ -218,6 +227,98 @@ _SECTION_PATTERNS = {
 }
 
 
+_GEMINI_PROMPT = """Extract financial disclosures from this Virginia SOEI (Statement of Economic Interests) Form 801.
+Return ONLY valid JSON with this structure:
+{
+  "legislator_name": "...",
+  "employment": [{"employer": "...", "role": "...", "compensation": "..."}],
+  "business_interests": [{"entity": "...", "role": "...", "ownership_pct": "...", "compensation": "..."}],
+  "real_estate": [{"description": "...", "location": "...", "type": "..."}],
+  "securities": [{"entity": "...", "type": "...", "value": "..."}]
+}
+Only include items actually disclosed (answered Yes). Use [] if nothing disclosed. No instruction text.
+
+DISCLOSURE TEXT:
+"""
+
+
+def _gemini_extract(html: str) -> dict | None:
+    """Send disclosure HTML to Gemini 2.5 Flash for structured extraction."""
+    global _GEMINI_CLIENT
+    if _genai is None:
+        return None
+
+    import os
+    from dotenv import load_dotenv
+    load_dotenv()
+    key = os.getenv("GEMINI_API_KEY", "")
+    if not key:
+        return None
+
+    if _GEMINI_CLIENT is None:
+        _GEMINI_CLIENT = _genai.Client(api_key=key)
+
+    text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html)).strip()
+
+    try:
+        resp = _GEMINI_CLIENT.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=_GEMINI_PROMPT + text[:10000],
+            config=_genai_types.GenerateContentConfig(response_mime_type="application/json"),
+        )
+        import json as _json
+        return _json.loads(resp.text)
+    except Exception as e:
+        print(f"    Gemini error: {e}")
+        return None
+
+
+def _gemini_to_records(data: dict, legislator: str, filing_id: str, year: str, now: str) -> list[dict]:
+    """Convert Gemini JSON output to DB records."""
+    records = []
+    reported_name = data.get("legislator_name") or legislator
+
+    part_map = {
+        "employment":        ("employment",       "employer"),
+        "business_interests":("business_officer", "entity"),
+        "real_estate":       ("real_estate",      "description"),
+        "securities":        ("securities",       "entity"),
+    }
+
+    for key, (part, entity_field) in part_map.items():
+        items = data.get(key, [])
+        if not items:
+            records.append({
+                "legislator_name": reported_name, "filing_year": year,
+                "filing_id": filing_id, "part": part,
+                "entity_name": "NONE DISCLOSED", "role_or_type": "",
+                "sector": None, "amount_range": "", "raw_text": "",
+                "scraped_at": now,
+            })
+            continue
+        for item in items:
+            entity = (item.get(entity_field) or item.get("employer") or
+                      item.get("entity") or item.get("description") or "")
+            if not entity or entity.lower() in ("none", "n/a", ""):
+                continue
+            role = (item.get("role") or item.get("type") or "")
+            amount = (item.get("compensation") or item.get("value") or
+                      item.get("ownership_pct") or "")
+            sector = classify_sector(entity + " " + role)
+            records.append({
+                "legislator_name": reported_name, "filing_year": year,
+                "filing_id": filing_id, "part": part,
+                "entity_name": str(entity)[:120],
+                "role_or_type": str(role)[:80],
+                "sector": sector,
+                "amount_range": str(amount)[:60],
+                "raw_text": str(item)[:300],
+                "scraped_at": now,
+            })
+
+    return records
+
+
 def parse_disclosure(html: str, legislator: str, filing_id: str, year: str) -> list[dict]:
     """Parse VEC SOEI HTML disclosure (server renders PDF as HTML) into structured records."""
     text = _strip_tags(html)
@@ -344,12 +445,21 @@ def parse_disclosure(html: str, legislator: str, filing_id: str, year: str) -> l
 def download_and_parse(
     opener, filing_id: str, legislator: str, year: str
 ) -> list[dict]:
-    """Download disclosure HTML (VEC renders PDF as HTML) and parse it."""
+    """Download disclosure HTML and parse with Gemini (fallback: regex)."""
     url = (f"{BASE_URL}/ViewFormBinary.aspx"
            f"?filingid={filing_id}&contentType=application/pdf&type=SOEI")
     html = _get(opener, url, referer=f"{BASE_URL}/Search.aspx")
     if not html or len(html) < 500:
         return []
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Try Gemini first for accurate structured extraction
+    gemini_data = _gemini_extract(html)
+    if gemini_data:
+        return _gemini_to_records(gemini_data, legislator, filing_id, year, now)
+
+    # Fallback to regex parsing
     return parse_disclosure(html, legislator, filing_id, year)
 
 
