@@ -83,6 +83,58 @@ def health_check():
     return {"status": "ok"}
 
 
+@app.get("/api/health")
+def feature_health():
+    """
+    Feature-level health check. Returns per-feature status so degraded
+    data (e.g. empty testimony proxy after a fresh deploy) is immediately
+    visible without digging through logs.
+    """
+    checks: dict[str, str] = {}
+    overall = "ok"
+
+    if not os.path.isfile(_POLLS_DB):
+        return {
+            "status": "degraded",
+            "db": "missing",
+            "polls_db_path": _POLLS_DB,
+            "features": {},
+        }
+
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        feature_tables = [
+            ("va_bills",                        1_000,  "bills"),
+            ("lobbyist_registrations",            500,  "lobbyist_registrations"),
+            ("committee_testimony_proxy",       50_000,  "testimony_proxy"),
+            ("legislator_financial_disclosures", 3_000,  "vec_disclosures"),
+            ("campaign_finance_summary",           100,  "campaign_finance"),
+            ("governor_actions",                   100,  "governor_actions"),
+            ("va_committee_assignments",            50,  "gatekeeper_chairs"),
+        ]
+        for table, minimum, label in feature_tables:
+            try:
+                n = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                if n >= minimum:
+                    checks[label] = f"ok ({n:,} rows)"
+                else:
+                    checks[label] = f"degraded ({n:,} rows, expected ≥{minimum:,})"
+                    overall = "degraded"
+            except Exception as e:
+                checks[label] = f"missing ({e})"
+                overall = "degraded"
+        conn.close()
+    except Exception as e:
+        return {"status": "error", "db_error": str(e), "features": checks}
+
+    return {
+        "status": overall,
+        "polls_db_path": _POLLS_DB,
+        "polls_db_size_mb": round(os.path.getsize(_POLLS_DB) / 1_048_576, 2),
+        "features": checks,
+    }
+
+
 @app.get("/debug/db")
 def debug_db():
     """Live DB diagnostic — shows which polls.db the running app sees and table counts."""
