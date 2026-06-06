@@ -179,6 +179,50 @@ PYEOF
     fi
 fi
 
+# ── STEP 4b: Seed committee assignments (chairs, vice-chairs, members) ────────
+echo ""
+echo "[STEP 4b] Seeding va_committee_assignments..."
+
+if [ ! -f data/committee_assignments_seed.sql ]; then
+    echo "⚠ data/committee_assignments_seed.sql not found — chair lookup will be unavailable"
+else
+    python3 - <<PYEOF
+import sqlite3, os, sys
+
+data_dir = os.environ.get("DATA_DIR", os.getcwd())
+db = os.path.join(data_dir, "polls.db")
+sql_file = os.path.join(os.getcwd(), "data", "committee_assignments_seed.sql")
+
+conn = sqlite3.connect(db)
+try:
+    existing = conn.execute("SELECT COUNT(*) FROM va_committee_assignments").fetchone()[0]
+    if existing >= 400:
+        print(f"  Already populated ({existing:,} rows) — skipping")
+        sys.exit(0)
+except Exception:
+    pass
+
+try:
+    with open(sql_file, "r", encoding="utf-8") as f:
+        script = f.read()
+    conn.executescript(script)
+    conn.commit()
+    n = conn.execute("SELECT COUNT(*) FROM va_committee_assignments").fetchone()[0]
+    chairs = conn.execute("SELECT COUNT(*) FROM va_committee_assignments WHERE role='chair'").fetchone()[0]
+    print(f"  va_committee_assignments: {n:,} rows ({chairs} chairs)")
+except Exception as e:
+    print(f"  WARNING: committee assignments seed failed: {e}", file=sys.stderr)
+finally:
+    conn.close()
+PYEOF
+
+    if [ $? -ne 0 ]; then
+        echo "⚠ Committee assignments seed failed — continuing build"
+    else
+        echo "✓ Committee assignments seed complete"
+    fi
+fi
+
 # ── STEP 5: Build committee_testimony_proxy (derived from polls.db) ───────────
 echo ""
 echo "[STEP 5] Building committee testimony proxy (all sessions)..."
