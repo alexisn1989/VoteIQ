@@ -2428,6 +2428,240 @@ def _add_legislator_narrative_context(blocks: list[str], query: str) -> None:
     conn.close()
 
 
+# ── VEC Financial Disclosures ─────────────────────────────────────────────────
+_DISCLOSURES_TRIGGERS = re.compile(
+    r"\b(financial\s+disclosures?|soei|statement\s+of\s+economic\s+interest|"
+    r"conflict\s+of\s+interest|what\s+did\s+\w+\s+disclos|income\s+disclos|"
+    r"disclos(?:es?|ed|ures?)|outside\s+income|financial\s+interest|"
+    r"business\s+interest|investment\s+disclos|vec\s+disclos)\b",
+    re.I,
+)
+
+
+def _add_disclosures_context(blocks: list[str], query: str) -> None:
+    """
+    Fires on financial disclosure / SOEI / conflict-of-interest queries.
+    Pulls from legislator_financial_disclosures (VEC SOEI filings).
+    If a legislator name is detected, returns their disclosures.
+    Otherwise returns top 10 legislators by disclosure count.
+    """
+    if not _DISCLOSURES_TRIGGERS.search(query or ""):
+        return
+
+    conn = _connect("polls")
+    if not conn:
+        return
+
+    try:
+        if not _table_exists(conn, "legislator_financial_disclosures"):
+            return
+
+        q_lower = (query or "").lower()
+
+        # Try to match a legislator name
+        all_names = conn.execute(
+            "SELECT DISTINCT legislator_name FROM legislator_financial_disclosures"
+        ).fetchall()
+        matched_name = None
+        for (name,) in all_names:
+            last = (name or "").split()[-1].lower() if name else ""
+            if len(last) >= 4 and last in q_lower:
+                if matched_name is None or len(name) > len(matched_name):
+                    matched_name = name
+
+        if matched_name:
+            rows = conn.execute("""
+                SELECT filing_year, part, entity_name, role_or_type,
+                       sector, amount_range
+                FROM legislator_financial_disclosures
+                WHERE legislator_name = ?
+                ORDER BY filing_year DESC, part, entity_name
+                LIMIT 20
+            """, (matched_name,)).fetchall()
+
+            if not rows:
+                return
+
+            lines = [
+                f"[VEC Financial Disclosures — {matched_name}]",
+                "Source: Virginia Ethics Commission SOEI filings (public record)",
+                "",
+            ]
+            for r in rows:
+                amt = f" | {r[5]}" if r[5] else ""
+                lines.append(
+                    f"  {r[0]} | Part {r[1]} | {r[2]} | {r[3] or ''} | "
+                    f"sector: {r[4] or 'unclassified'}{amt}"
+                )
+            blocks.append("\n".join(lines))
+
+        else:
+            # No name — return legislators with most disclosures
+            rows = conn.execute("""
+                SELECT legislator_name,
+                       COUNT(*) as entries,
+                       COUNT(DISTINCT filing_year) as years,
+                       GROUP_CONCAT(DISTINCT sector) as sectors
+                FROM legislator_financial_disclosures
+                GROUP BY legislator_name
+                ORDER BY entries DESC
+                LIMIT 12
+            """).fetchall()
+
+            if not rows:
+                return
+
+            lines = [
+                "[VEC Financial Disclosures — Top Filers]",
+                "Source: Virginia Ethics Commission SOEI filings",
+                "",
+                f"{'Legislator':<30} {'Entries':>7} {'Years':>6}  Sectors",
+            ]
+            lines.append("-" * 90)
+            for r in rows:
+                sectors = (r[3] or "")[:50]
+                lines.append(f"  {r[0]:<30} {r[1]:>7} {r[2]:>6}  {sectors}")
+
+            blocks.append("\n".join(lines))
+
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
+# ── Direct Lobbyist / Principal Queries ───────────────────────────────────────
+_LOBBYIST_DIRECT_TRIGGERS = re.compile(
+    r"\b(who\s+lobbies?\s+for|lobbyist\s+for|principal\s+name|"
+    r"registered\s+lobbyist|lobbying\s+firm|lobbying\s+registr|"
+    r"who\s+(?:is\s+)?registered\s+to\s+lobby|which\s+(?:companies|organizations?|groups?)\s+lobby|"
+    r"top\s+lobbying|most\s+lobbyists?|how\s+many\s+lobbyists?)\b",
+    re.I,
+)
+
+
+def _add_lobbyist_direct_context(blocks: list[str], query: str) -> None:
+    """
+    Fires on direct lobbyist/principal queries (not bill-specific).
+    Pulls from lobbyist_registrations — top principals by lobbyist count
+    or filtered by organization name if mentioned.
+    """
+    if not _LOBBYIST_DIRECT_TRIGGERS.search(query or ""):
+        return
+
+    conn = _connect("polls")
+    if not conn:
+        return
+
+    try:
+        if not _table_exists(conn, "lobbyist_registrations"):
+            return
+
+        q_lower = (query or "").lower()
+
+        # Detect org name mention (3+ word match against principal names)
+        q_words = set(w for w in re.split(r"\W+", q_lower) if len(w) > 4)
+
+        # Most recent sessions
+        rows = conn.execute("""
+            SELECT principal_name,
+                   COUNT(DISTINCT lobbyist_name) as lobbyist_count,
+                   GROUP_CONCAT(DISTINCT year_range) as sessions
+            FROM lobbyist_registrations
+            WHERE status = 'Approved'
+            GROUP BY principal_name
+            ORDER BY lobbyist_count DESC
+            LIMIT 20
+        """).fetchall()
+
+        if not rows:
+            return
+
+        # Filter to matching org if query words overlap principal name
+        filtered = [
+            r for r in rows
+            if any(w in (r[0] or "").lower() for w in q_words)
+        ]
+        display = filtered[:8] if filtered else rows[:12]
+
+        label = "Matching" if filtered else "Top"
+        lines = [
+            f"[Virginia Lobbyist Registrations — {label} Principals]",
+            "Source: Virginia DLS lobbyist.dls.virginia.gov (legally required filings)",
+            "",
+            f"{'Principal':<45} {'Lobbyists':>9}  Sessions",
+        ]
+        lines.append("-" * 80)
+        for r in display:
+            lines.append(f"  {(r[0] or '')[:45]:<45} {r[1]:>9}  {r[2] or ''}")
+
+        blocks.append("\n".join(lines))
+
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
+# ── Sponsor–Donor Sector Correlation ─────────────────────────────────────────
+_SPONSOR_CORR_TRIGGERS = re.compile(
+    r"\b(sponsor.*donor|donor.*sponsor|who\s+funds?\s+(?:bill\s+)?sponsors?|"
+    r"sector.*sponsors?|sponsors?.*sector|correlation|which\s+sectors?\s+fund|"
+    r"industry\s+(?:that\s+)?funds?|donor\s+pattern)\b",
+    re.I,
+)
+
+
+def _add_sponsor_correlation_context(blocks: list[str], query: str) -> None:
+    """
+    Fires on sponsor–donor sector correlation queries.
+    Pulls from sponsor_donor_correlation — which donor sectors fund
+    legislators who sponsor bills in each policy area.
+    """
+    if not _SPONSOR_CORR_TRIGGERS.search(query or ""):
+        return
+
+    conn = _connect("polls")
+    if not conn:
+        return
+
+    try:
+        if not _table_exists(conn, "sponsor_donor_correlation"):
+            return
+
+        # Get top correlations — most bills sponsored per legislator+sector
+        rows = conn.execute("""
+            SELECT legislator_name, sector, bills_sponsored,
+                   total_donated, avg_donated_per_bill
+            FROM sponsor_donor_correlation
+            ORDER BY bills_sponsored DESC, total_donated DESC
+            LIMIT 20
+        """).fetchall()
+
+        if not rows:
+            return
+
+        lines = [
+            "[Sponsor–Donor Sector Correlation]",
+            "Shows which donor sectors fund legislators who sponsor bills in each policy area.",
+            "",
+            f"{'Legislator':<28} {'Donor Sector':<26} {'Bills':>6} {'Total Donated':>14}",
+        ]
+        lines.append("-" * 80)
+        for r in rows:
+            donated = f"${r[3]:,.0f}" if r[3] else "—"
+            lines.append(
+                f"  {(r[0] or ''):<28} {(r[1] or ''):<26} {r[2]:>6} {donated:>14}"
+            )
+
+        blocks.append("\n".join(lines))
+
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
 def build_database_context(query: str, max_chars: int = 22000) -> str:
     q = query or ""
     blocks: list[str] = []
@@ -2453,6 +2687,12 @@ def build_database_context(query: str, max_chars: int = 22000) -> str:
     _add_committee_chair_context(blocks, q)
     # Gatekeeper — fires when query asks who kills/blocks bills in committee
     _add_gatekeeper_context(blocks, q)
+    # VEC financial disclosures — fires on SOEI / conflict-of-interest queries
+    _add_disclosures_context(blocks, q)
+    # Direct lobbyist/principal queries — fires without requiring a bill number
+    _add_lobbyist_direct_context(blocks, q)
+    # Sponsor–donor sector correlation
+    _add_sponsor_correlation_context(blocks, q)
     _add_bill_context(blocks, bills, session)
     _add_pac_context(blocks, q, terms)
     _add_federal_vote_context(blocks, q, terms)
