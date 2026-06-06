@@ -602,6 +602,58 @@ def _add_bill_context(blocks: list[str], bills: list[str], session: str) -> None
                 WHERE bill_number=? AND session=?
                 LIMIT 6
             """, (bill, session), f"polls.governor_actions {bill}", blocks)
+
+            # ── Auto-inject testimony proxy (no lobby keyword required) ────────
+            # Any bill query automatically shows registered lobbying interest,
+            # so the LLM always has context rather than saying "not available".
+            try:
+                has_proxy = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='committee_testimony_proxy'"
+                ).fetchone()
+                if has_proxy:
+                    proxy_rows = conn.execute("""
+                        SELECT principal_name, principal_sector, lobbyist_count,
+                               likely_position, confidence, total_donated_to_sponsors
+                        FROM committee_testimony_proxy
+                        WHERE upper(bill_number) = ? AND session = ?
+                        ORDER BY
+                            CASE confidence WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
+                            lobbyist_count DESC
+                        LIMIT 12
+                    """, (bill.upper(), session)).fetchall()
+                    if proxy_rows:
+                        total_proxy = conn.execute(
+                            "SELECT COUNT(*) FROM committee_testimony_proxy "
+                            "WHERE upper(bill_number)=? AND session=?",
+                            (bill.upper(), session),
+                        ).fetchone()[0]
+                        supporters = sum(1 for r in proxy_rows if r[3] == "support")
+                        opposers  = sum(1 for r in proxy_rows if r[3] == "oppose")
+                        lines = [
+                            f"[Lobbying Activity — {bill} ({session})]",
+                            f"Registered organizations in this bill's sector: {total_proxy}",
+                            f"Position signals — support: {supporters}  oppose: {opposers}  "
+                            f"unknown: {total_proxy - supporters - opposers}",
+                            "",
+                        ]
+                        for r in proxy_rows:
+                            donated = (
+                                f" | donated ${r[5]:,.0f} to sponsors"
+                                if r[5] and float(r[5]) > 0 else ""
+                            )
+                            lines.append(
+                                f"- {r[0]} ({r[1]}) | {r[2]} lobbyists | "
+                                f"position: {r[3] or 'unknown'} | confidence: {r[4]}{donated}"
+                            )
+                        lines.append(
+                            "\nNOTE: Virginia does not require bill-specific lobbying disclosure. "
+                            "This is a proxy built from registered lobbyist principals active "
+                            "in the same policy sector during this session."
+                        )
+                        blocks.append("\n".join(lines))
+            except Exception:
+                pass  # proxy unavailable — silent fallback
+
         conn.close()
 
     conn = _connect("openstates")
@@ -2194,6 +2246,129 @@ def _add_committee_chair_context(blocks: list[str], query: str) -> None:
         conn.close()
 
 
+_COMMITTEE_FROM_STATUS_RE = re.compile(
+    r"left in(?:\s+(?:committee|the))?\s+([A-Za-z ,&/]+?)(?:\.|$)", re.I
+)
+
+
+def _add_bill_committee_chair_context(blocks: list[str], bills: list[str], session: str) -> None:
+    """
+    For any bill that was 'Left in <Committee>', look up who chairs that
+    committee and inject their top donor sectors — the "who funds whom"
+    crosswalk that connects a killed bill to the chair's industry backers.
+    Fires automatically for any bill query, no keyword trigger required.
+    """
+    if not bills:
+        return
+
+    conn = _connect("polls")
+    if not conn:
+        return
+
+    import json as _json
+
+    try:
+        # Pre-load finance data for fast lookup
+        cfs_rows = conn.execute(
+            "SELECT name, party, total_raised, by_sector_json "
+            "FROM campaign_finance_summary WHERE source = 'va_sbe'"
+        ).fetchall()
+        suffixes = {"jr", "sr", "ii", "iii", "iv"}
+
+        def _norm(s):
+            parts = re.sub(r"[^a-z ]", "", (s or "").lower()).split()
+            while parts and parts[-1] in suffixes:
+                parts.pop()
+            return (parts[0], parts[-1]) if len(parts) >= 2 else ("", parts[-1] if parts else "")
+
+        cfs_map = {_norm(r[0]): r for r in cfs_rows}
+
+        def _find_cfs(name):
+            key = _norm(name)
+            hit = cfs_map.get(key)
+            if hit:
+                return hit
+            _, l = key
+            cands = [v for (f, ll), v in cfs_map.items() if ll == l]
+            return cands[0] if len(cands) == 1 else None
+
+        for bill in bills:
+            # Get the bill status to find the committee it was left in
+            bill_row = conn.execute(
+                "SELECT status FROM va_bills WHERE bill_number=? AND session=? LIMIT 1",
+                (bill, session),
+            ).fetchone()
+            if not bill_row or not bill_row[0]:
+                continue
+
+            status = bill_row[0]
+            m = _COMMITTEE_FROM_STATUS_RE.search(status)
+            if not m:
+                continue  # bill not killed in committee, skip
+
+            committee_fragment = m.group(1).strip().rstrip(",")
+
+            # Find matching chair(s) — committee names can be partial
+            chair_rows = conn.execute(
+                "SELECT DISTINCT committee, chamber, member_name "
+                "FROM va_committee_assignments WHERE role = 'chair' "
+                "AND lower(committee) LIKE lower(?)",
+                (f"%{committee_fragment}%",),
+            ).fetchall()
+
+            # Deduplicate (table has "First Last" and "Last, First" entries)
+            seen_chairs = set()
+            unique_chairs = []
+            for r in chair_rows:
+                key = _norm(r[2] or "")
+                if key not in seen_chairs:
+                    seen_chairs.add(key)
+                    unique_chairs.append(r)
+
+            if not unique_chairs:
+                continue
+
+            lines = [
+                f"[Committee Chair — {bill} killed in {committee_fragment}]",
+            ]
+            for row in unique_chairs[:3]:
+                committee = row[0]
+                chamber = row[1]
+                chair_name = row[2]
+
+                cfs = _find_cfs(chair_name)
+                if cfs:
+                    party = (cfs[1] or "?")[0].upper()
+                    raised = cfs[2] or 0
+                    raw = cfs[3] or "[]"
+                    try:
+                        slist = _json.loads(raw)
+                        top = sorted(slist, key=lambda x: -(x.get("total") or 0))[:4]
+                        top_sectors = ", ".join(s["sector"] for s in top if s.get("sector"))
+                    except Exception:
+                        top_sectors = ""
+                    raised_str = (
+                        f"${raised/1_000_000:.1f}M raised"
+                        if raised >= 1_000_000
+                        else f"${raised/1000:.0f}K raised" if raised else "no finance data"
+                    )
+                    lines.append(
+                        f"  {chamber} {committee}\n"
+                        f"    Chair: {chair_name} ({party}) — {raised_str}\n"
+                        f"    Top donor sectors: {top_sectors or '—'}"
+                    )
+                else:
+                    lines.append(f"  {chamber} {committee}\n    Chair: {chair_name} (no finance data)")
+
+            if len(lines) > 1:
+                blocks.append("\n".join(lines))
+
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
 def _add_gatekeeper_context(blocks: list[str], query: str) -> None:
     """
     When query asks about committee gatekeepers / who kills bills,
@@ -2694,6 +2869,7 @@ def build_database_context(query: str, max_chars: int = 22000) -> str:
     # Sponsor–donor sector correlation
     _add_sponsor_correlation_context(blocks, q)
     _add_bill_context(blocks, bills, session)
+    _add_bill_committee_chair_context(blocks, bills, session)
     _add_pac_context(blocks, q, terms)
     _add_federal_vote_context(blocks, q, terms)
     if _is_campaign_finance_query(q):
