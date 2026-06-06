@@ -179,6 +179,74 @@ PYEOF
     fi
 fi
 
+# ── STEP 4a: Seed lobbyist registrations (required for testimony proxy) ───────
+echo ""
+echo "[STEP 4a] Seeding lobbyist_registrations..."
+
+if [ ! -f data/lobbyist_registrations_seed.sql ]; then
+    echo "⚠ data/lobbyist_registrations_seed.sql not found — testimony proxy will produce 0 rows"
+else
+    python3 - <<PYEOF
+import sqlite3, os, sys
+
+data_dir = os.environ.get("DATA_DIR", os.getcwd())
+db = os.path.join(data_dir, "polls.db")
+conn = sqlite3.connect(db)
+try:
+    existing = conn.execute("SELECT COUNT(*) FROM lobbyist_registrations").fetchone()[0]
+    if existing >= 5000:
+        print(f"  Already populated ({existing:,} rows) — skipping")
+        sys.exit(0)
+except Exception:
+    pass
+try:
+    with open("data/lobbyist_registrations_seed.sql", "r", encoding="utf-8") as f:
+        conn.executescript(f.read())
+    conn.commit()
+    n = conn.execute("SELECT COUNT(*) FROM lobbyist_registrations").fetchone()[0]
+    print(f"  lobbyist_registrations: {n:,} rows")
+except Exception as e:
+    print(f"  WARNING: {e}", file=sys.stderr)
+finally:
+    conn.close()
+PYEOF
+    [ $? -ne 0 ] && echo "⚠ Lobbyist seed failed — testimony proxy may be empty" || echo "✓ Lobbyist registrations seeded"
+fi
+
+# ── STEP 4a2: Seed legiscan_va_bills (bill titles for testimony proxy) ────────
+echo ""
+echo "[STEP 4a2] Seeding legiscan_va_bills..."
+
+if [ ! -f data/legiscan_va_bills_seed.sql ]; then
+    echo "⚠ data/legiscan_va_bills_seed.sql not found — testimony proxy bill titles will be missing"
+else
+    python3 - <<PYEOF
+import sqlite3, os, sys
+
+data_dir = os.environ.get("DATA_DIR", os.getcwd())
+db = os.path.join(data_dir, "polls.db")
+conn = sqlite3.connect(db)
+try:
+    existing = conn.execute("SELECT COUNT(*) FROM legiscan_va_bills").fetchone()[0]
+    if existing >= 10000:
+        print(f"  Already populated ({existing:,} rows) — skipping")
+        sys.exit(0)
+except Exception:
+    pass
+try:
+    with open("data/legiscan_va_bills_seed.sql", "r", encoding="utf-8") as f:
+        conn.executescript(f.read())
+    conn.commit()
+    n = conn.execute("SELECT COUNT(*) FROM legiscan_va_bills").fetchone()[0]
+    print(f"  legiscan_va_bills: {n:,} rows")
+except Exception as e:
+    print(f"  WARNING: {e}", file=sys.stderr)
+finally:
+    conn.close()
+PYEOF
+    [ $? -ne 0 ] && echo "⚠ LegiScan bills seed failed" || echo "✓ legiscan_va_bills seeded"
+fi
+
 # ── STEP 4b: Seed committee assignments (chairs, vice-chairs, members) ────────
 echo ""
 echo "[STEP 4b] Seeding va_committee_assignments..."
