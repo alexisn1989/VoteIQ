@@ -1154,6 +1154,263 @@ def _add_federal_vote_context(blocks: list[str], query: str, terms: list[str]) -
     blocks.append("\n".join(lines))
 
 
+# ── shared VA federal member resolver ─────────────────────────────────────────
+_FED_NAME_STOP = {
+    "vote", "votes", "voted", "voting", "campaign", "finance", "data",
+    "correlation", "record", "records", "floor", "statement", "statements",
+    "speech", "speeches", "federal", "congress", "senate", "house",
+    "virginia", "spent", "independent", "expenditure", "outside", "spending",
+    "money", "paid", "super", "dark", "fund", "funded", "political",
+    "action", "committee", "what", "when", "where", "which", "about",
+    "with", "from", "that", "this", "have", "does", "bills", "bill",
+}
+
+
+def _resolve_federal_member(
+    conn: sqlite3.Connection, terms: list[str]
+) -> list[sqlite3.Row]:
+    """Return congress_members rows matching name terms — shared by floor + IndyExp builders."""
+    if not terms or not _table_exists(conn, "congress_members"):
+        return []
+    name_terms = [t for t in terms if t not in _FED_NAME_STOP and len(t) >= 4]
+    if not name_terms:
+        return []
+    clause, params = _like_any_clause(["name"], name_terms[:4])
+    try:
+        return conn.execute(
+            f"""SELECT bioguide_id, name, party, chamber, state, district
+                FROM congress_members WHERE {clause} LIMIT 5""",
+            tuple(params),
+        ).fetchall()
+    except Exception:
+        return []
+
+
+# ── floor statements ──────────────────────────────────────────────────────────
+_FLOOR_STMT_TRIGGERS = re.compile(
+    r"\b(floor\s+statement|congressional\s+record|spoke|speech|address(?:ed)?\s+congress|"
+    r"floor\s+speech|said\s+on\s+(?:the\s+)?floor|remarks?\s+on)\b",
+    re.I,
+)
+
+
+def _add_floor_statements_context(
+    blocks: list[str], query: str, terms: list[str]
+) -> None:
+    """Inject congress_floor_statements for VA federal member + speech queries."""
+    has_floor_trigger = bool(_FLOOR_STMT_TRIGGERS.search(query))
+
+    conn = _connect("polls")
+    if not conn:
+        return
+    if not _table_exists(conn, "congress_floor_statements"):
+        conn.close()
+        return
+
+    try:
+        members = _resolve_federal_member(conn, terms)
+
+        if not members and not has_floor_trigger:
+            return
+
+        lines = ["[Database Context - congress_floor_statements]"]
+        lines.append(
+            "Source: Congressional Record (govinfo.gov) — floor speeches, remarks, extensions of remarks"
+        )
+
+        if members:
+            for member in members[:2]:
+                bgid = member["bioguide_id"]
+                name = member["name"]
+
+                # Build topic terms — strip the member's own name tokens
+                name_tokens = {
+                    tok.lower()
+                    for part in name.replace(",", "").split()
+                    for tok in [part.lower()]
+                    if len(tok) >= 3
+                }
+                topic_terms = [
+                    t for t in terms
+                    if t not in name_tokens and t not in _FED_NAME_STOP
+                ]
+
+                if topic_terms:
+                    kw_clause, kw_params = _like_any_clause(["title"], topic_terms[:4])
+                    rows = conn.execute(
+                        f"""SELECT member_name, statement_date, title, text
+                            FROM congress_floor_statements
+                            WHERE bioguide_id = ? AND {kw_clause}
+                            ORDER BY statement_date DESC LIMIT 5""",
+                        (bgid, *kw_params),
+                    ).fetchall()
+                else:
+                    rows = conn.execute(
+                        """SELECT member_name, statement_date, title, text
+                           FROM congress_floor_statements
+                           WHERE bioguide_id = ?
+                           ORDER BY statement_date DESC LIMIT 5""",
+                        (bgid,),
+                    ).fetchall()
+
+                total_count = conn.execute(
+                    "SELECT COUNT(*) FROM congress_floor_statements WHERE bioguide_id = ?",
+                    (bgid,),
+                ).fetchone()[0]
+
+                if rows:
+                    lines.append(
+                        f"\n{name} — {total_count:,} total floor statements on record; showing {len(rows)} most recent:"
+                    )
+                    for row in rows:
+                        preview = (row["text"] or "")[:200].replace("\n", " ").strip()
+                        lines.append(f"  [{row['statement_date']}] {row['title'][:120]}")
+                        if preview:
+                            lines.append(f"    preview: {preview}")
+                else:
+                    lines.append(
+                        f"\n{name}: {total_count:,} statements on record; none matched topic keywords"
+                    )
+
+        else:
+            # Floor trigger without named member — topic search across all VA members
+            if not terms:
+                return
+            kw_clause, kw_params = _like_any_clause(["title"], terms[:5])
+            rows = conn.execute(
+                f"""SELECT member_name, statement_date, title, text
+                    FROM congress_floor_statements
+                    WHERE {kw_clause}
+                    ORDER BY statement_date DESC LIMIT 8""",
+                tuple(kw_params),
+            ).fetchall()
+            if not rows:
+                return
+            lines.append("Matching floor statements (all VA federal members):")
+            for row in rows:
+                preview = (row["text"] or "")[:150].replace("\n", " ").strip()
+                lines.append(
+                    f"  {row['member_name']} | {row['statement_date']} | {row['title'][:100]}"
+                )
+                if preview:
+                    lines.append(f"    {preview}")
+
+        blocks.append("\n".join(lines))
+
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
+# ── FEC independent expenditures ──────────────────────────────────────────────
+_INDY_EXP_TRIGGERS = re.compile(
+    r"\b(independent\s+expenditure|outside\s+spending|super\s+pac|dark\s+money|"
+    r"outside\s+money|pac\s+spent|who\s+paid|attack\s+ad|campaign\s+ad|"
+    r"political\s+ad|funded\s+(?:by|against)|spent\s+against|spent\s+for)\b",
+    re.I,
+)
+
+
+def _add_indy_exp_context(blocks: list[str], query: str, terms: list[str]) -> None:
+    """Inject FEC independent expenditures for VA federal member or outside-spending queries."""
+    has_indy_trigger = bool(_INDY_EXP_TRIGGERS.search(query))
+
+    conn = _connect("polls")
+    if not conn:
+        return
+    if not _table_exists(conn, "fec_independent_expenditures"):
+        conn.close()
+        return
+
+    try:
+        members = _resolve_federal_member(conn, terms)
+
+        if not members and not has_indy_trigger:
+            return
+
+        lines = ["[Database Context - fec_independent_expenditures]"]
+        lines.append(
+            "Source: FEC — outside spending by Super PACs and outside groups for/against VA federal candidates"
+        )
+        lines.append(
+            "Key: support_oppose=S = spent IN SUPPORT of candidate; O = spent AGAINST candidate"
+        )
+
+        if members:
+            for member in members[:3]:
+                bgid = member["bioguide_id"]
+                name = member["name"]
+
+                totals = conn.execute(
+                    """SELECT
+                           SUM(CASE WHEN support_oppose='S' THEN expenditure_amount ELSE 0 END) AS support_total,
+                           SUM(CASE WHEN support_oppose='O' THEN expenditure_amount ELSE 0 END) AS oppose_total,
+                           COUNT(*) AS txn_count,
+                           MIN(cycle) AS earliest_cycle,
+                           MAX(cycle) AS latest_cycle
+                       FROM fec_independent_expenditures WHERE bioguide_id = ?""",
+                    (bgid,),
+                ).fetchone()
+
+                if not totals or not totals["txn_count"]:
+                    lines.append(f"\n{name}: no independent expenditure records in dataset")
+                    continue
+
+                lines.append(
+                    f"\n{name} — outside spending summary "
+                    f"(cycles {totals['earliest_cycle']}–{totals['latest_cycle']}):"
+                )
+                lines.append(f"  Spent IN SUPPORT: ${totals['support_total']:,.0f}")
+                lines.append(f"  Spent AGAINST:    ${totals['oppose_total']:,.0f}")
+                lines.append(f"  Transactions:     {totals['txn_count']}")
+
+                top = conn.execute(
+                    """SELECT committee_name, support_oppose,
+                              SUM(expenditure_amount) AS total, COUNT(*) AS cnt
+                       FROM fec_independent_expenditures
+                       WHERE bioguide_id = ?
+                       GROUP BY committee_name, support_oppose
+                       ORDER BY total DESC LIMIT 8""",
+                    (bgid,),
+                ).fetchall()
+
+                if top:
+                    short_name = name.split(",")[0]
+                    lines.append("  Top outside spenders:")
+                    for row in top:
+                        direction = "FOR" if row["support_oppose"] == "S" else "AGAINST"
+                        lines.append(
+                            f"    {direction} {short_name}: {row['committee_name']} "
+                            f"— ${row['total']:,.0f} ({row['cnt']} txns)"
+                        )
+        else:
+            # General IndyExp query — leaderboard
+            lines.append("Top VA federal independent-expenditure races (all cycles):")
+            rows = conn.execute(
+                """SELECT candidate_name, bioguide_id,
+                          SUM(CASE WHEN support_oppose='S' THEN expenditure_amount ELSE 0 END) AS support_total,
+                          SUM(CASE WHEN support_oppose='O' THEN expenditure_amount ELSE 0 END) AS oppose_total,
+                          COUNT(*) AS txn_count
+                   FROM fec_independent_expenditures
+                   GROUP BY bioguide_id
+                   ORDER BY (support_total + oppose_total) DESC LIMIT 10"""
+            ).fetchall()
+            for row in rows:
+                net = row["support_total"] + row["oppose_total"]
+                lines.append(
+                    f"  {row['candidate_name']}: support=${row['support_total']:,.0f}  "
+                    f"oppose=${row['oppose_total']:,.0f}  total outside=${net:,.0f}"
+                )
+
+        blocks.append("\n".join(lines))
+
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
 def _add_governor_action_context(blocks: list[str], query: str, terms: list[str], session: str) -> None:
     q_lower = (query or "").lower()
     has_governor_action_term = any(
@@ -2877,6 +3134,8 @@ def build_database_context(query: str, max_chars: int = 22000, pro: bool = False
     _add_bill_committee_chair_context(blocks, bills, session, pro=pro)
     _add_pac_context(blocks, q, terms)
     _add_federal_vote_context(blocks, q, terms)
+    _add_floor_statements_context(blocks, q, terms)
+    _add_indy_exp_context(blocks, q, terms)
     if _is_campaign_finance_query(q):
         _add_campaign_finance_context(blocks, q, terms)
         _add_governor_action_context(blocks, q, terms, session)
