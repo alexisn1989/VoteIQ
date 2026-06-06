@@ -73,6 +73,86 @@ fi
 
 echo "✓ polls.db ready"
 
+# ── STEP 2a: Schema migration — add missing columns to existing tables ─────────
+echo ""
+echo "[STEP 2a] Running schema migrations (safe ALTER TABLE ADD COLUMN)..."
+python3 - <<PYEOF
+import sqlite3, os, sys
+
+data_dir = os.environ.get("DATA_DIR", os.getcwd())
+db = os.path.join(data_dir, "polls.db")
+conn = sqlite3.connect(db)
+
+migrations = [
+    # (table, column, type, default)
+    ("campaign_finance_summary", "overall_va_pct",  "REAL", "NULL"),
+    ("campaign_finance_summary", "alignment_json",  "TEXT", "NULL"),
+    ("campaign_finance_summary", "cycles_json",     "TEXT", "NULL"),
+    ("va_committee_assignments", "chamber",         "TEXT", "NULL"),
+    ("va_committee_assignments", "session",         "TEXT", "NULL"),
+]
+
+ran = []
+skipped = []
+for table, col, coltype, default in migrations:
+    try:
+        existing = {r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+        if col in existing:
+            skipped.append(f"{table}.{col}")
+        else:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {coltype} DEFAULT {default}")
+            conn.commit()
+            ran.append(f"{table}.{col}")
+    except Exception as e:
+        print(f"  WARN: {table}.{col}: {e}", file=sys.stderr)
+
+if ran:
+    print(f"  Migrations applied: {', '.join(ran)}")
+if skipped:
+    print(f"  Already present:    {', '.join(skipped)}")
+print("  Schema migration complete")
+conn.close()
+PYEOF
+echo "✓ Schema migration done"
+
+# ── STEP 2b0: Seed campaign_finance_summary (168 rows — required for profiles) ─
+echo ""
+echo "[STEP 2b0] Seeding campaign_finance_summary..."
+
+if [ ! -f data/campaign_finance_summary_seed.sql ]; then
+    echo "⚠ data/campaign_finance_summary_seed.sql not found — legislator profiles will be incomplete"
+else
+    python3 - <<PYEOF
+import sqlite3, os, sys
+
+data_dir = os.environ.get("DATA_DIR", os.getcwd())
+db = os.path.join(data_dir, "polls.db")
+conn = sqlite3.connect(db)
+try:
+    existing = conn.execute("SELECT COUNT(*) FROM campaign_finance_summary").fetchone()[0]
+    # Re-seed if columns might be stale (old builds lacked alignment_json)
+    has_align = any(r[1] == "alignment_json"
+                    for r in conn.execute("PRAGMA table_info(campaign_finance_summary)").fetchall())
+    if existing >= 100 and has_align:
+        print(f"  Already populated ({existing} rows, alignment_json present) — skipping")
+        sys.exit(0)
+    print(f"  Existing rows: {existing}, has alignment_json: {has_align} — reseeding")
+except Exception:
+    pass
+try:
+    with open("data/campaign_finance_summary_seed.sql", "r", encoding="utf-8") as f:
+        conn.executescript(f.read())
+    conn.commit()
+    n = conn.execute("SELECT COUNT(*) FROM campaign_finance_summary").fetchone()[0]
+    print(f"  campaign_finance_summary: {n} rows")
+except Exception as e:
+    print(f"  WARNING: campaign_finance_summary seed failed: {e}", file=sys.stderr)
+finally:
+    conn.close()
+PYEOF
+    [ $? -ne 0 ] && echo "⚠ campaign_finance_summary seed failed" || echo "✓ campaign_finance_summary seeded"
+fi
+
 # ── STEP 2b: Seed legislator vote/bill summary tables ────────────────────────
 echo ""
 echo "[STEP 2b] Seeding legislator vote summary tables..."

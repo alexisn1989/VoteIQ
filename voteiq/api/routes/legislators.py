@@ -246,13 +246,25 @@ def _fetch_profile(conn, name: str) -> dict:
     """, (bill_name, bill_name)).fetchall()]
 
     # ── Campaign finance sectors ─────────────────────────────────────────────
-    fin_row = conn.execute("""
-        SELECT total_raised, top_sector, top_sector_pct, latest_cycle,
-               by_sector_json, top_donors_json, overall_va_pct, alignment_json
-        FROM campaign_finance_summary
-        WHERE lower(name) = lower(?)
-        LIMIT 1
-    """, (bill_name,)).fetchone()
+    # Guard: query only the columns that actually exist (Render may have a
+    # stale schema from before overall_va_pct / alignment_json were added).
+    _fin_cols_present = {r[1] for r in conn.execute(
+        "PRAGMA table_info(campaign_finance_summary)"
+    ).fetchall()}
+    _fin_select = ", ".join(
+        c if c in _fin_cols_present else f"NULL AS {c}"
+        for c in ["total_raised", "top_sector", "top_sector_pct", "latest_cycle",
+                  "by_sector_json", "top_donors_json", "overall_va_pct", "alignment_json"]
+    )
+    try:
+        fin_row = conn.execute(f"""
+            SELECT {_fin_select}
+            FROM campaign_finance_summary
+            WHERE lower(name) = lower(?)
+            LIMIT 1
+        """, (bill_name,)).fetchone()
+    except Exception:
+        fin_row = None
 
     # Fuzzy fallback: the finance table may list this legislator under a
     # nickname or dropped middle name (e.g. "Joe McNamara" for "Joseph P.
@@ -261,14 +273,16 @@ def _fetch_profile(conn, name: str) -> dict:
     if not fin_row:
         target_key = _name_key(resolved)
         if target_key:
-            for cand in conn.execute("""
-                SELECT total_raised, top_sector, top_sector_pct, latest_cycle,
-                       by_sector_json, top_donors_json, overall_va_pct, alignment_json, name
-                FROM campaign_finance_summary
-            """).fetchall():
-                if _name_key(cand["name"]) == target_key:
-                    fin_row = cand
-                    break
+            try:
+                for cand in conn.execute(f"""
+                    SELECT {_fin_select}, name
+                    FROM campaign_finance_summary
+                """).fetchall():
+                    if _name_key(cand["name"]) == target_key:
+                        fin_row = cand
+                        break
+            except Exception:
+                pass
 
     if fin_row:
         profile["finance_meta"] = {
