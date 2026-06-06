@@ -291,6 +291,48 @@ PYEOF
     fi
 fi
 
+# ── STEP 4c: Seed federal data (congress members, FEC totals, bills, hearings) ─
+echo ""
+echo "[STEP 4c] Seeding federal data tables..."
+
+if [ ! -f data/federal_data_seed.sql ]; then
+    echo "⚠ data/federal_data_seed.sql not found — Kiggans/federal queries will be incomplete"
+else
+    python3 - <<PYEOF
+import sqlite3, os, sys
+
+data_dir = os.environ.get("DATA_DIR", os.getcwd())
+db = os.path.join(data_dir, "polls.db")
+conn = sqlite3.connect(db)
+try:
+    existing = conn.execute("SELECT COUNT(*) FROM fec_industry_totals").fetchone()[0]
+    if existing >= 400:
+        print(f"  Already populated ({existing:,} fec_industry_totals rows) — skipping")
+        sys.exit(0)
+except Exception:
+    pass
+try:
+    with open("data/federal_data_seed.sql", "r", encoding="utf-8") as f:
+        conn.executescript(f.read())
+    conn.commit()
+    results = {}
+    for t in ["congress_members", "fec_industry_totals", "fec_independent_expenditures",
+              "federal_bills", "congress_committees", "congress_hearings"]:
+        try:
+            results[t] = conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+        except Exception:
+            results[t] = "MISSING"
+    for t, n in results.items():
+        print(f"  {t}: {n:,}" if isinstance(n, int) else f"  {t}: {n}")
+    print("  Federal data seed imported OK")
+except Exception as e:
+    print(f"  WARNING: Federal data seed failed: {e}", file=sys.stderr)
+finally:
+    conn.close()
+PYEOF
+    [ $? -ne 0 ] && echo "⚠ Federal data seed failed — federal queries may be incomplete" || echo "✓ Federal data seeded"
+fi
+
 # ── STEP 5: Build committee_testimony_proxy (derived from polls.db) ───────────
 echo ""
 echo "[STEP 5] Building committee testimony proxy (all sessions)..."
