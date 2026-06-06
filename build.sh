@@ -221,6 +221,46 @@ except Exception:
     fi
 fi
 
+# ── STEP 6: Validate polls.db integrity (report only — never blocks deploy) ───
+echo ""
+echo "[STEP 6] Validating polls.db integrity..."
+python3 -c "
+import sqlite3, os, sys
+db = os.path.join(os.environ.get('DATA_DIR', '.'), 'polls.db')
+checks = [
+    ('va_bills',                         1000, 'bills'),
+    ('lobbyist_registrations',            500, 'lobbyist registrations'),
+    ('committee_testimony_proxy',       50000, 'testimony proxy rows'),
+    ('legislator_financial_disclosures', 3000, 'VEC disclosures'),
+    ('campaign_finance_summary',          100, 'campaign finance summaries'),
+    ('governor_actions',                  100, 'governor actions'),
+    ('va_committee_assignments',           50, 'committee assignments'),
+]
+try:
+    conn = sqlite3.connect(db)
+    degraded = []
+    for table, minimum, label in checks:
+        try:
+            n = conn.execute(f'SELECT COUNT(*) FROM {table}').fetchone()[0]
+            ok = n >= minimum
+            icon = 'OK' if ok else 'WARN'
+            print(f'  [{icon}] {label}: {n:,} (min {minimum:,})')
+            if not ok:
+                degraded.append(label)
+        except Exception as e:
+            print(f'  [MISS] {label}: table missing — {e}')
+            degraded.append(label)
+    conn.close()
+    if degraded:
+        print(f'  DEGRADED features: {\", \".join(degraded)}')
+        print('  NOTE: App will start but some features will return empty results.')
+    else:
+        print('  All features healthy.')
+except Exception as e:
+    print(f'  Could not open DB: {e}')
+sys.exit(0)  # validation never blocks deploy
+"
+
 echo ""
 echo "=========================================="
 echo "Build Complete - Ready for Render Deployment"
