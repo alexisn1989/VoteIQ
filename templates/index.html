@@ -792,8 +792,15 @@
       }
     };
     document.addEventListener('DOMContentLoaded', () => {
+      const _urlParams = new URLSearchParams(window.location.search);
+      const pendingAskQuery = _urlParams.get('q') || '';
+      // ?voice=pro / ?voice=newsroom pre-selects the voice tier
+      const voiceParam = _urlParams.get('voice');
+      if (voiceParam) {
+        const voiceBtn = document.querySelector('.viq-voice-btn.' + voiceParam);
+        window.viqSetVoice(voiceParam, voiceBtn || null);
+      }
       const saved = viqLoadDistrictContext();
-      const pendingAskQuery = new URLSearchParams(window.location.search).get('q') || '';
       if (saved) {
         initViqChat(saved.districtCode, saved.locality, saved.hod, saved.sd, saved.repNames || [], saved.repData || null);
         viqSavedDistrictNotice(saved);
