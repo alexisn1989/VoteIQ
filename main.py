@@ -232,52 +232,50 @@ def admin_query(
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 app.include_router(voices_router, prefix="/api/v1")
 
-from voteiq.api.routes.polls import router as _polls_router
-app.include_router(_polls_router)
-from voteiq.api.routes.news import router as _news_router
-app.include_router(_news_router)
-from voteiq.api.routes.members import router as _members_router
-app.include_router(_members_router)
-from voteiq.api.routes.admin import router as _admin_router
-app.include_router(_admin_router)
-from voteiq.api.routes.chat import router as _chat_router
-app.include_router(_chat_router)
-from voteiq.api.routes.elections import router as _elections_router
-app.include_router(_elections_router)
-from voteiq.api.routes.district import router as _district_router
-app.include_router(_district_router)
-from voteiq.api.routes.feedback import router as _feedback_router
-app.include_router(_feedback_router)
-from voteiq.api.routes.tasks import router as _tasks_router
-app.include_router(_tasks_router)
-from voteiq.api.routes.governor import router as _governor_router
-app.include_router(_governor_router)
-from voteiq.api.routes.legislators import router as _legislators_router
-app.include_router(_legislators_router)
-from voteiq.api.routes.federal import router as _federal_router
-app.include_router(_federal_router)
-from voteiq.api.routes.pacs import router as _pacs_router
-app.include_router(_pacs_router)
-from voteiq.api.routes.donor_map import router as _donor_map_router
-app.include_router(_donor_map_router)
-from voteiq.api.routes.gatekeeper import router as _gatekeeper_router
-app.include_router(_gatekeeper_router)
-from voteiq.api.routes.lobbyist import router as _lobbyist_router
-app.include_router(_lobbyist_router, prefix="/api")
-from voteiq.api.routes.donor_vote_alignment import router as _dva_router
-app.include_router(_dva_router, prefix="/api")
-from voteiq.api.routes.follow_the_money import router as _ftm_router
-app.include_router(_ftm_router, prefix="/api")
-from voteiq.api.routes.narratives import router as _narratives_router
-app.include_router(_narratives_router, prefix="/api")
-from voteiq.api.routes.export import router as _export_router
-app.include_router(_export_router, prefix="/api")
-from voteiq.api.routes.watchlist import router as _watchlist_router
-app.include_router(_watchlist_router, prefix="/api")
-from voteiq.api.routes.donor_trend import router as _donor_trend_router
-app.include_router(_donor_trend_router, prefix="/api")
-from voteiq.api.routes.disclosures import router as _disclosures_router
-app.include_router(_disclosures_router, prefix="/api")
+# ── Router registration ───────────────────────────────────────────────────────
+# _safe_include: gracefully skips any missing/broken route module instead of
+# crashing the entire app. A missing file logs a WARNING and that feature
+# returns 404; all other routes remain live.
+import importlib as _importlib
+import logging as _logging
+
+def _safe_include(module_path: str, prefix: str = "") -> None:
+    try:
+        mod = _importlib.import_module(module_path)
+        router = getattr(mod, "router")
+        if prefix:
+            app.include_router(router, prefix=prefix)
+        else:
+            app.include_router(router)
+    except Exception as _e:
+        _logging.warning(f"Route unavailable — {module_path}: {_e}")
+
+# Core routes (app unusable without these)
+_safe_include("voteiq.api.routes.polls")
+_safe_include("voteiq.api.routes.news")
+_safe_include("voteiq.api.routes.members")
+_safe_include("voteiq.api.routes.admin")
+_safe_include("voteiq.api.routes.chat")
+_safe_include("voteiq.api.routes.elections")
+_safe_include("voteiq.api.routes.district")
+_safe_include("voteiq.api.routes.feedback")
+_safe_include("voteiq.api.routes.tasks")
+_safe_include("voteiq.api.routes.governor")
+_safe_include("voteiq.api.routes.legislators")
+_safe_include("voteiq.api.routes.federal")
+
+# Feature routes (degraded but app stays up if these fail)
+_safe_include("voteiq.api.routes.pacs")
+_safe_include("voteiq.api.routes.donor_map")
+_safe_include("voteiq.api.routes.gatekeeper")
+_safe_include("voteiq.api.routes.lobbyist",            prefix="/api")
+_safe_include("voteiq.api.routes.donor_vote_alignment", prefix="/api")
+_safe_include("voteiq.api.routes.follow_the_money",    prefix="/api")
+_safe_include("voteiq.api.routes.narratives",          prefix="/api")
+_safe_include("voteiq.api.routes.export",              prefix="/api")
+_safe_include("voteiq.api.routes.watchlist",           prefix="/api")
+_safe_include("voteiq.api.routes.donor_trend",         prefix="/api")
+_safe_include("voteiq.api.routes.disclosures",         prefix="/api")
 
 # DATA_DIR: set to Render persistent disk mount path (e.g. /var/data) in production.
 # Falls back to project root if DATA_DIR directory doesn't exist (e.g. after disk deletion).
