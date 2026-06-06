@@ -1411,6 +1411,208 @@ def _add_indy_exp_context(blocks: list[str], query: str, terms: list[str]) -> No
         conn.close()
 
 
+# ── Federal bill context ───────────────────────────────────────────────────────
+_FED_BILL_RE = re.compile(
+    r"\b("
+    r"H\.?J\.?Con\.?Res\.?|H\.?Con\.?Res\.?"   # HConRes (check before HRes)
+    r"|H\.?J\.?Res\.?"                            # HJRes
+    r"|S\.?J\.?Res\.?"                            # SJRes
+    r"|H\.?Res\.?"                                # HRes
+    r"|S\.?Res\.?"                                # SRes
+    r"|H\.?R\.?"                                  # HR / H.R.
+    r"|S(?=\.?\s*\d)"                             # S / S. followed by digit
+    r")\s*\.?\s*(\d{1,5})\b",
+    re.I,
+)
+
+_FED_BILL_TYPE_NORM: dict[str, str] = {
+    "hr": "hr", "h.r.": "hr", "h.r": "hr",
+    "hjres": "hjres", "h.j.res.": "hjres", "h.j.res": "hjres",
+    "hconres": "hconres", "h.con.res.": "hconres", "hjconres": "hconres",
+    "hres": "hres", "h.res.": "hres", "h.res": "hres",
+    "sjres": "sjres", "s.j.res.": "sjres", "s.j.res": "sjres",
+    "sres": "sres", "s.res.": "sres", "s.res": "sres",
+    "s": "s",
+}
+
+_IS_FED_BILL_Q = re.compile(
+    r"\b(federal\s+bill|congress(?:ional)?\s+bill|senate\s+bill|house\s+bill"
+    r"|H\.R\.\s*\d|S\.\s*\d|HRes\s+\d|SRes\s+\d|HJRes\s+\d|SJRes\s+\d"
+    r"|what\s+(?:is|does|did)\s+(?:H\.?R\.?|S\.?|HRes|SRes|HJRes|SJRes)\s*\d"
+    r"|explain\s+(?:this\s+)?(?:federal|H\.?R\.?|S\.?)\s*\d)",
+    re.I,
+)
+
+
+def _norm_fed_bill_type(prefix: str) -> str:
+    p = re.sub(r"\s+", "", prefix.lower())
+    return _FED_BILL_TYPE_NORM.get(p, p.replace(".", ""))
+
+
+def _fmt_fed_bill_id(bill_type: str, bill_number: str) -> str:
+    fmt = {
+        "hr": f"H.R. {bill_number}",
+        "s": f"S. {bill_number}",
+        "hres": f"H.Res. {bill_number}",
+        "sres": f"S.Res. {bill_number}",
+        "hjres": f"H.J.Res. {bill_number}",
+        "sjres": f"S.J.Res. {bill_number}",
+        "hconres": f"H.Con.Res. {bill_number}",
+    }
+    return fmt.get((bill_type or "").lower(), f"{(bill_type or '').upper()} {bill_number}")
+
+
+def _fed_bill_refs(query: str) -> list[tuple[str, str]]:
+    """Return (bill_type, bill_number) pairs for federal bill references in query."""
+    seen: set[tuple[str, str]] = set()
+    results: list[tuple[str, str]] = []
+    for m in _FED_BILL_RE.finditer(query or ""):
+        bt = _norm_fed_bill_type(m.group(1))
+        bn = m.group(2)
+        key = (bt, bn)
+        if key not in seen:
+            seen.add(key)
+            results.append(key)
+    return results
+
+
+def _add_federal_bill_context(
+    blocks: list[str], query: str, terms: list[str]
+) -> None:
+    """Inject congress_bills + congress_bill_texts context for federal bill queries."""
+    refs = _fed_bill_refs(query)
+    is_fed_bill_q = bool(_IS_FED_BILL_Q.search(query))
+
+    if not refs and not is_fed_bill_q:
+        return
+
+    conn = _connect("polls")
+    if not conn:
+        return
+    if not _table_exists(conn, "congress_bills"):
+        conn.close()
+        return
+
+    try:
+        lines = ["[Database Context - congress_bills — federal bill lookup]"]
+        lines.append(
+            "Source: Congress.gov API — bills sponsored or cosponsored by VA federal members (119th Congress)"
+        )
+        found_any = False
+
+        if refs:
+            for bill_type, bill_number in refs[:3]:
+                # Exact bill_type + bill_number match
+                rows = conn.execute(
+                    """SELECT cb.bill_type, cb.bill_number, cb.title, cb.introduced_date,
+                              cb.latest_action, cb.latest_action_date, cb.policy_area, cb.role,
+                              cm.name AS sponsor_name, cm.party AS sponsor_party,
+                              cm.state AS sponsor_state
+                       FROM congress_bills cb
+                       LEFT JOIN congress_members cm ON cm.bioguide_id = cb.sponsor_id
+                       WHERE lower(cb.bill_type) = ? AND cb.bill_number = ?
+                       ORDER BY cb.introduced_date DESC LIMIT 3""",
+                    (bill_type, bill_number),
+                ).fetchall()
+
+                if not rows:
+                    # Fallback: number-only match across all bill types
+                    rows = conn.execute(
+                        """SELECT cb.bill_type, cb.bill_number, cb.title, cb.introduced_date,
+                                  cb.latest_action, cb.latest_action_date, cb.policy_area, cb.role,
+                                  cm.name AS sponsor_name, cm.party AS sponsor_party,
+                                  cm.state AS sponsor_state
+                           FROM congress_bills cb
+                           LEFT JOIN congress_members cm ON cm.bioguide_id = cb.sponsor_id
+                           WHERE cb.bill_number = ?
+                           ORDER BY cb.introduced_date DESC LIMIT 3""",
+                        (bill_number,),
+                    ).fetchall()
+
+                if rows:
+                    for row in rows:
+                        found_any = True
+                        bt = (row["bill_type"] or "").lower()
+                        bn = row["bill_number"]
+                        display_id = _fmt_fed_bill_id(bt, bn)
+                        lines.append(f"\n{display_id} — {row['title']}")
+                        if row["sponsor_name"]:
+                            pa = (
+                                "R" if "Republican" in (row["sponsor_party"] or "") else
+                                "D" if "Democrat" in (row["sponsor_party"] or "") else "?"
+                            )
+                            lines.append(
+                                f"  Sponsor: {row['sponsor_name']} ({pa}-{row['sponsor_state'] or 'VA'})"
+                                f" | role: {row['role'] or 'sponsor'}"
+                            )
+                        if row["introduced_date"]:
+                            lines.append(f"  Introduced: {row['introduced_date']}")
+                        if row["policy_area"]:
+                            lines.append(f"  Policy area: {row['policy_area']}")
+                        if row["latest_action"]:
+                            lines.append(
+                                f"  Latest action ({row['latest_action_date'] or '?'}): "
+                                f"{row['latest_action'][:180]}"
+                            )
+                        # Text excerpt
+                        if _table_exists(conn, "congress_bill_texts"):
+                            txt_row = conn.execute(
+                                """SELECT text FROM congress_bill_texts
+                                   WHERE lower(bill_type) = ? AND bill_number = ?
+                                   ORDER BY version_date DESC LIMIT 1""",
+                                (bt, bn),
+                            ).fetchone()
+                            if txt_row and txt_row["text"]:
+                                preview = (txt_row["text"] or "")[:300].replace("\n", " ").strip()
+                                lines.append(f"  Text preview: {preview}")
+                else:
+                    lines.append(
+                        f"\n{_fmt_fed_bill_id(bill_type, bill_number)}: "
+                        f"not found in local dataset — may not be sponsored by a VA member"
+                    )
+                    found_any = True  # still emit the block so LLM can explain the gap
+
+        else:
+            # Keyword title search
+            bill_stop = {
+                "federal", "bill", "congress", "congressional", "senate", "house",
+                "what", "does", "happened", "explain", "tell", "about",
+            }
+            search_terms = [t for t in terms if t not in bill_stop][:4]
+            if search_terms:
+                clause, params = _like_any_clause(["cb.title", "cb.policy_area"], search_terms)
+                rows = conn.execute(
+                    f"""SELECT cb.bill_type, cb.bill_number, cb.title, cb.introduced_date,
+                               cb.latest_action, cb.latest_action_date, cb.policy_area,
+                               cm.name AS sponsor_name
+                        FROM congress_bills cb
+                        LEFT JOIN congress_members cm ON cm.bioguide_id = cb.sponsor_id
+                        WHERE {clause}
+                        ORDER BY cb.introduced_date DESC LIMIT 6""",
+                    tuple(params),
+                ).fetchall()
+                if rows:
+                    found_any = True
+                    lines.append("Matching federal bills (keyword search):")
+                    for row in rows:
+                        display_id = _fmt_fed_bill_id(row["bill_type"], row["bill_number"])
+                        lines.append(
+                            f"  {display_id} — {row['title'][:100]}"
+                            + (f" | {row['sponsor_name']}" if row["sponsor_name"] else "")
+                            + (f" | {row['latest_action'][:60]}" if row["latest_action"] else "")
+                        )
+
+        if not found_any:
+            return
+
+        blocks.append("\n".join(lines))
+
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
 def _add_governor_action_context(blocks: list[str], query: str, terms: list[str], session: str) -> None:
     q_lower = (query or "").lower()
     has_governor_action_term = any(
@@ -3133,6 +3335,7 @@ def build_database_context(query: str, max_chars: int = 22000, pro: bool = False
     _add_bill_context(blocks, bills, session, pro=pro)
     _add_bill_committee_chair_context(blocks, bills, session, pro=pro)
     _add_pac_context(blocks, q, terms)
+    _add_federal_bill_context(blocks, q, terms)
     _add_federal_vote_context(blocks, q, terms)
     _add_floor_statements_context(blocks, q, terms)
     _add_indy_exp_context(blocks, q, terms)
