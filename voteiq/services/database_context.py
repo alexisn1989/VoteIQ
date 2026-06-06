@@ -1915,6 +1915,112 @@ def _add_follow_the_money_context(blocks: list[str], query: str) -> None:
             li.close()
 
 
+_TESTIMONY_TRIGGERS = re.compile(
+    r"\b(lobby|lobbied|lobbying|lobbyist|testified|testimony|testif|"
+    r"who was behind|interest group|organizations? behind|who opposed|"
+    r"who supported|who pushed|in the room)\b",
+    re.I,
+)
+
+
+def _add_testimony_proxy_context(blocks: list[str], query: str) -> None:
+    """
+    When a bill number + lobbying/testimony terms appear in the query,
+    inject a summary of registered lobbyist principals likely present
+    at committee hearings, with donation-backed support signals.
+    """
+    bill_match = _FTM_BILL.search(query or "")
+    if not bill_match:
+        return
+    if not _TESTIMONY_TRIGGERS.search(query or ""):
+        return
+
+    bill_number = (bill_match.group(1).upper() + bill_match.group(2)).replace(" ", "")
+
+    conn = _connect("polls")
+    if not conn:
+        return
+
+    try:
+        # Check table exists
+        tbl = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='committee_testimony_proxy'"
+        ).fetchone()
+        if not tbl:
+            return
+
+        # Get most recent session for this bill
+        session_row = conn.execute(
+            "SELECT session FROM committee_testimony_proxy WHERE upper(bill_number)=? "
+            "ORDER BY session DESC LIMIT 1",
+            (bill_number.upper(),),
+        ).fetchone()
+        if not session_row:
+            return
+        session = session_row[0]
+
+        # Pull top principals for this bill
+        rows = conn.execute("""
+            SELECT principal_name, principal_sector, lobbyist_count,
+                   likely_position, confidence, total_donated_to_sponsors,
+                   sponsor_names
+            FROM committee_testimony_proxy
+            WHERE upper(bill_number) = ? AND session = ?
+            ORDER BY
+                CASE confidence WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
+                lobbyist_count DESC
+            LIMIT 12
+        """, (bill_number.upper(), session)).fetchall()
+
+        if not rows:
+            return
+
+        # Bill title
+        bill_row = conn.execute(
+            "SELECT title FROM legiscan_va_bills WHERE bill_number = ? AND session = ? LIMIT 1",
+            (bill_number, session),
+        ).fetchone()
+        title = bill_row["title"][:80] if bill_row else ""
+
+        total = conn.execute(
+            "SELECT COUNT(*) FROM committee_testimony_proxy WHERE upper(bill_number)=? AND session=?",
+            (bill_number.upper(), session),
+        ).fetchone()[0]
+
+        supporters = sum(1 for r in rows if r["likely_position"] == "support")
+
+        lines = [
+            f"[Committee Testimony Proxy — {bill_number} ({session})]",
+            f'Bill: "{title}"',
+            f"Registered lobbying organizations active this session in the same sector: {total}",
+            f"With donation-backed support signal: {supporters} of top {len(rows)} shown",
+            "",
+        ]
+
+        for r in rows:
+            donated = r["total_donated_to_sponsors"]
+            donated_str = f", donated ${donated:,.0f} to sponsors" if donated and donated > 0 else ""
+            pos_str = f"[{r['likely_position'].upper()}]" if r["likely_position"] != "unknown" else ""
+            lines.append(
+                f"- {r['principal_name']} | {r['lobbyist_count']} lobbyists | "
+                f"{r['principal_sector']}{donated_str} {pos_str} (confidence: {r['confidence']})"
+            )
+
+        lines += [
+            "",
+            "NOTE: This is a proxy — Virginia does not require bill-specific lobbying "
+            "disclosure. These organizations were registered in the same sector during "
+            "this session. 'SUPPORT' indicates a donation record to bill sponsors.",
+        ]
+
+        blocks.append("\n".join(lines))
+
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
 def _add_legislator_narrative_context(blocks: list[str], query: str) -> None:
     """
     When a specific legislator name appears in the query, inject their
@@ -1987,6 +2093,8 @@ def build_database_context(query: str, max_chars: int = 22000) -> str:
     _add_legislator_narrative_context(blocks, q)
     # Follow-the-money chain — fires when a bill number + money terms appear
     _add_follow_the_money_context(blocks, q)
+    # Testimony proxy — fires when a bill number + lobbying/testimony terms appear
+    _add_testimony_proxy_context(blocks, q)
     _add_bill_context(blocks, bills, session)
     _add_pac_context(blocks, q, terms)
     _add_federal_vote_context(blocks, q, terms)

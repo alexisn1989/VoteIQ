@@ -224,6 +224,8 @@ from voteiq.api.routes.watchlist import router as _watchlist_router
 app.include_router(_watchlist_router, prefix="/api")
 from voteiq.api.routes.donor_trend import router as _donor_trend_router
 app.include_router(_donor_trend_router, prefix="/api")
+from voteiq.api.routes.disclosures import router as _disclosures_router
+app.include_router(_disclosures_router, prefix="/api")
 
 # DATA_DIR: set to Render persistent disk mount path (e.g. /var/data) in production.
 # Falls back to project root if DATA_DIR directory doesn't exist (e.g. after disk deletion).
