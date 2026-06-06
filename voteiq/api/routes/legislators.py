@@ -140,6 +140,18 @@ def _legislators_list(conn) -> list[dict]:
         ORDER BY chamber, party, voter_name
     """).fetchall()
 
+    # Build a first+last → party lookup from campaign_finance_summary to fill
+    # blank party values (va_legislator_vote_summary often has party='')
+    try:
+        party_lookup: dict[str, str] = {}
+        for r in conn.execute(
+            "SELECT name, party FROM campaign_finance_summary WHERE source='va_sbe' AND party != ''"
+        ).fetchall():
+            key = _name_key(r["name"] if hasattr(r, "__getitem__") else r[0])
+            party_lookup[key] = r["party"] if hasattr(r, "__getitem__") else r[1]
+    except Exception:
+        party_lookup = {}
+
     sponsored = {
         r[0]: r[1] for r in conn.execute("""
             SELECT lower(legislator_name), COUNT(DISTINCT bill_id)
@@ -163,6 +175,10 @@ def _legislators_list(conn) -> list[dict]:
         key = _bill_match_key(d["voter_name"])
         d["bills_introduced"] = sponsored.get(key, 0)
         d["bills_cosponsored"] = cosponsored.get(key, 0)
+        # Fill blank party from campaign_finance_summary lookup
+        if not d.get("party") and party_lookup:
+            fk = _name_key(d["voter_name"])
+            d["party"] = party_lookup.get(fk, "")
         out.append(d)
     return out
 

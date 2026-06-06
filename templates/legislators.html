@@ -157,8 +157,8 @@
   <div class="filter-row">
     <div class="filter-group" id="chamber-filters">
       <button class="tab-btn active" data-chamber="">All Chambers</button>
-      <button class="tab-btn" data-chamber="upper">Senate</button>
-      <button class="tab-btn" data-chamber="lower">House</button>
+      <button class="tab-btn" data-chamber="Senate">Senate</button>
+      <button class="tab-btn" data-chamber="House">House</button>
     </div>
     <div class="filter-divider"></div>
     <div class="filter-group" id="party-filters">
@@ -204,7 +204,7 @@
 
   // ── State ──────────────────────────────────────────────────────────────────
   let fChamber = '', fParty = '', fSearch = '';
-  let sortCol = 'voter_name', sortDir = 'asc';
+  let sortCol = 'chamber', sortDir = 'asc';  // default: Senate first, then House; secondary sort below
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   function partyClass(p) {
@@ -216,10 +216,14 @@
   }
 
   function chamberLabel(c) {
-    if (c === 'upper') return 'Senate';
-    if (c === 'lower') return 'House';
-    return c || '—';
+    if (!c) return '—';
+    if (c === 'upper' || c === 'Senate') return 'Senate';
+    if (c === 'lower' || c === 'House')  return 'House';
+    return c;
   }
+
+  // Chamber sort order: Senate (S) before House (H)
+  function chamberOrder(c) { return (c || '').startsWith('S') ? 0 : 1; }
 
   function rateColor(rate, party) {
     const pc = partyClass(party);
@@ -268,10 +272,22 @@
       const fallback = sortDir === 'asc' ? '￿' : '';
       if (av === null || av === undefined) av = typeof bv === 'number' ? (sortDir === 'asc' ? Infinity : -Infinity) : fallback;
       if (bv === null || bv === undefined) bv = typeof av === 'number' ? (sortDir === 'asc' ? Infinity : -Infinity) : fallback;
+      // For chamber column use numeric order (Senate=0, House=1) so Senate always comes first on asc
+      if (sortCol === 'chamber') {
+        const ca = chamberOrder(a.chamber), cb = chamberOrder(b.chamber);
+        if (ca !== cb) return sortDir === 'asc' ? ca - cb : cb - ca;
+        // tiebreak: party (D before R), then name
+        const pa = partyClass(a.party), pb = partyClass(b.party);
+        if (pa !== pb) return pa < pb ? -1 : 1;
+        return (a.voter_name || '').localeCompare(b.voter_name || '');
+      }
       if (typeof av === 'string') av = av.toLowerCase();
       if (typeof bv === 'string') bv = bv.toLowerCase();
       if (av < bv) return sortDir === 'asc' ? -1 : 1;
       if (av > bv) return sortDir === 'asc' ?  1 : -1;
+      // tiebreak for numeric sorts: chamber then name
+      const co = chamberOrder(a.chamber) - chamberOrder(b.chamber);
+      if (co !== 0) return co;
       return 0;
     });
     return rows;
