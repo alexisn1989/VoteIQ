@@ -2059,6 +2059,141 @@ def _gk_parse_committee(status: str) -> str | None:
     return remainder if remainder else None
 
 
+_COMMITTEE_CHAIR_TRIGGERS = re.compile(
+    r"\b(who\s+chairs?|committee\s+chair(?:man|woman|person)?|chair\s+of\s+(?:the\s+)?"
+    r"|who\s+(?:leads?|heads?|runs?)\s+(?:the\s+)?committee"
+    r"|(?:labor\s+and\s+commerce|finance\s+and\s+appropriations|courts\s+of\s+justice"
+    r"|health\s+and\s+human|appropriations|commerce\s+and\s+labor|agriculture"
+    r"|education\s+and\s+health|transportation|general\s+laws?|privileges\s+and\s+elections"
+    r"|public\s+safety|housing|rules\s+committee)\b.*chair"
+    r"|chair.*\b(labor\s+and\s+commerce|finance|health|appropriations|education|transportation"
+    r"|agriculture|courts\s+of\s+justice|general\s+laws?|public\s+safety|rules))\b",
+    re.I,
+)
+
+# Also fire when a known committee name appears with person/leadership context
+_COMMITTEE_NAME_RE = re.compile(
+    r"\b(labor\s+and\s+commerce|finance\s+and\s+appropriations|courts\s+of\s+justice|"
+    r"health\s+and\s+human\s+services|appropriations|commerce\s+and\s+labor|"
+    r"agriculture,?\s+chesapeake|education\s+and\s+health|transportation|"
+    r"general\s+laws?\s+and\s+technology|general\s+laws?|privileges\s+and\s+elections|"
+    r"public\s+safety|housing|labor\s+and\s+commerce|finance\b)\b",
+    re.I,
+)
+
+
+def _add_committee_chair_context(blocks: list[str], query: str) -> None:
+    """
+    When query asks who chairs a committee (or names a committee with chair context),
+    inject chair name, donor profile, and kill counts from va_committee_assignments
+    and campaign_finance_summary.
+    """
+    q = query or ""
+    # Fire on explicit chair questions OR committee name + leadership/money context
+    has_chair_question = bool(_COMMITTEE_CHAIR_TRIGGERS.search(q))
+    has_committee_name = bool(_COMMITTEE_NAME_RE.search(q))
+    has_money_context = bool(re.search(
+        r"\b(donat|fund|money|donor|raised|contribut|sector|lobbied|who\s+chair|chair)\b", q, re.I
+    ))
+    if not has_chair_question and not (has_committee_name and has_money_context):
+        return
+
+    conn = _connect("polls")
+    if not conn:
+        return
+
+    try:
+        # Get all chairs
+        chairs = conn.execute(
+            "SELECT DISTINCT committee, chamber, member_name "
+            "FROM va_committee_assignments WHERE role = 'chair' "
+            "ORDER BY chamber DESC, committee"
+        ).fetchall()
+        if not chairs:
+            return
+
+        # Filter to committees mentioned in query if a name is present
+        mentioned = _COMMITTEE_NAME_RE.findall(q)
+        if mentioned:
+            norm_q = q.lower()
+            matching = [
+                r for r in chairs
+                if any(m.lower().replace(",", "") in (r[0] or "").lower() for m in mentioned)
+            ]
+            if not matching:
+                matching = chairs  # fall back to all if no specific match
+        else:
+            matching = chairs
+
+        # Load campaign finance lookup
+        cfs_rows = conn.execute(
+            "SELECT name, party, total_raised, by_sector_json "
+            "FROM campaign_finance_summary WHERE source = 'va_sbe'"
+        ).fetchall()
+        suffixes = {"jr", "sr", "ii", "iii", "iv"}
+
+        def _norm(s):
+            parts = re.sub(r"[^a-z ]", "", s.lower()).split()
+            while parts and parts[-1] in suffixes:
+                parts.pop()
+            return (parts[0], parts[-1]) if len(parts) >= 2 else ("", parts[-1] if parts else "")
+
+        cfs_map = {}
+        for row in cfs_rows:
+            n = row[0] if hasattr(row, "__getitem__") else row[0]
+            cfs_map[_norm(n)] = row
+
+        def _find_cfs(name):
+            f, l = _norm(name)
+            hit = cfs_map.get((f, l))
+            if hit:
+                return hit
+            cands = [v for (ff, ll), v in cfs_map.items() if ll == l and ff.startswith(f[:4])]
+            if len(cands) == 1:
+                return cands[0]
+            cands = [v for (ff, ll), v in cfs_map.items() if ll == l]
+            return cands[0] if len(cands) == 1 else None
+
+        import json as _json
+        lines = ["[Committee Chair Assignments — Virginia General Assembly]"]
+
+        for row in matching[:8]:  # cap at 8 to avoid bloating context
+            committee = row[0]
+            chamber = row[1]
+            chair_name = row[2]
+
+            cfs = _find_cfs(chair_name)
+            raised = 0
+            top_sectors = ""
+            party = "?"
+            if cfs:
+                party = ((cfs[1] if hasattr(cfs, "__getitem__") else cfs[1]) or "?")[0].upper()
+                raised = (cfs[2] if hasattr(cfs, "__getitem__") else cfs[2]) or 0
+                raw = (cfs[3] if hasattr(cfs, "__getitem__") else cfs[3]) or "[]"
+                try:
+                    slist = _json.loads(raw)
+                    top = sorted(slist, key=lambda x: -(x.get("total") or 0))[:3]
+                    top_sectors = ", ".join(s.get("sector", "") for s in top if s.get("sector"))
+                except Exception:
+                    pass
+
+            raised_str = f"${raised/1_000_000:.1f}M raised" if raised >= 1_000_000 else (
+                f"${raised/1000:.0f}k raised" if raised else "no finance data"
+            )
+            lines.append(
+                f"  {chamber} | {committee}\n"
+                f"    Chair: {chair_name} ({party}) — {raised_str}\n"
+                f"    Top donor sectors: {top_sectors or '—'}"
+            )
+
+        blocks.append("\n".join(lines))
+
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
 def _add_gatekeeper_context(blocks: list[str], query: str) -> None:
     """
     When query asks about committee gatekeepers / who kills bills,
@@ -2314,6 +2449,8 @@ def build_database_context(query: str, max_chars: int = 22000) -> str:
     _add_follow_the_money_context(blocks, q)
     # Testimony proxy — fires when a bill number + lobbying/testimony terms appear
     _add_testimony_proxy_context(blocks, q)
+    # Committee chair lookup — fires on "who chairs X" or committee name + money context
+    _add_committee_chair_context(blocks, q)
     # Gatekeeper — fires when query asks who kills/blocks bills in committee
     _add_gatekeeper_context(blocks, q)
     _add_bill_context(blocks, bills, session)
