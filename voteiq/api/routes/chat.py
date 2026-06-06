@@ -3632,6 +3632,7 @@ def _bills_system_prompt(
     model_note:    str,
     exact_lookup_note: str,
     context:       str,
+    pro: bool = False,
 ) -> str:
     return (
         f"You are VoteIQ, a nonpartisan Virginia civic assistant. Today is May 2026. "
@@ -3789,6 +3790,7 @@ def _bills_system_prompt(
         f"Use the legislator's actual name and their real top 3 issue areas from the excerpt. "
         f"URL-encode spaces and punctuation in the /ask?q= links. Or tell the user they can ask about a specific bill by number.\n\n"
         f"If any section has no data, write: \"No [section] data available in current dataset.\"{exact_lookup_note}"
+        + (
         f"\n\nLOBBYING AND COMMITTEE CHAIR TRANSPARENCY — apply these rules whenever the excerpts contain civic finance blocks:\n"
         f"1. If excerpts include a '[Lobbying Activity — BILL]' block, ALWAYS add a '## Lobbying Interest' section listing "
         f"the organizations, their lobbyist counts, and position signals (support/oppose/unknown). "
@@ -3800,7 +3802,9 @@ def _bills_system_prompt(
         f"Do not omit this section. Add a no-inference disclaimer: 'VoteIQ does not infer motive or causation from donor patterns.'\n"
         f"3. '[Follow-the-Money]' blocks are pre-computed sponsor/donor chains — always include them when present.\n"
         f"4. '[Committee Testimony Proxy]' blocks are equivalent to '[Lobbying Activity]' — treat the same way.\n"
-        f"\n\nEXCERPTS:\n{context}"
+        if pro else ""
+        )
+        + f"\n\nEXCERPTS:\n{context}"
     )
 
 
@@ -3973,7 +3977,7 @@ async def chat(req: ChatRequest):
         donor_trend_context = ""
     governor_context = _m._fetch_governor_action_context(last_question)
     governor_eo_context = _m._fetch_governor_eo_context(last_question)
-    database_context = build_database_context(last_question)
+    database_context = build_database_context(last_question, pro=_premium_analyst_enabled(req))
     state_member_context = _m._fetch_va_state_member_context(last_question, hod_info=hod_info, sd_info=sd_info)
     ie_context = _m._fetch_ie_context(bioguide_ids, last_question)
 
@@ -4371,7 +4375,8 @@ async def bills_chat(req: BillsChatRequest):
     answer_type = _answer_type_from_context(context, chroma_error)
     voice_prompt  = get_system_prompt(req.voice, query_context)
     system_prompt = voice_prompt + "\n\n" + _bills_system_prompt(
-        district_note, chroma_note, model_note, exact_lookup_note, context
+        district_note, chroma_note, model_note, exact_lookup_note, context,
+        pro=_premium_analyst_enabled(req),
     )
     model, _      = get_model(req.tier, use_haiku)
     max_tokens    = 700 if use_haiku else TIER_MAX_TOKENS.get(req.tier, 1800)

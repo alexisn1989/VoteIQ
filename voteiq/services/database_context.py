@@ -583,7 +583,7 @@ def _quote_identifier(name: str) -> str:
     return '"' + str(name).replace('"', '""') + '"'
 
 
-def _add_bill_context(blocks: list[str], bills: list[str], session: str) -> None:
+def _add_bill_context(blocks: list[str], bills: list[str], session: str, pro: bool = False) -> None:
     if not bills:
         return
 
@@ -603,9 +603,12 @@ def _add_bill_context(blocks: list[str], bills: list[str], session: str) -> None
                 LIMIT 6
             """, (bill, session), f"polls.governor_actions {bill}", blocks)
 
-            # ── Auto-inject testimony proxy (no lobby keyword required) ────────
-            # Any bill query automatically shows registered lobbying interest,
-            # so the LLM always has context rather than saying "not available".
+            # ── Auto-inject testimony proxy (pro/newsroom only) ───────────────
+            # Gated to pro tier — free users don't see the donor/lobby pattern
+            # unprompted; they can still ask directly and trigger the explicit
+            # _add_testimony_proxy_context via lobby keyword triggers.
+            if not pro:
+                continue
             try:
                 has_proxy = conn.execute(
                     "SELECT name FROM sqlite_master WHERE type='table' AND name='committee_testimony_proxy'"
@@ -2251,13 +2254,15 @@ _COMMITTEE_FROM_STATUS_RE = re.compile(
 )
 
 
-def _add_bill_committee_chair_context(blocks: list[str], bills: list[str], session: str) -> None:
+def _add_bill_committee_chair_context(blocks: list[str], bills: list[str], session: str, pro: bool = False) -> None:
     """
     For any bill that was 'Left in <Committee>', look up who chairs that
     committee and inject their top donor sectors — the "who funds whom"
     crosswalk that connects a killed bill to the chair's industry backers.
-    Fires automatically for any bill query, no keyword trigger required.
+    Pro/newsroom only — free users are not shown the donor pattern unprompted.
     """
+    if not pro:
+        return
     if not bills:
         return
 
@@ -2837,7 +2842,7 @@ def _add_sponsor_correlation_context(blocks: list[str], query: str) -> None:
         conn.close()
 
 
-def build_database_context(query: str, max_chars: int = 22000) -> str:
+def build_database_context(query: str, max_chars: int = 22000, pro: bool = False) -> str:
     q = query or ""
     blocks: list[str] = []
     q_lower = q.lower()
@@ -2868,8 +2873,8 @@ def build_database_context(query: str, max_chars: int = 22000) -> str:
     _add_lobbyist_direct_context(blocks, q)
     # Sponsor–donor sector correlation
     _add_sponsor_correlation_context(blocks, q)
-    _add_bill_context(blocks, bills, session)
-    _add_bill_committee_chair_context(blocks, bills, session)
+    _add_bill_context(blocks, bills, session, pro=pro)
+    _add_bill_committee_chair_context(blocks, bills, session, pro=pro)
     _add_pac_context(blocks, q, terms)
     _add_federal_vote_context(blocks, q, terms)
     if _is_campaign_finance_query(q):
