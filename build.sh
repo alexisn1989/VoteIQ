@@ -132,6 +132,53 @@ PYEOF
     fi
 fi
 
+# ── STEP 4: Seed VEC financial disclosures ────────────────────────────────────
+echo ""
+echo "[STEP 4] Seeding VEC legislator financial disclosures..."
+
+if [ ! -f data/vec_disclosures_seed.sql ]; then
+    echo "⚠ data/vec_disclosures_seed.sql not found — disclosures data will be missing"
+else
+    python3 - <<PYEOF
+import sqlite3, os, sys
+
+data_dir = os.environ.get("DATA_DIR", os.getcwd())
+db = os.path.join(data_dir, "polls.db")
+sql_file = os.path.join(os.getcwd(), "data", "vec_disclosures_seed.sql")
+
+print(f"  Seeding DB at: {db}")
+conn = sqlite3.connect(db)
+try:
+    # Skip if already populated
+    existing = conn.execute("SELECT COUNT(*) FROM legislator_financial_disclosures").fetchone()[0]
+    if existing >= 3000:
+        print(f"  Already populated ({existing:,} rows) — skipping")
+        sys.exit(0)
+except Exception:
+    pass  # table doesn't exist yet, proceed
+
+try:
+    with open(sql_file, "r", encoding="utf-8") as f:
+        script = f.read()
+    conn.executescript(script)
+    conn.commit()
+    n = conn.execute("SELECT COUNT(*) FROM legislator_financial_disclosures").fetchone()[0]
+    print(f"  legislator_financial_disclosures: {n:,} rows")
+    print("  VEC disclosures seed imported OK")
+except Exception as e:
+    print(f"  WARNING: VEC disclosures seed failed: {e}", file=sys.stderr)
+finally:
+    conn.close()
+PYEOF
+
+    SEED_EXIT=$?
+    if [ $SEED_EXIT -ne 0 ]; then
+        echo "⚠ VEC disclosures seed failed (exit $SEED_EXIT) — continuing build"
+    else
+        echo "✓ VEC disclosures seed complete"
+    fi
+fi
+
 echo ""
 echo "=========================================="
 echo "Build Complete - Ready for Render Deployment"
