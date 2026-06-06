@@ -3789,6 +3789,17 @@ def _bills_system_prompt(
         f"Use the legislator's actual name and their real top 3 issue areas from the excerpt. "
         f"URL-encode spaces and punctuation in the /ask?q= links. Or tell the user they can ask about a specific bill by number.\n\n"
         f"If any section has no data, write: \"No [section] data available in current dataset.\"{exact_lookup_note}"
+        f"\n\nLOBBYING AND COMMITTEE CHAIR TRANSPARENCY — apply these rules whenever the excerpts contain civic finance blocks:\n"
+        f"1. If excerpts include a '[Lobbying Activity — BILL]' block, ALWAYS add a '## Lobbying Interest' section listing "
+        f"the organizations, their lobbyist counts, and position signals (support/oppose/unknown). "
+        f"Never say lobbying data is 'unavailable' or 'not in the dataset' when this block is present. "
+        f"Include the proxy disclaimer: Virginia does not require bill-specific lobbying disclosure; this is a proxy from registered principals active in the same sector.\n"
+        f"2. If excerpts include a '[Committee Chair — BILL killed in COMMITTEE]' block, ALWAYS add a '## Committee Chair' section "
+        f"naming the chair, their total fundraising, and their top donor sectors. "
+        f"This is a core civic transparency signal — it shows who controls the bill's fate and who funds them. "
+        f"Do not omit this section. Add a no-inference disclaimer: 'VoteIQ does not infer motive or causation from donor patterns.'\n"
+        f"3. '[Follow-the-Money]' blocks are pre-computed sponsor/donor chains — always include them when present.\n"
+        f"4. '[Committee Testimony Proxy]' blocks are equivalent to '[Lobbying Activity]' — treat the same way.\n"
         f"\n\nEXCERPTS:\n{context}"
     )
 
