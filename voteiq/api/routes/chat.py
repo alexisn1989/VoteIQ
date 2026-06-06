@@ -4449,6 +4449,13 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
     use_haiku        = ctx_data["use_haiku"]
     chroma_error     = ctx_data["chroma_error"]
 
+    # ── pro: inject lobbying + committee chair context ────────────────────────
+    if _premium_analyst_enabled(req):
+        _db_ctx = build_database_context(user_query, pro=True)
+        if _db_ctx:
+            context = (context + "\n\n" + _db_ctx) if context else _db_ctx
+            ctx_data = {**ctx_data, "context": context}
+
     # ── fallback when context is fully empty ──────────────────────────────────
     if not context and chroma_error:
         local_fallback = _local_bills_fallback_context(_m, req, user_query)
@@ -4481,9 +4488,10 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
         if req.sd_district:  parts.append(f"Senate district: {req.sd_district}")
         district_note = f"\nUSER'S DISTRICT CONTEXT: {', '.join(parts)}\n"
 
-    _ck = _m._cache_key(user_query, district_note) if len(req.messages) == 1 else None
+    # Pro responses are never cached — they contain personalised lobbying/chair blocks
+    _ck = _m._cache_key(user_query, district_note) if len(req.messages) == 1 and not _premium_analyst_enabled(req) else None
     _ck_fb = None
-    if len(req.messages) == 1 and (req.hod_district or req.sd_district):
+    if len(req.messages) == 1 and not _premium_analyst_enabled(req) and (req.hod_district or req.sd_district):
         _sp: list[str] = []
         if req.hod_district: _sp.append(f"HOD district: {req.hod_district}")
         if req.sd_district:  _sp.append(f"Senate district: {req.sd_district}")
@@ -4524,7 +4532,8 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
 
     voice_prompt = get_system_prompt(req.voice, query_context)
     # Build base rules (no context — orchestration wraps it separately)
-    base_rules = _bills_system_prompt(district_note, chroma_note, model_note, exact_lookup_note, context="")
+    _is_pro = _premium_analyst_enabled(req)
+    base_rules = _bills_system_prompt(district_note, chroma_note, model_note, exact_lookup_note, context="", pro=_is_pro)
     # Strip the dangling "EXCERPTS:" label left by empty context
     if base_rules.rstrip().endswith("EXCERPTS:"):
         base_rules = base_rules.rstrip()[:-len("EXCERPTS:")].rstrip()
