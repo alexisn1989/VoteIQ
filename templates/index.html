@@ -89,6 +89,15 @@
   .viq-chat-avatar { width: 26px; height: 26px; border-radius: 50%; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: 'Barlow Condensed', sans-serif; }
   .viq-chat-msg.bot .viq-chat-avatar { background: #0d1b2a; color: #fff; }
   .viq-chat-msg.user .viq-chat-avatar { background: #c8102e; color: #fff; }
+  .viq-avatar-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; flex-shrink: 0; }
+  .viq-pro-badge { font-size: 8px; font-weight: 800; background: #1a52c8; color: #fff; padding: 1px 5px; border-radius: 3px; letter-spacing: 0.07em; line-height: 1.5; white-space: nowrap; }
+  .viq-newsroom-badge { font-size: 8px; font-weight: 800; background: #7b2d8b; color: #fff; padding: 1px 5px; border-radius: 3px; letter-spacing: 0.07em; line-height: 1.5; white-space: nowrap; }
+  .viq-welcome-tips { background: #f0f4ff; border: 1px dashed #b0c4f7; border-radius: 8px; padding: 10px 13px; font-size: 13px; color: #0d1b2a; margin-bottom: 4px; }
+  .viq-welcome-tips strong { display: block; margin-bottom: 6px; font-size: 12px; letter-spacing: 0.02em; }
+  .viq-welcome-tips ul { margin: 0 0 8px 16px; padding: 0; }
+  .viq-welcome-tips li { margin-bottom: 4px; cursor: pointer; color: #1a52c8; }
+  .viq-welcome-tips li:hover { color: #c8102e; text-decoration: underline; }
+  .viq-welcome-dismiss { font-size: 11px; color: #999; cursor: pointer; border: none; background: none; padding: 0; text-decoration: underline; float: right; }
   .viq-chat-bubble { max-width: 78%; padding: 9px 13px; border-radius: 12px; font-size: 14px; line-height: 1.55; }
   .viq-chat-msg.bot .viq-chat-bubble { background: #fff; border: 1px solid #e3e8f0; border-radius: 4px 12px 12px 12px; color: #0d1b2a; }
   .viq-chat-msg.user .viq-chat-bubble { background: #0d1b2a; color: #fff; border-radius: 12px 4px 12px 12px; }
@@ -766,6 +775,21 @@
         greeting = "Hi! I'm VoteIQ. Enter your address above to find your representatives, then ask me anything about them.";
       }
       viqAddMsg('assistant', greeting);
+      // First-visit onboarding tips — shown once, dismissed to localStorage
+      if (!localStorage.getItem('viqOnboarded')) {
+        const tips = document.createElement('div');
+        tips.className = 'viq-welcome-tips';
+        tips.innerHTML =
+          '<button class="viq-welcome-dismiss" onclick="this.parentElement.remove();localStorage.setItem(\'viqOnboarded\',\'1\')">✕ dismiss</button>' +
+          '<strong>💡 Try asking VoteIQ:</strong>' +
+          '<ul>' +
+          '<li onclick="viqSendMessage(\'What happened to HB1184?\')">What happened to HB1184?</li>' +
+          '<li onclick="viqSendMessage(\'How did my reps vote on gun bills?\')">How did my reps vote on gun bills?</li>' +
+          '<li onclick="viqSendMessage(\'Who funds Jennifer Kiggans?\')">Who funds Jennifer Kiggans?</li>' +
+          '</ul>' +
+          '<span style="font-size:11px;color:#666">Select <strong>Pro</strong> above for lobbying & donor data.</span>';
+        document.getElementById('viqMsgList').appendChild(tips);
+      }
     };
     document.addEventListener('DOMContentLoaded', () => {
       const saved = viqLoadDistrictContext();
@@ -1151,7 +1175,18 @@
           bubble.textContent = text;
         }
       }
-      wrap.appendChild(av);
+      if (role !== 'user' && (window.viqVoice === 'pro' || window.viqVoice === 'newsroom')) {
+        const avWrap = document.createElement('div');
+        avWrap.className = 'viq-avatar-wrap';
+        avWrap.appendChild(av);
+        const badge = document.createElement('span');
+        badge.className = window.viqVoice === 'newsroom' ? 'viq-newsroom-badge' : 'viq-pro-badge';
+        badge.textContent = window.viqVoice === 'newsroom' ? 'NR' : 'PRO';
+        avWrap.appendChild(badge);
+        wrap.appendChild(avWrap);
+      } else {
+        wrap.appendChild(av);
+      }
       wrap.appendChild(bubble);
       if (!isTyping && role === 'assistant') {
         viqAddCopyButton(wrap, function () { return text; });
@@ -1275,7 +1310,18 @@
                   av.textContent = 'IQ';
                   streamBubble = document.createElement('div');
                   streamBubble.className = 'viq-chat-bubble';
-                  wrap.appendChild(av);
+                  if (window.viqVoice === 'pro' || window.viqVoice === 'newsroom') {
+                    const avWrap = document.createElement('div');
+                    avWrap.className = 'viq-avatar-wrap';
+                    avWrap.appendChild(av);
+                    const badge = document.createElement('span');
+                    badge.className = window.viqVoice === 'newsroom' ? 'viq-newsroom-badge' : 'viq-pro-badge';
+                    badge.textContent = window.viqVoice === 'newsroom' ? 'NR' : 'PRO';
+                    avWrap.appendChild(badge);
+                    wrap.appendChild(avWrap);
+                  } else {
+                    wrap.appendChild(av);
+                  }
                   wrap.appendChild(streamBubble);
                   list.appendChild(wrap);
                 }

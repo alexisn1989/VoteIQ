@@ -184,13 +184,12 @@
           <th class="sortable" data-col="chamber">Chamber</th>
           <th class="sortable" data-col="party">Party</th>
           <th class="sortable" data-col="yes_rate" title="% of recorded votes cast as Yes">Yes Rate</th>
-          <th class="sortable" data-col="bills_introduced" title="Primary-sponsored bills in 2026 session">Bills Intro.</th>
-          <th class="sortable" data-col="bills_cosponsored" title="Co-sponsored bills in 2026 session">Co-Spons.</th>
-          <th class="sortable" data-col="total_votes" title="Total recorded votes in 2026 session">Votes Cast</th>
+          <th class="sortable" data-col="bills_introduced" title="Bills primary-sponsored in 2026 session">Bills Intro.</th>
+          <th class="sortable" data-col="bills_cosponsored" title="Bills co-sponsored in 2026 session">Co-Spons.</th>
         </tr>
       </thead>
       <tbody id="leg-tbody">
-        <tr><td colspan="8" style="text-align:center;padding:48px"><span class="spinner"></span></td></tr>
+        <tr><td colspan="7" style="text-align:center;padding:48px"><span class="spinner"></span></td></tr>
       </tbody>
     </table>
   </div>
@@ -301,7 +300,7 @@
 
     const tbody = document.getElementById('leg-tbody');
     if (!count) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="8">No legislators match your filters</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="7">No legislators match your filters</td></tr>';
       return;
     }
     tbody.innerHTML = rows.map(r => {
@@ -325,7 +324,6 @@
         </td>
         <td class="num-cell">${r.bills_introduced || 0}</td>
         <td class="num-cell muted">${r.bills_cosponsored || 0}</td>
-        <td class="num-cell muted">${fmt(r.total_votes)}</td>
       </tr>`;
     }).join('');
   }
