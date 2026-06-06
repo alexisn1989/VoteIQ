@@ -2021,6 +2021,225 @@ def _add_testimony_proxy_context(blocks: list[str], query: str) -> None:
         conn.close()
 
 
+_GATEKEEPER_TRIGGERS = re.compile(
+    r"\b(kills?\s+bills?|kill(?:ing|ed)\s+bills?|gatekeeper|"
+    r"who\s+(?:kill|block|stop|bury|buried|suppress)(?:s|ed|ing)?\b|"
+    r"blocked?\s+in\s+committee|died?\s+in\s+committee|left\s+in\s+committee|"
+    r"killed?\s+in\s+committee|tabled\s+in\s+committee|"
+    r"passed\s+by\s+indefinitely|stricken\s+from\s+docket|"
+    r"failed\s+to\s+report|committee\s+chair(?:man|woman|person)?s?|"
+    r"who\s+controls?\s+(?:the\s+)?committee|"
+    r"bills?\s+(?:buried|killed|blocked|died|tabled|stopped)\s+in\s+committee)\b",
+    re.I,
+)
+
+_GK_DEATH_RE = re.compile(
+    r"(?:"
+    r"Left in Committee\s+"
+    r"|Left in\s+"
+    r"|Continued to next session in\s+"
+    r"|Tabled in\s+"
+    r"|Passed by indefinitely in\s+"
+    r"|Stricken from docket by\s+"
+    r"|Stricken at request of Patron in\s+"
+    r"|Failed to report \(defeated\) in\s+"
+    r")",
+    re.IGNORECASE,
+)
+_GK_VOTE_SUFFIX = re.compile(r"\s*\(\d+[-–].*$")
+
+
+def _gk_parse_committee(status: str) -> str | None:
+    """Extract committee name from a 'died in committee' status string."""
+    m = _GK_DEATH_RE.search(status or "")
+    if not m:
+        return None
+    remainder = status[m.end():].strip()
+    remainder = _GK_VOTE_SUFFIX.sub("", remainder).strip()
+    return remainder if remainder else None
+
+
+def _add_gatekeeper_context(blocks: list[str], query: str) -> None:
+    """
+    When query asks about committee gatekeepers / who kills bills,
+    inject a leaderboard of committee chairs by kill count (2024-2026)
+    with their top donor sectors — highlighting jurisdiction conflicts.
+
+    Designed for pro/journalist use: surfaces the gatekeeper pattern
+    (chair funded by industry whose bills they kill or protect).
+    """
+    if not _GATEKEEPER_TRIGGERS.search(query or ""):
+        return
+
+    conn = _connect("polls")
+    if not conn:
+        return
+
+    try:
+        # ── 1. Load committee chairs ──────────────────────────────────────────
+        chair_rows = conn.execute(
+            "SELECT DISTINCT committee, chamber, member_name "
+            "FROM va_committee_assignments WHERE role = 'chair' "
+            "ORDER BY chamber DESC, committee"
+        ).fetchall()
+        if not chair_rows:
+            return
+
+        # ── 2. Load killed bills 2024-2026 ───────────────────────────────────
+        bill_rows = conn.execute(
+            """
+            SELECT bill_number, title, status, session
+            FROM va_bills
+            WHERE session IN ('2026', '2025', '2024')
+              AND (
+                   status LIKE 'Left in%'
+                OR status LIKE 'Continued to next session in%'
+                OR status LIKE 'Tabled in%'
+                OR status LIKE 'Passed by indefinitely in%'
+                OR status LIKE 'Stricken from docket by%'
+                OR status LIKE 'Stricken at request of Patron in%'
+                OR status LIKE 'Failed to report%in%'
+              )
+            """
+        ).fetchall()
+
+        # ── 3. Aggregate kill counts per (chamber_prefix, norm_committee) ────
+        from collections import defaultdict
+        kills_by_yr: dict = defaultdict(lambda: {"2024": 0, "2025": 0, "2026": 0})
+        for br in bill_rows:
+            cmt = _gk_parse_committee(br["status"] if hasattr(br, "__getitem__") else br[2])
+            if not cmt:
+                continue
+            status_val = br["status"] if hasattr(br, "__getitem__") else br[2]
+            bill_num = br["bill_number"] if hasattr(br, "__getitem__") else br[0]
+            session_val = br["session"] if hasattr(br, "__getitem__") else br[3]
+            prefix = "House" if str(bill_num).upper().startswith("H") else "Senate"
+            norm = re.sub(r"\s+", " ", cmt.lower().strip())
+            key = (prefix, norm)
+            kills_by_yr[key][session_val] = kills_by_yr[key].get(session_val, 0) + 1
+
+        # ── 4. Load campaign finance for donor sector lookup ──────────────────
+        cfs_rows = conn.execute(
+            "SELECT name, party, total_raised, top_sector, by_sector_json "
+            "FROM campaign_finance_summary WHERE source = 'va_sbe'"
+        ).fetchall()
+
+        suffixes = {"jr", "sr", "ii", "iii", "iv", "v"}
+
+        def _norm(s: str):
+            parts = re.sub(r"[^a-z ]", "", s.lower()).split()
+            while parts and parts[-1] in suffixes:
+                parts.pop()
+            return (parts[0], parts[-1]) if parts else ("", "")
+
+        cfs_lookup = {}
+        for row in cfs_rows:
+            name_val = row["name"] if hasattr(row, "__getitem__") else row[0]
+            cfs_lookup[_norm(name_val)] = row
+
+        def _find_cfs(chair_name):
+            f, l = _norm(chair_name)
+            hit = cfs_lookup.get((f, l))
+            if hit:
+                return hit
+            cands = [v for (ff, ll), v in cfs_lookup.items() if ll == l and ff.startswith(f[:4])]
+            if len(cands) == 1:
+                return cands[0]
+            cands = [v for (ff, ll), v in cfs_lookup.items() if ll == l]
+            return cands[0] if len(cands) == 1 else None
+
+        # ── 5. Build leaderboard cards ────────────────────────────────────────
+        cards = []
+        for row in chair_rows:
+            committee = row["committee"] if hasattr(row, "__getitem__") else row[0]
+            chamber = row["chamber"] if hasattr(row, "__getitem__") else row[1]
+            chair_name = row["member_name"] if hasattr(row, "__getitem__") else row[2]
+
+            norm_cmt = re.sub(r"\s+", " ", committee.lower().strip())
+            key = (chamber, norm_cmt)
+            alt_key = (chamber, re.sub(r"\s+", " ", committee.replace(",", "").lower().strip()))
+            yr_counts = kills_by_yr.get(key) or kills_by_yr.get(alt_key) or {"2024": 0, "2025": 0, "2026": 0}
+            total_kills = sum(yr_counts.values())
+
+            cfs = _find_cfs(chair_name)
+            top_sectors_str = ""
+            total_raised = 0
+            party = "?"
+            if cfs:
+                party = ((cfs["party"] if hasattr(cfs, "__getitem__") else cfs[1]) or "?")[0].upper()
+                total_raised = (cfs["total_raised"] if hasattr(cfs, "__getitem__") else cfs[2]) or 0
+                raw = (cfs["by_sector_json"] if hasattr(cfs, "__getitem__") else cfs[4]) or "[]"
+                try:
+                    import json as _json
+                    slist = _json.loads(raw)
+                    if isinstance(slist, list):
+                        top = sorted(slist, key=lambda x: -(x.get("total") or 0))[:3]
+                        top_sectors_str = ", ".join(s.get("sector", "") for s in top if s.get("sector"))
+                except Exception:
+                    pass
+
+            cards.append({
+                "committee": committee,
+                "chamber": chamber,
+                "chair": chair_name,
+                "party": party,
+                "total_raised": total_raised,
+                "top_sectors": top_sectors_str,
+                "kills_2024": yr_counts.get("2024", 0),
+                "kills_2025": yr_counts.get("2025", 0),
+                "kills_2026": yr_counts.get("2026", 0),
+                "total_kills": total_kills,
+            })
+
+        # Sort by total kills desc, then by total_raised
+        cards.sort(key=lambda c: (-c["total_kills"], -(c["total_raised"] or 0)))
+
+        # Filter to chairs with at least 1 kill (or keep top 12 if all are 0)
+        active = [c for c in cards if c["total_kills"] > 0]
+        if not active:
+            active = cards[:12]
+        else:
+            active = active[:15]
+
+        if not active:
+            return
+
+        total_dead = sum(c["total_kills"] for c in active)
+        lines = [
+            "[Committee Gatekeeper Analysis — Virginia General Assembly 2024–2026]",
+            f"Bills killed in committee across all tracked sessions: {total_dead:,}",
+            f"Chairs shown: {len(active)} (ranked by bills killed)",
+            "",
+            f"{'Chair':<26} {'(P)'} {'Committee':<38} {'Chamber':<7} "
+            f"{'2024':>5} {'2025':>5} {'2026':>5} {'Total':>6}  Top Donor Sectors",
+        ]
+        lines.append("-" * 140)
+
+        for c in active:
+            raised_str = f"${c['total_raised']/1000:.0f}k" if c["total_raised"] else "no data"
+            lines.append(
+                f"{c['chair']:<26} ({c['party']}) "
+                f"{c['committee'][:38]:<38} {c['chamber']:<7} "
+                f"{c['kills_2024']:>5} {c['kills_2025']:>5} {c['kills_2026']:>5} "
+                f"{c['total_kills']:>6}  {c['top_sectors'] or '—'} [{raised_str}]"
+            )
+
+        lines += [
+            "",
+            "NOTE: 'Killed' = bill received status: Left in Committee, Tabled, Passed by Indefinitely, "
+            "Stricken from Docket, or Failed to Report. Top Donor Sectors = industries that gave most "
+            "to this chair's campaign fund. Cross-reference sector vs. committee jurisdiction to identify "
+            "potential gatekeeper conflicts of interest.",
+        ]
+
+        blocks.append("\n".join(lines))
+
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
 def _add_legislator_narrative_context(blocks: list[str], query: str) -> None:
     """
     When a specific legislator name appears in the query, inject their
@@ -2095,6 +2314,8 @@ def build_database_context(query: str, max_chars: int = 22000) -> str:
     _add_follow_the_money_context(blocks, q)
     # Testimony proxy — fires when a bill number + lobbying/testimony terms appear
     _add_testimony_proxy_context(blocks, q)
+    # Gatekeeper — fires when query asks who kills/blocks bills in committee
+    _add_gatekeeper_context(blocks, q)
     _add_bill_context(blocks, bills, session)
     _add_pac_context(blocks, q, terms)
     _add_federal_vote_context(blocks, q, terms)
