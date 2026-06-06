@@ -70,10 +70,23 @@ BILL_SECTOR_KWS: dict[str, list[str]] = {
         "autonomous vehicle", "electric vehicle", "rideshare", "uber",
         "lyft", "aviation", "airport", "rail", "amtrak",
     ],
-    "Education": [
-        "education", "school", "student", "teacher", "college", "university",
-        "curriculum", "charter school", "voucher", "tuition", "literacy",
-        "higher education", "community college",
+    "Education/K-12": [
+        "elementary school", "secondary school", "public school", "school board",
+        "school division", "school district", "k-12", "kindergarten",
+        "preschool", "early childhood", "early care",
+        "standards of learning", "sol framework", "sol test",
+        "school bus", "school security", "school crossing", "school nutrition",
+        "school employee", "school funding", "school construction",
+        "division superintendent", "charter school", "voucher", "homeschool",
+        "teacher", "teacher licensure", "teacher certification", "educator",
+        "curriculum", "literacy", "career and technical", "vocational education",
+    ],
+    "Education/Higher-Ed": [
+        "college", "university", "higher education", "community college",
+        "higher educational institution", "postsecondary", "tuition",
+        "financial aid", "board of visitors", "scholarship fund",
+        "dual enrollment", "concurrent enrollment", "student loan",
+        "four-year institution", "graduate program", "academic program",
     ],
     "Criminal Justice": [
         "criminal", "crime", "police", "law enforcement", "prison",
@@ -127,9 +140,19 @@ PRINCIPAL_SECTOR_KWS: dict[str, list[str]] = {
         "transport", "transit", "highway", "trucking", "aviation",
         "airline", "railroad", "automobile", "motor vehicle", "auto",
     ],
-    "Education": [
-        "education", "school", "university", "college", "teacher",
-        "student", "learning",
+    "Education/K-12": [
+        "school board", "school district", "school division", "public school",
+        "high school league", "vhsl", "preschool", "early care", "early childhood",
+        "pta ", "ptsa", "school librarian", "school counselor", "school nutrition",
+        "communities in schools", "teachers association", "teachers union",
+        "education association",
+        "career and technical", "special education", "school",
+    ],
+    "Education/Higher-Ed": [
+        "university", "college", "higher education", "community college",
+        "postsecondary", "foundation for community college",
+        "council of independent colleges", "strada", "board of visitors",
+        "roanoke higher education",
     ],
     "Alcohol/Gambling": [
         "beer", "wine", "spirit", "brewery", "winery", "distillery",
@@ -215,6 +238,13 @@ def build_proxy(
 ) -> int:
     now = datetime.now(timezone.utc).isoformat()
     year_range = SESSION_YEAR_MAP.get(session, f"{session}-{int(session)+1}")
+
+    # Clear stale records before rebuild so removed/reclassified rows don't persist
+    deleted = conn.execute(
+        "DELETE FROM committee_testimony_proxy WHERE session=?", (session,)
+    ).rowcount
+    if deleted:
+        print(f"  Cleared {deleted:,} old records for session {session}")
 
     # 1. Load all bills for this session
     # bill_id format: 'HB1000_2026' — extract bill_number from it
