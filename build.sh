@@ -179,6 +179,48 @@ PYEOF
     fi
 fi
 
+# ── STEP 5: Build committee_testimony_proxy (derived from polls.db) ───────────
+echo ""
+echo "[STEP 5] Building committee testimony proxy (all sessions)..."
+
+PROXY_COUNT=$(python3 -c "
+import sqlite3, os
+db = os.path.join(os.environ.get('DATA_DIR', os.getcwd()), 'polls.db')
+try:
+    n = sqlite3.connect(db).execute('SELECT COUNT(*) FROM committee_testimony_proxy').fetchone()[0]
+    print(n)
+except Exception:
+    print(0)
+" 2>/dev/null || echo "0")
+
+echo "  Existing committee_testimony_proxy rows: ${PROXY_COUNT:-0}"
+
+if [ "${PROXY_COUNT:-0}" -ge 100000 ] 2>/dev/null; then
+    echo "  ✓ Already populated — skipping rebuild"
+else
+    echo "  Building testimony proxy for sessions 2021-2026..."
+    # Point build script at the Render persistent DB
+    export POLLS_DB="$DISK_PATH/polls.db"
+    for SESSION in 2021 2022 2023 2024 2025 2026; do
+        echo "  → Session $SESSION..."
+        python3 build_testimony_proxy.py --session "$SESSION" 2>&1 | grep -E "(Total proxy|WARNING|ERROR|✗)" || true
+    done
+    TOTAL=$(python3 -c "
+import sqlite3, os
+db = os.path.join(os.environ.get('DATA_DIR', os.getcwd()), 'polls.db')
+try:
+    print(sqlite3.connect(db).execute('SELECT COUNT(*) FROM committee_testimony_proxy').fetchone()[0])
+except Exception:
+    print(0)
+" 2>/dev/null || echo "0")
+    echo "  Total committee_testimony_proxy rows: ${TOTAL:-0}"
+    if [ "${TOTAL:-0}" -gt 0 ] 2>/dev/null; then
+        echo "✓ Testimony proxy build complete"
+    else
+        echo "⚠ Testimony proxy build produced 0 rows — chat lobbying context will be unavailable"
+    fi
+fi
+
 echo ""
 echo "=========================================="
 echo "Build Complete - Ready for Render Deployment"

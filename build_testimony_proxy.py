@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sqlite3
 from collections import defaultdict
@@ -32,7 +33,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
-POLLS_DB  = BASE_DIR / "polls.db"
+POLLS_DB  = Path(os.environ.get("POLLS_DB", BASE_DIR / "polls.db"))
 
 # ── Sector classifier (bill title/subject → sector) ──────────────────────────
 
