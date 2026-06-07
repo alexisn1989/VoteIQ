@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Data Sources — VoteIQ</title>
+<meta name="description" content="VoteIQ data sources: provenance, freshness, and row counts for every dataset powering Virginia civic intelligence."/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root { --navy:#0d1b2a; --red:#c8102e; --light:#f4f1eb; --mid:#ddd8cc; --muted:#7a7468; --green:#1a7a3c; --amber:#9a6c00; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--light); color: var(--navy); font-family: 'Barlow', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f4f1eb'/%3E%3Crect width='1' height='1' fill='%23e8e4dc' opacity='0.4'/%3E%3C/svg%3E"); pointer-events: none; z-index: 0; }
+
+  /* ── Topbar ── */
+  .topbar { background: var(--navy); color: var(--mid); font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; text-align: center; padding: 7px 16px; position: relative; z-index: 10; }
+  .topbar span { color: var(--red); margin: 0 6px; }
+
+  /* ── Header ── */
+  header { position: relative; z-index: 10; border-bottom: 3px double var(--navy); padding: 28px 48px 22px; display: flex; align-items: center; justify-content: space-between; background: var(--light); }
+  .logo-wrap { display: flex; align-items: center; gap: 16px; text-decoration: none; }
+  .logo-text { font-family: 'Playfair Display', serif; font-size: 1.9rem; font-weight: 900; color: var(--navy); letter-spacing: -0.03em; }
+  .logo-text em { color: var(--red); font-style: normal; }
+  .logo-sub { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+  .header-nav { display: flex; gap: 24px; align-items: center; }
+  .header-nav a { font-family: 'Barlow Condensed', sans-serif; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--navy); text-decoration: none; border-bottom: 2px solid transparent; padding-bottom: 2px; transition: border-color 0.2s, color 0.2s; }
+  .header-nav a:hover, .header-nav a.active { color: var(--red); border-bottom-color: var(--red); }
+
+  /* ── Hero ── */
+  .page-hero { position: relative; z-index: 10; max-width: 1100px; margin: 0 auto; padding: 48px 32px 32px; text-align: center; }
+  .page-hero-eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--red); margin-bottom: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .page-hero-eyebrow::before, .page-hero-eyebrow::after { content: ''; flex: 1; max-width: 60px; height: 1px; background: var(--red); }
+  .page-hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 900; line-height: 1.1; color: var(--navy); margin-bottom: 14px; letter-spacing: -0.02em; }
+  .page-hero h1 em { font-style: italic; color: var(--red); }
+  .page-hero p { font-size: 1rem; color: var(--muted); max-width: 600px; margin: 0 auto; line-height: 1.6; }
+
+  /* ── Section ── */
+  .section-wrap { position: relative; z-index: 10; max-width: 1100px; margin: 0 auto; padding: 0 32px 80px; }
+  .section-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--mid); }
+
+  /* ── Stats bar ── */
+  .stats-bar { display: flex; gap: 0; border: 1px solid var(--mid); background: white; margin-bottom: 40px; overflow: hidden; }
+  .stats-bar-item { flex: 1; padding: 18px 20px; border-right: 1px solid var(--mid); text-align: center; }
+  .stats-bar-item:last-child { border-right: none; }
+  .stats-bar-num { font-family: 'Barlow Condensed', sans-serif; font-size: 1.8rem; font-weight: 700; color: var(--navy); display: block; line-height: 1; }
+  .stats-bar-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); display: block; margin-top: 6px; }
+
+  /* ── Category group ── */
+  .cat-group { margin-bottom: 36px; }
+  .cat-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .cat-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .cat-dot.va-leg   { background: #1a52c8; }
+  .cat-dot.va-fin   { background: #c8102e; }
+  .cat-dot.fed      { background: #0d1b2a; }
+  .cat-dot.analysis { background: #9a6c00; }
+  .cat-title { font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--navy); }
+  .cat-line { flex: 1; height: 1px; background: var(--mid); }
+
+  /* ── Data table ── */
+  .data-table-wrap { border: 1px solid var(--mid); background: white; overflow-x: auto; margin-bottom: 4px; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+  .data-table thead { background: var(--navy); color: white; }
+  .data-table thead th { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; padding: 11px 14px; text-align: left; white-space: nowrap; }
+  .data-table tbody tr { border-bottom: 1px solid var(--mid); transition: background 0.12s; }
+  .data-table tbody tr:last-child { border-bottom: none; }
+  .data-table tbody tr:hover { background: #ede9e0; }
+  .data-table td { padding: 10px 14px; vertical-align: middle; }
+  .dataset-label { font-weight: 600; color: var(--navy); font-size: 0.88rem; }
+  .dataset-source { font-size: 0.77rem; color: var(--muted); margin-top: 2px; }
+  .row-count { font-family: 'Barlow Condensed', sans-serif; font-size: 0.95rem; font-weight: 700; color: var(--navy); white-space: nowrap; }
+  .row-count.large { color: #1a52c8; }
+  .row-count.unavail { color: var(--muted); }
+  .freshness-chip { display: inline-block; font-family: 'Barlow Condensed', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 9px; border: 1.5px solid; white-space: nowrap; }
+  .freshness-chip.fresh  { color: var(--green); border-color: var(--green); background: #edf8f1; }
+  .freshness-chip.recent { color: var(--amber); border-color: #c8a000; background: #fdf8e8; }
+  .freshness-chip.stale  { color: var(--red);   border-color: var(--red);   background: #fbeef0; }
+  .freshness-chip.na     { color: var(--muted);  border-color: var(--mid);   background: white; }
+  .source-link { font-family: 'Barlow Condensed', sans-serif; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--red); text-decoration: none; border-bottom: 1px solid transparent; transition: border-color 0.15s; white-space: nowrap; }
+  .source-link:hover { border-bottom-color: var(--red); }
+
+  /* ── Press blurb ── */
+  .press-blurb { background: white; border: 1px solid var(--mid); border-left: 4px solid var(--navy); padding: 24px 28px; margin-bottom: 40px; }
+  .press-blurb h3 { font-family: 'Playfair Display', serif; font-size: 1.05rem; font-weight: 700; margin-bottom: 10px; color: var(--navy); }
+  .press-blurb p { font-size: 0.88rem; color: var(--muted); line-height: 1.65; }
+  .press-blurb a { color: var(--red); text-decoration: none; border-bottom: 1px solid transparent; transition: border-color 0.15s; }
+  .press-blurb a:hover { border-bottom-color: var(--red); }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    header { padding: 18px 20px; flex-direction: column; gap: 14px; }
+    .header-nav { gap: 14px; flex-wrap: wrap; justify-content: center; }
+    .section-wrap { padding: 0 16px 60px; }
+    .page-hero { padding: 32px 16px 20px; }
+    .stats-bar { flex-wrap: wrap; }
+    .stats-bar-item { flex: 1 0 33%; border-bottom: 1px solid var(--mid); }
+    .data-table thead th:nth-child(4),
+    .data-table td:nth-child(4) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">Data Sources <span>|</span> VoteIQ Civic Intelligence Platform</div>
+
+<header>
+  <a href="/" class="logo-wrap">
+    <img src="/static/logo.png" alt="VoteIQ" style="height:72px;object-fit:contain;" />
+  </a>
+  <nav class="header-nav">
+    <a href="/">Chat</a>
+    <a href="/representatives">Representatives</a>
+    <a href="/legislators">Legislators</a>
+    <a href="/governor">Governor</a>
+    <a href="/pac-spending">PACs</a>
+    <a href="/donor-map-state">Donors</a>
+    <a href="/data" class="active">Data</a>
+  </nav>
+</header>
+
+<div class="page-hero">
+  <div class="page-hero-eyebrow">Transparency</div>
+  <h1>Our <em>Data Sources</em></h1>
+  <p>Every dataset powering VoteIQ — sources, freshness, and record counts. Built for journalists, researchers, and civic technologists.</p>
+</div>
+
+<div class="section-wrap">
+
+  <!-- Stats bar -->
+  <div class="stats-bar" id="stats-bar">
+    <div class="stats-bar-item" style="flex:3;display:flex;align-items:center;justify-content:center">
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted)">Loading&hellip;</span>
+    </div>
+  </div>
+
+  <!-- Press / partnership blurb -->
+  <div class="press-blurb">
+    <h3>For Journalists &amp; Researchers</h3>
+    <p>
+      VoteIQ aggregates public-record data from the Virginia Division of Legislative Services,
+      Virginia Department of Elections, LegiScan, VPAP, GovInfo, and the FEC into a single
+      queryable platform. Every dataset listed below is sourced from official government records
+      or established civic-data providers. For partnership inquiries or data access, contact
+      <a href="mailto:alexisnieuwenhuys89@gmail.com">alexisnieuwenhuys89@gmail.com</a>.
+    </p>
+  </div>
+
+  <!-- Category tables populated by JS -->
+  <div id="catalog-root"></div>
+
+</div><!-- /section-wrap -->
+
+<script>
+(function () {
+  'use strict';
+
+  const D    = window._DATA_PAGE || { rows: [], as_of: '', total_rows: 0 };
+  const ROWS = D.rows || [];
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function fmtCount(n) {
+    if (n == null || n < 0) return '<span class="row-count unavail">—</span>';
+    const cls = n >= 1000000 ? ' large' : (n >= 100000 ? ' large' : '');
+    return `<span class="row-count${cls}">${Number(n).toLocaleString()}</span>`;
+  }
+
+  // Freshness: compare last_updated date to today
+  function freshnessChip(dateStr) {
+    if (!dateStr) return '<span class="freshness-chip na">Not tracked</span>';
+    const then = new Date(dateStr);
+    const now  = new Date(D.as_of || new Date().toISOString().slice(0,10));
+    const days = Math.round((now - then) / 86400000);
+    if (days <= 7)  return `<span class="freshness-chip fresh">${dateStr}</span>`;
+    if (days <= 30) return `<span class="freshness-chip recent">${dateStr}</span>`;
+    return `<span class="freshness-chip stale">${dateStr}</span>`;
+  }
+
+  // ── Stats bar ──────────────────────────────────────────────────────────────
+  function buildStats() {
+    const cats = [...new Set(ROWS.map(r => r.category))];
+    const tracked = ROWS.filter(r => r.last_updated).length;
+    const totalRecs = ROWS.reduce((s, r) => s + (r.row_count > 0 ? r.row_count : 0), 0);
+
+    document.getElementById('stats-bar').innerHTML =
+      stat(ROWS.length,               'Data Sets',       '') +
+      stat(cats.length,               'Categories',      '') +
+      stat(totalRecs.toLocaleString(),'Records Indexed', '') +
+      stat(tracked,                   'Auto-Tracked',    '');
+  }
+
+  function stat(n, label, cls) {
+    return `<div class="stats-bar-item">
+      <span class="stats-bar-num${cls?' '+cls:''}">${n}</span>
+      <span class="stats-bar-label">${label}</span>
+    </div>`;
+  }
+
+  // ── Category dot class ─────────────────────────────────────────────────────
+  const CAT_DOT = {
+    'Virginia Legislative':      'va-leg',
+    'Virginia Campaign Finance': 'va-fin',
+    'Federal Congressional':     'fed',
+    'Analysis Layers':           'analysis',
+  };
+
+  // ── Build catalog ──────────────────────────────────────────────────────────
+  function buildCatalog() {
+    const cats = [...new Set(ROWS.map(r => r.category))];
+    const root = document.getElementById('catalog-root');
+
+    root.innerHTML = cats.map(cat => {
+      const catRows = ROWS.filter(r => r.category === cat);
+      const dotCls  = CAT_DOT[cat] || 'analysis';
+
+      const tableRows = catRows.map(r => {
+        const srcLink = r.source_url
+          ? `<a class="source-link" href="${esc(r.source_url)}" target="_blank" rel="noopener">View source ↗</a>`
+          : `<span style="color:var(--muted);font-size:0.72rem;font-family:'Barlow Condensed',sans-serif;letter-spacing:.1em;text-transform:uppercase">Derived</span>`;
+
+        return `<tr>
+          <td>
+            <div class="dataset-label">${esc(r.label)}</div>
+            <div class="dataset-source">${esc(r.source)}</div>
+          </td>
+          <td style="text-align:right">${fmtCount(r.row_count)}</td>
+          <td>${freshnessChip(r.last_updated)}</td>
+          <td>${srcLink}</td>
+        </tr>`;
+      }).join('');
+
+      return `<div class="cat-group">
+        <div class="cat-header">
+          <span class="cat-dot ${dotCls}"></span>
+          <span class="cat-title">${esc(cat)}</span>
+          <span class="cat-line"></span>
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);white-space:nowrap">${catRows.length} dataset${catRows.length!==1?'s':''}</span>
+        </div>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Dataset</th>
+                <th style="text-align:right">Records</th>
+                <th>Last Updated</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  buildStats();
+  buildCatalog();
+})();
+</script>
+
+</body>
+</html>

@@ -90,6 +90,96 @@ def data_freshness():
     return _get_data_meta()
 
 
+# Curated catalog of meaningful tables for the /data provenance page.
+# order_key controls display sort within each category.
+_DATA_CATALOG: list[dict] = [
+    # ── Virginia Legislative ───────────────────────────────────────────────────
+    {"table": "governor_actions",             "label": "Governor Bill Actions",         "category": "Virginia Legislative",  "source": "OpenStates / Virginia Division of Legislative Services", "source_url": "https://openstates.org/va/"},
+    {"table": "governor_executive_orders",    "label": "Executive Orders",               "category": "Virginia Legislative",  "source": "Virginia Governor's Office",     "source_url": "https://www.governor.virginia.gov/executive-actions/"},
+    {"table": "legislators",                   "label": "GA Members (2026)",              "category": "Virginia Legislative",  "source": "LegiScan / OpenStates",           "source_url": "https://legiscan.com/VA"},
+    {"table": "va_bills",                      "label": "VA Bills",                       "category": "Virginia Legislative",  "source": "LegiScan",                        "source_url": "https://legiscan.com/VA"},
+    {"table": "legiscan_va_bills",             "label": "VA Bills (detail)",              "category": "Virginia Legislative",  "source": "LegiScan",                        "source_url": "https://legiscan.com/VA"},
+    {"table": "legiscan_va_votes",             "label": "VA Roll-call Votes",             "category": "Virginia Legislative",  "source": "LegiScan",                        "source_url": "https://legiscan.com/VA"},
+    {"table": "va_legislator_vote_summary",   "label": "Legislator Vote Totals",         "category": "Virginia Legislative",  "source": "VoteIQ (derived)",               "source_url": None},
+    {"table": "va_legislator_sponsored_bills","label": "Sponsored Bills",                "category": "Virginia Legislative",  "source": "LegiScan",                        "source_url": "https://legiscan.com/VA"},
+    {"table": "va_committee_assignments",     "label": "Committee Assignments",          "category": "Virginia Legislative",  "source": "LegiScan",                        "source_url": "https://legiscan.com/VA"},
+    {"table": "lobbyist_registrations",       "label": "Lobbyist Registrations",         "category": "Virginia Legislative",  "source": "Virginia Conflict of Interest & Ethics Advisory Council", "source_url": "https://www.ethics.dls.virginia.gov/"},
+    {"table": "committee_testimony_proxy",    "label": "Committee Testimony (proxy)",    "category": "Virginia Legislative",  "source": "VPAP testimony tracker",          "source_url": "https://www.vpap.org/"},
+    # ── Virginia Campaign Finance ──────────────────────────────────────────────
+    {"table": "va_cf_schedule_a",             "label": "Individual Contributions (VA)",  "category": "Virginia Campaign Finance", "source": "Virginia Department of Elections / VPAP", "source_url": "https://www.elections.virginia.gov/"},
+    {"table": "va_cf_reports",                "label": "Campaign Finance Reports (VA)",  "category": "Virginia Campaign Finance", "source": "Virginia Department of Elections", "source_url": "https://www.elections.virginia.gov/"},
+    {"table": "va_campaign_contributions",    "label": "Contributions (VPAP)",           "category": "Virginia Campaign Finance", "source": "VPAP",                            "source_url": "https://vpap.org/finances/"},
+    {"table": "campaign_finance_summary",     "label": "Finance Summary by Candidate",   "category": "Virginia Campaign Finance", "source": "VoteIQ (derived)",               "source_url": None},
+    {"table": "va_finance_sector_totals",     "label": "Sector Totals (VA)",             "category": "Virginia Campaign Finance", "source": "VoteIQ (derived)",               "source_url": None},
+    # ── Federal Congressional ──────────────────────────────────────────────────
+    {"table": "congress_members",             "label": "VA Federal Delegation",          "category": "Federal Congressional", "source": "Congress.gov / ProPublica",       "source_url": "https://www.congress.gov/"},
+    {"table": "congress_bills",               "label": "Federal Bills (tracked)",        "category": "Federal Congressional", "source": "Congress.gov",                    "source_url": "https://www.congress.gov/"},
+    {"table": "congress_votes",               "label": "Federal Roll-call Votes",        "category": "Federal Congressional", "source": "ProPublica Congress API",         "source_url": "https://projects.propublica.org/api-docs/congress-api/"},
+    {"table": "congress_hearings",            "label": "Committee Hearings",             "category": "Federal Congressional", "source": "GovInfo.gov",                     "source_url": "https://www.govinfo.gov/"},
+    {"table": "congress_floor_statements",    "label": "Floor Statements",               "category": "Federal Congressional", "source": "GovInfo.gov",                     "source_url": "https://www.govinfo.gov/"},
+    {"table": "fec_independent_expenditures","label": "Outside Spending (Super PACs)",  "category": "Federal Congressional", "source": "FEC OpenFEC API",                  "source_url": "https://api.open.fec.gov/"},
+    {"table": "fec_individual_contributions","label": "Individual Contributions (FEC)",  "category": "Federal Congressional", "source": "FEC OpenFEC API",                  "source_url": "https://api.open.fec.gov/"},
+    # ── Analysis Layers ────────────────────────────────────────────────────────
+    {"table": "donor_vote_alignment",         "label": "Donor–Vote Alignment",           "category": "Analysis Layers",       "source": "VoteIQ (derived)",               "source_url": None},
+    {"table": "sponsor_donor_correlation",    "label": "Sponsor–Donor Correlation",      "category": "Analysis Layers",       "source": "VoteIQ (derived)",               "source_url": None},
+    {"table": "spike_alerts",                 "label": "Donation Spike Alerts",          "category": "Analysis Layers",       "source": "VoteIQ (derived)",               "source_url": None},
+    {"table": "legiscan_va_bill_sponsors",    "label": "Bill Sponsors Index",            "category": "Analysis Layers",       "source": "LegiScan",                        "source_url": "https://legiscan.com/VA"},
+]
+
+
+@app.get("/data", response_class=HTMLResponse)
+def data_page():
+    """Public data provenance page — all sources, row counts, and freshness dates."""
+    # Build freshness lookup from __data_meta
+    meta_by_table: dict[str, dict] = {}
+    try:
+        for row in _get_data_meta():
+            meta_by_table[row["table_name"]] = row
+    except Exception:
+        pass
+
+    # Live row counts from polls.db
+    counts: dict[str, int] = {}
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        for entry in _DATA_CATALOG:
+            t = entry["table"]
+            try:
+                counts[t] = conn.execute(f'SELECT COUNT(*) FROM "{t}"').fetchone()[0]
+            except Exception:
+                counts[t] = -1
+        conn.close()
+    except Exception:
+        pass
+
+    # Merge into page payload
+    rows = []
+    for entry in _DATA_CATALOG:
+        t = entry["table"]
+        meta = meta_by_table.get(t, {})
+        rows.append({
+            "table":       t,
+            "label":       entry["label"],
+            "category":    entry["category"],
+            "source":      entry["source"],
+            "source_url":  entry.get("source_url"),
+            "row_count":   counts.get(t, -1),
+            "last_updated": (meta.get("last_ingested") or "")[:10] or None,
+        })
+
+    payload = {
+        "rows": rows,
+        "as_of": __import__("datetime").datetime.utcnow().strftime("%Y-%m-%d"),
+        "total_rows": sum(r["row_count"] for r in rows if r["row_count"] > 0),
+    }
+
+    # Inject into template
+    safe = json.dumps(payload, default=str).replace("</script>", "<\\/script>")
+    with open(os.path.join(BASE_DIR, "templates", "data.html"), encoding="utf-8") as f:
+        html = f.read()
+    return html.replace("</head>", f"<script>window._DATA_PAGE={safe};</script></head>", 1)
+
+
 @app.get("/api/health")
 def feature_health():
     """
