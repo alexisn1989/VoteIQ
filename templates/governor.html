@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Governor Spanberger 2026 — VoteIQ</title>
+<meta name="description" content="Governor Abigail Spanberger's 2026 bill actions — signed, vetoed, and amended legislation plus executive orders for Virginia."/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root { --navy:#0d1b2a; --red:#c8102e; --light:#f4f1eb; --mid:#ddd8cc; --muted:#7a7468; --dem:#1a52c8; --rep:#c8102e; --green:#1a7a3c; --amber:#9a6c00; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--light); color: var(--navy); font-family: 'Barlow', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f4f1eb'/%3E%3Crect width='1' height='1' fill='%23e8e4dc' opacity='0.4'/%3E%3C/svg%3E"); pointer-events: none; z-index: 0; }
+
+  /* ── Topbar ── */
+  .topbar { background: var(--navy); color: var(--mid); font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; text-align: center; padding: 7px 16px; position: relative; z-index: 10; }
+  .topbar span { color: var(--red); margin: 0 6px; }
+
+  /* ── Header ── */
+  header { position: relative; z-index: 10; border-bottom: 3px double var(--navy); padding: 28px 48px 22px; display: flex; align-items: center; justify-content: space-between; background: var(--light); }
+  .logo-wrap { display: flex; align-items: center; gap: 16px; text-decoration: none; }
+  .logo-text { font-family: 'Playfair Display', serif; font-size: 1.9rem; font-weight: 900; color: var(--navy); letter-spacing: -0.03em; }
+  .logo-text em { color: var(--red); font-style: normal; }
+  .logo-sub { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+  .header-nav { display: flex; gap: 24px; align-items: center; }
+  .header-nav a { font-family: 'Barlow Condensed', sans-serif; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--navy); text-decoration: none; border-bottom: 2px solid transparent; padding-bottom: 2px; transition: border-color 0.2s, color 0.2s; }
+  .header-nav a:hover, .header-nav a.active { color: var(--red); border-bottom-color: var(--red); }
+
+  /* ── Hero ── */
+  .page-hero { position: relative; z-index: 10; max-width: 1200px; margin: 0 auto; padding: 48px 32px 32px; text-align: center; }
+  .page-hero-eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--red); margin-bottom: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .page-hero-eyebrow::before, .page-hero-eyebrow::after { content: ''; flex: 1; max-width: 60px; height: 1px; background: var(--red); }
+  .page-hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 900; line-height: 1.1; color: var(--navy); margin-bottom: 14px; letter-spacing: -0.02em; }
+  .page-hero h1 em { font-style: italic; color: var(--red); }
+  .page-hero p { font-size: 1rem; color: var(--muted); max-width: 580px; margin: 0 auto; line-height: 1.6; }
+
+  /* ── Section ── */
+  .section-wrap { position: relative; z-index: 10; max-width: 1200px; margin: 0 auto; padding: 0 32px 80px; }
+  .section-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--mid); }
+
+  /* ── Stats bar ── */
+  .stats-bar { display: flex; gap: 0; border: 1px solid var(--mid); background: white; margin-bottom: 36px; overflow: hidden; }
+  .stats-bar-item { flex: 1; padding: 18px 20px; border-right: 1px solid var(--mid); text-align: center; }
+  .stats-bar-item:last-child { border-right: none; }
+  .stats-bar-num { font-family: 'Barlow Condensed', sans-serif; font-size: 2rem; font-weight: 700; color: var(--navy); display: block; line-height: 1; }
+  .stats-bar-num.signed-num { color: var(--green); }
+  .stats-bar-num.vetoed-num { color: var(--red); }
+  .stats-bar-num.amended-num { color: var(--amber); }
+  .stats-bar-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); display: block; margin-top: 6px; }
+
+  /* ── Action badges ── */
+  .action-badge { display: inline-block; font-family: 'Barlow Condensed', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; padding: 3px 8px; border: 1.5px solid; white-space: nowrap; }
+  .action-badge.signed  { color: var(--green); border-color: var(--green); background: #edf8f1; }
+  .action-badge.vetoed  { color: var(--red);   border-color: var(--red);   background: #fbeef0; }
+  .action-badge.amended { color: var(--amber);  border-color: #c8a000;      background: #fdf8e8; }
+  .action-badge.other   { color: var(--muted);  border-color: var(--mid);   background: white; }
+
+  /* ── EO grid ── */
+  .eo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 16px; margin-bottom: 48px; }
+  .eo-card { background: white; border: 1px solid var(--mid); border-left: 4px solid var(--navy); padding: 18px 20px 16px; cursor: pointer; transition: border-left-color 0.18s, box-shadow 0.18s; }
+  .eo-card:hover { border-left-color: var(--red); box-shadow: 0 3px 14px rgba(0,0,0,0.09); }
+  .eo-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; }
+  .eo-num { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--red); background: #fbeef0; border: 1px solid #f0c0c8; padding: 3px 8px; white-space: nowrap; flex-shrink: 0; }
+  .eo-date { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; color: var(--muted); white-space: nowrap; }
+  .eo-title { font-family: 'Playfair Display', serif; font-size: 0.92rem; font-weight: 700; line-height: 1.35; color: var(--navy); margin-bottom: 8px; }
+  .eo-summary { font-size: 0.79rem; color: var(--muted); line-height: 1.55; margin-bottom: 10px; }
+  .eo-topics { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+  .topic-chip { font-family: 'Barlow Condensed', sans-serif; font-size: 0.58rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 7px; border: 1px solid var(--mid); color: var(--muted); background: var(--light); white-space: nowrap; }
+
+  /* ── Filters ── */
+  .filter-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .filter-group { display: flex; gap: 5px; }
+  .tab-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; padding: 7px 16px; border: 2px solid var(--mid); background: white; color: var(--muted); cursor: pointer; transition: all 0.18s; }
+  .tab-btn:hover { border-color: var(--navy); color: var(--navy); }
+  .tab-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
+  .tab-btn.signed-btn.active  { background: var(--green); border-color: var(--green); }
+  .tab-btn.vetoed-btn.active  { background: var(--red);   border-color: var(--red); }
+  .tab-btn.amended-btn.active { background: var(--amber);  border-color: var(--amber); }
+  .search-wrap { margin-left: auto; position: relative; }
+  .search-input { font-family: 'Barlow', sans-serif; font-size: 0.82rem; padding: 8px 14px 8px 36px; border: 2px solid var(--mid); background: white; color: var(--navy); outline: none; transition: border-color 0.18s; width: 260px; }
+  .search-input:focus { border-color: var(--navy); }
+  .search-input::placeholder { color: var(--muted); }
+  .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.85rem; pointer-events: none; }
+
+  /* ── Result count ── */
+  .result-count { font-family: 'Barlow Condensed', sans-serif; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+
+  /* ── Table ── */
+  .leg-table-wrap { overflow-x: auto; border: 1px solid var(--mid); background: white; }
+  .leg-table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+  .leg-table thead { background: var(--navy); color: white; position: sticky; top: 0; z-index: 2; }
+  .leg-table thead th { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; padding: 13px 14px; text-align: left; white-space: nowrap; user-select: none; }
+  .leg-table thead th.sortable { cursor: pointer; }
+  .leg-table thead th.sortable:hover { background: #162539; }
+  .leg-table thead th.sorted-asc::after  { content: ' \2191'; color: #ff9a9a; }
+  .leg-table thead th.sorted-desc::after { content: ' \2193'; color: #ff9a9a; }
+  .leg-table tbody tr { border-bottom: 1px solid var(--mid); cursor: pointer; transition: background 0.14s; }
+  .leg-table tbody tr:last-child { border-bottom: none; }
+  .leg-table tbody tr:hover { background: #ede9e0; }
+  .leg-table td { padding: 10px 14px; vertical-align: middle; }
+  .leg-table td.stripe-cell { padding: 0; width: 5px; min-width: 5px; }
+  .party-stripe-td { width: 5px; display: block; min-height: 38px; height: 100%; }
+  .party-stripe-td.dem   { background: var(--dem); }
+  .party-stripe-td.rep   { background: var(--rep); }
+  .party-stripe-td.other { background: var(--mid); }
+  .num-cell { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 0.9rem; color: var(--navy); }
+  .bill-title { max-width: 420px; }
+  .empty-row td { text-align: center; padding: 60px 20px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+
+  /* ── Spinner ── */
+  .spinner { display: inline-block; width: 28px; height: 28px; border: 3px solid var(--mid); border-top-color: var(--navy); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    header { padding: 18px 20px; flex-direction: column; gap: 14px; }
+    .header-nav { gap: 14px; flex-wrap: wrap; justify-content: center; }
+    .section-wrap { padding: 0 16px 60px; }
+    .page-hero { padding: 32px 16px 20px; }
+    .filter-row { gap: 8px; }
+    .search-wrap { margin-left: 0; width: 100%; }
+    .search-input { width: 100%; }
+    .stats-bar { flex-wrap: wrap; }
+    .stats-bar-item { flex: 1 0 33%; border-bottom: 1px solid var(--mid); }
+    .eo-grid { grid-template-columns: 1fr; }
+    .leg-table thead th:nth-child(6),
+    .leg-table td:nth-child(6) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">Virginia Governor <span>|</span> 2026 Session <span>|</span> VoteIQ</div>
+
+<header>
+  <a href="/" class="logo-wrap">
+    <img src="/static/logo.png" alt="VoteIQ" style="height:72px;object-fit:contain;" />
+  </a>
+  <nav class="header-nav">
+    <a href="/">Chat</a>
+    <a href="/representatives">Representatives</a>
+    <a href="/legislators">Legislators</a>
+    <a href="/governor" class="active">Governor</a>
+    <a href="/pac-spending">PACs</a>
+    <a href="/donor-map-state">Donors</a>
+    <a href="/past-elections">Elections</a>
+  </nav>
+</header>
+
+<div class="page-hero">
+  <div class="page-hero-eyebrow">Virginia Governor</div>
+  <h1>Governor <em>Spanberger</em></h1>
+  <p>2026 session bill actions — signed, vetoed, and amended legislation — plus executive orders issued by Governor Abigail Spanberger.</p>
+</div>
+
+<div class="section-wrap">
+
+  <!-- Stats bar -->
+  <div class="stats-bar" id="stats-bar">
+    <div class="stats-bar-item" style="flex:5;display:flex;align-items:center;justify-content:center;gap:12px;padding:20px">
+      <span class="spinner"></span>
+    </div>
+  </div>
+
+  <!-- Executive Orders -->
+  <div class="section-label" style="margin-top:4px">Executive Orders &amp; Directives</div>
+  <div class="eo-grid" id="eo-grid">
+    <div style="grid-column:1/-1;text-align:center;padding:32px"><span class="spinner"></span></div>
+  </div>
+
+  <!-- Bill Actions -->
+  <div class="section-label">Bill Actions</div>
+
+  <div class="filter-row">
+    <div class="filter-group" id="action-filters">
+      <button class="tab-btn active"        data-action="">All</button>
+      <button class="tab-btn signed-btn"   data-action="signed">Signed</button>
+      <button class="tab-btn vetoed-btn"   data-action="vetoed">Vetoed</button>
+      <button class="tab-btn amended-btn"  data-action="amended">Amended</button>
+    </div>
+    <div class="search-wrap">
+      <span class="search-icon">&#9906;</span>
+      <input type="text" class="search-input" id="search-input" placeholder="Search bills, sponsors&hellip;" autocomplete="off"/>
+    </div>
+  </div>
+
+  <div class="result-count" id="result-count">&nbsp;</div>
+
+  <div class="leg-table-wrap">
+    <table class="leg-table">
+      <thead>
+        <tr>
+          <th style="width:5px;padding:0"></th>
+          <th class="sortable" data-col="bill_number">Bill</th>
+          <th class="sortable" data-col="title">Title</th>
+          <th class="sortable" data-col="action_key">Action</th>
+          <th class="sortable sorted-desc" data-col="action_date">Date</th>
+          <th class="sortable" data-col="sponsor_name">Sponsor</th>
+        </tr>
+      </thead>
+      <tbody id="bill-tbody">
+        <tr><td colspan="6" style="text-align:center;padding:48px"><span class="spinner"></span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div><!-- /section-wrap -->
+
+<script>
+(function () {
+  'use strict';
+
+  const D     = window._GOV_DATA || { bills: [], executive_orders: [], stats: {} };
+  const BILLS = D.bills || [];
+  const EOS   = D.executive_orders || [];
+  const STATS = D.stats || {};
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  let fAction = '';
+  let fSearch = '';
+  let sortCol = 'action_date';
+  let sortDir = 'desc';
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function esc(s) {
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function partyClass(p) {
+    if (!p) return 'other';
+    const l = p.toLowerCase();
+    if (l.includes('democrat'))   return 'dem';
+    if (l.includes('republican')) return 'rep';
+    return 'other';
+  }
+
+  function actionBadge(key) {
+    const MAP = {
+      signed:         { label: 'Signed',         cls: 'signed'  },
+      vetoed:         { label: 'Vetoed',          cls: 'vetoed'  },
+      amended:        { label: 'Amended',         cls: 'amended' },
+      veto_sustained: { label: 'Veto Sustained',  cls: 'vetoed'  },
+    };
+    const m = MAP[key] || { label: key || '—', cls: 'other' };
+    return `<span class="action-badge ${m.cls}">${m.label}</span>`;
+  }
+
+  function fmtDate(d) {
+    if (!d) return '—';
+    const parts = d.split('-');
+    if (parts.length < 3) return d;
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const m = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    return `${months[m]} ${day}, ${parts[0]}`;
+  }
+
+  // ── Stats bar ──────────────────────────────────────────────────────────────
+  function buildStats() {
+    const s = STATS;
+    const total   = s.total   || BILLS.length;
+    const signed  = s.signed  || 0;
+    const vetoed  = s.vetoed  || 0;
+    const amended = s.amended || 0;
+
+    document.getElementById('stats-bar').innerHTML =
+      stat(total,      'Total Actions',      '')           +
+      stat(signed,     'Signed',             'signed-num') +
+      stat(vetoed,     'Vetoed',             'vetoed-num') +
+      stat(amended,    'Amended',            'amended-num')+
+      stat(EOS.length, 'Exec. Orders',       '');
+  }
+
+  function stat(n, label, cls) {
+    return `<div class="stats-bar-item">
+      <span class="stats-bar-num${cls ? ' ' + cls : ''}">${Number(n).toLocaleString()}</span>
+      <span class="stats-bar-label">${label}</span>
+    </div>`;
+  }
+
+  // ── Executive Orders ───────────────────────────────────────────────────────
+  function buildEOs() {
+    const grid = document.getElementById('eo-grid');
+    if (!EOS.length) {
+      grid.innerHTML = '<p style="color:var(--muted);font-size:0.85rem;padding:8px 0">No executive orders found.</p>';
+      return;
+    }
+
+    grid.innerHTML = EOS.map(eo => {
+      let topics = [];
+      try { topics = JSON.parse(eo.policy_topics || '[]'); } catch (_) {}
+      const topicHtml = topics.slice(0, 4)
+        .map(t => `<span class="topic-chip">${esc(t)}</span>`)
+        .join('');
+
+      const summary = (eo.summary || '').slice(0, 180);
+      const hasTrunc = (eo.summary || '').length > 180;
+
+      // Clean up order number: remove trailing "(2026)" or "(YYYY)"
+      const num = (eo.order_number || '').replace(/\s*\(\d{4}\)\s*$/, '').trim();
+
+      const clickAttr = eo.source_url
+        ? ` onclick="window.open('${esc(eo.source_url)}','_blank')"`
+        : '';
+
+      return `<div class="eo-card"${clickAttr}>
+        <div class="eo-card-header">
+          <span class="eo-num">EO&thinsp;${esc(num)}</span>
+          <span class="eo-date">${fmtDate(eo.signed_date)}</span>
+        </div>
+        <div class="eo-title">${esc(eo.title)}</div>
+        ${summary ? `<div class="eo-summary">${esc(summary)}${hasTrunc ? '&hellip;' : ''}</div>` : ''}
+        ${topicHtml ? `<div class="eo-topics">${topicHtml}</div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  // ── Bills table ────────────────────────────────────────────────────────────
+  function getFiltered() {
+    let rows = BILLS.slice();
+    if (fAction) rows = rows.filter(r => r.action_key === fAction);
+    if (fSearch) {
+      const s = fSearch.toLowerCase();
+      rows = rows.filter(r =>
+        (r.bill_number  || '').toLowerCase().includes(s) ||
+        (r.title        || '').toLowerCase().includes(s) ||
+        (r.sponsor_name || '').toLowerCase().includes(s)
+      );
+    }
+    rows.sort((a, b) => {
+      let av = a[sortCol];
+      let bv = b[sortCol];
+      const BLANK = sortDir === 'asc' ? '￿' : '';
+      if (av == null || av === '') av = BLANK;
+      if (bv == null || bv === '') bv = BLANK;
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ?  1 : -1;
+      return 0;
+    });
+    return rows;
+  }
+
+  function render() {
+    const rows  = getFiltered();
+    const tbody = document.getElementById('bill-tbody');
+    const cnt   = document.getElementById('result-count');
+
+    cnt.textContent =
+      `${rows.length.toLocaleString()} of ${BILLS.length.toLocaleString()} bill action${BILLS.length !== 1 ? 's' : ''}`;
+
+    if (!rows.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No bills match your filters</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map(r => {
+      const pc    = partyClass(r.sponsor_party);
+      const click = r.source_url
+        ? ` onclick="window.open('${esc(r.source_url)}','_blank')"`
+        : '';
+      const title = (r.title || '');
+      const titleDisplay = title.length > 110 ? title.slice(0, 110) + '…' : title;
+
+      return `<tr${click}>
+        <td class="stripe-cell"><span class="party-stripe-td ${pc}"></span></td>
+        <td class="num-cell" style="white-space:nowrap">${esc(r.bill_number || '—')}</td>
+        <td class="bill-title" title="${esc(title)}">${esc(titleDisplay || '—')}</td>
+        <td>${actionBadge(r.action_key)}</td>
+        <td class="num-cell" style="white-space:nowrap">${fmtDate(r.action_date)}</td>
+        <td style="color:var(--muted);font-size:0.82rem;white-space:nowrap">${esc(r.sponsor_name || '—')}</td>
+      </tr>`;
+    }).join('');
+
+    updateSortHeaders();
+  }
+
+  function updateSortHeaders() {
+    document.querySelectorAll('.leg-table thead th.sortable').forEach(th => {
+      th.classList.remove('sorted-asc', 'sorted-desc');
+      if (th.dataset.col === sortCol) {
+        th.classList.add(sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+      }
+    });
+  }
+
+  // ── Event wiring ───────────────────────────────────────────────────────────
+  document.querySelectorAll('#action-filters .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#action-filters .tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      fAction = btn.dataset.action;
+      render();
+    });
+  });
+
+  document.getElementById('search-input').addEventListener('input', e => {
+    fSearch = e.target.value.trim();
+    render();
+  });
+
+  document.querySelectorAll('.leg-table thead th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      if (th.dataset.col === sortCol) {
+        sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortCol = th.dataset.col;
+        sortDir = sortCol === 'action_date' ? 'desc' : 'asc';
+      }
+      render();
+    });
+  });
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  buildStats();
+  buildEOs();
+  render();
+})();
+</script>
+
+</body>
+</html>

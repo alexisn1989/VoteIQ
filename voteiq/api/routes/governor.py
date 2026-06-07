@@ -1,11 +1,14 @@
 """Governor action money analyst endpoints."""
 from __future__ import annotations
 
+import json
 import os
 import sqlite3
 import traceback
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import HTMLResponse
 
 from voteiq.queries.governor_actions import (
     get_governor_action_counts,
@@ -18,6 +21,23 @@ from voteiq.services.governor_actions import (
 )
 
 router = APIRouter(tags=["governor"])
+
+_BASE_DIR = Path(__file__).resolve().parents[3]  # project root
+
+
+def _polls_conn() -> sqlite3.Connection:
+    data_dir = os.getenv("DATA_DIR", str(_BASE_DIR))
+    db_path = os.path.join(data_dir, "polls.db")
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def _inject(template: str, key: str, data) -> str:
+    safe = json.dumps(data, default=str).replace("</script>", "<\\/script>")
+    with (_BASE_DIR / "templates" / template).open("r", encoding="utf-8") as f:
+        html = f.read()
+    return html.replace("</head>", f"<script>window.{key}={safe};</script></head>", 1)
 
 
 @router.get("/api/governor/actions/summary")
@@ -192,3 +212,124 @@ def governor_action_money_analysis(
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+# ── Governor overview API (one-shot data for /governor page) ──────────────────
+
+@router.get("/api/governor/overview")
+def governor_overview(
+    session: str = Query(default="2026"),
+    governor: str = Query(default="Spanberger"),
+):
+    """One-shot data payload for the /governor HTML page."""
+    conn = _polls_conn()
+    try:
+        gov_like = f"%{governor.lower()}%"
+
+        counts: dict[str, int] = {}
+        for r in conn.execute(
+            """
+            SELECT action_key, COUNT(*) n FROM governor_actions
+            WHERE session=? AND lower(governor) LIKE ?
+            GROUP BY action_key
+            """,
+            (session, gov_like),
+        ).fetchall():
+            counts[r["action_key"]] = r["n"]
+
+        bills = [
+            dict(r)
+            for r in conn.execute(
+                """
+                SELECT bill_number, title, action_key, action_label, action_date,
+                       chapter_number, effective_date, sponsor_name, sponsor_party, source_url
+                FROM governor_actions
+                WHERE session=? AND lower(governor) LIKE ?
+                ORDER BY action_date DESC, bill_number
+                """,
+                (session, gov_like),
+            ).fetchall()
+        ]
+
+        eos = [
+            dict(r)
+            for r in conn.execute(
+                """
+                SELECT order_number, title, signed_date, summary,
+                       policy_topics, source_url
+                FROM governor_executive_orders
+                WHERE lower(governor) LIKE ?
+                ORDER BY signed_date DESC
+                """,
+                (gov_like,),
+            ).fetchall()
+        ]
+
+        return {
+            "governor": f"Governor {governor}",
+            "session": session,
+            "stats": {
+                "signed": counts.get("signed", 0),
+                "vetoed": counts.get("vetoed", 0),
+                "amended": counts.get("amended", 0),
+                "veto_sustained": counts.get("veto_sustained", 0),
+                "total": sum(counts.values()),
+            },
+            "executive_orders": eos,
+            "bills": bills,
+        }
+    finally:
+        conn.close()
+
+
+# ── Governor HTML page ────────────────────────────────────────────────────────
+
+@router.get("/governor", response_class=HTMLResponse)
+def governor_page():
+    """Governor Spanberger 2026 bill actions and executive orders page."""
+    conn = _polls_conn()
+    try:
+        bills = [
+            dict(r)
+            for r in conn.execute(
+                """
+                SELECT bill_number, title, action_key, action_label, action_date,
+                       chapter_number, effective_date, sponsor_name, sponsor_party, source_url
+                FROM governor_actions
+                WHERE session='2026' AND lower(governor) LIKE '%spanberger%'
+                ORDER BY action_date DESC, bill_number
+                """
+            ).fetchall()
+        ]
+
+        eos = [
+            dict(r)
+            for r in conn.execute(
+                """
+                SELECT order_number, title, signed_date, summary, policy_topics, source_url
+                FROM governor_executive_orders
+                WHERE lower(governor) LIKE '%spanberger%'
+                ORDER BY signed_date DESC
+                """
+            ).fetchall()
+        ]
+
+        data = {
+            "bills": bills,
+            "executive_orders": eos,
+            "stats": {
+                "signed":   sum(1 for b in bills if b["action_key"] == "signed"),
+                "vetoed":   sum(1 for b in bills if b["action_key"] == "vetoed"),
+                "amended":  sum(1 for b in bills if b["action_key"] == "amended"),
+                "total":    len(bills),
+            },
+        }
+        return _inject("governor.html", "_GOV_DATA", data)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503, detail=f"Governor page temporarily unavailable: {exc}"
+        ) from exc
+    finally:
+        conn.close()
