@@ -494,6 +494,9 @@ def main(argv: list[str] | None = None) -> int:
                fec_api_key=args.fec_api_key,
                skip_fec=args.skip_fec)
 
+    from voteiq.services.data_meta import stamp
+    n = conn.execute("SELECT COUNT(*) FROM va_races").fetchone()[0]
+    stamp("va_races", row_count=n, source_url="https://vpap.org/elections/")
     conn.close()
     return 0
 

@@ -3301,6 +3301,97 @@ def _add_sponsor_correlation_context(blocks: list[str], query: str) -> None:
         conn.close()
 
 
+# ── Spike alert context ──────────────────────────────────────────────────────
+
+_SPIKE_TRIGGERS = re.compile(
+    r"\b(spike[sd]?|donation\s+spike|spending\s+spike|unusual\s+don(?:or|ation)|"
+    r"watchlist\s+alert|trending\s+don(?:or|ation)|surge[sd]?|outlier)\b",
+    re.I,
+)
+
+
+def _add_spike_alerts_context(blocks: list[str], query: str) -> None:
+    """Inject spike-alert context when query asks about donation spikes or a flagged donor."""
+    triggered = bool(_SPIKE_TRIGGERS.search(query))
+    q_lower = query.lower()
+
+    try:
+        conn = _connect("polls")
+        if conn is None:
+            return
+
+        # Also fire when any known flagged canonical_name appears in the query
+        matched_name: str | None = None
+        if not triggered:
+            names = conn.execute(
+                "SELECT DISTINCT canonical_name FROM spike_alerts WHERE seen = 0"
+            ).fetchall()
+            for row in names:
+                name: str = row[0]
+                # Require at least one word longer than 4 chars to match
+                words = [w for w in name.lower().split() if len(w) > 4]
+                if words and any(w in q_lower for w in words):
+                    matched_name = name
+                    triggered = True
+                    break
+
+        if not triggered:
+            conn.close()
+            return
+
+        if matched_name:
+            rows = conn.execute(
+                """
+                SELECT canonical_name, watch_label, election_cycle, cycle_parity,
+                       total_amount, ratio_vs_mean, pct_change_prior, context_bills
+                FROM spike_alerts
+                WHERE canonical_name = ? AND seen = 0
+                ORDER BY ratio_vs_mean DESC LIMIT 1
+                """,
+                (matched_name,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT canonical_name, watch_label, election_cycle, cycle_parity,
+                       total_amount, ratio_vs_mean, pct_change_prior, context_bills
+                FROM spike_alerts WHERE seen = 0
+                ORDER BY ratio_vs_mean DESC LIMIT 6
+                """
+            ).fetchall()
+
+        conn.close()
+        if not rows:
+            return
+
+        lines = [
+            "[Database Context - spike_alerts]",
+            "Donors with statistically unusual contribution spikes flagged by the VoteIQ watchlist:",
+        ]
+        for r in rows:
+            name, label, cycle, parity, amt, ratio, pct, ctx_raw = (
+                r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7]
+            )
+            yr_type = "state-election year" if parity == "odd" else "federal-election year"
+            pct_s = f", up {pct:.0f}% from prior {yr_type}" if pct else ""
+            try:
+                bills = json.loads(ctx_raw or "[]")
+            except Exception:
+                bills = []
+            bill_s = (
+                f" Related legislation this cycle: {', '.join(str(b) for b in bills[:3])}."
+                if bills
+                else ""
+            )
+            lines.append(
+                f"• {name}: ${amt:,.0f} in {cycle} — {ratio:.1f}× their typical "
+                f"{yr_type} giving{pct_s}. Trigger: {label}.{bill_s}"
+            )
+        blocks.append("\n".join(lines))
+    except Exception:
+        pass
+
+
 def build_database_context(query: str, max_chars: int = 22000, pro: bool = False) -> str:
     q = query or ""
     blocks: list[str] = []
@@ -3339,6 +3430,7 @@ def build_database_context(query: str, max_chars: int = 22000, pro: bool = False
     _add_federal_vote_context(blocks, q, terms)
     _add_floor_statements_context(blocks, q, terms)
     _add_indy_exp_context(blocks, q, terms)
+    _add_spike_alerts_context(blocks, q)
     if _is_campaign_finance_query(q):
         _add_campaign_finance_context(blocks, q, terms)
         _add_governor_action_context(blocks, q, terms, session)

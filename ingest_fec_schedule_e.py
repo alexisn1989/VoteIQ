@@ -245,11 +245,15 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  upserted {n} rows", flush=True)
         time.sleep(1)
 
-    conn.close()
-
     if args.dry_run:
+        conn.close()
         print("\n[dry-run] no writes")
     else:
+        from voteiq.services.data_meta import check_count, stamp
+        n = conn.execute("SELECT COUNT(*) FROM fec_independent_expenditures").fetchone()[0]
+        check_count("fec_independent_expenditures", n)
+        conn.close()
+        stamp("fec_independent_expenditures", row_count=n, source_url="https://fec.gov/")
         print(f"\n[done] {total_inserted} total rows upserted into fec_independent_expenditures")
     return 0
 

@@ -322,29 +322,34 @@ def _fetch_profile(conn, name: str) -> dict:
         """Aggregate donor tiers across one or more exact candidate_name values.
 
         Each name hits the lower(candidate_name) functional index, so an IN-list
-        of variants stays index-fast (no full-table scan)."""
+        of variants stays index-fast (no full-table scan).
+        Returns [] silently if va_cf_schedule_a is not yet ingested on this deployment.
+        """
         if isinstance(cand_names, str):
             cand_names = [cand_names]
         cand_names = [n for n in cand_names if n]
         if not cand_names:
             return []
         placeholders = ",".join("lower(?)" for _ in cand_names)
-        rows = conn.execute(f"""
-            SELECT
-                CASE
-                    WHEN is_individual = 0 THEN 'Corporate / PAC'
-                    WHEN amount < 200      THEN 'Small (< $200)'
-                    WHEN amount < 1000     THEN 'Mid ($200–$999)'
-                    WHEN amount < 2500     THEN 'Large ($1k–$2.5k)'
-                    ELSE                        'Major ($2,500+)'
-                END AS tier,
-                COUNT(*)    AS cnt,
-                SUM(amount) AS total
-            FROM va_cf_schedule_a
-            WHERE lower(candidate_name) IN ({placeholders}) AND amount > 0
-            GROUP BY tier ORDER BY total DESC
-        """, cand_names).fetchall()
-        return [{"tier": r["tier"], "count": r["cnt"], "total": r["total"]} for r in rows]
+        try:
+            rows = conn.execute(f"""
+                SELECT
+                    CASE
+                        WHEN is_individual = 0 THEN 'Corporate / PAC'
+                        WHEN amount < 200      THEN 'Small (< $200)'
+                        WHEN amount < 1000     THEN 'Mid ($200–$999)'
+                        WHEN amount < 2500     THEN 'Large ($1k–$2.5k)'
+                        ELSE                        'Major ($2,500+)'
+                    END AS tier,
+                    COUNT(*)    AS cnt,
+                    SUM(amount) AS total
+                FROM va_cf_schedule_a
+                WHERE lower(candidate_name) IN ({placeholders}) AND amount > 0
+                GROUP BY tier ORDER BY total DESC
+            """, cand_names).fetchall()
+            return [{"tier": r["tier"], "count": r["cnt"], "total": r["total"]} for r in rows]
+        except Exception:
+            return []
 
     tiers = _donor_tiers(bill_name) or _donor_tiers(resolved)
     if not tiers:
@@ -436,5 +441,12 @@ def legislator_profile_page(name: str):
     try:
         profile = _fetch_profile(conn, name)
         return _inject("legislator_profile.html", "_PROFILE_DATA", profile)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Profile temporarily unavailable: {exc}",
+        ) from exc
     finally:
         conn.close()

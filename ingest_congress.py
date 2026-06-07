@@ -747,7 +747,17 @@ def main(argv: list[str] | None = None) -> int:
         bill_filter=bill_filter,
         floor_statements=args.floor_statements,
     )
-    conn.close()
+    if not args.dry_run:
+        from voteiq.services.data_meta import check_count, stamp
+        n_bills = conn.execute("SELECT COUNT(*) FROM congress_bills").fetchone()[0]
+        check_count("congress_bills", n_bills)
+        n_stmt = conn.execute("SELECT COUNT(*) FROM congress_floor_statements").fetchone()[0]
+        check_count("congress_floor_statements", n_stmt)
+        conn.close()
+        stamp("congress_bills", row_count=n_bills, source_url="https://congress.gov/")
+        stamp("congress_floor_statements", row_count=n_stmt, source_url="https://govinfo.gov/")
+    else:
+        conn.close()
     return 0
 
 

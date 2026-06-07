@@ -83,6 +83,8 @@
   .viq-chat-header { background: #0d1b2a; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .viq-chat-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #fff; font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase; letter-spacing: 0.1em; }
   .viq-chat-district-badge { font-size: 11px; font-weight: 600; background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.85); padding: 3px 10px; border-radius: 20px; letter-spacing: 0.1em; font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase; white-space: nowrap; }
+  .viq-share-btn { background: none; border: 1px solid rgba(255,255,255,0.25); border-radius: 5px; padding: 3px 10px; font-size: 11px; color: rgba(255,255,255,0.7); cursor: pointer; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; transition: border-color 0.15s, color 0.15s; white-space: nowrap; }
+  .viq-share-btn:hover { border-color: rgba(255,255,255,0.7); color: #fff; }
   .viq-chat-msgs { padding: 16px; display: flex; flex-direction: column; gap: 12px; max-height: 320px; overflow-y: auto; background: #f8f9fc; }
   .viq-chat-msg { display: flex; gap: 8px; align-items: flex-start; }
   .viq-chat-msg.user { flex-direction: row-reverse; }
@@ -129,6 +131,10 @@
   .viq-chat-chips { padding: 8px 16px; display: flex; flex-wrap: wrap; gap: 6px; background: #f8f9fc; border-top: 1px solid #eaecf4; }
   .viq-chat-chip { font-size: 12px; padding: 5px 12px; border: 1px solid #0d1b2a; border-radius: 20px; background: transparent; color: #0d1b2a; cursor: pointer; transition: background 0.15s; font-family: 'Barlow', sans-serif; }
   .viq-chat-chip:hover { background: #eef2fb; }
+  .viq-spike-strip { padding: 5px 16px 3px; display: none; flex-wrap: wrap; gap: 5px; background: #fff9f0; border-top: 1px solid #f0d9b5; align-items: center; }
+  .viq-spike-label { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #b56f00; margin-right: 2px; flex-shrink: 0; }
+  .viq-spike-chip { font-size: 12px; padding: 4px 10px; border: 1px solid #c87800; border-radius: 20px; background: transparent; color: #7a4800; cursor: pointer; transition: background 0.15s; font-family: 'Barlow', sans-serif; white-space: nowrap; }
+  .viq-spike-chip:hover { background: #fef0d6; }
   .viq-chat-input-row { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid #eaecf4; background: #fff; flex-wrap: wrap; }
   .viq-chat-input { flex: 1; min-width: 0; font-family: 'Barlow', sans-serif; font-size: 14px; padding: 9px 13px; border: 1px solid #c8d0e0; border-radius: 8px; outline: none; color: #0d1b2a; background: #fff; }
   .viq-chat-input:focus { border-color: #0d1b2a; }
@@ -229,9 +235,13 @@
         <img src="/static/logo.png" alt="VoteIQ" style="width:28px;height:28px;object-fit:contain;border-radius:4px;flex-shrink:0;" />
         Ask Your Representatives
       </div>
-      <span class="viq-chat-district-badge" id="viqDistrictBadge">—</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="viq-share-btn" id="viqShareBtn" style="display:none" title="Copy shareable link">🔗 Share</button>
+        <span class="viq-chat-district-badge" id="viqDistrictBadge">—</span>
+      </div>
     </div>
     <div class="viq-chat-msgs" id="viqMsgList"></div>
+    <div class="viq-spike-strip" id="viqSpikeStrip"></div>
     <div class="viq-chat-chips" id="viqChips">
       <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">What has my representative done?</button>
       <button class="viq-chat-chip" onclick="viqSendChip(this.textContent)">How do I contact my rep?</button>
@@ -1241,6 +1251,9 @@
       const btn = document.getElementById('viqSendBtn');
       const text = override || input.value.trim();
       if (!text || !viqDistrict) return;
+      _viqLastQuery = text;
+      var shareBtn = document.getElementById('viqShareBtn');
+      if (shareBtn) shareBtn.style.display = '';
 
       // Route to PDF endpoint when a file is attached
       if (_viqPdfFile && !override) {
@@ -1366,9 +1379,74 @@
       btn.disabled = false;
       input.focus();
     }
+    // ── Share button ─────────────────────────────────────────────────────────
+    var _viqLastQuery = '';
+    function viqShare() {
+      if (!_viqLastQuery) return;
+      var url = window.location.origin + '/?q=' + encodeURIComponent(_viqLastQuery);
+      if (window.viqVoice && window.viqVoice !== 'free') url += '&voice=' + window.viqVoice;
+      var btn = document.getElementById('viqShareBtn');
+      navigator.clipboard.writeText(url).then(function() {
+        var orig = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        btn.style.color = '#6ef09a';
+        btn.style.borderColor = 'rgba(110,240,154,0.5)';
+        setTimeout(function() {
+          btn.textContent = orig;
+          btn.style.color = '';
+          btn.style.borderColor = '';
+        }, 1600);
+      }).catch(function() {
+        // Fallback for non-HTTPS or older browsers
+        var ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        btn.textContent = '✓ Copied!';
+        setTimeout(function() { btn.textContent = '🔗 Share'; }, 1600);
+      });
+    }
+    document.getElementById('viqShareBtn').addEventListener('click', viqShare);
     window.viqSendChip = function (text) { viqSendMessage(text); };
     window.viqSendMessage = viqSendMessage;
     document.getElementById('viqInput').addEventListener('keydown', function(e) { if (e.key === 'Enter') viqSendMessage(); });
+
+    // ── Spike alert chips ────────────────────────────────────────────────────
+    (function viqLoadSpikeAlerts() {
+      var strip = document.getElementById('viqSpikeStrip');
+      if (!strip) return;
+      fetch('/api/watchlist/alerts?unseen_only=true&limit=5')
+        .then(function(r) { return r.ok ? r.json() : []; })
+        .then(function(alerts) {
+          if (!alerts || !alerts.length) return;
+          strip.innerHTML = '';
+          var lbl = document.createElement('span');
+          lbl.className = 'viq-spike-label';
+          lbl.textContent = '📈 Trending';
+          strip.appendChild(lbl);
+          alerts.slice(0, 4).forEach(function(a) {
+            var ratio = (a.ratio_vs_mean || 0).toFixed(1);
+            var short = (a.canonical_name || '').replace(/\b(pac|virginia|fund|committee|association|corporation)\b/gi, '').trim().replace(/\s{2,}/g, ' ');
+            if (short.length > 28) short = short.slice(0, 26).trim() + '…';
+            var label = '📈 ' + short + ' ' + ratio + '×';
+            var bills = (a.context_bills || []).slice(0, 2).join(', ');
+            var query = 'Tell me about ' + (a.canonical_name || short) + '\'s donation spike'
+              + (bills ? ' related to ' + bills : '') + '.';
+            var btn = document.createElement('button');
+            btn.className = 'viq-spike-chip';
+            btn.textContent = label;
+            btn.title = a.watch_label || '';
+            btn.addEventListener('click', function() { viqSendMessage(query); });
+            strip.appendChild(btn);
+          });
+          strip.style.display = 'flex';
+        })
+        .catch(function() {});
+    })();
   })();
 </script>
 </body>

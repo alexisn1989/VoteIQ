@@ -692,6 +692,8 @@ def ingest():
     print(f"Ingested {people_written} finance people into polls.db")
     if people_removed:
         print(f"Cleaned up {people_removed} duplicate finance people rows")
+    from voteiq.services.data_meta import stamp
+    stamp("va_finance_info", row_count=written, source_url="https://vpap.org/")
 
 if __name__ == "__main__":
     ingest()

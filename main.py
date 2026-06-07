@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from voteiq.services.data_meta import ensure_schema as _ensure_data_meta, get_all as _get_data_meta
 from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Form, Query, Depends, Header
 from civic_analyst import run_analyst, lookup_member
 from voteiq.queries.timing import get_donation_timing, get_timing_summary
@@ -81,6 +82,12 @@ app.add_middleware(SlowAPIMiddleware)
 def health_check():
     """Render health check — must return 200 or the service is marked unhealthy."""
     return {"status": "ok"}
+
+
+@app.get("/api/data-freshness")
+def data_freshness():
+    """Return last-ingested timestamp and row count for every tracked data table."""
+    return _get_data_meta()
 
 
 @app.get("/api/health")
@@ -525,6 +532,7 @@ def _congress_ingest_background() -> None:
 
 
 async def _startup_ingest() -> None:
+    _ensure_data_meta()   # create __data_meta table if not present
     threading.Thread(target=_poll_ingest_background, daemon=True).start()
     threading.Thread(target=_run_fec_ingest_background, daemon=True).start()
     threading.Thread(target=_run_schedule_e_background, daemon=True).start()
@@ -8474,6 +8482,14 @@ async def _on_startup():
             sb = conn.execute("SELECT COUNT(*) FROM va_legislator_sponsored_bills").fetchone()[0]
             cb = conn.execute("SELECT COUNT(*) FROM va_legislator_cosponsor_bills").fetchone()[0]
             print(f"[leg-seed] Done: {vs} vote-summary, {rv} recent votes, {sb} sponsored, {cb} co-sponsored.")
+            # ── Data quality assertion for total_votes ────────────────────────
+            bad = conn.execute("""
+                SELECT COUNT(*) FROM va_legislator_vote_summary
+                WHERE total_votes < 100 OR total_votes > 10000
+            """).fetchone()[0]
+            if bad > 0:
+                print(f"[leg-seed] WARNING: {bad} rows with implausible total_votes "
+                      f"(<100 or >10000) — column may be unreliable, check seed source.")
             conn.close()
         except Exception as exc:
             print(f"[leg-seed] Failed: {exc}")

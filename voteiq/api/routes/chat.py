@@ -32,6 +32,7 @@ from voteiq.config.voices import (
     get_system_prompt,
 )
 from voteiq.services.database_context import build_admin_database_context, build_database_context
+from voteiq.services.data_meta import freshness_lookup as _freshness_lookup
 
 router = APIRouter(tags=["chat"])
 
@@ -3634,6 +3635,12 @@ def _bills_system_prompt(
     context:       str,
     pro: bool = False,
 ) -> str:
+    _fl = _freshness_lookup()
+    _freshness_block = (
+        "\n\nDATA FRESHNESS (use these dates in footnotes):\n"
+        + "\n".join(f"- {t}: {d}" for t, d in sorted(_fl.items()))
+        + "\n"
+    ) if _fl else ""
     return (
         f"You are VoteIQ, a nonpartisan Virginia civic assistant. Today is May 2026. "
         f"You have access to the retrieved excerpts below, which may include Virginia General Assembly bills, "
@@ -3795,7 +3802,9 @@ def _bills_system_prompt(
         f"1. NEVER say data is 'unavailable', 'not in the dataset', 'not found', or 'not in the retrieved excerpts' "
         f"when a '[Database Context -' block for that topic is present. The data IS there — use it.\n"
         f"2. If zero matching rows were returned inside a block, say 'No matching records found in [table]' — NOT 'data unavailable'.\n"
-        f"3. Cite each block you use: the header line names the source table.\n"
+        f"3. Cite each block you use. After each factual claim drawn from that block, "
+        f"append a footnote in italics: *Source: [table_name], last updated [DATE]*. "
+        f"Use the DATA FRESHNESS table below for the date; if a table is not listed there, omit the date.\n"
         f"\nSpecific block handlers:\n"
         f"- '[Database Context - congress_floor_statements]': ALWAYS add a '## Congressional Floor Statements' section. "
         f"List each entry with date, title, and text preview. Cite as '(Congressional Record, govinfo.gov)'. "
@@ -3823,6 +3832,7 @@ def _bills_system_prompt(
         f"this shows which Super PACs ran ads for or against the member.\n"
         if pro else ""
         )
+        + _freshness_block
         + f"\n\nEXCERPTS:\n{context}"
     )
 
