@@ -77,7 +77,11 @@ def main():
     print(f"  {len(legislator_meta)} legislators found")
 
     # ── 2. Vote summaries (2026 session) ─────────────────────────────────────────
-    print("Computing vote summaries...")
+    # NOTE: openstates_va.db votes table may be re-ingested multiple times, causing
+    # duplicate (voter_name, bill_id, motion) rows with potentially conflicting option
+    # values. Use MAX(id) per unique vote event to select the latest recorded opinion,
+    # then aggregate. Without this dedup the totals inflate ~5x.
+    print("Computing vote summaries (with MAX-id dedup)...")
     vote_summary_rows = os_conn.execute(f"""
         SELECT voter_name,
                SUM(CASE WHEN option = 'yes'         THEN 1 ELSE 0 END) AS yes_count,
@@ -85,8 +89,16 @@ def main():
                SUM(CASE WHEN option = 'not voting'  THEN 1 ELSE 0 END) AS not_voting,
                SUM(CASE WHEN option = 'abstain'     THEN 1 ELSE 0 END) AS abstain,
                COUNT(*) AS total_votes
-        FROM votes
-        WHERE session = '{SESSION}'
+        FROM (
+            SELECT v.voter_name, v.bill_id, v.motion, v.option
+            FROM votes v
+            INNER JOIN (
+                SELECT voter_name, bill_id, motion, MAX(id) AS max_id
+                FROM votes
+                WHERE session = '{SESSION}'
+                GROUP BY voter_name, bill_id, motion
+            ) latest ON v.id = latest.max_id
+        )
         GROUP BY voter_name
     """).fetchall()
     print(f"  {len(vote_summary_rows)} legislators with vote data")
