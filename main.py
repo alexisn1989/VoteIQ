@@ -68,8 +68,23 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 async def _lifespan(app: FastAPI):
     # Runs all startup logic that was previously split across two
     # @app.on_event("startup") handlers (removed for Starlette 1.0 compat).
-    await _startup_ingest()   # defined ~line 450 — data ingestion threads
-    await _on_startup()       # defined ~line 7750 — cache/seed/embed threads
+    import traceback as _tb
+    try:
+        print("[startup] _startup_ingest starting...")
+        await _startup_ingest()   # defined ~line 450 — data ingestion threads
+        print("[startup] _startup_ingest done")
+    except Exception as _exc:
+        print(f"[startup] _startup_ingest FAILED: {_exc}")
+        print(_tb.format_exc())
+        # Non-fatal: continue so the app still serves requests
+    try:
+        print("[startup] _on_startup starting...")
+        await _on_startup()       # defined ~line 7750 — cache/seed/embed threads
+        print("[startup] _on_startup done")
+    except Exception as _exc:
+        print(f"[startup] _on_startup FAILED: {_exc}")
+        print(_tb.format_exc())
+        # Non-fatal: continue so the app still serves requests
     yield  # app runs
 
 app = FastAPI(lifespan=_lifespan)
@@ -622,7 +637,10 @@ def _congress_ingest_background() -> None:
 
 
 async def _startup_ingest() -> None:
-    _ensure_data_meta()   # create __data_meta table if not present
+    try:
+        _ensure_data_meta()   # create __data_meta table if not present
+    except Exception as _exc:
+        print(f"[startup] _ensure_data_meta failed (non-fatal): {_exc}")
     threading.Thread(target=_poll_ingest_background, daemon=True).start()
     threading.Thread(target=_run_fec_ingest_background, daemon=True).start()
     threading.Thread(target=_run_schedule_e_background, daemon=True).start()
