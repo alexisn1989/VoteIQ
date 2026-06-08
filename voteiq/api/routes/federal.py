@@ -349,20 +349,22 @@ def _compute_alignment(conn: sqlite3.Connection) -> list[dict]:
     except sqlite3.OperationalError:
         return []
 
+    # Top industry per member — computed in Python to avoid ROW_NUMBER() window
+    # function which requires SQLite >= 3.25 (not guaranteed on all deploy targets).
     top_industry: dict[str, str] = {}
     try:
+        ind_totals: dict[str, dict[str, float]] = defaultdict(dict)
         for r in conn.execute("""
-            SELECT bioguide_id, industry
-            FROM (
-                SELECT bioguide_id, industry,
-                       SUM(total_amount) AS tot,
-                       ROW_NUMBER() OVER (PARTITION BY bioguide_id ORDER BY SUM(total_amount) DESC) AS rn
-                FROM fec_industry_totals
-                WHERE industry NOT IN ('Grassroots','Other')
-                GROUP BY bioguide_id, industry
-            ) WHERE rn = 1
+            SELECT bioguide_id, industry, SUM(total_amount) AS tot
+            FROM fec_industry_totals
+            WHERE industry NOT IN ('Grassroots','Other')
+              AND industry IS NOT NULL AND industry != ''
+            GROUP BY bioguide_id, industry
         """).fetchall():
-            top_industry[r["bioguide_id"]] = r["industry"]
+            ind_totals[r["bioguide_id"]][r["industry"]] = r["tot"] or 0
+        for bgid, ind_map in ind_totals.items():
+            if ind_map:
+                top_industry[bgid] = max(ind_map, key=lambda k: ind_map[k])
     except sqlite3.OperationalError:
         pass
 
