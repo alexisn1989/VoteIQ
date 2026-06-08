@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Federal Delegation: Industry Funding · VoteIQ Virginia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" />
+  <style>
+    :root{--navy:#0d1b2a;--red:#c8102e;--cream:#f4f1eb;--gold:#b8963e;--dem:#1a52c8;--rep:#c8102e;--border:#d6d0c4;--muted:#6b6560;--green:#15803d;--orange:#ea580c}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Barlow',system-ui,sans-serif;background:var(--cream);color:var(--navy);min-height:100vh}
+    header{background:#fff;border-bottom:2px solid #ddd8cc;padding:10px 28px;display:flex;align-items:center;gap:18px}
+    .logo{font-family:'Playfair Display',Georgia,serif;font-size:1.2rem;font-weight:700;color:#0d1b2a;text-decoration:none}
+    nav{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+    nav a{color:#0d1b2a;text-decoration:none;font-size:.8rem;font-weight:600;padding:5px 11px;border-radius:4px;transition:background .15s}
+    nav a:hover,nav a.active{background:rgba(13,27,42,.08);font-weight:700}
+    .page-hero{background:var(--navy);color:#fff;padding:28px 32px 24px;border-bottom:3px solid var(--red)}
+    .page-hero h1{font-family:'Playfair Display',Georgia,serif;font-size:2rem;font-weight:700}
+    .page-hero p{color:rgba(255,255,255,.65);font-size:.9rem;margin-top:6px;max-width:720px}
+    .hero-tabs{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+    .hero-tab{padding:7px 18px;border-radius:5px;font-size:.83rem;font-weight:600;text-decoration:none;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.7);transition:all .15s}
+    .hero-tab:hover{background:rgba(255,255,255,.1);color:#fff}
+    .stats-bar{display:flex;background:var(--navy);border-bottom:1px solid rgba(255,255,255,.08);overflow-x:auto}
+    .stat-item{padding:14px 26px;border-right:1px solid rgba(255,255,255,.08);min-width:160px;flex-shrink:0}
+    .stat-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.5)}
+    .stat-value{font-size:1.3rem;font-weight:700;color:#fff;margin-top:3px}
+    .stat-value.gold{color:var(--gold)}
+    .stat-value.orange{color:#fb923c}
+    .section-nav{background:#fff;border-bottom:1px solid var(--border);padding:0 28px;display:flex;gap:2px;position:sticky;top:0;z-index:50;overflow-x:auto}
+    .snav-a{padding:12px 16px;font-family:'Barlow Condensed',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-decoration:none;border-bottom:3px solid transparent;white-space:nowrap;transition:all .15s}
+    .snav-a:hover{color:var(--navy);border-bottom-color:rgba(13,27,42,.2)}
+    .section{padding:30px 32px 36px;border-bottom:1px solid var(--border)}
+    .sec-head{font-family:'Barlow Condensed',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;display:flex;align-items:center;gap:10px}
+    .sec-head::after{content:'';flex:1;height:1px;background:var(--border)}
+    .sec-title{font-family:'Playfair Display',Georgia,serif;font-size:1.35rem;font-weight:700;margin-bottom:8px}
+    .sec-desc{font-size:.83rem;color:var(--muted);max-width:760px;line-height:1.6;margin-bottom:20px}
+    /* Member cards */
+    .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+    .m-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:18px;border-top:3px solid var(--border)}
+    .m-card.D{border-top-color:var(--dem)}
+    .m-card.R{border-top-color:var(--rep)}
+    .m-card-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+    .m-name{font-weight:700;font-size:.93rem;line-height:1.3}
+    .m-sub{font-size:.75rem;color:var(--muted);margin-top:2px}
+    .chip-D{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.7rem;font-weight:700;background:#dbeafe;color:var(--dem)}
+    .chip-R{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.7rem;font-weight:700;background:#fee2e2;color:var(--rep)}
+    .chip-I{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.7rem;font-weight:700;background:#f3f4f6;color:#374151}
+    .m-total{font-size:1.15rem;font-weight:700;color:var(--navy);text-align:right}
+    .m-total-label{font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:right}
+    /* Industry bars */
+    .ind-list{margin-top:10px}
+    .ind-row{margin-bottom:6px}
+    .ind-label-row{display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:2px}
+    .ind-name{color:var(--navy);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70%}
+    .ind-amt{color:var(--muted);font-weight:600}
+    .bar-track{background:#e5e7eb;border-radius:3px;height:6px}
+    .bar-fill-D{height:100%;border-radius:3px;background:var(--dem)}
+    .bar-fill-R{height:100%;border-radius:3px;background:var(--rep)}
+    .bar-fill-I{height:100%;border-radius:3px;background:#6b7280}
+    /* Vote pill */
+    .vote-row{display:flex;gap:6px;margin-top:12px;align-items:center}
+    .vote-label{font-size:.7rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+    .vote-pill{font-size:.75rem;font-weight:700;padding:3px 9px;border-radius:10px}
+    .vote-yea{background:#dcfce7;color:var(--green)}
+    .vote-nay{background:#fee2e2;color:var(--rep)}
+    /* Table */
+    .tbl-wrap{background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+    table{width:100%;border-collapse:collapse;font-size:.82rem}
+    thead tr{background:var(--navy);color:#fff}
+    thead th{padding:11px 13px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;cursor:pointer;user-select:none}
+    thead th:hover{background:rgba(255,255,255,.08)}
+    tbody tr{border-bottom:1px solid #f0ece4}
+    tbody tr:hover{background:#f9f6f0}
+    td{padding:10px 13px;vertical-align:middle}
+    /* Industry × Party split bars */
+    .split-cell{display:flex;align-items:center;gap:6px;min-width:180px}
+    .split-bar{flex:1;height:8px;border-radius:4px;background:#e5e7eb;position:relative;overflow:hidden}
+    .split-d{position:absolute;left:0;top:0;height:100%;background:var(--dem);border-radius:4px 0 0 4px}
+    .split-r{position:absolute;right:0;top:0;height:100%;background:var(--rep);border-radius:0 4px 4px 0}
+    .split-amt{font-size:.72rem;color:var(--muted);white-space:nowrap}
+    /* Filter row */
+    .filter-row{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;align-items:center}
+    .btn-f{padding:6px 15px;background:#fff;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:.8rem;font-weight:600;color:var(--muted);transition:all .15s;font-family:'Barlow',sans-serif}
+    .btn-f:hover:not(.on){background:var(--cream)}
+    .btn-f.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+    .method-note{margin:28px 32px 40px;padding:14px 18px;background:#fff;border:1px solid var(--border);border-radius:8px;font-size:.77rem;color:var(--muted);line-height:1.6}
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/" class="logo">VoteIQ</a>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/federal-legislators">Federal Members</a>
+    <a href="/federal-analysis" class="active">Federal Analysis</a>
+    <a href="/analysis">State Analysis</a>
+    <a href="/legislators">State Legislature</a>
+    <a href="/governor">Governor</a>
+  </nav>
+</header>
+
+<div class="page-hero">
+  <h1>Federal Delegation: Industry Funding Analysis</h1>
+  <p>How corporate and industry PAC money flows to Virginia's 13 federal representatives and senators — and how they vote. 119th Congress, FEC cycles 2020–2024.</p>
+  <div class="hero-tabs">
+    <a href="#funding" class="hero-tab">Industry Funding</a>
+    <a href="#comparison" class="hero-tab">D vs R by Industry</a>
+    <a href="#voting" class="hero-tab">Vote Record</a>
+  </div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-item"><div class="stat-label">Members Analyzed</div><div class="stat-value" id="st-members">—</div></div>
+  <div class="stat-item"><div class="stat-label">Industries Tracked</div><div class="stat-value gold" id="st-inds">—</div></div>
+  <div class="stat-item"><div class="stat-label">Total FEC (ex Grassroots)</div><div class="stat-value orange" id="st-total">—</div></div>
+  <div class="stat-item"><div class="stat-label">Top Recipient</div><div class="stat-value" id="st-top" style="font-size:.95rem">—</div></div>
+</div>
+
+<div class="section-nav">
+  <a href="#funding" class="snav-a">Industry Funding</a>
+  <a href="#comparison" class="snav-a">D vs R by Industry</a>
+  <a href="#voting" class="snav-a">Vote Record</a>
+</div>
+
+<!-- ═══ Section 1: Industry Funding ══════════════════════════════════════════ -->
+<section id="funding" class="section">
+  <div class="sec-head">Per-Member Breakdown</div>
+  <div class="sec-title">Industry Funding by Member</div>
+  <div class="sec-desc">
+    Top industries funding each VA federal member (PAC + large individual contributions via FEC).
+    Excludes "Grassroots" (small-dollar) and "Other" (unclassified) buckets to surface corporate and industry money.
+  </div>
+  <div class="filter-row">
+    <button class="btn-f on" onclick="filterCards('all',this)">All</button>
+    <button class="btn-f" onclick="filterCards('Senate',this)">Senate</button>
+    <button class="btn-f" onclick="filterCards('House',this)">House</button>
+    <button class="btn-f" onclick="filterCards('D',this)">Democrats</button>
+    <button class="btn-f" onclick="filterCards('R',this)">Republicans</button>
+  </div>
+  <div class="card-grid" id="member-cards"></div>
+</section>
+
+<!-- ═══ Section 2: D vs R by Industry ════════════════════════════════════════ -->
+<section id="comparison" class="section">
+  <div class="sec-head">Party Comparison</div>
+  <div class="sec-title">Top Industries: Democrat vs Republican Funding</div>
+  <div class="sec-desc">
+    Top 20 industries by total contribution to VA delegation. Bar shows Democrat (blue) vs Republican (red) share of each industry's total giving.
+  </div>
+  <div class="tbl-wrap">
+    <table id="ind-table">
+      <thead>
+        <tr>
+          <th onclick="sortTable('ind-table',0)">Industry</th>
+          <th onclick="sortTable('ind-table',1)">Total</th>
+          <th style="min-width:200px">D vs R Split</th>
+          <th onclick="sortTable('ind-table',3)">Democrat $</th>
+          <th onclick="sortTable('ind-table',4)">Republican $</th>
+        </tr>
+      </thead>
+      <tbody id="ind-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══ Section 3: Vote Record ════════════════════════════════════════════════ -->
+<section id="voting" class="section">
+  <div class="sec-head">119th Congress Roll-Call Votes</div>
+  <div class="sec-title">Vote Record by Member</div>
+  <div class="sec-desc">
+    Yea/Nay breakdown from House Clerk and Senate roll-call records.
+    Senate "Yea" rates are structurally lower due to procedural/cloture votes — compare within chamber only.
+  </div>
+  <div class="tbl-wrap">
+    <table id="vote-table">
+      <thead>
+        <tr>
+          <th onclick="sortTable('vote-table',0)">Member</th>
+          <th onclick="sortTable('vote-table',1)">Chamber</th>
+          <th onclick="sortTable('vote-table',2)">Party</th>
+          <th onclick="sortTable('vote-table',3)">Yea</th>
+          <th onclick="sortTable('vote-table',4)">Nay</th>
+          <th onclick="sortTable('vote-table',5)">Total Votes</th>
+          <th onclick="sortTable('vote-table',6)">Yea %</th>
+          <th onclick="sortTable('vote-table',7)">Top Industry</th>
+        </tr>
+      </thead>
+      <tbody id="vote-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<div class="method-note">
+  <strong>Data sources:</strong>
+  FEC bulk data via Congress.gov API (cycles 2020–2024) · House Clerk roll-call XML · Senate.gov roll-call XML ·
+  Industry classifications by VoteIQ (PAC name + employer matching). "Grassroots" = contributions under $200 aggregated.
+  "Other" = unclassified PAC receipts. Both excluded from per-member totals shown here.
+  Senate Yea % is not comparable to House Yea % due to different procedural vote volumes.
+</div>
+
+<script>
+const D = window._FA_DATA || {members:[],stats:{},industry_totals:[]};
+
+// ── Formatters ─────────────────────────────────────────────────────────────
+function fmt$(n){
+  if(!n||n<1000) return '$0';
+  if(n>=1e9) return '$'+(n/1e9).toFixed(1)+'B';
+  if(n>=1e6) return '$'+(n/1e6).toFixed(1)+'M';
+  if(n>=1e3) return '$'+(n/1e3).toFixed(0)+'K';
+  return '$'+n;
+}
+
+// ── Stats bar ──────────────────────────────────────────────────────────────
+const s = D.stats||{};
+document.getElementById('st-members').textContent = s.member_count||'—';
+document.getElementById('st-inds').textContent    = s.industry_count||'—';
+document.getElementById('st-total').textContent   = fmt$(s.grand_total||0);
+document.getElementById('st-top').textContent     = (s.top_recipient_name||'—').split(',')[0];
+
+// ── Section 1: Member cards ───────────────────────────────────────────────
+function renderCards(filter){
+  const grid = document.getElementById('member-cards');
+  const members = (D.members||[]).filter(m=>{
+    if(filter==='all') return true;
+    if(filter==='D'||filter==='R') return m.party_short===filter;
+    if(filter==='Senate'||filter==='House') return m.chamber===filter||m.chamber.includes(filter);
+    return true;
+  });
+
+  grid.innerHTML = members.map(m=>{
+    const inds = (m.industries||[]).slice(0,5);
+    const maxAmt = inds.length ? inds[0].total : 1;
+    const indBars = inds.map(i=>`
+      <div class="ind-row">
+        <div class="ind-label-row">
+          <span class="ind-name">${i.industry}</span>
+          <span class="ind-amt">${fmt$(i.total)}</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill-${m.party_short}" style="width:${Math.round(i.total/maxAmt*100)}%"></div>
+        </div>
+      </div>`).join('');
+
+    const v = m.votes||{};
+    const chamberLabel = (m.chamber||'').includes('House') ? `HD-${m.district}` : 'Senate';
+    return `
+    <div class="m-card ${m.party_short}" data-chamber="${m.chamber}" data-party="${m.party_short}">
+      <div class="m-card-head">
+        <div>
+          <div class="m-name">${m.name.split(',').reverse().join(' ').trim()}</div>
+          <div class="m-sub">${chamberLabel} &nbsp;<span class="chip-${m.party_short}">${m.party_short==='D'?'Democrat':'Republican'}</span></div>
+        </div>
+        <div>
+          <div class="m-total">${fmt$(m.total_raised)}</div>
+          <div class="m-total-label">Industry $</div>
+        </div>
+      </div>
+      <div class="ind-list">${indBars}</div>
+      <div class="vote-row">
+        <span class="vote-label">Votes:</span>
+        <span class="vote-pill vote-yea">Yea ${v.yea||0}</span>
+        <span class="vote-pill vote-nay">Nay ${v.nay||0}</span>
+        <span style="font-size:.73rem;color:var(--muted);margin-left:2px">${v.yea_pct||0}% yea</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+renderCards('all');
+
+function filterCards(f,btn){
+  document.querySelectorAll('.btn-f').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderCards(f);
+}
+
+// ── Section 2: Industry × Party table ────────────────────────────────────
+const indTbody = document.getElementById('ind-tbody');
+indTbody.innerHTML = (D.industry_totals||[]).map(r=>{
+  const g = r.grand||1;
+  const dPct = Math.round((r.dem_total||0)/g*100);
+  const rPct = Math.round((r.rep_total||0)/g*100);
+  return `<tr>
+    <td><strong>${r.industry}</strong></td>
+    <td>${fmt$(r.grand)}</td>
+    <td>
+      <div class="split-cell">
+        <span class="split-amt" style="color:var(--dem);min-width:36px;text-align:right">${dPct}%</span>
+        <div class="split-bar">
+          <div class="split-d" style="width:${dPct}%"></div>
+          <div class="split-r" style="width:${rPct}%"></div>
+        </div>
+        <span class="split-amt" style="color:var(--rep);min-width:36px">${rPct}%</span>
+      </div>
+    </td>
+    <td data-val="${r.dem_total||0}">${fmt$(r.dem_total||0)}</td>
+    <td data-val="${r.rep_total||0}">${fmt$(r.rep_total||0)}</td>
+  </tr>`;
+}).join('');
+
+// ── Section 3: Vote record table ──────────────────────────────────────────
+const voteTbody = document.getElementById('vote-tbody');
+voteTbody.innerHTML = (D.members||[]).map(m=>{
+  const v = m.votes||{};
+  const chamberDisplay = (m.chamber||'').includes('House')?`House (D-${m.district})`:'Senate';
+  const yp = v.yea_pct||0;
+  const barColor = yp>=60?'var(--green)':yp>=40?'var(--gold)':'var(--rep)';
+  return `<tr>
+    <td><strong>${m.name.split(',').reverse().join(' ').trim()}</strong></td>
+    <td>${chamberDisplay}</td>
+    <td><span class="chip-${m.party_short}">${m.party_short==='D'?'D':'R'}</span></td>
+    <td>${v.yea||0}</td>
+    <td>${v.nay||0}</td>
+    <td>${v.total||0}</td>
+    <td data-val="${yp}">
+      <div style="display:flex;align-items:center;gap:7px">
+        <div style="width:60px;height:7px;border-radius:3px;background:#e5e7eb;overflow:hidden">
+          <div style="width:${yp}%;height:100%;background:${barColor};border-radius:3px"></div>
+        </div>
+        <span style="font-size:.78rem;font-weight:700">${yp}%</span>
+      </div>
+    </td>
+    <td style="font-size:.78rem;color:var(--muted)">${m.top_industry||'—'}</td>
+  </tr>`;
+}).join('');
+
+// ── Sort helper ───────────────────────────────────────────────────────────
+let _sortState = {};
+function sortTable(tid, col){
+  const tbl = document.getElementById(tid);
+  const tbody = tbl.querySelector('tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const asc = _sortState[tid+'_'+col] !== true;
+  _sortState[tid+'_'+col] = asc;
+  rows.sort((a,b)=>{
+    const aCell = a.cells[col], bCell = b.cells[col];
+    const aV = aCell.dataset.val!==undefined ? parseFloat(aCell.dataset.val) : aCell.textContent.trim();
+    const bV = bCell.dataset.val!==undefined ? parseFloat(bCell.dataset.val) : bCell.textContent.trim();
+    if(typeof aV==='number') return asc ? aV-bV : bV-aV;
+    return asc ? aV.localeCompare(bV) : bV.localeCompare(aV);
+  });
+  rows.forEach(r=>tbody.appendChild(r));
+}
+</script>
+</body>
+</html>
