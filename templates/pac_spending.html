@@ -39,7 +39,7 @@
   .section-label::after { content: ''; flex: 1; height: 1px; background: var(--mid); }
 
   /* ── Stats bar ── */
-  .stats-bar { display: flex; gap: 0; border: 1px solid var(--mid); background: white; margin-bottom: 28px; overflow: hidden; }
+  .stats-bar { display: flex; gap: 0; border: 1px solid var(--mid); background: white; margin-bottom: 20px; overflow: hidden; }
   .stats-bar-item { flex: 1; padding: 16px 20px; border-right: 1px solid var(--mid); text-align: center; }
   .stats-bar-item:last-child { border-right: none; }
   .stats-bar-num { font-family: 'Barlow Condensed', sans-serif; font-size: 1.7rem; font-weight: 700; color: var(--navy); display: block; line-height: 1; }
@@ -48,6 +48,15 @@
   .stats-bar-num.support { color: var(--green); }
   .stats-bar-num.oppose  { color: var(--red); }
   .stats-bar-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); display: block; margin-top: 5px; }
+
+  /* ── Toolbar (view toggle + cycle filter) ── */
+  .toolbar-row { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; border: 1px solid var(--mid); background: white; padding: 12px 16px; }
+  .toolbar-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .view-toggle-bar { display: flex; gap: 0; overflow: hidden; border: 2px solid var(--navy); }
+  .view-toggle-bar button { font-family: 'Barlow Condensed', sans-serif; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; padding: 7px 20px; border: none; background: white; color: var(--navy); cursor: pointer; transition: all 0.18s; border-right: 1px solid var(--mid); }
+  .view-toggle-bar button:last-child { border-right: none; }
+  .view-toggle-bar button.active { background: var(--navy); color: white; }
+  .toolbar-divider { width: 1px; height: 28px; background: var(--mid); }
 
   /* ── Filters ── */
   .filter-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
@@ -63,10 +72,9 @@
   .search-input:focus { border-color: var(--navy); }
   .search-input::placeholder { color: var(--muted); }
   .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.85rem; pointer-events: none; }
-
   .result-count { font-family: 'Barlow Condensed', sans-serif; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
 
-  /* ── Table ── */
+  /* ── PAC table ── */
   .pac-table-wrap { overflow-x: auto; border: 1px solid var(--mid); background: white; }
   .pac-table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
   .pac-table thead { background: var(--navy); color: white; position: sticky; top: 0; z-index: 2; }
@@ -75,8 +83,6 @@
   .pac-table thead th.sortable:hover { background: #162539; }
   .pac-table thead th.sorted-asc::after { content: ' \2191'; color: #ff9a9a; }
   .pac-table thead th.sorted-desc::after { content: ' \2193'; color: #ff9a9a; }
-
-  /* main rows */
   .pac-table tbody tr.pac-row { border-bottom: 1px solid var(--mid); cursor: pointer; transition: background 0.14s; }
   .pac-table tbody tr.pac-row:hover { background: #ede9e0; }
   .pac-table tbody tr.pac-row.open { background: #e8e4db; }
@@ -87,8 +93,6 @@
   .party-stripe-td.rep   { background: var(--rep); }
   .party-stripe-td.bi    { background: #9ca3af; }
   .party-stripe-td.other { background: var(--muted); }
-
-  /* expand rows */
   .pac-table tbody tr.expand-row td { padding: 0; background: #f8f6f0; border-bottom: 2px solid var(--mid); }
   .expand-inner { padding: 14px 20px 14px 28px; display: none; }
   .expand-inner.open { display: block; }
@@ -102,8 +106,6 @@
   .cand-amount.oppose  { color: var(--red); }
   .expand-toggle { font-size: 0.75rem; color: var(--muted); margin-left: 6px; transition: transform 0.2s; display: inline-block; }
   .open .expand-toggle { transform: rotate(180deg); }
-
-  /* PAC name + badges */
   .pac-name { font-weight: 600; color: var(--navy); font-size: 0.9rem; }
   .pac-short { font-family: 'Barlow Condensed', sans-serif; font-size: 0.7rem; font-weight: 700; color: var(--muted); margin-left: 6px; }
   .leg-badge { display: inline-block; font-family: 'Barlow Condensed', sans-serif; font-size: 0.58rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 6px; border: 1px solid; margin-left: 6px; vertical-align: middle; }
@@ -111,8 +113,6 @@
   .leg-badge.rep  { color: var(--rep); border-color: var(--rep); background: #fbeef0; }
   .leg-badge.bi   { color: #6b7280; border-color: #9ca3af; background: #f3f4f6; }
   .leg-badge.other { color: var(--muted); border-color: var(--mid); background: white; }
-
-  /* Money bars */
   .money-bars { display: flex; flex-direction: column; gap: 3px; min-width: 160px; }
   .money-bar-row { display: flex; align-items: center; gap: 6px; }
   .bar-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.58rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; width: 40px; flex-shrink: 0; }
@@ -125,7 +125,6 @@
   .bar-val { font-family: 'Barlow Condensed', sans-serif; font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
   .bar-val.support { color: var(--green); }
   .bar-val.oppose  { color: var(--red); }
-
   .total-cell { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--navy); }
   .sector-pill { display: inline-block; font-family: 'Barlow Condensed', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 8px; background: #e8e4dc; color: var(--navy); border-radius: 2px; }
   .sector-pill.sp-env        { background: #d1fae5; color: #065f46; }
@@ -143,10 +142,44 @@
   .sector-pill.sp-voting     { background: #fce7f3; color: #9d174d; }
   .sector-pill.sp-elect      { background: #f3f4f6; color: #6b7280; }
   .num-cell { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 0.9rem; color: var(--navy); text-align: center; }
-
   .empty-row td { text-align: center; padding: 60px 20px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
   .spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid var(--mid); border-top-color: var(--navy); border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Candidate view table ── */
+  .cand-table-wrap { overflow-x: auto; border: 1px solid var(--mid); background: white; }
+  .cand-table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+  .cand-table thead { background: var(--navy); color: white; position: sticky; top: 0; z-index: 2; }
+  .cand-table thead th { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; padding: 13px 14px; text-align: left; white-space: nowrap; user-select: none; }
+  .cand-table thead th.sortable { cursor: pointer; }
+  .cand-table thead th.sortable:hover { background: #162539; }
+  .cand-table thead th.sorted-asc::after  { content: ' \2191'; color: #ff9a9a; }
+  .cand-table thead th.sorted-desc::after { content: ' \2193'; color: #ff9a9a; }
+  .cand-table tbody tr.cand-row { border-bottom: 1px solid var(--mid); cursor: pointer; transition: background 0.14s; }
+  .cand-table tbody tr.cand-row:hover { background: #ede9e0; }
+  .cand-table tbody tr.cand-row.open { background: #e8e4db; }
+  .cand-table td { padding: 11px 14px; vertical-align: middle; }
+  .cand-table td.stripe-cell { padding: 0; width: 5px; min-width: 5px; }
+  .net-val { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 0.92rem; }
+  .net-val.pos { color: var(--green); }
+  .net-val.neg { color: var(--red); }
+  .split-bar-wrap { display: flex; align-items: center; gap: 8px; min-width: 140px; }
+  .split-bar { display: flex; height: 7px; border-radius: 2px; overflow: hidden; flex: 1; background: var(--mid); min-width: 80px; }
+  .split-seg-s { background: var(--green); }
+  .split-seg-o { background: var(--red); }
+  .split-labels { display: flex; gap: 10px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; }
+  .split-labels .s { color: var(--green); }
+  .split-labels .o { color: var(--red); }
+  .cand-table tbody tr.cpac-expand-row td { padding: 0; background: #f8f6f0; border-bottom: 2px solid var(--mid); }
+  .cpac-expand-inner { padding: 14px 28px; display: none; }
+  .cpac-expand-inner.open { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .cpac-col-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .cpac-item { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--mid); font-size: 0.81rem; }
+  .cpac-item:last-child { border-bottom: none; }
+  .cpac-item-name { color: var(--navy); font-weight: 500; flex: 1; margin-right: 12px; }
+  .cpac-item-amt { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 0.85rem; white-space: nowrap; }
+  .cpac-item-amt.s { color: var(--green); }
+  .cpac-item-amt.o { color: var(--red); }
 
   @media (max-width: 900px) {
     header { padding: 18px 20px; flex-direction: column; gap: 14px; }
@@ -155,15 +188,14 @@
     .page-hero { padding: 32px 16px 20px; }
     .search-wrap { margin-left: 0; width: 100%; }
     .search-input { width: 100%; }
-    .pac-table thead th:nth-child(4),
-    .pac-table td:nth-child(4) { display: none; }
-    .expand-grid { grid-template-columns: 1fr; }
+    .pac-table thead th:nth-child(4), .pac-table td:nth-child(4) { display: none; }
+    .expand-grid, .cpac-expand-inner.open { grid-template-columns: 1fr; }
   }
 </style>
 </head>
 <body>
 
-<div class="topbar">PAC Independent Expenditures <span>|</span> Virginia Federal Races 2024 <span>|</span> VoteIQ</div>
+<div class="topbar">PAC Independent Expenditures <span>|</span> Virginia Federal Races 2022–2026 <span>|</span> VoteIQ</div>
 
 <header>
   <a href="/" class="logo-wrap">
@@ -182,75 +214,146 @@
 </header>
 
 <div class="page-hero">
-  <div class="page-hero-eyebrow">2024 Federal Races</div>
+  <div class="page-hero-eyebrow">Virginia Federal Races</div>
   <h1>PAC <em>Outside Spending</em></h1>
-  <p>Independent expenditures by political action committees in Virginia federal races. Shows which outside groups spent money supporting or opposing VA candidates — and how much. Click any row to see individual candidates targeted.</p>
+  <p>Independent expenditures by super PACs and outside groups in Virginia federal races — who they targeted, how much they spent, and whether they were supporting or opposing each candidate. Click any row for details.</p>
 </div>
 
 <div class="section-wrap">
 
+  <!-- Stats bar -->
   <div id="stats-bar" class="stats-bar">
     <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:20px">
       <span class="spinner"></span>
     </div>
   </div>
 
-  <div class="section-label">All PACs</div>
-
-  <div class="filter-row">
-    <div class="filter-group" id="align-filters">
-      <button class="tab-btn active" data-align="">All</button>
-      <button class="tab-btn dem-btn" data-align="Democratic">Democratic</button>
-      <button class="tab-btn rep-btn" data-align="Republican">Republican</button>
-      <button class="tab-btn" data-align="Bipartisan">Bipartisan</button>
+  <!-- Toolbar: view toggle + cycle filter -->
+  <div class="toolbar-row">
+    <span class="toolbar-label">View:</span>
+    <div class="view-toggle-bar">
+      <button id="btn-pac"  class="active" onclick="setView('pac')">By PAC</button>
+      <button id="btn-cand" onclick="setView('cand')">By Candidate</button>
     </div>
-    <div class="search-wrap">
-      <span class="search-icon">&#9906;</span>
-      <input type="text" class="search-input" id="search-input" placeholder="Search PAC name&hellip;" autocomplete="off"/>
+    <div class="toolbar-divider"></div>
+    <span class="toolbar-label">Cycle:</span>
+    <div class="filter-group" id="cycle-filters">
+      <button class="tab-btn active" data-cycle="">All</button>
+      <button class="tab-btn" data-cycle="2022">2022</button>
+      <button class="tab-btn" data-cycle="2024">2024</button>
+      <button class="tab-btn" data-cycle="2026">2026</button>
     </div>
   </div>
 
-  <div class="result-count" id="result-count">&nbsp;</div>
+  <!-- ── BY PAC VIEW ─────────────────────────────────────────────────────── -->
+  <div id="pac-view">
+    <div class="section-label" id="pac-section-label">All PACs</div>
 
-  <div class="pac-table-wrap">
-    <table class="pac-table">
-      <thead>
-        <tr>
-          <th style="width:5px;padding:0"></th>
-          <th class="sortable" data-col="committee_name">PAC Name</th>
-          <th class="sortable" data-col="alignment">Alignment</th>
-          <th class="sortable" data-col="issue_focus">Issue Focus</th>
-          <th class="sortable" data-col="support_total" title="Total spent supporting candidates">Supporting</th>
-          <th class="sortable" data-col="oppose_total" title="Total spent opposing candidates">Opposing</th>
-          <th class="sortable" data-col="grand_total" title="Total independent expenditures">Total Spent</th>
-          <th class="sortable" data-col="num_candidates" title="Number of candidates targeted">Candidates</th>
-          <th style="width:30px"></th>
-        </tr>
-      </thead>
-      <tbody id="pac-tbody">
-        <tr><td colspan="9" style="text-align:center;padding:48px"><span class="spinner"></span></td></tr>
-      </tbody>
-    </table>
-  </div>
+    <div class="filter-row">
+      <div class="filter-group" id="align-filters">
+        <button class="tab-btn active" data-align="">All</button>
+        <button class="tab-btn dem-btn" data-align="Democratic">Democratic</button>
+        <button class="tab-btn rep-btn" data-align="Republican">Republican</button>
+        <button class="tab-btn" data-align="Bipartisan">Bipartisan</button>
+      </div>
+      <div class="search-wrap">
+        <span class="search-icon">&#9906;</span>
+        <input type="text" class="search-input" id="search-input" placeholder="Search PAC name&hellip;" autocomplete="off"/>
+      </div>
+    </div>
 
-</div>
+    <div class="result-count" id="result-count">&nbsp;</div>
+
+    <div class="pac-table-wrap">
+      <table class="pac-table">
+        <thead>
+          <tr>
+            <th style="width:5px;padding:0"></th>
+            <th class="sortable" data-col="committee_name">PAC Name</th>
+            <th class="sortable" data-col="alignment">Alignment</th>
+            <th class="sortable" data-col="issue_focus">Issue Focus</th>
+            <th class="sortable" data-col="support_total" title="Total spent supporting candidates">Supporting</th>
+            <th class="sortable" data-col="oppose_total" title="Total spent opposing candidates">Opposing</th>
+            <th class="sortable" data-col="grand_total" title="Total independent expenditures">Total Spent</th>
+            <th class="sortable" data-col="num_candidates" title="Number of candidates targeted">Candidates</th>
+            <th style="width:30px"></th>
+          </tr>
+        </thead>
+        <tbody id="pac-tbody">
+          <tr><td colspan="9" style="text-align:center;padding:48px"><span class="spinner"></span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div><!-- /pac-view -->
+
+  <!-- ── BY CANDIDATE VIEW ───────────────────────────────────────────────── -->
+  <div id="cand-view" style="display:none">
+    <div class="section-label">By Candidate — PAC Targeting</div>
+    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:16px">Which VA candidates did outside groups target most? Green = PAC money <em>for</em> the candidate. Red = PAC money <em>against</em>. Net shows whether PACs overall helped or hurt.</p>
+
+    <div class="result-count" id="cand-result-count">&nbsp;</div>
+
+    <div class="cand-table-wrap">
+      <table class="cand-table">
+        <thead>
+          <tr>
+            <th style="width:5px;padding:0"></th>
+            <th class="sortable" data-ccol="candidate_name">Candidate</th>
+            <th class="sortable" data-ccol="office">Chamber</th>
+            <th class="sortable" data-ccol="support">PAC Support</th>
+            <th class="sortable" data-ccol="oppose">PAC Opposition</th>
+            <th>Support vs Opposition</th>
+            <th class="sortable" data-ccol="net">Net Effect</th>
+            <th class="sortable" data-ccol="total">Total Spent On Race</th>
+            <th style="width:30px"></th>
+          </tr>
+        </thead>
+        <tbody id="cand-tbody">
+          <tr><td colspan="9" style="text-align:center;padding:48px"><span class="spinner"></span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div><!-- /cand-view -->
+
+</div><!-- /section-wrap -->
 
 <script>
 (function () {
   'use strict';
-  const ALL = window._PAC_DATA || [];
-  const MAX = Math.max(...ALL.map(r => r.grand_total || 0), 1);
+  const ALL_PACS  = window._PAC_DATA  || [];
+  const ALL_CANDS = window._CAND_DATA || [];
 
-  let fAlign = '', fSearch = '';
-  let sortCol = 'grand_total', sortDir = 'desc';
-  const openRows = new Set();
+  const MAX_PAC  = Math.max(...ALL_PACS.map(r => r.grand_total  || 0), 1);
 
+  // ── Shared state ────────────────────────────────────────────────────────────
+  let fCycle  = '';
+  let fAlign  = '';
+  let fSearch = '';
+  let currentView = 'pac';
+
+  // PAC sort
+  let pSortCol = 'grand_total', pSortDir = 'desc';
+  const openPacs = new Set();
+
+  // Candidate sort
+  let cSortCol = 'total', cSortDir = 'desc';
+  const openCands = new Set();
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
   function alignClass(a) {
     if (!a) return 'other';
     const l = a.toLowerCase();
     if (l === 'democratic') return 'dem';
     if (l === 'republican') return 'rep';
     if (l === 'bipartisan') return 'bi';
+    return 'other';
+  }
+
+  function partyClass(p) {
+    if (!p) return 'other';
+    const l = p.toLowerCase();
+    if (l === 'democratic' || l === 'democrat') return 'dem';
+    if (l === 'republican') return 'rep';
     return 'other';
   }
 
@@ -262,9 +365,7 @@
     if (i.includes('labor'))                                   return 'sp-labor';
     if (i === 'gun rights')                                    return 'sp-gun-rights';
     if (i === 'gun control')                                   return 'sp-gun-ctrl';
-    if (i.includes('gun') || i.includes('firearm')) {
-      return i.includes('control') ? 'sp-gun-ctrl' : 'sp-gun-rights';
-    }
+    if (i.includes('gun') || i.includes('firearm'))            return i.includes('control') ? 'sp-gun-ctrl' : 'sp-gun-rights';
     if (i.includes('lgbtq'))                                   return 'sp-lgbtq';
     if (i.includes('reproductive'))                            return 'sp-repro';
     if (i.includes('abortion'))                                return 'sp-abortion';
@@ -285,24 +386,57 @@
     return '$' + n;
   }
 
+  function fmtNet(n) {
+    if (!n) return '—';
+    const prefix = n > 0 ? '+' : '';
+    if (Math.abs(n) >= 1_000_000) return prefix + '$' + (n/1_000_000).toFixed(1) + 'M';
+    if (Math.abs(n) >= 1_000)     return prefix + '$' + (n/1_000).toFixed(0) + 'K';
+    return prefix + '$' + n;
+  }
+
   function esc(s) {
     return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  // ── Stats bar ──────────────────────────────────────────────────────────────
+  // ── Cycle-aware amounts ──────────────────────────────────────────────────────
+  // For PACs: by_cycle = {cycle: total}
+  function pacAmounts(r) {
+    if (!fCycle) return { support: r.support_total||0, oppose: r.oppose_total||0, total: r.grand_total||0 };
+    const cycleTotal = (r.by_cycle || {})[parseInt(fCycle)] || 0;
+    if (!cycleTotal) return null;  // not active this cycle
+    // Scale S/O proportionally (by_cycle only has total, not split)
+    const t = r.grand_total || 1;
+    return {
+      support: Math.round((r.support_total||0) / t * cycleTotal),
+      oppose:  Math.round((r.oppose_total||0)  / t * cycleTotal),
+      total:   cycleTotal
+    };
+  }
+
+  // For candidates: by_cycle = {cycle: {support, oppose, total}}
+  function candAmounts(r) {
+    if (!fCycle) return { support: r.support||0, oppose: r.oppose||0, total: r.total||0, net: r.net||0 };
+    const cy = (r.by_cycle || {})[parseInt(fCycle)];
+    if (!cy) return null;  // not targeted this cycle
+    return { support: cy.support||0, oppose: cy.oppose||0, total: cy.total||0, net: (cy.support||0) - (cy.oppose||0) };
+  }
+
+  // ── Stats bar ────────────────────────────────────────────────────────────────
   function buildStats() {
-    const totalSpent   = ALL.reduce((s,r) => s + (r.grand_total||0), 0);
-    const totalSupport = ALL.reduce((s,r) => s + (r.support_total||0), 0);
-    const totalOppose  = ALL.reduce((s,r) => s + (r.oppose_total||0), 0);
-    const demPACs      = ALL.filter(r => alignClass(r.alignment) === 'dem').length;
-    const repPACs      = ALL.filter(r => alignClass(r.alignment) === 'rep').length;
+    const pacs  = ALL_PACS;
+    const cands = ALL_CANDS;
+    const totalSpent   = pacs.reduce((s,r) => s + (r.grand_total||0), 0);
+    const totalSupport = pacs.reduce((s,r) => s + (r.support_total||0), 0);
+    const totalOppose  = pacs.reduce((s,r) => s + (r.oppose_total||0), 0);
+    const demPACs = pacs.filter(r => alignClass(r.alignment) === 'dem').length;
+    const repPACs = pacs.filter(r => alignClass(r.alignment) === 'rep').length;
     document.getElementById('stats-bar').innerHTML =
-      stat(ALL.length,          'PACs',              '')        +
-      stat(fmtM(totalSpent),    'Total Spent',       '')        +
-      stat(fmtM(totalSupport),  'Supporting',        'support') +
-      stat(fmtM(totalOppose),   'Opposing',          'oppose')  +
-      stat(demPACs,             'Democratic PACs',   'dem')     +
-      stat(repPACs,             'Republican PACs',   'rep');
+      stat(pacs.length,       'PACs',            '')        +
+      stat(fmtM(totalSpent),  'Total Spent',     '')        +
+      stat(fmtM(totalSupport),'Supporting',      'support') +
+      stat(fmtM(totalOppose), 'Opposing',        'oppose')  +
+      stat(demPACs,           'Democratic PACs', 'dem')     +
+      stat(repPACs,           'Republican PACs', 'rep');
   }
 
   function stat(n, label, cls) {
@@ -312,9 +446,33 @@
     </div>`;
   }
 
-  // ── Filter + sort ──────────────────────────────────────────────────────────
-  function getFiltered() {
-    let rows = ALL.slice();
+  // ── View toggle ──────────────────────────────────────────────────────────────
+  function setView(v) {
+    currentView = v;
+    document.getElementById('pac-view').style.display  = v === 'pac'  ? '' : 'none';
+    document.getElementById('cand-view').style.display = v === 'cand' ? '' : 'none';
+    document.getElementById('btn-pac').classList.toggle('active',  v === 'pac');
+    document.getElementById('btn-cand').classList.toggle('active', v === 'cand');
+    if (v === 'pac')  renderPacTable();
+    if (v === 'cand') renderCandTable();
+  }
+  window.setView = setView;
+
+  // ── Cycle filter ─────────────────────────────────────────────────────────────
+  document.getElementById('cycle-filters').addEventListener('click', e => {
+    const btn = e.target.closest('[data-cycle]');
+    if (!btn) return;
+    fCycle = btn.dataset.cycle;
+    document.querySelectorAll('#cycle-filters .tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+    if (currentView === 'pac')  renderPacTable();
+    if (currentView === 'cand') renderCandTable();
+  });
+
+  // ── PAC table ────────────────────────────────────────────────────────────────
+  function getPacFiltered() {
+    let rows = ALL_PACS.slice();
+    // Cycle filter: exclude PACs with no spend in selected cycle
+    if (fCycle) rows = rows.filter(r => pacAmounts(r) !== null);
     if (fAlign)  rows = rows.filter(r => (r.alignment || '') === fAlign);
     if (fSearch) {
       const s = fSearch.toLowerCase();
@@ -324,24 +482,31 @@
         (r.issue_focus||'').toLowerCase().includes(s)
       );
     }
-    rows.sort((a,b) => {
-      let av = a[sortCol], bv = b[sortCol];
-      if (av == null) av = sortDir==='asc' ? Infinity : -Infinity;
-      if (bv == null) bv = sortDir==='asc' ? Infinity : -Infinity;
+    rows.sort((a, b) => {
+      let av, bv;
+      if (pSortCol === 'support_total' || pSortCol === 'oppose_total' || pSortCol === 'grand_total') {
+        const key = pSortCol === 'support_total' ? 'support' : pSortCol === 'oppose_total' ? 'oppose' : 'total';
+        const aa = pacAmounts(a); const bb = pacAmounts(b);
+        av = aa ? aa[key] : 0; bv = bb ? bb[key] : 0;
+      } else {
+        av = a[pSortCol]; bv = b[pSortCol];
+      }
+      if (av == null) av = pSortDir==='asc' ? Infinity : -Infinity;
+      if (bv == null) bv = pSortDir==='asc' ? Infinity : -Infinity;
       if (typeof av==='string') av=av.toLowerCase();
       if (typeof bv==='string') bv=bv.toLowerCase();
-      if (av<bv) return sortDir==='asc'?-1:1;
-      if (av>bv) return sortDir==='asc'?1:-1;
+      if (av<bv) return pSortDir==='asc'?-1:1;
+      if (av>bv) return pSortDir==='asc'?1:-1;
       return 0;
     });
     return rows;
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
-  function renderTable() {
-    const rows = getFiltered();
-    document.getElementById('result-count').textContent =
-      rows.length + ' PAC' + (rows.length!==1?'s':'');
+  function renderPacTable() {
+    const rows = getPacFiltered();
+    const label = fCycle ? `PACs Active in ${fCycle}` : 'All PACs';
+    document.getElementById('pac-section-label').textContent = label;
+    document.getElementById('result-count').textContent = rows.length + ' PAC' + (rows.length!==1?'s':'');
 
     const tbody = document.getElementById('pac-tbody');
     if (!rows.length) {
@@ -349,20 +514,19 @@
       return;
     }
 
-    let html = '';
-    rows.forEach((r, idx) => {
-      const ac   = alignClass(r.alignment);
-      const spct = r.grand_total ? Math.round((r.support_total||0)/MAX*100) : 0;
-      const opct = r.grand_total ? Math.round((r.oppose_total||0)/MAX*100) : 0;
-      const isOpen = openRows.has(r.committee_name);
-      const displayName = r.short_name && r.short_name !== r.committee_name
-        ? r.committee_name
-        : r.committee_name;
-      const shortBadge = r.short_name && r.short_name.length < r.committee_name.length
-        ? `<span class="pac-short">(${esc(r.short_name)})</span>`
-        : '';
+    // Max total for bar scaling (cycle-aware)
+    const maxTot = Math.max(...rows.map(r => { const a = pacAmounts(r); return a ? a.total : 0; }), 1);
 
-      // Candidate breakdown for expand panel
+    let html = '';
+    rows.forEach(r => {
+      const ac  = alignClass(r.alignment);
+      const amt = pacAmounts(r) || { support: r.support_total||0, oppose: r.oppose_total||0, total: r.grand_total||0 };
+      const spct = Math.round(amt.support / maxTot * 100);
+      const opct = Math.round(amt.oppose  / maxTot * 100);
+      const isOpen = openPacs.has(r.committee_name);
+      const shortBadge = r.short_name && r.short_name.length < r.committee_name.length
+        ? `<span class="pac-short">(${esc(r.short_name)})</span>` : '';
+
       const supported = (r.candidates||[]).filter(c=>c.support_oppose==='S').sort((a,b)=>b.total-a.total);
       const opposed   = (r.candidates||[]).filter(c=>c.support_oppose==='O').sort((a,b)=>b.total-a.total);
 
@@ -376,30 +540,29 @@
       html += `<tr class="pac-row${isOpen?' open':''}" data-pac="${esc(r.committee_name)}">
         <td class="stripe-cell"><span class="party-stripe-td ${ac}"></span></td>
         <td>
-          <span class="pac-name">${esc(displayName)}</span>${shortBadge}
-          ${r.alignment ? `<span class="leg-badge ${ac}">${esc(r.alignment)}</span>` : ''}
+          <span class="pac-name">${esc(r.committee_name)}</span>${shortBadge}
         </td>
         <td>${r.alignment ? `<span class="leg-badge ${ac}">${esc(r.alignment)}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
         <td>${r.issue_focus ? `<span class="sector-pill ${sectorClass(r.issue_focus)}">${esc(r.issue_focus)}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
         <td>
           <div class="money-bars">
-            ${r.support_total ? `<div class="money-bar-row">
+            ${amt.support ? `<div class="money-bar-row">
               <span class="bar-label support">For</span>
               <div class="bar-bg"><div class="bar-fill support" style="width:${spct}%"></div></div>
-              <span class="bar-val support">${fmtM(r.support_total)}</span>
+              <span class="bar-val support">${fmtM(amt.support)}</span>
             </div>` : '<span style="color:var(--muted);font-size:0.8rem">—</span>'}
           </div>
         </td>
         <td>
           <div class="money-bars">
-            ${r.oppose_total ? `<div class="money-bar-row">
+            ${amt.oppose ? `<div class="money-bar-row">
               <span class="bar-label oppose">Vs</span>
               <div class="bar-bg"><div class="bar-fill oppose" style="width:${opct}%"></div></div>
-              <span class="bar-val oppose">${fmtM(r.oppose_total)}</span>
+              <span class="bar-val oppose">${fmtM(amt.oppose)}</span>
             </div>` : '<span style="color:var(--muted);font-size:0.8rem">—</span>'}
           </div>
         </td>
-        <td class="total-cell">${fmtM(r.grand_total)}</td>
+        <td class="total-cell">${fmtM(amt.total)}</td>
         <td class="num-cell">${r.num_candidates || 0}</td>
         <td style="text-align:center;padding:11px 10px">
           <span class="expand-toggle${isOpen?' open':''}">&#9660;</span>
@@ -424,46 +587,32 @@
     });
     tbody.innerHTML = html;
 
-    // Attach click handlers
     tbody.querySelectorAll('tr.pac-row').forEach(tr => {
       tr.addEventListener('click', () => {
         const name = tr.dataset.pac;
         const inner = tr.nextElementSibling.querySelector('.expand-inner');
         const toggle = tr.querySelector('.expand-toggle');
-        if (openRows.has(name)) {
-          openRows.delete(name);
-          tr.classList.remove('open');
-          inner.classList.remove('open');
-          toggle.classList.remove('open');
+        if (openPacs.has(name)) {
+          openPacs.delete(name); tr.classList.remove('open'); inner.classList.remove('open'); toggle.classList.remove('open');
         } else {
-          openRows.add(name);
-          tr.classList.add('open');
-          inner.classList.add('open');
-          toggle.classList.add('open');
+          openPacs.add(name); tr.classList.add('open'); inner.classList.add('open'); toggle.classList.add('open');
         }
       });
     });
   }
 
-  function updateSortHeaders() {
+  function updatePacSortHeaders() {
     document.querySelectorAll('.pac-table thead th[data-col]').forEach(th => {
       th.classList.remove('sorted-asc','sorted-desc');
-      if (th.dataset.col===sortCol)
-        th.classList.add(sortDir==='asc'?'sorted-asc':'sorted-desc');
+      if (th.dataset.col === pSortCol) th.classList.add(pSortDir==='asc'?'sorted-asc':'sorted-desc');
     });
   }
 
-  // ── Event handlers ─────────────────────────────────────────────────────────
   document.querySelectorAll('.pac-table thead th.sortable').forEach(th => {
     th.addEventListener('click', () => {
-      if (sortCol===th.dataset.col) {
-        sortDir = sortDir==='asc'?'desc':'asc';
-      } else {
-        sortCol = th.dataset.col;
-        sortDir = (th.dataset.col==='grand_total'||th.dataset.col==='support_total'||th.dataset.col==='oppose_total'||th.dataset.col==='num_candidates') ? 'desc' : 'asc';
-      }
-      updateSortHeaders();
-      renderTable();
+      if (pSortCol===th.dataset.col) { pSortDir = pSortDir==='asc'?'desc':'asc'; }
+      else { pSortCol=th.dataset.col; pSortDir=(th.dataset.col.includes('total')||th.dataset.col==='num_candidates')?'desc':'asc'; }
+      updatePacSortHeaders(); renderPacTable();
     });
   });
 
@@ -472,23 +621,144 @@
     if (!btn) return;
     fAlign = btn.dataset.align;
     document.querySelectorAll('#align-filters .tab-btn').forEach(b => b.classList.toggle('active', b===btn));
-    renderTable();
+    renderPacTable();
   });
 
   let searchTimer;
   document.getElementById('search-input').addEventListener('input', e => {
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => { fSearch = e.target.value.trim(); renderTable(); }, 180);
+    searchTimer = setTimeout(() => { fSearch = e.target.value.trim(); renderPacTable(); }, 180);
   });
 
-  // ── Init ───────────────────────────────────────────────────────────────────
+  // ── Candidate table ───────────────────────────────────────────────────────────
+  function getCandFiltered() {
+    let rows = ALL_CANDS.slice();
+    if (fCycle) rows = rows.filter(r => candAmounts(r) !== null);
+    rows.sort((a, b) => {
+      let av, bv;
+      const aa = candAmounts(a) || { support:a.support||0, oppose:a.oppose||0, total:a.total||0, net:a.net||0 };
+      const bb = candAmounts(b) || { support:b.support||0, oppose:b.oppose||0, total:b.total||0, net:b.net||0 };
+      if (cSortCol === 'support') { av = aa.support; bv = bb.support; }
+      else if (cSortCol === 'oppose') { av = aa.oppose; bv = bb.oppose; }
+      else if (cSortCol === 'total')  { av = aa.total;  bv = bb.total; }
+      else if (cSortCol === 'net')    { av = aa.net;    bv = bb.net; }
+      else { av = a[cSortCol]; bv = b[cSortCol]; }
+      if (av == null) av = cSortDir==='asc' ? Infinity : -Infinity;
+      if (bv == null) bv = cSortDir==='asc' ? Infinity : -Infinity;
+      if (typeof av==='string') av=av.toLowerCase();
+      if (typeof bv==='string') bv=bv.toLowerCase();
+      if (av<bv) return cSortDir==='asc'?-1:1;
+      if (av>bv) return cSortDir==='asc'?1:-1;
+      return 0;
+    });
+    return rows;
+  }
+
+  function renderCandTable() {
+    const rows = getCandFiltered();
+    document.getElementById('cand-result-count').textContent =
+      rows.length + ' candidate' + (rows.length!==1?'s':'') + ' targeted';
+
+    const tbody = document.getElementById('cand-tbody');
+    if (!rows.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="9">No candidates found for this filter</td></tr>';
+      return;
+    }
+
+    const maxTotal = Math.max(...rows.map(r => { const a = candAmounts(r); return a ? a.total : 0; }), 1);
+
+    let html = '';
+    rows.forEach(r => {
+      const pc   = partyClass(r.party);
+      const amt  = candAmounts(r) || { support:r.support||0, oppose:r.oppose||0, total:r.total||0, net:r.net||0 };
+      const tot  = amt.total || 1;
+      const sPct = Math.round(amt.support / tot * 100);
+      const oPct = Math.round(amt.oppose  / tot * 100);
+      const isOpen = openCands.has(r.bioguide_id);
+      const chamber = r.office === 'H' ? `House Dist. ${r.district||'?'}` : r.office === 'S' ? 'Senate' : r.office || '?';
+      const netCls = amt.net > 0 ? 'pos' : amt.net < 0 ? 'neg' : '';
+
+      // Top PACs split into supported vs opposed
+      const suppPACs = (r.top_pacs||[]).filter(p => p.support >= p.oppose).sort((a,b)=>b.total-a.total).slice(0,5);
+      const oppPACs  = (r.top_pacs||[]).filter(p => p.oppose  > p.support).sort((a,b)=>b.total-a.total).slice(0,5);
+
+      const pacCol = (list, cls, label) => `
+        <div>
+          <div class="cpac-col-label" style="color:${cls==='s'?'var(--green)':'var(--red)'}">${label}</div>
+          ${list.length ? list.map(p=>`<div class="cpac-item">
+            <span class="cpac-item-name">${esc(p.pac)}</span>
+            <span class="cpac-item-amt ${cls}">${fmtM(p.total)}</span>
+          </div>`).join('') : '<div style="color:var(--muted);font-size:0.8rem;padding:6px 0">None</div>'}
+        </div>`;
+
+      html += `<tr class="cand-row${isOpen?' open':''}" data-bgid="${esc(r.bioguide_id)}">
+        <td class="stripe-cell"><span class="party-stripe-td ${pc}"></span></td>
+        <td>
+          <span style="font-weight:600;font-size:0.9rem">${esc(r.candidate_name)}</span>
+          ${r.party ? `<span class="leg-badge ${pc}">${r.party === 'Democratic' || r.party === 'Democrat' ? 'D' : 'R'}</span>` : ''}
+        </td>
+        <td style="font-family:'Barlow Condensed',sans-serif;font-size:0.82rem;color:var(--muted)">${esc(chamber)}</td>
+        <td><span class="bar-val support">${fmtM(amt.support)}</span></td>
+        <td><span class="bar-val oppose">${fmtM(amt.oppose)}</span></td>
+        <td>
+          <div class="split-bar-wrap">
+            <div class="split-bar">
+              <div class="split-seg-s" style="width:${sPct}%"></div>
+              <div class="split-seg-o" style="width:${oPct}%"></div>
+            </div>
+          </div>
+        </td>
+        <td><span class="net-val ${netCls}">${fmtNet(amt.net)}</span></td>
+        <td class="total-cell">${fmtM(amt.total)}</td>
+        <td style="text-align:center;padding:11px 10px">
+          <span class="expand-toggle${isOpen?' open':''}">&#9660;</span>
+        </td>
+      </tr>
+      <tr class="cpac-expand-row">
+        <td colspan="9">
+          <div class="cpac-expand-inner${isOpen?' open':''}">
+            ${pacCol(suppPACs,'s','&#10003; PACs supporting this candidate')}
+            ${pacCol(oppPACs, 'o','&#10005; PACs opposing this candidate')}
+          </div>
+        </td>
+      </tr>`;
+    });
+    tbody.innerHTML = html;
+
+    tbody.querySelectorAll('tr.cand-row').forEach(tr => {
+      tr.addEventListener('click', () => {
+        const id    = tr.dataset.bgid;
+        const inner = tr.nextElementSibling.querySelector('.cpac-expand-inner');
+        const tog   = tr.querySelector('.expand-toggle');
+        if (openCands.has(id)) {
+          openCands.delete(id); tr.classList.remove('open'); inner.classList.remove('open'); tog.classList.remove('open');
+        } else {
+          openCands.add(id); tr.classList.add('open'); inner.classList.add('open'); tog.classList.add('open');
+        }
+      });
+    });
+  }
+
+  document.querySelectorAll('.cand-table thead th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      if (cSortCol===th.dataset.ccol) { cSortDir=cSortDir==='asc'?'desc':'asc'; }
+      else { cSortCol=th.dataset.ccol; cSortDir=(th.dataset.ccol==='candidate_name'||th.dataset.ccol==='office')?'asc':'desc'; }
+      document.querySelectorAll('.cand-table thead th[data-ccol]').forEach(t => {
+        t.classList.remove('sorted-asc','sorted-desc');
+        if (t.dataset.ccol===cSortCol) t.classList.add(cSortDir==='asc'?'sorted-asc':'sorted-desc');
+      });
+      renderCandTable();
+    });
+  });
+
+  // ── Init ─────────────────────────────────────────────────────────────────────
   buildStats();
-  updateSortHeaders();
-  renderTable();
+  updatePacSortHeaders();
+  renderPacTable();
 })();
 </script>
 
-<!-- ── PAC breakdown charts ───────────────────────────────────────────────── -->
+<!-- ── PAC breakdown charts ─────────────────────────────────────────────────── -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <div class="section-wrap" style="padding-top:0;padding-bottom:56px">
   <div class="section-label">PAC Breakdown</div>
@@ -522,9 +792,7 @@
     return Object.entries(m).sort((a,b)=>b[1]-a[1]);
   }
 
-  function labelColors(entries, colorFn){
-    return entries.map(([label]) => colorFn(label));
-  }
+  function labelColors(entries,colorFn){ return entries.map(([label])=>colorFn(label)); }
   function alignColor(label){
     const l=(label||'').toLowerCase();
     if(l.includes('democrat'))  return '#1a52c8';
@@ -542,12 +810,12 @@
   }
 
   function spendingTiers(){
-    const tiers={'Large ($1M–$10M)':0,'Medium ($100K–$1M)':0,'Small (< $100K)':0};
+    const tiers={'Large ($1M+)':0,'Medium ($100K–$1M)':0,'Small (< $100K)':0};
     for(const p of pacs){
       const t=p.grand_total||0;
-      if(t>=1_000_000)     tiers['Large ($1M–$10M)']+=t;
-      else if(t>=100_000)  tiers['Medium ($100K–$1M)']+=t;
-      else                 tiers['Small (< $100K)']+=t;
+      if(t>=1_000_000)    tiers['Large ($1M+)']+=t;
+      else if(t>=100_000) tiers['Medium ($100K–$1M)']+=t;
+      else                tiers['Small (< $100K)']+=t;
     }
     return Object.entries(tiers);
   }
@@ -559,14 +827,14 @@
     new Chart(c,{type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:bg,borderWidth:2,borderColor:'#fff'}]},
     options:{responsive:true,plugins:{legend:{position:'right',labels:{font:{family:'Barlow',size:11},padding:8,boxWidth:12}},
     tooltip:{callbacks:{label:x=>{const t=x.dataset.data.reduce((a,b)=>a+b,0);const p=(x.parsed/t*100).toFixed(1);
-    const f=x.parsed>=1e9?'$'+(x.parsed/1e9).toFixed(1)+'B':x.parsed>=1e6?'$'+(x.parsed/1e6).toFixed(1)+'M':'$'+(x.parsed/1e3).toFixed(0)+'K';
+    const f=x.parsed>=1e6?'$'+(x.parsed/1e6).toFixed(1)+'M':'$'+(x.parsed/1e3).toFixed(0)+'K';
     return' '+x.label+': '+f+' ('+p+'%)';}}}}}});
   }
 
   const ideEntries=agg('ideology');
-  donut('chart-ideology', ideEntries, labelColors(ideEntries, ideologyColor));
+  donut('chart-ideology', ideEntries, labelColors(ideEntries,ideologyColor));
   const alnEntries=agg('alignment');
-  donut('chart-align',    alnEntries, labelColors(alnEntries, alignColor));
+  donut('chart-align',    alnEntries, labelColors(alnEntries,alignColor));
   donut('chart-issue',    agg('issue_focus').filter(e=>!e[0].toLowerCase().startsWith('electoral')));
   donut('chart-size',     spendingTiers(), ['#0d1b2a','#b8963e','#d6d0c4']);
 })();
