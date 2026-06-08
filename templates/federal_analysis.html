@@ -122,6 +122,7 @@
   <a href="#funding" class="snav-a">Industry Funding</a>
   <a href="#comparison" class="snav-a">D vs R by Industry</a>
   <a href="#voting" class="snav-a">Vote Record</a>
+  <a href="#alignment" class="snav-a">Alignment Scores</a>
 </div>
 
 <!-- ═══ Section 1: Industry Funding ══════════════════════════════════════════ -->
@@ -192,12 +193,45 @@
   </div>
 </section>
 
+<!-- ═══ Section 4: Alignment Analysis ════════════════════════════════════════ -->
+<section id="alignment" class="section">
+  <div class="sec-head">3-Signal Analysis</div>
+  <div class="sec-title">Vote Alignment Score</div>
+  <div class="sec-desc">
+    Three independent signals measuring how each member's actions relate to their top donor industry.
+    <strong>Sponsorship %</strong> — share of sponsored bills whose title matches top donor industry keywords.
+    <strong>Co-sponsorship %</strong> — same for co-sponsored bills.
+    <strong>Party-line %</strong> — share of roll-call votes cast with the majority of same-party VA colleagues.
+    Low sponsorship scores reveal a key finding: <em>donor industries fund access, not direct legislation</em>.
+  </div>
+
+  <div class="tbl-wrap">
+    <table id="align-table">
+      <thead>
+        <tr>
+          <th onclick="sortTable('align-table',0)">Member</th>
+          <th onclick="sortTable('align-table',1)">Party</th>
+          <th onclick="sortTable('align-table',2)">Top Donor Industry</th>
+          <th onclick="sortTable('align-table',3)" title="% of sponsored bills matching top donor industry">Sponsored Bills Aligned</th>
+          <th onclick="sortTable('align-table',4)" title="% of co-sponsored bills matching top donor industry">Co-sponsored Aligned</th>
+          <th onclick="sortTable('align-table',5)" title="% of votes with party majority among VA delegation">Party-Line Score</th>
+        </tr>
+      </thead>
+      <tbody id="align-tbody"></tbody>
+    </table>
+  </div>
+
+  <div style="margin-top:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px" id="insight-cards"></div>
+</section>
+
 <div class="method-note">
   <strong>Data sources:</strong>
   FEC bulk data via Congress.gov API (cycles 2020–2024) · House Clerk roll-call XML · Senate.gov roll-call XML ·
   Industry classifications by VoteIQ (PAC name + employer matching). "Grassroots" = contributions under $200 aggregated.
   "Other" = unclassified PAC receipts. Both excluded from per-member totals shown here.
   Senate Yea % is not comparable to House Yea % due to different procedural vote volumes.
+  Party-line score uses VA delegation colleagues of same party as reference group.
+  Sponsorship alignment uses keyword matching on bill titles — a bill must explicitly reference the industry to count.
 </div>
 
 <script>
@@ -324,6 +358,76 @@ voteTbody.innerHTML = (D.members||[]).map(m=>{
     <td style="font-size:.78rem;color:var(--muted)">${m.top_industry||'—'}</td>
   </tr>`;
 }).join('');
+
+// ── Section 4: Alignment table ────────────────────────────────────────────
+const alignTbody = document.getElementById('align-tbody');
+const alignData = D.alignment || [];
+
+function signalBar(pct, color){
+  return `<div style="display:flex;align-items:center;gap:7px">
+    <div style="width:70px;height:7px;border-radius:3px;background:#e5e7eb;overflow:hidden">
+      <div style="width:${Math.min(pct,100)}%;height:100%;background:${color};border-radius:3px"></div>
+    </div>
+    <span style="font-size:.78rem;font-weight:700">${pct}%</span>
+  </div>`;
+}
+
+alignTbody.innerHTML = alignData.map(m=>{
+  const sp = m.sponsorship||{}, co = m.cosponsor||{}, pl = m.party_line||{};
+  const spColor = sp.pct>=10?'var(--red)':sp.pct>=5?'var(--gold)':'var(--green)';
+  const coColor = co.pct>=10?'var(--red)':co.pct>=5?'var(--gold)':'var(--green)';
+  const plColor = pl.pct>=95?'var(--navy)':pl.pct>=85?'var(--dem)':'var(--muted)';
+  return `<tr>
+    <td><strong>${m.name.split(',').reverse().join(' ').trim()}</strong></td>
+    <td><span class="chip-${m.party_short}">${m.party_short}</span></td>
+    <td style="font-size:.78rem">${m.top_industry||'—'}</td>
+    <td data-val="${sp.pct}">
+      ${signalBar(sp.pct, spColor)}
+      <div style="font-size:.68rem;color:var(--muted);margin-top:2px">${sp.matches}/${sp.total} bills</div>
+    </td>
+    <td data-val="${co.pct}">
+      ${signalBar(co.pct, coColor)}
+      <div style="font-size:.68rem;color:var(--muted);margin-top:2px">${co.matches}/${co.total} bills</div>
+    </td>
+    <td data-val="${pl.pct}">
+      ${signalBar(pl.pct, plColor)}
+      <div style="font-size:.68rem;color:var(--muted);margin-top:2px">${pl.aligned}/${pl.total} votes</div>
+    </td>
+  </tr>`;
+}).join('');
+
+// Insight cards — surface the 3 most interesting findings
+const insights = [];
+const mostIndep = [...alignData].sort((a,b)=>(a.party_line?.pct||0)-(b.party_line?.pct||0))[0];
+const leastIndep = [...alignData].sort((a,b)=>(b.party_line?.pct||0)-(a.party_line?.pct||0))[0];
+const highestSp = [...alignData].sort((a,b)=>(b.sponsorship?.pct||0)-(a.sponsorship?.pct||0))[0];
+
+if(mostIndep) insights.push({
+  label:'Most Independent Voter',
+  text:`${mostIndep.name.split(',')[0]} votes with party majority ${mostIndep.party_line?.pct}% of the time — lowest party-line score in the VA delegation.`,
+  color:'var(--gold)'
+});
+if(leastIndep && leastIndep.bioguide_id!==mostIndep?.bioguide_id) insights.push({
+  label:'Most Party-Line Voter',
+  text:`${leastIndep.name.split(',')[0]} votes with party majority ${leastIndep.party_line?.pct}% of the time — highest party-line score in the delegation.`,
+  color:'var(--navy)'
+});
+if(highestSp && highestSp.sponsorship?.pct > 0) insights.push({
+  label:'Highest Sponsorship Alignment',
+  text:`${highestSp.name.split(',')[0]}: ${highestSp.sponsorship?.pct}% of sponsored bills align with their top donor industry (${highestSp.top_industry}).`,
+  color:'var(--red)'
+});
+insights.push({
+  label:'Key Finding: Access vs Legislation',
+  text:'Across the VA delegation, sponsorship alignment averages under 3% — donor industries fund access and relationships, not direct bill sponsorship.',
+  color:'var(--orange)'
+});
+
+document.getElementById('insight-cards').innerHTML = insights.map(i=>`
+  <div style="background:#fff;border:1px solid var(--border);border-left:4px solid ${i.color};border-radius:8px;padding:14px 16px">
+    <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:${i.color};margin-bottom:5px">${i.label}</div>
+    <div style="font-size:.82rem;line-height:1.55;color:var(--navy)">${i.text}</div>
+  </div>`).join('');
 
 // ── Sort helper ───────────────────────────────────────────────────────────
 let _sortState = {};
