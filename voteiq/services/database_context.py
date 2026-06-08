@@ -23,11 +23,107 @@ BILL_RE = re.compile(r"\b(HB|SB|HJ|SJ|HR|SR|HJR|SJR)\s*-?\s*(\d{1,5})\b", re.I)
 YEAR_RE = re.compile(r"\b20\d{2}\b")
 
 KNOWN_FEDERAL_PEOPLE = {
+    # ── Dual-role members: federal record + current state office ─────────────────
+    # Show BOTH their congressional record and current state role on profile queries.
     "spanberger": {
         "name": "Abigail Spanberger",
         "bioguide_id": "S001209",
         "fec_candidate_ids": ["H8VA07094"],
-        "office_note": "Former U.S. Representative for Virginia; current Virginia governor in VoteIQ records.",
+        "office_note": "Former U.S. Representative for Virginia's 7th District; current Virginia Governor (2026–). Show both her congressional voting record AND her governor bill-action record on profile queries.",
+        "is_current_federal": True,
+    },
+    # ── Active VA federal delegation (is_current_federal=True) ─────────────────
+    # Inject federal vote/bill context for any profile or vote query about them.
+    "kiggans": {
+        "name": "Jennifer A. Kiggans",
+        "bioguide_id": "K000399",
+        "fec_candidate_ids": ["H2VA02064"],
+        "office_note": "U.S. Representative, Virginia 2nd District (119th Congress).",
+        "is_current_federal": True,
+    },
+    "wittman": {
+        "name": "Rob Wittman",
+        "bioguide_id": "W000804",
+        "fec_candidate_ids": ["H8VA01147"],
+        "office_note": "U.S. Representative, Virginia 1st District (119th Congress).",
+        "is_current_federal": True,
+    },
+    "bobby scott": {
+        "name": "Bobby Scott",
+        "bioguide_id": "S000185",
+        "fec_candidate_ids": ["H6VA03088"],
+        "office_note": "U.S. Representative, Virginia 3rd District (119th Congress).",
+        "is_current_federal": True,
+    },
+    "mcclellan": {
+        "name": "Jennifer McClellan",
+        "bioguide_id": "M001227",
+        "fec_candidate_ids": ["H2VA04175"],
+        "office_note": "U.S. Representative, Virginia 4th District (119th Congress).",
+        "is_current_federal": True,
+    },
+    "mcguire": {
+        "name": "John McGuire",
+        "bioguide_id": "M001239",
+        "fec_candidate_ids": ["H0VA05220"],
+        "office_note": "U.S. Representative, Virginia 5th District (119th Congress).",
+        "is_current_federal": True,
+    },
+    "ben cline": {
+        "name": "Ben Cline",
+        "bioguide_id": "C001118",
+        "fec_candidate_ids": ["H8VA06104"],
+        "office_note": "U.S. Representative, Virginia 6th District (119th Congress).",
+        "is_current_federal": True,
+    },
+    "vindman": {
+        "name": "Eugene Vindman",
+        "bioguide_id": "V000138",
+        "fec_candidate_ids": ["H4VA07234"],
+        "office_note": "U.S. Representative, Virginia 7th District (119th Congress).",
+        "is_current_federal": True,
+    },
+    "don beyer": {
+        "name": "Don Beyer",
+        "bioguide_id": "B001292",
+        "fec_candidate_ids": ["H4VA08224"],
+        "office_note": "U.S. Representative, Virginia 8th District (119th Congress).",
+        "is_current_federal": True,
+    },
+    "morgan griffith": {
+        "name": "Morgan Griffith",
+        "bioguide_id": "G000568",
+        "fec_candidate_ids": ["H0VA09055"],
+        "office_note": "U.S. Representative, Virginia 9th District (119th Congress).",
+        "is_current_federal": True,
+    },
+    "subramanyam": {
+        "name": "Suhas Subramanyam",
+        "bioguide_id": "S001230",
+        "fec_candidate_ids": ["H4VA10279"],
+        "office_note": "U.S. Representative, Virginia 10th District (119th Congress).",
+        "is_current_federal": True,
+    },
+    "walkinshaw": {
+        "name": "James Walkinshaw",
+        "bioguide_id": "W000831",
+        "fec_candidate_ids": ["H6VA11066"],
+        "office_note": "U.S. Representative, Virginia 11th District (119th Congress).",
+        "is_current_federal": True,
+    },
+    "mark warner": {
+        "name": "Mark Warner",
+        "bioguide_id": "W000805",
+        "fec_candidate_ids": ["S6VA00093"],
+        "office_note": "U.S. Senator, Virginia (119th Congress).",
+        "is_current_federal": True,
+    },
+    "tim kaine": {
+        "name": "Tim Kaine",
+        "bioguide_id": "K000384",
+        "fec_candidate_ids": ["S2VA00142"],
+        "office_note": "U.S. Senator, Virginia (119th Congress).",
+        "is_current_federal": True,
     },
 }
 
@@ -265,24 +361,45 @@ def _known_federal_person(query: str) -> dict | None:
 
 
 def _add_known_person_scope_context(blocks: list[str], query: str) -> None:
+    """Inject a scope hint for any person in KNOWN_FEDERAL_PEOPLE who appears in the query."""
     q_lower = (query or "").lower()
-    if "spanberger" not in q_lower and "spanberge" not in q_lower:
+    person = _known_federal_person(query)
+    if not person:
         return
-    if _is_explicit_federal_vote_query(query):
-        blocks.append(
-            "[Database Context - person scope]\n"
-            "person=Abigail Spanberger\n"
-            "requested_scope=former federal/congressional record\n"
-            "lookup_policy=Use federal roll-call tables only because the query explicitly requests federal or congressional records."
-        )
+
+    name = person["name"]
+    note = person.get("office_note", "")
+
+    # Spanberger: dual scope — current governor + former congressional record
+    if "spanberger" in q_lower or "spanberge" in q_lower:
+        if _is_explicit_federal_vote_query(query):
+            blocks.append(
+                "[Database Context - person scope]\n"
+                f"person={name}\n"
+                "requested_scope=former federal/congressional record\n"
+                "lookup_policy=User explicitly asked for congressional/federal record. "
+                "Use congress_votes and congress_bills tables for her roll-call history. "
+                "Also include her governor bill-action summary for full context."
+            )
+        else:
+            blocks.append(
+                "[Database Context - person scope]\n"
+                f"person={name}\n"
+                "current_voteiq_scope=Virginia state governor (2026–) AND former U.S. Representative\n"
+                "lookup_policy=Include BOTH (1) governor bill-action records (signed/vetoed/amended) "
+                "from va_governor_bill_actions, AND (2) her former congressional voting record from "
+                "congress_votes / congress_bills. Show the congressional record as 'Previous congressional record' "
+                "in your response. Use Virginia state campaign-finance tables for donor context."
+            )
         return
+
+    # Warner and Kaine (senators) and all other active federal members
     blocks.append(
         "[Database Context - person scope]\n"
-        "person=Abigail Spanberger\n"
-        "current_voteiq_scope=Virginia state governor\n"
-        "lookup_policy=For current state-governor questions, use governor bill-action records "
-        "(signed, vetoed, amended/returned) and Virginia state campaign-finance tables. "
-        "Do not require federal roll-call vote records unless the user explicitly asks for her former congressional/federal record."
+        f"person={name}\n"
+        f"office_note={note}\n"
+        "lookup_policy=Use congress_votes for roll-call vote history, congress_bills for sponsored/cosponsored "
+        "legislation, and va_campaign_finance / va_campaign_contributions for donor context."
     )
 
 
@@ -1010,15 +1127,24 @@ def _add_person_vote_context(blocks: list[str], query: str, terms: list[str], se
 
 def _add_federal_vote_context(blocks: list[str], query: str, terms: list[str]) -> None:
     q_lower = (query or "").lower()
-    if not any(term in q_lower for term in (
-        "vote", "votes", "voted", "voting", "roll call", "roll-call",
-        "correlation", "campaign data", "campaign finance",
-    )):
-        return
 
     person = _known_federal_person(query)
+    is_active = bool(person and person.get("is_current_federal"))
     explicit_federal = _is_explicit_federal_vote_query(query)
-    if person and not explicit_federal:
+
+    # Gate 1: require vote-related keyword — UNLESS it's a known active federal
+    # member (profile queries like "who is Kiggans" should still show vote data).
+    has_vote_keyword = any(term in q_lower for term in (
+        "vote", "votes", "voted", "voting", "roll call", "roll-call",
+        "correlation", "campaign data", "campaign finance",
+    ))
+    if not has_vote_keyword and not is_active:
+        return
+
+    # Gate 2: former federal members (e.g. Spanberger, now governor) — only
+    # show federal vote context when user explicitly asks for their congressional
+    # record. Active members always get their vote context.
+    if person and not is_active and not explicit_federal:
         return
 
     conn = _connect("polls")
