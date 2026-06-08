@@ -273,11 +273,16 @@ def api_federal_analysis():
 @router.get("/federal-analysis", response_class=HTMLResponse)
 def federal_analysis_page():
     """Federal delegation industry funding analysis page."""
+    import traceback as _tb
     conn = _conn()
     try:
         data = _federal_analysis_data(conn)
         data["alignment"] = _compute_alignment(conn)
         return _inject_analysis(data)
+    except Exception as exc:
+        _trace = _tb.format_exc()
+        print(f"[/federal-analysis ERROR] {exc}\n{_trace}", flush=True)
+        raise HTTPException(status_code=500, detail=f"federal-analysis failed: {exc}")
     finally:
         conn.close()
 
