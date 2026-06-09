@@ -413,6 +413,66 @@ PYEOF
     [ $? -ne 0 ] && echo "⚠ Federal data seed failed — federal queries may be incomplete" || echo "✓ Federal data seeded"
 fi
 
+# ── STEP 4d: Ingest congress roll-call votes (VA delegation) ──────────────────
+echo ""
+echo "[STEP 4d] Checking congress_votes table (VA roll-call ingestion)..."
+
+CV_STATUS=$(python3 -c "
+import sqlite3, os
+from datetime import datetime, timezone
+db = os.path.join(os.environ.get('DATA_DIR', os.getcwd()), 'polls.db')
+try:
+    conn = sqlite3.connect(db)
+    n = conn.execute('SELECT COUNT(*) FROM congress_votes').fetchone()[0]
+    last = conn.execute('SELECT MAX(vote_date) FROM congress_votes').fetchone()[0]
+    age = 9999
+    if last:
+        age = (datetime.now(timezone.utc).replace(tzinfo=None) - datetime.fromisoformat(last[:10])).days
+    print(f'{n},{age}')
+    conn.close()
+except Exception:
+    print('0,9999')
+" 2>/dev/null || echo "0,9999")
+
+CV_ROWS=$(echo "$CV_STATUS" | cut -d',' -f1)
+CV_AGE=$(echo  "$CV_STATUS" | cut -d',' -f2)
+
+echo "  congress_votes rows: ${CV_ROWS}  /  newest entry age: ${CV_AGE} days"
+
+if [ "${CV_ROWS:-0}" -lt 500 ] || [ "${CV_AGE:-9999}" -gt 14 ]; then
+    echo "  Running ingest_congress_votes.py ..."
+
+    CURRENT_YEAR=$(date '+%Y')
+    if   [ "$CURRENT_YEAR" = "2025" ]; then CV_SESSION=1; CV_YEAR=2025
+    elif [ "$CURRENT_YEAR" = "2026" ]; then CV_SESSION=2; CV_YEAR=2026
+    else CV_SESSION=2; CV_YEAR=$CURRENT_YEAR; fi
+
+    python3 ingest_congress_votes.py \
+        --congress 119 \
+        --session  "$CV_SESSION" \
+        --year     "$CV_YEAR" \
+        --house-limit  300 \
+        --senate-limit 200 \
+        2>&1 | tail -10
+
+    CV_ROWS_AFTER=$(python3 -c "
+import sqlite3, os
+db = os.path.join(os.environ.get('DATA_DIR', os.getcwd()), 'polls.db')
+try:
+    print(sqlite3.connect(db).execute('SELECT COUNT(*) FROM congress_votes').fetchone()[0])
+except Exception:
+    print(0)
+" 2>/dev/null || echo "0")
+    echo "  congress_votes after ingest: ${CV_ROWS_AFTER} rows"
+    if [ "${CV_ROWS_AFTER:-0}" -gt 0 ] 2>/dev/null; then
+        echo "✓ Congress votes ingested"
+    else
+        echo "⚠ Ingest produced 0 rows — vote context will be limited (non-fatal)"
+    fi
+else
+    echo "  ✓ Already populated and fresh — skipping ingest"
+fi
+
 # ── STEP 5: Build committee_testimony_proxy (derived from polls.db) ───────────
 echo ""
 echo "[STEP 5] Building committee testimony proxy (all sessions)..."
@@ -469,6 +529,7 @@ checks = [
     ('campaign_finance_summary',          100, 'campaign finance summaries'),
     ('governor_actions',                  100, 'governor actions'),
     ('va_committee_assignments',           50, 'committee assignments'),
+    ('congress_votes',                    500, 'congress roll-call votes'),
 ]
 try:
     conn = sqlite3.connect(db)
