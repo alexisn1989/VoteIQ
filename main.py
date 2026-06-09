@@ -493,6 +493,40 @@ def _run_fec_ingest_background() -> None:
         print(f"[fec] Ingestion error: {exc}")
 
 
+def _run_fec_2026_background() -> None:
+    """Seed fec_industry_totals with 2026 cycle data if the table is empty on this disk."""
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        count = conn.execute(
+            "SELECT COUNT(*) FROM fec_industry_totals WHERE cycle=2026"
+        ).fetchone()[0]
+        conn.close()
+        if count > 0:
+            print(f"[fec-2026] {count} sector rows present — skipping.")
+            return
+    except Exception:
+        pass  # table not yet created; let the script create it
+    print("[fec-2026] 2026 FEC industry data missing — starting background ingest…")
+    script = os.path.join(BASE_DIR, "scripts", "ingest_fec_2026.py")
+    if not os.path.exists(script):
+        print("[fec-2026] ingest_fec_2026.py not found — skipping.")
+        return
+    try:
+        result = subprocess.run(
+            [sys.executable, script, "--cycle", "2026"],
+            capture_output=True, text=True, timeout=1800,
+        )
+        if result.returncode == 0:
+            _load_pac_cache()
+            print("[fec-2026] Ingest complete — PAC cache reloaded.")
+        else:
+            print(f"[fec-2026] Ingest failed (rc={result.returncode}): {result.stderr[-400:]}")
+    except subprocess.TimeoutExpired:
+        print("[fec-2026] Ingest timed out after 30 minutes.")
+    except Exception as exc:
+        print(f"[fec-2026] Error: {exc}")
+
+
 def _schedule_e_are_fresh(max_age_days: int = 7) -> bool:
     """Return True if Schedule E independent expenditure data is recent."""
     from datetime import datetime, timezone, timedelta
@@ -643,6 +677,7 @@ async def _startup_ingest() -> None:
         print(f"[startup] _ensure_data_meta failed (non-fatal): {_exc}")
     threading.Thread(target=_poll_ingest_background, daemon=True).start()
     threading.Thread(target=_run_fec_ingest_background, daemon=True).start()
+    threading.Thread(target=_run_fec_2026_background, daemon=True).start()
     threading.Thread(target=_run_schedule_e_background, daemon=True).start()
     threading.Thread(target=_congress_ingest_background, daemon=True).start()
     threading.Thread(target=_run_committee_ingest_background, daemon=True).start()
@@ -7190,6 +7225,32 @@ def _fetch_federal_context(member: dict) -> str:
             lines.append(f"  {vote_date} | {bill}{title_tag}{area_tag} | {question} | Voted: {member_vote} | Result: {result}")
     else:
         lines.append("\nNo roll-call votes in dataset.")
+
+    # ── FEC industry fundraising (from _PAC_CACHE / fec_industry_totals) ─────
+    pac_rows = _PAC_CACHE.get(bio, [])
+    if pac_rows:
+        cycle = pac_rows[0].get("cycle", "")
+        total_raised = sum(r["total"] for r in pac_rows)
+        sorted_rows = sorted(pac_rows, key=lambda x: x["total"], reverse=True)
+        lines.append(
+            f"\nFEC Individual Contributions by Industry — {cycle} Cycle "
+            f"({len(pac_rows)} sectors, ${total_raised:,.0f} total):"
+        )
+        for row in sorted_rows[:12]:
+            top = row.get("top_donors", [])
+            top_names = [
+                d.get("employer") or d.get("name", "")
+                for d in top[:3]
+                if d.get("employer") or d.get("name")
+            ]
+            top_str = f" | Top: {', '.join(top_names)}" if top_names else ""
+            lines.append(
+                f"  {row['industry']}: ${row['total']:,.0f} "
+                f"({row['count']} contributors){top_str}"
+            )
+        lines.append("  Source: FEC OpenFEC API (fec.gov) — individual contributions by employer")
+    else:
+        lines.append("\nFEC industry fundraising data not yet loaded (background ingest pending).")
 
     return "\n".join(lines)
 
