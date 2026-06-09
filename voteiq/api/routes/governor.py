@@ -287,8 +287,10 @@ def governor_overview(
 @router.get("/governor", response_class=HTMLResponse)
 def governor_page():
     """Governor Spanberger 2026 bill actions and executive orders page."""
-    conn = _polls_conn()
+    import traceback as _tb
+    conn = None
     try:
+        conn = _polls_conn()
         bills = [
             dict(r)
             for r in conn.execute(
@@ -328,8 +330,11 @@ def governor_page():
     except HTTPException:
         raise
     except Exception as exc:
+        _trace = _tb.format_exc()
+        print(f"[/governor ERROR] {exc}\n{_trace}", flush=True)
         raise HTTPException(
-            status_code=503, detail=f"Governor page temporarily unavailable: {exc}"
+            status_code=500, detail=f"Governor page error: {exc}"
         ) from exc
     finally:
-        conn.close()
+        if conn:
+            conn.close()
