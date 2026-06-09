@@ -129,6 +129,7 @@
     <a href="/">Chat</a>
     <a href="/representatives">Representatives</a>
     <a href="/legislators" class="active">Legislators</a>
+    <a href="/governor">Governor</a>
     <a href="/pac-spending">PACs</a>
     <a href="/donor-map-state">Donors</a>
     <a href="/past-elections">Elections</a>
@@ -238,8 +239,8 @@
 
   // ── Stats bar ──────────────────────────────────────────────────────────────
   function buildStats() {
-    const senate = ALL.filter(r => r.chamber === 'upper');
-    const house  = ALL.filter(r => r.chamber === 'lower');
+    const senate = ALL.filter(r => r.chamber === 'Senate' || r.chamber === 'upper');
+    const house  = ALL.filter(r => r.chamber === 'House'  || r.chamber === 'lower');
     const dem    = ALL.filter(r => partyClass(r.party) === 'dem');
     const rep    = ALL.filter(r => partyClass(r.party) === 'rep');
     document.getElementById('stats-bar').innerHTML =
