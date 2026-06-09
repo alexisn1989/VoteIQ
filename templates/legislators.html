@@ -239,8 +239,16 @@
 
   // ── Stats bar ──────────────────────────────────────────────────────────────
   function buildStats() {
-    const senate = ALL.filter(r => r.chamber === 'Senate' || r.chamber === 'upper');
-    const house  = ALL.filter(r => r.chamber === 'House'  || r.chamber === 'lower');
+    // Virginia has 100 House seats and 40 Senate seats.
+    // va_legislator_vote_summary may include mid-session replacements (both
+    // predecessor and successor appear). Use top-N by vote count to get the
+    // members who served the most of the session (i.e. current seat-holders).
+    const houseAll  = ALL.filter(r => r.chamber === 'House'  || r.chamber === 'lower')
+                         .sort((a,b) => (b.total_votes||0) - (a.total_votes||0));
+    const senateAll = ALL.filter(r => r.chamber === 'Senate' || r.chamber === 'upper')
+                         .sort((a,b) => (b.total_votes||0) - (a.total_votes||0));
+    const house  = houseAll.slice(0, 100);
+    const senate = senateAll.slice(0, 40);
     const dem    = ALL.filter(r => partyClass(r.party) === 'dem');
     const rep    = ALL.filter(r => partyClass(r.party) === 'rep');
     document.getElementById('stats-bar').innerHTML =
