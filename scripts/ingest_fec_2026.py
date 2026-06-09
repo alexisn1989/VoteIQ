@@ -190,10 +190,10 @@ def classify_employer(employer: str) -> str:
 
 # ── FEC API helpers ───────────────────────────────────────────────────────────
 
-def _get(path: str, params: dict) -> dict:
+def _get(path: str, params: dict, timeout: int = 60) -> dict:
     params = {"api_key": FEC_API_KEY, **params}
     url = f"{FEC_BASE}/{path.lstrip('/')}"
-    resp = requests.get(url, params=params, headers=HEADERS, timeout=30)
+    resp = requests.get(url, params=params, headers=HEADERS, timeout=timeout)
     resp.raise_for_status()
     return resp.json()
 
