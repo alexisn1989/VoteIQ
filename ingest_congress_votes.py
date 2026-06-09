@@ -219,7 +219,7 @@ def ingest_house(conn: sqlite3.Connection, limit: int = 150, dry_run: bool = Fal
     """Fetch the most recent `limit` House roll-call votes and store VA member votes."""
     # Detect latest roll by binary search from high end
     latest = 1
-    for candidate in [500, 400, 350, 320, 300, 250, 200, 150, 100]:
+    for candidate in [900, 800, 700, 600, 500, 400, 350, 320, 300, 250, 200, 150, 100]:
         data = _get(HOUSE_BASE.format(year=YEAR, roll=candidate))
         if data:
             latest = candidate

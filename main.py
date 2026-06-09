@@ -611,13 +611,13 @@ def _congress_ingest_background() -> None:
                     print(f"[congress] Members/bills rc={r.returncode}")
                 except Exception as exc:
                     print(f"[congress] Members/bills error: {exc}")
-        # Votes — small limit on startup so it completes quickly
+        # Votes — 300/200 so initial population is adequate; incremental runs are fast
         script = os.path.join(BASE_DIR, "ingest_congress_votes.py")
         if os.path.exists(script):
             try:
                 r = subprocess.run(
-                    [sys.executable, script, "--house-limit", "50", "--senate-limit", "50"],
-                    capture_output=True, text=True, timeout=180,
+                    [sys.executable, script, "--house-limit", "300", "--senate-limit", "200"],
+                    capture_output=True, text=True, timeout=600,
                 )
                 if r.returncode == 0:
                     print(f"[congress] Startup ingestion complete. {r.stdout.strip().splitlines()[-1] if r.stdout.strip() else ''}")
@@ -7058,39 +7058,71 @@ def _fetch_federal_context(member: dict) -> str:
         else f"U.S. Representative, Virginia's {district}th Congressional District"
     )
     votes, bills, committees = [], [], []
-    db_available = False
+    vote_count = 0
+    committee_lookup_failed = False
+    db_available = os.path.exists(_POLLS_DB)
     try:
         conn = sqlite3.connect(_POLLS_DB)
-        votes = conn.execute(
-            """SELECT cv.vote_date, cv.bill, cv.question, cv.member_vote, cv.result,
-                      COALESCE(cb.title, bd.title, '') AS bill_title,
-                      COALESCE(cb.policy_area, bd.policy_area, '') AS policy_area
-               FROM congress_votes cv
-               LEFT JOIN congress_bills cb
-                   ON cv.congress = cb.congress
-                   AND cv.bill = (cb.bill_type || ' ' || cb.bill_number)
-               LEFT JOIN congress_bill_details bd
-                   ON cv.congress = bd.congress
-                   AND cv.bill = (bd.bill_type || ' ' || bd.bill_number)
-               WHERE cv.bioguide_id = ?
-               ORDER BY cv.vote_date DESC LIMIT 40""",
-            (bio,),
-        ).fetchall()
-        bills = conn.execute(
-            """SELECT bill_type, bill_number, title, policy_area,
-                      latest_action, latest_action_date, role
-               FROM congress_bills WHERE sponsor_id = ?
-               ORDER BY latest_action_date DESC LIMIT 25""",
-            (bio,),
-        ).fetchall()
-        committees = conn.execute(
-            """SELECT committee_name, is_subcommittee, parent_name, role
-               FROM congress_committees WHERE bioguide_id = ?
-               ORDER BY is_subcommittee, committee_name""",
-            (bio,),
-        ).fetchall()
+        try:
+            vote_count = conn.execute(
+                "SELECT COUNT(*) FROM congress_votes WHERE bioguide_id = ?",
+                (bio,),
+            ).fetchone()[0]
+            votes = conn.execute(
+                """SELECT cv.vote_date, cv.bill, cv.question, cv.member_vote, cv.result,
+                          COALESCE(cb.title, bd.title, '') AS bill_title,
+                          COALESCE(cb.policy_area, bd.policy_area, '') AS policy_area
+                   FROM congress_votes cv
+                   LEFT JOIN congress_bills cb
+                       ON cv.congress = cb.congress
+                       AND cv.bill = (upper(cb.bill_type) || ' ' || cb.bill_number)
+                   LEFT JOIN congress_bill_details bd
+                       ON cv.congress = bd.congress
+                       AND cv.bill = (upper(bd.bill_type) || ' ' || bd.bill_number)
+                   WHERE cv.bioguide_id = ?
+                   ORDER BY cv.vote_date DESC LIMIT 40""",
+                (bio,),
+            ).fetchall()
+        except Exception:
+            votes = []
+            vote_count = 0
+
+        try:
+            bills = conn.execute(
+                """SELECT bill_type, bill_number, title, policy_area,
+                          latest_action, latest_action_date, role
+                   FROM congress_bills WHERE sponsor_id = ?
+                   ORDER BY latest_action_date DESC LIMIT 25""",
+                (bio,),
+            ).fetchall()
+        except Exception:
+            bills = []
+
+        if not bills:
+            try:
+                bills = conn.execute(
+                    """SELECT bill_type, bill_number, title, policy_area,
+                              status AS latest_action, introduced_date AS latest_action_date,
+                              'sponsor' AS role
+                       FROM federal_bills
+                       WHERE bioguide_id = ? AND congress = 119
+                       ORDER BY introduced_date DESC LIMIT 25""",
+                    (bio,),
+                ).fetchall()
+            except Exception:
+                bills = []
+
+        try:
+            committees = conn.execute(
+                """SELECT committee_name, is_subcommittee, parent_name, role
+                   FROM congress_committees WHERE bioguide_id = ?
+                   ORDER BY is_subcommittee, committee_name""",
+                (bio,),
+            ).fetchall()
+        except Exception:
+            committees = []
+            committee_lookup_failed = True
         conn.close()
-        db_available = True
     except Exception:
         db_available = False
 
@@ -7118,10 +7150,12 @@ def _fetch_federal_context(member: dict) -> str:
         total_v = len(votes)
         yes_rate = round(yes_ct / total_v * 100, 1) if total_v else 0
         lines.append(
-            f"\nOverall voting record (119th Congress, {total_v} roll calls shown): "
+            f"\nRecent voting record (119th Congress, {total_v} of {vote_count or total_v} roll calls shown): "
             f"{yes_ct} Yes, {no_ct} No, {nv_ct} Not voting, {pres_ct} Present"
         )
         lines.append(f"Yes rate: {yes_rate}%")
+    elif vote_count == 0:
+        lines.append("\nNo roll-call votes found in local congress_votes table for this member.")
 
     if committees:
         lines.append(f"\nCommittee Assignments ({len(committees)} total):")
@@ -7131,6 +7165,8 @@ def _fetch_federal_context(member: dict) -> str:
                 lines.append(f"  └─ {cname}{role_tag} (Subcommittee of {parent})")
             else:
                 lines.append(f"  • {cname}{role_tag}")
+    elif committee_lookup_failed:
+        lines.append("\nCommittee table not loaded locally; verify current assignments at congress.gov.")
     else:
         lines.append("\nNo committee data available.")
 

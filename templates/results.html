@@ -562,6 +562,32 @@ if (document.getElementById('viqInput')) {
     function viqEscapeHtml(value){
       return String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
     }
+    function viqDecodeAskPayload(value){
+      const trimmed = String(value || '').trim().replace(/%[0-9a-fA-F]?$/g, '');
+      if(!trimmed) return '';
+      try {
+        return decodeURIComponent(trimmed.replace(/\+/g, '%20')).trim();
+      } catch(e) {
+        return trimmed.replace(/\+/g, ' ').trim();
+      }
+    }
+    function viqAskQueryFromHref(href, fallbackText){
+      const rawHref = String(href || '');
+      if(/%(?:[0-9a-fA-F])?$/.test(rawHref) && fallbackText) return String(fallbackText || '').trim();
+      try {
+        const url = new URL(rawHref, window.location.origin);
+        if(url.origin === window.location.origin && url.pathname === '/ask'){
+          const query = viqDecodeAskPayload(url.searchParams.get('q') || '');
+          if(query) return query;
+        }
+      } catch(e) {}
+      const match = rawHref.match(/(?:^|\/)ask\?q=([^&#]*)/);
+      if(match){
+        const query = viqDecodeAskPayload(match[1]);
+        if(query) return query;
+      }
+      return '';
+    }
     function viqRenderMarkdown(md){
       return viqEscapeHtml(md)
         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
@@ -608,7 +634,7 @@ if (document.getElementById('viqInput')) {
       const link=e.target.closest('a.viq-followup-link');
       if(!link) return;
       e.preventDefault();
-      const query=new URL(link.href, window.location.origin).searchParams.get('q') || link.textContent;
+      const query=viqAskQueryFromHref(link.getAttribute('href') || link.href, link.textContent) || link.textContent;
       viqSendMessage(query);
     });
   })();

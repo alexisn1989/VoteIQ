@@ -26,11 +26,31 @@ _BASE_DIR = Path(__file__).resolve().parents[3]  # project root
 
 
 def _polls_conn() -> sqlite3.Connection:
-    data_dir = os.getenv("DATA_DIR", str(_BASE_DIR))
-    db_path = os.path.join(data_dir, "polls.db")
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    return conn
+    """Locate polls.db using the same multi-path resolution as database_context.
+    Tries DATA_DIR / VOTEIQ_DATA_DIR / RENDER_DISK_MOUNT_PATH env vars first,
+    then the project root, then common Render disk mount points.
+    Raises RuntimeError with a diagnostic message if none exist.
+    """
+    candidates: list[str] = []
+    for env_var in ("DATA_DIR", "VOTEIQ_DATA_DIR", "RENDER_DISK_MOUNT_PATH"):
+        val = os.getenv(env_var)
+        if val:
+            candidates.append(os.path.join(val, "polls.db"))
+    candidates.append(os.path.join(str(_BASE_DIR), "polls.db"))
+    for fixed in ("/data/polls.db", "/var/data/polls.db"):
+        candidates.append(fixed)
+
+    for path in candidates:
+        if os.path.exists(path):
+            conn = sqlite3.connect(path)
+            conn.row_factory = sqlite3.Row
+            return conn
+
+    tried = ", ".join(candidates)
+    raise RuntimeError(
+        f"polls.db not found. Tried paths: {tried}. "
+        "Set the DATA_DIR environment variable to the directory containing polls.db."
+    )
 
 
 def _inject(template: str, key: str, data) -> str:

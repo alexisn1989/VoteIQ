@@ -883,13 +883,33 @@
     }
     const _billUrlRe     = /openstates\.org\/va\/bills\/\d+\/([A-Z]+\d+)\/?/i;
     const _personUrlRe   = /openstates\.org\/person\//i;
-    function viqAskQueryFromHref(href) {
+    function viqDecodeAskPayload(value) {
+      const trimmed = String(value || '').trim().replace(/%[0-9a-fA-F]?$/g, '');
+      if (!trimmed) return '';
       try {
-        const url = new URL(href, window.location.origin);
+        return decodeURIComponent(trimmed.replace(/\+/g, '%20')).trim();
+      } catch (e) {
+        return trimmed.replace(/\+/g, ' ').trim();
+      }
+    }
+    function viqAskQueryFromHref(href, fallbackText) {
+      const rawHref = String(href || '');
+      if (!rawHref) return '';
+      if (/%(?:[0-9a-fA-F])?$/.test(rawHref) && fallbackText) {
+        return String(fallbackText || '').trim();
+      }
+      try {
+        const url = new URL(rawHref, window.location.origin);
         if (url.origin === window.location.origin && url.pathname === '/ask') {
-          return url.searchParams.get('q') || '';
+          const query = viqDecodeAskPayload(url.searchParams.get('q') || '');
+          if (query) return query;
         }
       } catch (e) {}
+      const match = rawHref.match(/(?:^|\/)ask\?q=([^&#]*)/);
+      if (match) {
+        const query = viqDecodeAskPayload(match[1]);
+        if (query) return query;
+      }
       return '';
     }
     function viqAttachLinkBehavior(bubble) {
@@ -897,7 +917,7 @@
         const href = a.getAttribute('href') || '';
         const billMatch = href.match(_billUrlRe);
         const isPerson  = _personUrlRe.test(href);
-        const askQuery  = viqAskQueryFromHref(href);
+        const askQuery  = viqAskQueryFromHref(href, a.textContent);
 
         if (askQuery) {
           // Follow-up link -> ask in this chat instead of navigating to /ask
@@ -914,7 +934,7 @@
 
         } else if (href.startsWith('#ask:')) {
           // Topic suggestion link → fire the embedded query
-          const query = decodeURIComponent(href.slice(5));
+          const query = viqDecodeAskPayload(href.slice(5));
           if (a.dataset.viqLinkBound === '1') return;
           a.dataset.viqLinkBound = '1';
           a.removeAttribute('target');
@@ -969,8 +989,8 @@
       bubble.querySelectorAll('a').forEach(function(a) {
         const href = a.getAttribute('href') || '';
         const query = href.startsWith('#ask:')
-          ? decodeURIComponent(href.slice(5))
-          : viqAskQueryFromHref(href);
+          ? viqDecodeAskPayload(href.slice(5))
+          : viqAskQueryFromHref(href, a.textContent);
         const text = a.textContent.trim();
         if (!text || !query) return;
         // Format chip label as "Name on topic" when possible
@@ -1027,7 +1047,7 @@
           while ((m = mdRe.exec(text)) !== null) {
             if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
             const a = document.createElement('a');
-            a.href = '#ask:' + m[2].trim();
+            a.href = '#ask:' + encodeURIComponent(m[2].trim());
             a.textContent = m[1].trim();
             frag.appendChild(a);
             last = m.index + m[0].length;
@@ -1041,7 +1061,7 @@
             span.appendChild(document.createTextNode('Ask me how ' + name + ' voted on '));
             topics.forEach(function(topic, i) {
               const a = document.createElement('a');
-              a.href = '#ask:How did ' + name + ' vote on ' + topic + '?';
+              a.href = '#ask:' + encodeURIComponent('How did ' + name + ' vote on ' + topic + '?');
               a.textContent = topic;
               span.appendChild(a);
               if (i === 0) span.appendChild(document.createTextNode(', '));

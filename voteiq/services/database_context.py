@@ -1125,6 +1125,259 @@ def _add_person_vote_context(blocks: list[str], query: str, terms: list[str], se
         conn.close()
 
 
+# ── State legislator vote × SBE donor correlation ─────────────────────────────
+
+def _add_state_vote_donor_context(
+    blocks: list[str], query: str, terms: list[str], session: str
+) -> None:
+    """Three-table join: va_legislator_recent_votes × va_bills × va_cf_schedule_a.
+
+    Fires when a state legislator name resolves from the query AND the query
+    contains both a vote signal and a money/donor signal.
+
+    Output layout per legislator
+    ----------------------------
+    • Topic-filtered votes (va_legislator_recent_votes JOIN va_bills).
+      If topic terms exist, filters va_bills.title/subjects LIKE term.
+    • Top contributors (va_cf_reports JOIN va_cf_schedule_a), aggregated
+      by employer, ordered by total amount — showing who funded the member.
+    • Cycle alignment: contributions matched to the same session/cycle year.
+    """
+    q_lower = (query or "").lower()
+
+    # Gate — need vote signal + money signal
+    has_vote   = any(kw in q_lower for kw in ("vote", "votes", "voted", "voting", "record"))
+    has_money  = any(kw in q_lower for kw in (
+        "donor", "donors", "fund", "funded", "funds", "money", "contribut",
+        "pac", "industry", "backed", "sponsor", "finance",
+    ))
+    if not has_vote or not has_money:
+        return
+
+    # Skip if this resolves as a known federal person (handled by PAC-vote block)
+    if _known_federal_person(query):
+        return
+
+    people = _person_terms(terms)
+    if not people:
+        return
+
+    conn = _connect("polls")
+    if not conn:
+        return
+
+    # Topic terms: stripped of people tokens + generic vote/money words
+    _state_topic_strip = {
+        "vote", "votes", "voted", "voting", "donor", "donors", "fund",
+        "funded", "funds", "money", "contribut", "backed", "sponsor",
+        "finance", "record", "records", "bill", "bills", "legislator",
+        "virginia", "general", "assembly", "session",
+    }
+    topic_terms_state = [
+        t for t in terms
+        if t not in _state_topic_strip
+        and t not in {p.lower() for p in people}
+        and len(t) >= 4
+    ]
+    # Expand through policy alias map (same as federal correlation block)
+    expanded_state: list[str] = []
+    _seen_st: set[str] = set()
+    for t in topic_terms_state[:4]:
+        for alias in _POLICY_AREA_ALIASES.get(t, (t,)):
+            if alias not in _seen_st:
+                _seen_st.add(alias)
+                expanded_state.append(alias)
+
+    lines = ["[Database Context - State Legislator Vote × Donor Correlation]"]
+    lines.append(
+        "Source: va_legislator_recent_votes JOIN va_bills (vote record) + "
+        "va_cf_reports JOIN va_cf_schedule_a (SBE campaign contributions)."
+    )
+    lines.append(
+        "How to read: compare donor employers/industries against vote positions "
+        "on matching bills to assess whether money aligns with legislative behavior."
+    )
+
+    try:
+        # Resolve legislator from polls.va_legislator_recent_votes
+        if not _table_exists(conn, "va_legislator_recent_votes") or not _table_exists(conn, "va_bills"):
+            conn.close()
+            return
+
+        name_clause, name_params = _like_any_clause(["voter_name"], people[:3])
+        legislator_rows = conn.execute(
+            f"""
+            SELECT DISTINCT voter_name, chamber
+            FROM va_legislator_recent_votes
+            WHERE session = ? AND ({name_clause})
+            LIMIT 4
+            """,
+            [session, *name_params],
+        ).fetchall()
+
+        if not legislator_rows:
+            # Try recent session fallback
+            legislator_rows = conn.execute(
+                f"""
+                SELECT DISTINCT voter_name, chamber
+                FROM va_legislator_recent_votes
+                WHERE ({name_clause})
+                ORDER BY session DESC
+                LIMIT 4
+                """,
+                name_params,
+            ).fetchall()
+
+        if not legislator_rows:
+            conn.close()
+            return
+
+        for leg_row in legislator_rows[:2]:
+            leg_name = leg_row["voter_name"]
+            chamber  = leg_row["chamber"] or ""
+            lines.append(f"\n=== {leg_name}  ({chamber}, session {session}) ===")
+
+            # ── 1. Topic-filtered vote record ────────────────────────────────
+            if expanded_state:
+                topic_clause, topic_params = _like_any_clause(
+                    ["b.title", "b.subjects"], expanded_state
+                )
+                voted_rows = conn.execute(
+                    f"""
+                    SELECT v.vote_date,
+                           b.bill_number,
+                           b.title,
+                           b.subjects,
+                           v.option      AS vote,
+                           v.motion,
+                           b.introduced_by AS sponsor
+                    FROM va_legislator_recent_votes v
+                    JOIN va_bills b ON b.id = v.bill_id
+                    WHERE v.voter_name = ?
+                      AND v.session    = ?
+                      AND ({topic_clause})
+                    ORDER BY v.vote_date DESC
+                    LIMIT 12
+                    """,
+                    [leg_name, session, *topic_params],
+                ).fetchall()
+            else:
+                voted_rows = []
+
+            if not voted_rows:
+                # No topic match — show recent votes
+                voted_rows = conn.execute(
+                    """
+                    SELECT v.vote_date,
+                           b.bill_number,
+                           b.title,
+                           b.subjects,
+                           v.option  AS vote,
+                           v.motion,
+                           b.introduced_by AS sponsor
+                    FROM va_legislator_recent_votes v
+                    JOIN va_bills b ON b.id = v.bill_id
+                    WHERE v.voter_name = ?
+                      AND v.session    = ?
+                    ORDER BY v.vote_date DESC
+                    LIMIT 8
+                    """,
+                    (leg_name, session),
+                ).fetchall()
+                vote_label = (
+                    f"no topic match for '{' + '.join(topic_terms_state[:2])}' — latest 8"
+                    if topic_terms_state
+                    else "latest 8 votes"
+                )
+            else:
+                vote_label = " + ".join(topic_terms_state[:3]) if topic_terms_state else "all topics"
+
+            if voted_rows:
+                lines.append(f"  Vote record (filter: '{vote_label}'):")
+                for r in voted_rows:
+                    subj = (r["subjects"] or "")[:50].rstrip()
+                    lines.append(
+                        f"    {r['vote_date']} | {r['bill_number']} | "
+                        f"{r['vote']} | {(r['title'] or '')[:70]}"
+                        + (f" [{subj}]" if subj else "")
+                    )
+            else:
+                lines.append(f"  No vote records found for {leg_name} in session {session}.")
+
+            # ── 2. SBE campaign contributions received ────────────────────────
+            # Chain: va_cf_reports.CandidateName → report_uid → va_cf_schedule_a
+            if not _table_exists(conn, "va_cf_reports") or not _table_exists(conn, "va_cf_schedule_a"):
+                lines.append("  (SBE contribution tables not available)")
+                continue
+
+            name_cf_clause, name_cf_params = _like_any_clause(
+                ["cr.CandidateName"], people[:2]
+            )
+            donor_rows = conn.execute(
+                f"""
+                SELECT sa.employer,
+                       sa.occupation,
+                       sa.first_name || ' ' || sa.last_or_company AS contributor,
+                       sa.is_individual,
+                       SUM(sa.amount)  AS total,
+                       COUNT(*)        AS txns,
+                       MIN(sa.transaction_date) AS earliest,
+                       MAX(sa.transaction_date) AS latest
+                FROM va_cf_reports cr
+                JOIN va_cf_schedule_a sa ON sa.report_uid = cr.ReportUID
+                WHERE ({name_cf_clause})
+                  AND cr.IsGeneralAssembly = 1
+                  AND cr.ElectionCycle     = ?
+                GROUP BY sa.employer, sa.is_individual
+                ORDER BY total DESC
+                LIMIT 15
+                """,
+                [*name_cf_params, session],
+            ).fetchall()
+
+            if not donor_rows:
+                # Try without cycle filter (broader match)
+                donor_rows = conn.execute(
+                    f"""
+                    SELECT sa.employer,
+                           sa.first_name || ' ' || sa.last_or_company AS contributor,
+                           sa.is_individual,
+                           SUM(sa.amount)  AS total,
+                           COUNT(*)        AS txns,
+                           MIN(sa.election_cycle) AS earliest_cycle,
+                           MAX(sa.election_cycle) AS latest_cycle
+                    FROM va_cf_reports cr
+                    JOIN va_cf_schedule_a sa ON sa.report_uid = cr.ReportUID
+                    WHERE ({name_cf_clause})
+                      AND cr.IsGeneralAssembly = 1
+                    GROUP BY sa.employer, sa.is_individual
+                    ORDER BY total DESC
+                    LIMIT 15
+                    """,
+                    name_cf_params,
+                ).fetchall()
+
+            if donor_rows:
+                lines.append(f"\n  Top donors / employers to {leg_name}:")
+                for r in donor_rows:
+                    emp = (r["employer"] or "").strip() or (r["contributor"] or "").strip()[:40]
+                    indiv = "individual" if r["is_individual"] else "org/PAC"
+                    lines.append(
+                        f"    {emp or '(no employer)'} [{indiv}] "
+                        f"— ${r['total']:,.0f} ({r['txns']} contribution{'s' if r['txns'] != 1 else ''})"
+                    )
+            else:
+                lines.append(f"\n  No SBE contribution records found for '{leg_name}' (cycle {session}).")
+
+    except Exception as exc:
+        lines.append(f"  state_vote_donor_error={type(exc).__name__}: {str(exc)[:240]}")
+    finally:
+        conn.close()
+
+    if len(lines) > 4:
+        blocks.append("\n".join(lines))
+
+
 def _add_federal_vote_context(blocks: list[str], query: str, terms: list[str]) -> None:
     q_lower = (query or "").lower()
 
@@ -1272,6 +1525,33 @@ def _add_federal_vote_context(blocks: list[str], query: str, terms: list[str]) -
                 lines.append(
                     f"lookup_status=zero_records; detail=no local federal vote rows found for bioguide_id={bgid}"
                 )
+        # ── Staleness check ───────────────────────────────────────────────────
+        # Warn the LLM when the newest congress_votes row is older than 14 days
+        # so it can qualify answers about recent floor behavior appropriately.
+        # Nested try/except so a failure here never blocks context generation.
+        if _table_exists(conn, "congress_votes"):
+            try:
+                from datetime import datetime as _dt, timezone as _tz
+                _last = conn.execute(
+                    "SELECT MAX(vote_date) AS last_vote FROM congress_votes"
+                ).fetchone()
+                if _last and _last["last_vote"]:
+                    _last_str  = (_last["last_vote"] or "")[:10]
+                    _last_date = _dt.fromisoformat(_last_str)
+                    _now       = _dt.now(_tz.utc).replace(tzinfo=None)
+                    _age_days  = (_now - _last_date).days
+                    if _age_days > 14:
+                        lines.append(
+                            f"\n[DATA STALENESS WARNING] Most recent congress_votes "
+                            f"entry is {_age_days} days old "
+                            f"(last recorded vote: {_last_str}). "
+                            f"Vote data may be outdated — the weekly ingestion job "
+                            f"(scripts/ingest_votes_weekly.sh) may have been missed. "
+                            f"Qualify any answer about recent floor votes accordingly."
+                        )
+            except Exception:
+                pass  # best-effort; never block context generation
+
     except Exception as exc:
         lines.append(f"lookup_status=lookup_error; detail={type(exc).__name__}: {str(exc)[:240]}")
     finally:
@@ -1535,6 +1815,317 @@ def _add_indy_exp_context(blocks: list[str], query: str, terms: list[str]) -> No
         pass
     finally:
         conn.close()
+
+
+# ── PAC-vs-vote correlation ────────────────────────────────────────────────────
+
+_PAC_VOTE_PAC_SIGNAL = {
+    "pac", "pacs", "fund", "funded", "funds", "money", "outside", "donor",
+    "donors", "contribut", "contributes", "contributed", "spend", "spent",
+    "spending", "back", "backs", "backed", "interest", "industry", "support",
+    "supported", "oppose", "opposed",
+}
+_PAC_VOTE_VOTE_SIGNAL = {
+    "vote", "votes", "voted", "voting", "rollcall", "roll", "position",
+    "record", "records", "support", "oppose", "yea", "nay", "yes", "pass",
+}
+# Words to strip when isolating topic terms (member resolution + generic political words)
+_PAC_VOTE_TOPIC_STRIP = _FED_NAME_STOP | {
+    "pac", "pacs", "fund", "funded", "funds", "money", "outside", "donor",
+    "donors", "contribut", "spend", "spent", "spending", "back", "backed",
+    "backs", "interest", "vote", "votes", "voted", "voting", "roll", "call",
+    "position", "record", "records", "yea", "nay", "pass", "fail", "align",
+    "alignment", "correlat", "match", "with", "their",
+}
+
+# Maps common user topic words → congress_bills.policy_area substrings so that
+# "defense" matches "Armed Forces and National Security", etc.
+_POLICY_AREA_ALIASES: dict[str, tuple[str, ...]] = {
+    "defense":     ("defense", "armed forces", "national security", "military"),
+    "healthcare":  ("health", "medicare", "medicaid"),
+    "health":      ("health", "medicare", "medicaid"),
+    "climate":     ("climate", "environment", "environmental"),
+    "energy":      ("energy", "environment"),
+    "gun":         ("gun", "firearm", "arms"),
+    "guns":        ("gun", "firearm", "arms"),
+    "immigration": ("immigration", "border", "asylum"),
+    "taxes":       ("tax", "taxation", "fiscal"),
+    "housing":     ("housing", "mortgage"),
+    "trade":       ("trade", "tariff", "commerce"),
+    "veterans":    ("veterans", "armed forces"),
+    "education":   ("education", "school", "student"),
+    "labor":       ("labor", "employment", "worker"),
+    "finance":     ("finance", "banking", "financial"),
+    "agriculture": ("agriculture", "farm"),
+}
+
+
+def _add_pac_vote_correlation_context(
+    blocks: list[str], query: str, terms: list[str]
+) -> None:
+    """Inject a PAC-spending-vs-vote-record correlation block for a resolved VA
+    federal member.  Fires only when both a PAC/money signal *and* a vote signal
+    are present so it does not duplicate the individual _add_pac_context /
+    _add_indy_exp_context blocks on unrelated queries.
+
+    Output layout
+    -------------
+    For each resolved member (up to 2):
+      • PAC spending summary grouped by committee + direction (FOR/AGAINST),
+        with ideology from pac_ideology when available.
+      • Topic-filtered vote records from congress_votes.question (primary) or
+        federal_votes JOIN federal_bills (fallback), limited to 12 rows.
+      • If no topic terms survive filtering, falls back to 8 most-recent votes
+        so the LLM still has something to correlate against.
+    """
+    q_lower = (query or "").lower()
+
+    # Gate 1 — need at least one PAC/money word
+    if not any(kw in q_lower for kw in _PAC_VOTE_PAC_SIGNAL):
+        return
+    # Gate 2 — need at least one vote word
+    if not any(kw in q_lower for kw in _PAC_VOTE_VOTE_SIGNAL):
+        return
+
+    conn = _connect("polls")
+    if not conn:
+        return
+
+    members = _resolve_federal_member(conn, terms)
+    if not members:
+        conn.close()
+        return
+
+    # Derive topic terms: strip member name tokens + generic pac/vote words
+    member_name_tokens: set[str] = set()
+    for m in members:
+        for tok in re.split(r"[\s,]+", (m["name"] or "").lower()):
+            if len(tok) >= 3:
+                member_name_tokens.add(tok)
+
+    topic_terms = [
+        t for t in terms
+        if t not in _PAC_VOTE_TOPIC_STRIP
+        and t not in member_name_tokens
+        and len(t) >= 4
+    ]
+
+    lines = ["[Database Context - PAC vs. Vote Correlation]"]
+    lines.append(
+        "Source: fec_independent_expenditures (PAC outside spending) joined with "
+        "congress_votes / federal_votes (member vote record)."
+    )
+    lines.append(
+        "How to read: compare PAC spending direction (FOR/AGAINST) and ideology "
+        "against the member's YES/NO votes on topic-matching bills to assess alignment."
+    )
+
+    try:
+        for member in members[:2]:
+            bgid  = member["bioguide_id"]
+            mname = member["name"]
+            lines.append(f"\n=== {mname}  (bioguide_id={bgid}) ===")
+
+            # ── 1. PAC spending on this member ───────────────────────────────
+            pac_rows = conn.execute(
+                """
+                SELECT ie.committee_name,
+                       ie.support_oppose,
+                       COALESCE(pi.ideology, pi2.ideology)   AS ideology,
+                       COALESCE(pi.alignment, pi2.alignment) AS alignment,
+                       SUM(ie.expenditure_amount)            AS total,
+                       COUNT(*)                              AS txns,
+                       MIN(ie.cycle)                         AS earliest,
+                       MAX(ie.cycle)                         AS latest
+                FROM fec_independent_expenditures ie
+                LEFT JOIN pac_ideology pi
+                    ON upper(trim(ie.committee_name)) = upper(trim(pi.committee_name))
+                LEFT JOIN pac_ideology pi2
+                    ON pi.id IS NULL
+                   AND upper(trim(pi2.short_name)) = upper(trim(ie.committee_name))
+                WHERE ie.bioguide_id = ?
+                GROUP BY ie.committee_name, ie.support_oppose
+                ORDER BY total DESC
+                LIMIT 12
+                """,
+                (bgid,),
+            ).fetchall()
+
+            if not pac_rows:
+                lines.append("  No PAC spending records found — skipping correlation.")
+                continue
+
+            lines.append("  Outside-spending PACs (all cycles):")
+            for r in pac_rows:
+                direction = "FOR" if r["support_oppose"] == "S" else "AGAINST"
+                ideo = (
+                    f"  [{r['ideology']} / {r['alignment']}]"
+                    if r["ideology"] else ""
+                )
+                lines.append(
+                    f"    {direction} {mname.split(',')[0]}: "
+                    f"{r['committee_name']}{ideo} "
+                    f"— ${r['total']:,.0f}  "
+                    f"(cycles {r['earliest']}–{r['latest']}, {r['txns']} txn{'s' if r['txns'] != 1 else ''})"
+                )
+
+            # ── 2. Topic-filtered vote record ─────────────────────────────────
+            voted_rows: list = []
+            topic_label = " + ".join(topic_terms[:3]) if topic_terms else ""
+
+            # Expand topic terms through policy_area alias map so that
+            # e.g. "defense" also matches "Armed Forces and National Security"
+            expanded_terms: list[str] = []
+            _seen_exp: set[str] = set()
+            for t in topic_terms[:4]:
+                for alias in _POLICY_AREA_ALIASES.get(t, (t,)):
+                    if alias not in _seen_exp:
+                        _seen_exp.add(alias)
+                        expanded_terms.append(alias)
+
+            # Path 1: congress_votes JOIN congress_bills via bill-number normalisation.
+            # congress_bills.bill_type + bill_number normalise to the same format as
+            # congress_votes.bill (e.g. "H R 2670" → upper(replace→' ','')) = "HR2670"
+            # = upper("hr"||"2670")).  Only fires when congress_bills has a match for
+            # the bill (VA-sponsored legislation); otherwise falls through.
+            if expanded_terms and _table_exists(conn, "congress_votes") and _table_exists(conn, "congress_bills"):
+                topic_clause, topic_params = _like_any_clause(
+                    ["cb.title", "cb.policy_area"], expanded_terms
+                )
+                voted_rows = conn.execute(
+                    f"""
+                    SELECT cv.vote_date,
+                           cv.bill,
+                           COALESCE(cb.title, cv.question) AS question,
+                           cv.member_vote,
+                           cv.result,
+                           cv.congress,
+                           cb.policy_area
+                    FROM congress_votes cv
+                    JOIN congress_bills cb
+                      ON upper(replace(cv.bill, ' ', '')) = upper(cb.bill_type || cb.bill_number)
+                     AND cb.bill_number != ''
+                     AND cb.bill_type   != ''
+                    WHERE cv.bioguide_id = ?
+                      AND ({topic_clause})
+                    ORDER BY cv.vote_date DESC
+                    LIMIT 12
+                    """,
+                    [bgid, *topic_params],
+                ).fetchall()
+
+            # Path 2: congress_votes.question LIKE — works for procedural votes whose
+            # question text names the bill (e.g. "On Passage: National Defense Authoriz…")
+            if not voted_rows and expanded_terms and _table_exists(conn, "congress_votes"):
+                topic_clause, topic_params = _like_any_clause(
+                    ["cv.question", "cv.bill"], expanded_terms
+                )
+                voted_rows = conn.execute(
+                    f"""
+                    SELECT cv.vote_date,
+                           cv.bill,
+                           cv.question,
+                           cv.member_vote,
+                           cv.result,
+                           cv.congress,
+                           NULL AS policy_area
+                    FROM congress_votes cv
+                    WHERE cv.bioguide_id = ?
+                      AND ({topic_clause})
+                    ORDER BY cv.vote_date DESC
+                    LIMIT 12
+                    """,
+                    [bgid, *topic_params],
+                ).fetchall()
+
+            # Path 3: federal_votes JOIN federal_bills via the same bill-number
+            # normalisation.  Excludes blank bill_type/bill_number rows that cause
+            # false-positive matches.  federal_bills has subjects + policy_area.
+            if not voted_rows and expanded_terms and _table_exists(conn, "federal_votes") and _table_exists(conn, "federal_bills"):
+                topic_clause, topic_params = _like_any_clause(
+                    ["fb.title", "fb.policy_area", "fb.subjects"], expanded_terms
+                )
+                voted_rows = conn.execute(
+                    f"""
+                    SELECT fv.vote_date,
+                           fv.bill_number                     AS bill,
+                           COALESCE(fb.title, fv.bill_number) AS question,
+                           fv.vote                            AS member_vote,
+                           NULL                               AS result,
+                           fv.congress,
+                           fb.policy_area
+                    FROM federal_votes fv
+                    JOIN federal_bills fb
+                      ON upper(replace(fv.bill_number, ' ', '')) = upper(fb.bill_type || fb.bill_number)
+                     AND fb.bill_number != ''
+                     AND fb.bill_type   != ''
+                    WHERE fv.bioguide_id = ?
+                      AND ({topic_clause})
+                    ORDER BY fv.vote_date DESC
+                    LIMIT 12
+                    """,
+                    [bgid, *topic_params],
+                ).fetchall()
+
+            # Last-resort: most recent votes without topic filter.  Note in the label
+            # that the bill databases only index VA-sponsored bills, so major
+            # legislation like the NDAA may simply not be present.
+            if not voted_rows and _table_exists(conn, "congress_votes"):
+                voted_rows = conn.execute(
+                    """
+                    SELECT vote_date, bill, question, member_vote, result, congress,
+                           NULL AS policy_area
+                    FROM congress_votes
+                    WHERE bioguide_id = ?
+                    ORDER BY vote_date DESC
+                    LIMIT 8
+                    """,
+                    (bgid,),
+                ).fetchall()
+                topic_label = (
+                    (
+                        f"no match for '{' + '.join(topic_terms[:2])}' "
+                        f"(bill index covers VA-sponsored legislation only; "
+                        f"major bills like NDAA may be absent) — latest 8 votes shown"
+                    )
+                    if topic_terms
+                    else "latest 8 votes"
+                )
+
+            if voted_rows:
+                filter_note = (
+                    f"topic filter: '{topic_label}'"
+                    if topic_label
+                    else "no topic filter applied"
+                )
+                lines.append(f"\n  Vote record ({filter_note}):")
+                for r in voted_rows:
+                    q_text = (r["question"] or "")[:85].rstrip()
+                    pa = (
+                        f" [{r['policy_area']}]"
+                        if r["policy_area"]
+                        else ""
+                    )
+                    lines.append(
+                        f"    {r['vote_date']} | {r['bill']} | "
+                        f"{r['member_vote']}{pa} | {q_text}"
+                    )
+            else:
+                lines.append(
+                    f"\n  No vote records found in congress_votes / federal_votes "
+                    f"for bioguide_id={bgid}"
+                )
+
+    except Exception as exc:
+        lines.append(
+            f"  correlation_error={type(exc).__name__}: {str(exc)[:240]}"
+        )
+    finally:
+        conn.close()
+
+    # Only append if we produced substantive output (more than the 3-line header)
+    if len(lines) > 4:
+        blocks.append("\n".join(lines))
 
 
 # ── Federal bill context ───────────────────────────────────────────────────────
@@ -3556,6 +4147,7 @@ def build_database_context(query: str, max_chars: int = 22000, pro: bool = False
     _add_federal_vote_context(blocks, q, terms)
     _add_floor_statements_context(blocks, q, terms)
     _add_indy_exp_context(blocks, q, terms)
+    _add_pac_vote_correlation_context(blocks, q, terms)
     _add_spike_alerts_context(blocks, q)
     if _is_campaign_finance_query(q):
         _add_campaign_finance_context(blocks, q, terms)
@@ -3564,6 +4156,7 @@ def build_database_context(query: str, max_chars: int = 22000, pro: bool = False
         _add_governor_action_context(blocks, q, terms, session)
         _add_campaign_finance_context(blocks, q, terms)
     _add_person_vote_context(blocks, q, terms, session)
+    _add_state_vote_donor_context(blocks, q, terms, session)
     _add_keyword_context(blocks, q, terms, session)
 
     # Multi-cycle donor trend / investment-return signal — run FIRST so it

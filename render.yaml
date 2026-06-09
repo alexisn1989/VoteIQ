@@ -18,7 +18,31 @@ services:
         value: "1"
       - key: DATA_DIR
         value: /var/data
+      - key: ADMIN_TOKEN
+        generateValue: true   # auto-generates a secret; copy to cron job below
     health:
       path: /health
       pollIntervalSeconds: 30
     autoDeploy: true
+
+  # ── Weekly congress roll-call vote ingestion ────────────────────────────────
+  # Render cron jobs cannot mount disks, so this calls the web service's
+  # /api/admin/ingest-congress endpoint — which runs inside the container
+  # that owns /var/data/polls.db.
+  #
+  # Required: set ADMIN_TOKEN + VOTEIQ_SERVICE_URL in this service's env vars
+  # in the Render dashboard (copy ADMIN_TOKEN value from voteiq-api service).
+  - type: cron
+    name: voteiq-congress-weekly
+    runtime: python311
+    plan: starter
+    schedule: "0 3 * * 0"   # Every Sunday at 03:00 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_congress_ingest.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq-api.onrender.com   # update if your URL differs
+      - key: ADMIN_TOKEN
+        sync: false   # set manually in dashboard — must match web service value
+      - key: HOUSE_LIMIT
+        value: "500"
