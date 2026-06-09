@@ -26,7 +26,7 @@ echo "✓ CSV files downloaded successfully"
 
 echo ""
 echo "[2/3] Building Virginia State Finance Database..."
-python3 build_va_state_finance.py --since 2024 --output polls.db
+python3 build_va_state_finance.py --since 2024
 
 if [ $? -eq 0 ]; then
     echo "✓ Campaign finance database built successfully"
