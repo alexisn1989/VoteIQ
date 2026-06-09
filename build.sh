@@ -417,10 +417,18 @@ fi
 echo ""
 echo "[STEP 4d] Checking congress_votes table (VA roll-call ingestion)..."
 
+# Resolve the actual DB directory: use DATA_DIR only if it exists as a dir,
+# otherwise fall back to the project source directory (cwd during build).
+CV_DATA_DIR="${DATA_DIR:-}"
+if [ -z "$CV_DATA_DIR" ] || [ ! -d "$CV_DATA_DIR" ]; then
+    CV_DATA_DIR="$(pwd)"
+fi
+echo "  Resolved DB dir: $CV_DATA_DIR"
+
 CV_STATUS=$(python3 -c "
 import sqlite3, os
 from datetime import datetime, timezone
-db = os.path.join(os.environ.get('DATA_DIR', os.getcwd()), 'polls.db')
+db = os.path.join('${CV_DATA_DIR}', 'polls.db')
 try:
     conn = sqlite3.connect(db)
     n = conn.execute('SELECT COUNT(*) FROM congress_votes').fetchone()[0]
@@ -447,7 +455,7 @@ if [ "${CV_ROWS:-0}" -lt 500 ] || [ "${CV_AGE:-9999}" -gt 14 ]; then
     elif [ "$CURRENT_YEAR" = "2026" ]; then CV_SESSION=2; CV_YEAR=2026
     else CV_SESSION=2; CV_YEAR=$CURRENT_YEAR; fi
 
-    python3 ingest_congress_votes.py \
+    DATA_DIR="$CV_DATA_DIR" python3 ingest_congress_votes.py \
         --congress 119 \
         --session  "$CV_SESSION" \
         --year     "$CV_YEAR" \
@@ -457,7 +465,7 @@ if [ "${CV_ROWS:-0}" -lt 500 ] || [ "${CV_AGE:-9999}" -gt 14 ]; then
 
     CV_ROWS_AFTER=$(python3 -c "
 import sqlite3, os
-db = os.path.join(os.environ.get('DATA_DIR', os.getcwd()), 'polls.db')
+db = os.path.join('${CV_DATA_DIR}', 'polls.db')
 try:
     print(sqlite3.connect(db).execute('SELECT COUNT(*) FROM congress_votes').fetchone()[0])
 except Exception:
