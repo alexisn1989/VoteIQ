@@ -7368,6 +7368,31 @@ def _fetch_federal_context(member: dict) -> str:
     except Exception:
         pass
 
+    # ── Missed nomination details (from congress_missed_nominations) ────────────
+    try:
+        conn_mn = sqlite3.connect(_POLLS_DB)
+        mn_rows = conn_mn.execute(
+            """SELECT citation, nominee_name, position, vote_date,
+                      yea_count, nay_count, margin, note
+               FROM congress_missed_nominations
+               WHERE bioguide_id = ?
+               ORDER BY margin ASC""",
+            (bio,),
+        ).fetchall()
+        conn_mn.close()
+        if mn_rows:
+            lines.append("\nMissed Nomination Votes (member was Not Voting):")
+            for mn in mn_rows:
+                cit, name, pos, dt, yea, nay, margin, note = mn
+                close = " ⚠ CLOSE VOTE" if (margin is not None and margin <= 5) else ""
+                note_str = f" — {note}" if note else ""
+                lines.append(
+                    f"  {cit} ({dt[:10] if dt else ''}): {name} → {pos}"
+                    f" | Confirmed {yea}-{nay} (margin={margin}){close}{note_str}"
+                )
+    except Exception:
+        pass
+
     # ── Vote-donor alignment (from donor_vote_alignment / build_federal_vote_alignment.py) ──
     try:
         leg_id = f"bioguide:{bio}"
