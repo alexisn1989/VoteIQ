@@ -533,6 +533,44 @@ def _run_federal_alignment_background() -> None:
         print(f"[fed-alignment] Error: {exc}")
 
 
+def _run_party_breakdown_background() -> None:
+    """Fetch congressional party-breakdown XML and compute party unity stats if missing."""
+    from datetime import datetime, timezone, timedelta
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        fetched = conn.execute(
+            "SELECT COUNT(*) FROM congress_vote_party_breakdown"
+        ).fetchone()[0]
+        stats = conn.execute(
+            "SELECT COUNT(*) FROM congress_member_party_stats "
+            "WHERE party_unity_pct IS NOT NULL"
+        ).fetchone()[0]
+        conn.close()
+        if fetched >= 500 and stats >= 5:
+            print(f"[party-breakdown] {fetched} breakdown rows, {stats} stat rows — skipping.")
+            return
+    except Exception:
+        pass
+    print("[party-breakdown] Running party breakdown ingest…")
+    script = os.path.join(BASE_DIR, "ingest_party_breakdown.py")
+    if not os.path.exists(script):
+        print("[party-breakdown] ingest_party_breakdown.py not found — skipping.")
+        return
+    try:
+        result = subprocess.run(
+            [sys.executable, script],
+            capture_output=True, text=True, timeout=1800,
+        )
+        if result.returncode == 0:
+            print(f"[party-breakdown] Done.\n{result.stdout[-300:]}")
+        else:
+            print(f"[party-breakdown] Failed (rc={result.returncode}): {result.stderr[-300:]}")
+    except subprocess.TimeoutExpired:
+        print("[party-breakdown] Timed out after 30 min.")
+    except Exception as exc:
+        print(f"[party-breakdown] Error: {exc}")
+
+
 def _run_fec_2026_background() -> None:
     """Seed fec_industry_totals with 2026 cycle data if the table is empty on this disk."""
     try:
@@ -719,6 +757,7 @@ async def _startup_ingest() -> None:
     threading.Thread(target=_run_fec_ingest_background, daemon=True).start()
     threading.Thread(target=_run_fec_2026_background, daemon=True).start()
     threading.Thread(target=_run_federal_alignment_background, daemon=True).start()
+    threading.Thread(target=_run_party_breakdown_background, daemon=True).start()
     threading.Thread(target=_run_schedule_e_background, daemon=True).start()
     threading.Thread(target=_congress_ingest_background, daemon=True).start()
     threading.Thread(target=_run_committee_ingest_background, daemon=True).start()
@@ -7292,6 +7331,26 @@ def _fetch_federal_context(member: dict) -> str:
         lines.append("  Source: FEC OpenFEC API (fec.gov) — individual contributions by employer")
     else:
         lines.append("\nFEC industry fundraising data not yet loaded (background ingest pending).")
+
+    # ── Party unity / bipartisan rate (from congress_member_party_stats) ──────
+    try:
+        conn3 = sqlite3.connect(_POLLS_DB)
+        ps = conn3.execute(
+            """SELECT party_unity_pct, bipartisan_pct, with_party,
+                      against_party, total_votes
+               FROM congress_member_party_stats WHERE bioguide_id=?""",
+            (bio,),
+        ).fetchone()
+        conn3.close()
+        if ps and ps[0] is not None:
+            unity, bip, with_p, against_p, total = ps
+            lines.append(
+                f"\nParty Unity & Bipartisan Rate (119th Congress, {total} classified votes):\n"
+                f"  Voted with party: {unity}%  ({with_p} votes)\n"
+                f"  Voted against party (bipartisan): {bip}%  ({against_p} votes)"
+            )
+    except Exception:
+        pass
 
     # ── Vote-donor alignment (from donor_vote_alignment / build_federal_vote_alignment.py) ──
     try:
