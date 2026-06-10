@@ -493,6 +493,46 @@ def _run_fec_ingest_background() -> None:
         print(f"[fec] Ingestion error: {exc}")
 
 
+def _run_federal_alignment_background() -> None:
+    """Build federal vote-donor alignment rows if missing or stale (>30 days)."""
+    from datetime import datetime, timezone, timedelta
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        row = conn.execute(
+            "SELECT COUNT(*), MAX(updated_at) FROM donor_vote_alignment "
+            "WHERE legislator_id LIKE 'bioguide:%'"
+        ).fetchone()
+        conn.close()
+        count, last = row
+        if count > 0 and last:
+            age = datetime.now(timezone.utc) - datetime.fromisoformat(
+                last.replace("Z", "+00:00")
+            )
+            if age < timedelta(days=30):
+                print(f"[fed-alignment] {count} rows fresh ({age.days}d old) — skipping.")
+                return
+    except Exception:
+        pass
+    print("[fed-alignment] Building federal vote-donor alignment…")
+    script = os.path.join(BASE_DIR, "build_federal_vote_alignment.py")
+    if not os.path.exists(script):
+        print("[fed-alignment] build_federal_vote_alignment.py not found — skipping.")
+        return
+    try:
+        result = subprocess.run(
+            [sys.executable, script],
+            capture_output=True, text=True, timeout=300,
+        )
+        if result.returncode == 0:
+            print(f"[fed-alignment] Done.\n{result.stdout[-400:]}")
+        else:
+            print(f"[fed-alignment] Failed (rc={result.returncode}): {result.stderr[-300:]}")
+    except subprocess.TimeoutExpired:
+        print("[fed-alignment] Timed out.")
+    except Exception as exc:
+        print(f"[fed-alignment] Error: {exc}")
+
+
 def _run_fec_2026_background() -> None:
     """Seed fec_industry_totals with 2026 cycle data if the table is empty on this disk."""
     try:
@@ -678,6 +718,7 @@ async def _startup_ingest() -> None:
     threading.Thread(target=_poll_ingest_background, daemon=True).start()
     threading.Thread(target=_run_fec_ingest_background, daemon=True).start()
     threading.Thread(target=_run_fec_2026_background, daemon=True).start()
+    threading.Thread(target=_run_federal_alignment_background, daemon=True).start()
     threading.Thread(target=_run_schedule_e_background, daemon=True).start()
     threading.Thread(target=_congress_ingest_background, daemon=True).start()
     threading.Thread(target=_run_committee_ingest_background, daemon=True).start()
@@ -7251,6 +7292,42 @@ def _fetch_federal_context(member: dict) -> str:
         lines.append("  Source: FEC OpenFEC API (fec.gov) — individual contributions by employer")
     else:
         lines.append("\nFEC industry fundraising data not yet loaded (background ingest pending).")
+
+    # ── Vote-donor alignment (from donor_vote_alignment / build_federal_vote_alignment.py) ──
+    try:
+        leg_id = f"bioguide:{bio}"
+        row = conn2.execute(
+            """SELECT top_donor_sector, sector_yes_rate, other_yes_rate,
+                      alignment_delta, sector_vote_count, other_vote_count,
+                      by_sector_json
+               FROM donor_vote_alignment WHERE legislator_id=?""",
+            (leg_id,),
+        ).fetchone() if (conn2 := sqlite3.connect(_POLLS_DB)) else None
+        if conn2:
+            conn2.close()
+        if row:
+            top_sec, sec_yr, oth_yr, delta, sec_ct, oth_ct, bsj = row
+            lines.append(
+                f"\nVote-Donor Alignment (119th Congress):\n"
+                f"  Top donor sector: {top_sec}\n"
+                f"  Yes rate on {top_sec} bills: {sec_yr}% ({sec_ct} votes)\n"
+                f"  Yes rate on all other bills: {oth_yr}% ({oth_ct} votes)\n"
+                f"  Alignment delta: {delta:+.1f}% "
+                f"({'votes MORE often YES on donor-sector bills' if delta > 5 else 'votes LESS often YES on donor-sector bills' if delta < -5 else 'no significant alignment bias'})"
+            )
+            try:
+                bsj_data = json.loads(bsj or "[]")
+                if bsj_data:
+                    lines.append("  Yes rates by sector:")
+                    for entry in bsj_data:
+                        lines.append(
+                            f"    {entry['sector']:<16s}: {entry['yes_rate']}% "
+                            f"({entry['yes']}/{entry['total']} votes)"
+                        )
+            except Exception:
+                pass
+    except Exception:
+        pass
 
     return "\n".join(lines)
 

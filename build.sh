@@ -481,6 +481,29 @@ else
     echo "  ✓ Already populated and fresh — skipping ingest"
 fi
 
+# ── STEP 4e: Build federal vote-donor alignment ───────────────────────────────
+echo ""
+echo "[STEP 4e] Building federal vote-donor alignment..."
+FA_COUNT=$(python3 -c "
+import sqlite3, os
+_dd = os.environ.get('DATA_DIR', os.getcwd())
+db = os.path.join(_dd if os.path.isdir(_dd) else os.getcwd(), 'polls.db')
+try:
+    n = sqlite3.connect(db).execute(
+        \"SELECT COUNT(*) FROM donor_vote_alignment WHERE legislator_id LIKE 'bioguide:%'\"
+    ).fetchone()[0]
+    print(n)
+except Exception:
+    print(0)
+" 2>/dev/null || echo "0")
+
+if [ "${FA_COUNT:-0}" -lt 5 ]; then
+    echo "  Running build_federal_vote_alignment.py..."
+    DATA_DIR="$CV_DATA_DIR" python3 build_federal_vote_alignment.py 2>&1 | tail -5
+else
+    echo "  Already have ${FA_COUNT} federal alignment rows — skipping"
+fi
+
 # ── STEP 5: Build committee_testimony_proxy (derived from polls.db) ───────────
 echo ""
 echo "[STEP 5] Building committee testimony proxy (all sessions)..."
