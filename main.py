@@ -7332,6 +7332,230 @@ def _fetch_federal_context(member: dict) -> str:
     return "\n".join(lines)
 
 
+# ── FEC sector query → industry names ────────────────────────────────────────
+# Maps plain-language keywords to the FEC industry labels stored in fec_industry_totals.
+
+_SECTOR_QUERY_MAP: dict[str, list[str]] = {
+    "Defense": [
+        "defense", "military", "pentagon", "aerospace", "weapons", "navy",
+        "army", "air force", "armed forces", "shipbuilding",
+    ],
+    "Finance": [
+        "finance", "bank", "banking", "financial", "wall street", "investment",
+        "securities", "hedge fund", "capital", "private equity", "insurance",
+    ],
+    "Healthcare": [
+        "healthcare", "health", "pharma", "pharmaceutical", "hospital",
+        "medical", "drug", "biotech", "hmo",
+    ],
+    "Technology": [
+        "technology", "tech", "software", "cyber", "data", "internet",
+        "broadband", "ai", "artificial intelligence", "silicon",
+    ],
+    "Energy": [
+        "energy", "oil", "gas", "coal", "fossil fuel", "petroleum",
+        "pipeline", "renewable", "solar", "wind", "nuclear", "utility",
+    ],
+    "Labor": ["labor", "union", "unions", "worker", "workforce", "employee"],
+    "Agriculture": [
+        "agriculture", "farm", "agribusiness", "crop", "livestock", "rural",
+        "food", "dairy",
+    ],
+    "Housing": [
+        "housing", "real estate", "realty", "construction", "homebuilder",
+        "developer", "property",
+    ],
+    "Transportation": [
+        "transportation", "transit", "automotive", "car", "truck", "rail",
+        "aviation", "shipping",
+    ],
+    "Education": ["education", "school", "teacher", "university", "college"],
+    "Criminal Justice": [
+        "gun", "firearm", "nra", "rifle", "weapon", "criminal justice",
+        "law enforcement", "police",
+    ],
+}
+
+# FEC industry label → canonical sector (same as build_federal_vote_alignment.py)
+_FEC_INDUSTRY_TO_SECTOR: dict[str, str] = {
+    "Defense & Aerospace": "Defense",
+    "Defense": "Defense",
+    "Aerospace & Weapons": "Defense",
+    "Defense IT & Services": "Defense",
+    "Finance & Banking": "Finance",
+    "Banking": "Finance",
+    "Financial Services": "Finance",
+    "Investment & Securities": "Finance",
+    "Insurance": "Finance",
+    "Healthcare & Pharma": "Healthcare",
+    "Health Professionals": "Healthcare",
+    "Hospitals": "Healthcare",
+    "Health Insurance": "Healthcare",
+    "Pharma": "Healthcare",
+    "Technology": "Technology",
+    "Technology & IT": "Technology",
+    "Software & IT": "Technology",
+    "Telecom": "Technology",
+    "Telecom & Media": "Technology",
+    "Labor & Unions": "Labor",
+    "Building & Industrial Unions": "Labor",
+    "Education Unions": "Labor",
+    "Healthcare Worker Unions": "Labor",
+    "Public Employee Unions": "Labor",
+    "Service & Retail Workers": "Labor",
+    "Transportation": "Transportation",
+    "Automotive": "Transportation",
+    "Energy & Oil/Gas": "Energy",
+    "Fossil Fuels": "Energy",
+    "Renewables": "Energy",
+    "Utilities": "Energy",
+    "Education": "Education",
+    "Agriculture": "Agriculture",
+    "Agribusiness": "Agriculture",
+    "Agriculture & Food": "Agriculture",
+    "Livestock & Poultry": "Agriculture",
+    "Commercial Real Estate": "Housing",
+    "Homebuilders": "Housing",
+    "Real Estate": "Housing",
+    "Real Estate & Construction": "Housing",
+    "Realtors": "Housing",
+    "Legal": "Criminal Justice",
+    "Corporate Law": "Criminal Justice",
+    "Trial Lawyers": "Criminal Justice",
+    "Guns/NRA": "Criminal Justice",
+}
+
+
+def _detect_sector_from_query(q: str) -> str | None:
+    """Return canonical sector name if query contains sector keywords."""
+    ql = q.lower()
+    for sector, kws in _SECTOR_QUERY_MAP.items():
+        if any(kw in ql for kw in kws):
+            return sector
+    return None
+
+
+def _fetch_sector_comparison(sector: str) -> str:
+    """
+    Rank all VA federal delegation members by total FEC contributions from
+    industries in the given canonical sector.  Returns a formatted context block.
+    """
+    if not os.path.exists(_POLLS_DB):
+        return ""
+    # Find all FEC industry labels that map to this sector
+    industries = [ind for ind, sec in _FEC_INDUSTRY_TO_SECTOR.items() if sec == sector]
+    if not industries:
+        return ""
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+        placeholders = ",".join("?" for _ in industries)
+        rows = conn.execute(
+            f"""
+            SELECT f.bioguide_id, m.name, m.party, m.chamber,
+                   SUM(f.total_amount) AS sector_total,
+                   MAX(f.cycle) AS latest_cycle
+            FROM fec_industry_totals f
+            JOIN congress_members m ON m.bioguide_id = f.bioguide_id
+            WHERE f.industry IN ({placeholders})
+            GROUP BY f.bioguide_id
+            ORDER BY sector_total DESC
+            """,
+            industries,
+        ).fetchall()
+        conn.close()
+    except Exception:
+        return ""
+    if not rows:
+        return ""
+    lines = [
+        f"[VA Federal Delegation — {sector} Sector Fundraising Comparison]",
+        f"Ranked by total individual contributions from {sector}-related industries (FEC data):",
+    ]
+    for i, row in enumerate(rows, 1):
+        chamber_tag = "Sen." if "Senate" in (row["chamber"] or "") else "Rep."
+        lines.append(
+            f"  {i}. {chamber_tag} {row['name']} ({row['party']}) — "
+            f"${row['sector_total']:,.0f}  (cycle: {row['latest_cycle']})"
+        )
+    lines.append("Source: FEC OpenFEC API (fec.gov)")
+    return "\n".join(lines)
+
+
+def _fetch_cycle_trends(bioguide_id: str, member_name: str) -> str:
+    """
+    Show per-cycle fundraising totals for a VA federal member across all
+    canonical sectors.  Returns a formatted context block.
+    """
+    if not os.path.exists(_POLLS_DB):
+        return ""
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            """
+            SELECT cycle, industry, total_amount
+            FROM fec_industry_totals
+            WHERE bioguide_id = ?
+            ORDER BY cycle, total_amount DESC
+            """,
+            (bioguide_id,),
+        ).fetchall()
+        conn.close()
+    except Exception:
+        return ""
+    if not rows:
+        return ""
+
+    # Aggregate by cycle → canonical sector
+    from collections import defaultdict
+    cycle_data: dict[int, dict[str, float]] = defaultdict(lambda: defaultdict(float))
+    for row in rows:
+        sector = _FEC_INDUSTRY_TO_SECTOR.get(row["industry"])
+        if sector:
+            cycle_data[int(row["cycle"])][sector] += row["total_amount"]
+
+    cycles = sorted(cycle_data.keys())
+    if not cycles:
+        return ""
+
+    lines = [
+        f"[FEC Fundraising Trend — {member_name} | Cycles {cycles[0]}–{cycles[-1]}]",
+        "Contributions by sector across election cycles:",
+    ]
+    # Collect all sectors that appear
+    all_sectors = sorted({s for cd in cycle_data.values() for s in cd})
+    # Header row
+    cycle_header = "  " + " | ".join(f"{c:>6}" for c in cycles)
+    lines.append(cycle_header)
+    for sector in all_sectors:
+        vals = " | ".join(
+            f"${cycle_data[c].get(sector, 0):>8,.0f}" for c in cycles
+        )
+        lines.append(f"  {sector:<18s}: {vals}")
+
+    # Cycle totals
+    totals = " | ".join(
+        f"${sum(cycle_data[c].values()):>8,.0f}" for c in cycles
+    )
+    lines.append(f"  {'TOTAL':<18s}: {totals}")
+
+    # Highlight biggest shift
+    if len(cycles) >= 2:
+        first_total = sum(cycle_data[cycles[0]].values())
+        last_total = sum(cycle_data[cycles[-1]].values())
+        if first_total > 0:
+            pct = round((last_total - first_total) / first_total * 100, 1)
+            direction = "increase" if pct >= 0 else "decrease"
+            lines.append(
+                f"\nOverall {direction} from {cycles[0]} to {cycles[-1]}: "
+                f"{abs(pct)}% "
+                f"(${first_total:,.0f} → ${last_total:,.0f})"
+            )
+    lines.append("Source: FEC OpenFEC API (fec.gov)")
+    return "\n".join(lines)
+
+
 # ── Federal bill type map (prefix → DB bill_type) ─────────────────────────────
 
 _FEDERAL_BILL_TYPE_MAP: dict[str, str] = {

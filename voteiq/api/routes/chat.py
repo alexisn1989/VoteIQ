@@ -1241,6 +1241,40 @@ def _build_bills_context(
                     seen_docs.add(floor_block)
                     context_blocks.insert(0, floor_block)
 
+        # ── Sector comparison: "who gets the most defense money?" ────────────
+        _sector_cmp_kws = (
+            "who gets", "who receives", "most money", "most funding",
+            "most donations", "top donor", "biggest donor", "largest donor",
+            "who in the delegation", "which member", "which representative",
+            "which senator", "compare members", "rank", "ranking",
+        )
+        _is_sector_cmp = (
+            any(kw in user_query.lower() for kw in _sector_cmp_kws)
+            and not fed_member  # no specific member → must be a comparison question
+        )
+        if _is_sector_cmp:
+            _cmp_sector = _m._detect_sector_from_query(user_query)
+            if _cmp_sector:
+                cmp_block = _m._fetch_sector_comparison(_cmp_sector)
+                if cmp_block and cmp_block not in seen_docs:
+                    seen_docs.add(cmp_block)
+                    context_blocks.insert(0, cmp_block)
+
+        # ── Cycle trends: "has Wittman's defense funding grown?" ─────────────
+        _trend_kws = (
+            "trend", "over time", "grown", "increased", "decreased", "changed",
+            "cycle", "compare cycle", "2020", "2022", "2024", "history",
+            "fundraising history", "how has", "shift",
+        )
+        _is_trend_q = any(kw in user_query.lower() for kw in _trend_kws)
+        if _is_trend_q and fed_member:
+            trend_block = _m._fetch_cycle_trends(
+                fed_member["bioguide_id"], fed_member["name"]
+            )
+            if trend_block and trend_block not in seen_docs:
+                seen_docs.add(trend_block)
+                context_blocks.insert(0, trend_block)
+
         if query_context.get("touches_news"):
             news_pol = (fed_member["name"] if fed_member else "") or leg_name or ""
             news_ctx = _m._fetch_news_context(user_query, politician_name=news_pol)
