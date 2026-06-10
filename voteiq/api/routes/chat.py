@@ -3360,6 +3360,38 @@ def _direct_va_legislator_reply(user_query: str, premium: bool = False) -> str:
             (legislator_name,),
         ).fetchone()[0]
 
+        # Bill success rate by topic (text before first semicolon in title)
+        bill_topic_stats = conn.execute(
+            """
+            WITH deduped AS (
+                SELECT DISTINCT bill_id, title, status_label
+                FROM va_legislator_sponsored_bills
+                WHERE legislator_name = ? AND session = '2026'
+            ),
+            topics AS (
+                SELECT bill_id, status_label,
+                       TRIM(SUBSTR(title, 1,
+                           CASE WHEN INSTR(title,';')>0
+                                THEN INSTR(title,';')-1
+                                ELSE LENGTH(title) END
+                       )) AS topic
+                FROM deduped WHERE title IS NOT NULL AND title != ''
+            )
+            SELECT topic,
+                   COUNT(DISTINCT bill_id)                                         AS total,
+                   SUM(CASE WHEN status_label='Passed'     THEN 1 ELSE 0 END)     AS passed,
+                   SUM(CASE WHEN status_label='Vetoed'     THEN 1 ELSE 0 END)     AS vetoed,
+                   SUM(CASE WHEN status_label='Introduced' THEN 1 ELSE 0 END)     AS died,
+                   ROUND(100.0*SUM(CASE WHEN status_label='Passed' THEN 1 ELSE 0 END)
+                         / COUNT(DISTINCT bill_id), 0)                            AS pass_pct
+            FROM topics
+            GROUP BY topic HAVING total >= 2
+            ORDER BY total DESC, pass_pct ASC
+            LIMIT 12
+            """,
+            (legislator_name,),
+        ).fetchall()
+
         # Finance — match by last name
         last_name = legislator_name.split()[-1]
         finance = conn.execute(
@@ -3425,6 +3457,22 @@ def _direct_va_legislator_reply(user_query: str, premium: bool = False) -> str:
 
     lines.append(f"**Co-Sponsorships — 2026 Session**: {cosponsor_total:,} bills co-sponsored")
     lines.append("")
+
+    if bill_topic_stats:
+        lines.append("**Bill Success Rate by Topic — 2026 Session** (topics with 2+ bills)")
+        for row in bill_topic_stats:
+            topic, total, passed, vetoed, died, pass_pct = (
+                row["topic"] if hasattr(row, "__getitem__") else row[0],
+                row[1], row[2], row[3], row[4], row[5],
+            )
+            pct = int(pass_pct or 0)
+            flag = " ⚠ none passed" if passed == 0 and total >= 3 else (
+                   " ✓ all passed" if pct == 100 and total >= 3 else "")
+            veto_note = f", {vetoed} vetoed by governor" if vetoed else ""
+            lines.append(
+                f"- {topic}: {pct}% pass rate ({passed}/{total} passed{veto_note}){flag}"
+            )
+        lines.append("")
 
     if finance:
         lines.append("**Campaign Finance (Virginia SBE — all cycles in VoteIQ)**")
