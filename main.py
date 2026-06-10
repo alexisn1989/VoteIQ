@@ -7393,6 +7393,35 @@ def _fetch_federal_context(member: dict) -> str:
     except Exception:
         pass
 
+    # ── Missed bill/amendment votes (from congress_missed_bills) ─────────────────
+    try:
+        conn_mb = sqlite3.connect(_POLLS_DB)
+        mb_rows = conn_mb.execute(
+            """SELECT bill, question_type, vote_date, bill_title,
+                      yea_count, nay_count, margin, result, became_law, note
+               FROM congress_missed_bills
+               WHERE bioguide_id = ?
+               ORDER BY ABS(margin) ASC, vote_date""",
+            (bio,),
+        ).fetchall()
+        conn_mb.close()
+        if mb_rows:
+            lines.append("\nMissed Bill / Amendment Votes (member was Not Voting):")
+            for mb in mb_rows:
+                bill, qtype, dt, title, yea, nay, margin, result, law, note = mb
+                flags = []
+                if margin == 0:               flags.append("⚠ TIED")
+                elif abs(margin) <= 3:        flags.append("⚠ CLOSE")
+                if law:                       flags.append("BECAME LAW")
+                flag_str = "  [" + ", ".join(flags) + "]" if flags else ""
+                note_str = f" — {note}" if note else ""
+                lines.append(
+                    f"  {dt[:10] if dt else ''} {bill}: {title}"
+                    f" | {result} {yea}-{nay} (margin={margin:+d}){flag_str}{note_str}"
+                )
+    except Exception:
+        pass
+
     # ── Vote-donor alignment (from donor_vote_alignment / build_federal_vote_alignment.py) ──
     try:
         leg_id = f"bioguide:{bio}"
