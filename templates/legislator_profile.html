@@ -367,6 +367,13 @@
         </div>
         <a href="/?q=${chatQuery}" class="chat-cta">Ask VoteIQ</a>
       </div>`;
+  } else {
+    // Safety fallback: profile data missing — replace spinner with error message
+    document.getElementById('profile-hero').innerHTML =
+      '<div style="padding:40px 32px;text-align:center;color:var(--muted)">' +
+      '<div style="font-size:1.1rem;margin-bottom:12px">Profile data unavailable.</div>' +
+      '<a href="/legislators" style="font-family:\'Barlow Condensed\',sans-serif;font-size:0.78rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--red);text-decoration:none">← Return to all legislators</a>' +
+      '</div>';
   }
 
   // ── Stats row ───────────────────────────────────────────────────────────────
@@ -843,9 +850,8 @@
 
 })();
 </script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script>
-(function(){
+function _initDonorChart() {
   const D = window._PROFILE_DATA || {};
   const tiers = D.donor_tiers || [];
   const canvas = document.getElementById('chart-donor-tiers');
@@ -880,7 +886,8 @@
       }
     }
   });
-})();
+}
 </script>
+<script async src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" onload="_initDonorChart()"></script>
 </body>
 </html>
