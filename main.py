@@ -7337,17 +7337,23 @@ def _fetch_federal_context(member: dict) -> str:
         conn3 = sqlite3.connect(_POLLS_DB)
         ps = conn3.execute(
             """SELECT party_unity_pct, bipartisan_pct, with_party,
-                      against_party, total_votes
+                      against_party, total_votes,
+                      missed_votes, missed_votes_pct
                FROM congress_member_party_stats WHERE bioguide_id=?""",
             (bio,),
         ).fetchone()
         conn3.close()
         if ps and ps[0] is not None:
-            unity, bip, with_p, against_p, total = ps
+            unity, bip, with_p, against_p, total, missed, missed_pct = ps
+            missed_str = (
+                f"\n  Missed / Not Voting: {missed_pct}%  ({missed} votes)"
+                if missed_pct is not None else ""
+            )
             lines.append(
                 f"\nParty Unity & Bipartisan Rate (119th Congress, {total} classified votes):\n"
                 f"  Voted with party: {unity}%  ({with_p} votes)\n"
                 f"  Voted against party (bipartisan): {bip}%  ({against_p} votes)"
+                + missed_str
             )
     except Exception:
         pass

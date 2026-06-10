@@ -81,13 +81,25 @@ CREATE TABLE IF NOT EXISTS congress_member_party_stats (
     not_classified   INTEGER DEFAULT 0,
     party_unity_pct  REAL,
     bipartisan_pct   REAL,
+    missed_votes     INTEGER DEFAULT 0,
+    missed_votes_pct REAL,
     updated_at       TEXT
 );
 """
 
+_MIGRATIONS = [
+    "ALTER TABLE congress_member_party_stats ADD COLUMN missed_votes INTEGER DEFAULT 0",
+    "ALTER TABLE congress_member_party_stats ADD COLUMN missed_votes_pct REAL",
+]
+
 
 def _ensure_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA)
+    for sql in _MIGRATIONS:
+        try:
+            conn.execute(sql)
+        except Exception:
+            pass  # column already exists
     conn.commit()
 
 
@@ -375,9 +387,25 @@ def compute_stats(conn: sqlite3.Connection) -> None:
         unity_pct = round(with_party / classifiable * 100, 1) if classifiable else None
         bip_pct   = round(against_party / classifiable * 100, 1) if classifiable else None
 
+        # ── Missed votes: Not Voting + Present from congress_votes directly ──
+        mv_row = conn.execute(
+            """SELECT COUNT(*) FROM congress_votes
+               WHERE bioguide_id = ?
+                 AND member_vote IN ('Not Voting', 'Present')""",
+            (bio,),
+        ).fetchone()
+        total_row = conn.execute(
+            "SELECT COUNT(*) FROM congress_votes WHERE bioguide_id = ?",
+            (bio,),
+        ).fetchone()
+        missed      = mv_row[0] if mv_row else 0
+        total_all   = total_row[0] if total_row else 0
+        missed_pct  = round(missed / total_all * 100, 1) if total_all else None
+
         print(
             f"  {name:<35s} party={party[:1]}  "
             f"unity={unity_pct}%  bipartisan={bip_pct}%  "
+            f"missed={missed_pct}% ({missed}/{total_all})  "
             f"({classifiable} classified / {total} total)"
         )
 
@@ -385,8 +413,9 @@ def compute_stats(conn: sqlite3.Connection) -> None:
             INSERT INTO congress_member_party_stats
                 (bioguide_id, name, party, chamber,
                  total_votes, with_party, against_party, not_classified,
-                 party_unity_pct, bipartisan_pct, updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                 party_unity_pct, bipartisan_pct,
+                 missed_votes, missed_votes_pct, updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(bioguide_id) DO UPDATE SET
                 name=excluded.name,
                 party=excluded.party,
@@ -397,10 +426,13 @@ def compute_stats(conn: sqlite3.Connection) -> None:
                 not_classified=excluded.not_classified,
                 party_unity_pct=excluded.party_unity_pct,
                 bipartisan_pct=excluded.bipartisan_pct,
+                missed_votes=excluded.missed_votes,
+                missed_votes_pct=excluded.missed_votes_pct,
                 updated_at=excluded.updated_at
         """, (bio, name, party, chamber, total,
               with_party, against_party, unclassified,
-              unity_pct, bip_pct, now))
+              unity_pct, bip_pct,
+              missed, missed_pct, now))
 
     conn.commit()
     print("Stats written to congress_member_party_stats.")
