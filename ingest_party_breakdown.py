@@ -81,16 +81,47 @@ CREATE TABLE IF NOT EXISTS congress_member_party_stats (
     not_classified   INTEGER DEFAULT 0,
     party_unity_pct  REAL,
     bipartisan_pct   REAL,
-    missed_votes     INTEGER DEFAULT 0,
-    missed_votes_pct REAL,
-    updated_at       TEXT
+    missed_votes          INTEGER DEFAULT 0,
+    missed_votes_pct      REAL,
+    missed_substantive    INTEGER DEFAULT 0,
+    missed_procedural     INTEGER DEFAULT 0,
+    updated_at            TEXT
 );
 """
 
 _MIGRATIONS = [
     "ALTER TABLE congress_member_party_stats ADD COLUMN missed_votes INTEGER DEFAULT 0",
     "ALTER TABLE congress_member_party_stats ADD COLUMN missed_votes_pct REAL",
+    "ALTER TABLE congress_member_party_stats ADD COLUMN missed_substantive INTEGER DEFAULT 0",
+    "ALTER TABLE congress_member_party_stats ADD COLUMN missed_procedural INTEGER DEFAULT 0",
 ]
+
+# Vote question strings that represent substantive congressional decisions.
+# Missing these is newsworthy; missing procedural votes is routine.
+_SUBSTANTIVE_QUESTIONS = frozenset({
+    "On Passage",
+    "On the Nomination",
+    "On the Amendment",
+    "On Agreeing to the Amendment",
+    "On the Joint Resolution",
+    "On the Concurrent Resolution",
+    "On Retaining Division A",
+    "On Retaining Divisions B and C",
+})
+
+# Quorum calls and pure housekeeping — virtually never substantive.
+_PROCEDURAL_QUESTIONS = frozenset({
+    "Call of the House",
+    "Call by States",
+    "On Motion to Adjourn",
+    "On Motion to Table",
+    "On Ordering the Previous Question",
+    "On Motion to Recommit",
+    "On Motion to Refer",
+    "On Motion to Discharge",
+    "On the Point of Order",
+    "On the Motion to Discharge",
+})
 
 
 def _ensure_schema(conn: sqlite3.Connection) -> None:
@@ -387,25 +418,34 @@ def compute_stats(conn: sqlite3.Connection) -> None:
         unity_pct = round(with_party / classifiable * 100, 1) if classifiable else None
         bip_pct   = round(against_party / classifiable * 100, 1) if classifiable else None
 
-        # ── Missed votes: Not Voting + Present from congress_votes directly ──
-        mv_row = conn.execute(
-            """SELECT COUNT(*) FROM congress_votes
+        # ── Missed votes: classify by question type ──────────────────────────
+        missed_rows = conn.execute(
+            """SELECT question, COUNT(*) as cnt
+               FROM congress_votes
                WHERE bioguide_id = ?
-                 AND member_vote IN ('Not Voting', 'Present')""",
+                 AND member_vote IN ('Not Voting', 'Present')
+               GROUP BY question""",
             (bio,),
-        ).fetchone()
+        ).fetchall()
         total_row = conn.execute(
             "SELECT COUNT(*) FROM congress_votes WHERE bioguide_id = ?",
             (bio,),
         ).fetchone()
-        missed      = mv_row[0] if mv_row else 0
         total_all   = total_row[0] if total_row else 0
+        missed      = sum(r[1] for r in missed_rows)
+        missed_subst = sum(
+            r[1] for r in missed_rows if r[0] in _SUBSTANTIVE_QUESTIONS
+        )
+        missed_proc  = sum(
+            r[1] for r in missed_rows if r[0] in _PROCEDURAL_QUESTIONS
+        )
         missed_pct  = round(missed / total_all * 100, 1) if total_all else None
 
         print(
             f"  {name:<35s} party={party[:1]}  "
             f"unity={unity_pct}%  bipartisan={bip_pct}%  "
-            f"missed={missed_pct}% ({missed}/{total_all})  "
+            f"missed={missed_pct}% ({missed}/{total_all})"
+            f"  subst={missed_subst}  proc={missed_proc}  "
             f"({classifiable} classified / {total} total)"
         )
 
@@ -414,8 +454,9 @@ def compute_stats(conn: sqlite3.Connection) -> None:
                 (bioguide_id, name, party, chamber,
                  total_votes, with_party, against_party, not_classified,
                  party_unity_pct, bipartisan_pct,
-                 missed_votes, missed_votes_pct, updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                 missed_votes, missed_votes_pct,
+                 missed_substantive, missed_procedural, updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(bioguide_id) DO UPDATE SET
                 name=excluded.name,
                 party=excluded.party,
@@ -428,11 +469,14 @@ def compute_stats(conn: sqlite3.Connection) -> None:
                 bipartisan_pct=excluded.bipartisan_pct,
                 missed_votes=excluded.missed_votes,
                 missed_votes_pct=excluded.missed_votes_pct,
+                missed_substantive=excluded.missed_substantive,
+                missed_procedural=excluded.missed_procedural,
                 updated_at=excluded.updated_at
         """, (bio, name, party, chamber, total,
               with_party, against_party, unclassified,
               unity_pct, bip_pct,
-              missed, missed_pct, now))
+              missed, missed_pct,
+              missed_subst, missed_proc, now))
 
     conn.commit()
     print("Stats written to congress_member_party_stats.")

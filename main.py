@@ -7338,17 +7338,27 @@ def _fetch_federal_context(member: dict) -> str:
         ps = conn3.execute(
             """SELECT party_unity_pct, bipartisan_pct, with_party,
                       against_party, total_votes,
-                      missed_votes, missed_votes_pct
+                      missed_votes, missed_votes_pct,
+                      missed_substantive, missed_procedural
                FROM congress_member_party_stats WHERE bioguide_id=?""",
             (bio,),
         ).fetchone()
         conn3.close()
         if ps and ps[0] is not None:
-            unity, bip, with_p, against_p, total, missed, missed_pct = ps
-            missed_str = (
-                f"\n  Missed / Not Voting: {missed_pct}%  ({missed} votes)"
-                if missed_pct is not None else ""
-            )
+            unity, bip, with_p, against_p, total, missed, missed_pct, \
+                missed_subst, missed_proc = ps
+            if missed_pct is not None:
+                missed_semi = (missed or 0) - (missed_subst or 0) - (missed_proc or 0)
+                missed_detail = (
+                    f"{missed_pct}% ({missed} total"
+                    f" — {missed_subst} substantive"
+                    f" [passage/nomination/amendment]"
+                    f", {missed_semi} semi-procedural"
+                    f", {missed_proc} procedural/quorum)"
+                )
+                missed_str = f"\n  Missed / Not Voting: {missed_detail}"
+            else:
+                missed_str = ""
             lines.append(
                 f"\nParty Unity & Bipartisan Rate (119th Congress, {total} classified votes):\n"
                 f"  Voted with party: {unity}%  ({with_p} votes)\n"
