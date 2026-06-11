@@ -260,6 +260,13 @@
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;color:var(--muted);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase">Registered principals (2026-2027) whose sector matches this member's committee oversight</div>
   </div>
 
+  <!-- Bill Patron Topics Panel -->
+  <div id="patron-panel" class="eff-panel" style="display:none">
+    <div class="insights-header">Bill Patron Topics <em id="patron-subtitle"></em></div>
+    <div id="patron-content"></div>
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;color:var(--muted);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase">Bills sponsored this session · compared to vote record on same-topic bills</div>
+  </div>
+
   <!-- Tabs -->
   <div class="tabs-wrap" id="tabs-wrap" style="display:none">
     <div class="tab-list" id="tab-list">
@@ -847,6 +854,50 @@
 
     document.getElementById('lobbyist-content').innerHTML = html;
     document.getElementById('lobbyist-panel').style.display = 'block';
+  }
+
+  // ── Bill Patron Topics ───────────────────────────────────────────────────────
+  const patronTopics = D.bill_patron_topics || [];
+  if (patronTopics.length > 0) {
+    const flagged = patronTopics.filter(t => t.flag);
+    const subtitle = flagged.length > 0
+      ? `${patronTopics.length} topics · ${flagged.length} contradiction${flagged.length > 1 ? 's' : ''} flagged`
+      : `${patronTopics.length} topics`;
+    document.getElementById('patron-subtitle').textContent = subtitle;
+
+    const TOPIC_COLOR = {
+      'Healthcare':'#0d6e4f','Housing':'#065f46','Environment':'#166534',
+      'Education':'#1e3a8a','Labor/Economy':'#6b21a8','Taxation':'#78350f',
+      'Gun Policy':'#374151','Criminal Justice':'#374151','Transportation':'#075985',
+      'Technology':'#5b21b6','Gambling':'#78350f','Alcohol/Tobacco':'#7f1d1d',
+      'Voting/Elections':'#1e3a8a',
+    };
+
+    const rows = patronTopics.map(t => {
+      const color = TOPIC_COLOR[t.topic] || '#374151';
+      const billList = (t.patron_bills || []).map(b =>
+        `<a href="/legislators/bill/${esc(b.bill)}" style="font-size:0.68rem;color:var(--accent);text-decoration:none" title="${esc(b.title)}">${esc(b.bill)}</a>`
+      ).join(' ');
+
+      let voteHtml = '';
+      if (t.yes_pct !== null && t.yes_pct !== undefined) {
+        const pctColor = t.yes_pct >= 60 ? '#2d6a4f' : t.yes_pct >= 40 ? '#c75000' : '#b91c1c';
+        const flagHtml = t.flag
+          ? `<span style="font-size:0.62rem;font-weight:700;color:#b91c1c;margin-left:6px">⚠ SPONSORS BUT VOTES NO</span>`
+          : '';
+        voteHtml = `<span style="font-size:0.7rem;color:${pctColor};font-weight:600;margin-left:6px">${t.yes_pct}% yes on other bills (${t.vote_sample})</span>${flagHtml}`;
+      }
+
+      return `<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+        <span style="font-size:0.62rem;font-weight:700;background:${color};color:#fff;padding:2px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap">${esc(t.topic)}</span>
+        <span style="font-size:0.72rem;color:var(--muted)">${t.patron_count} bill${t.patron_count !== 1 ? 's' : ''}</span>
+        <span style="font-size:0.7rem;color:var(--navy)">${billList}</span>
+        ${voteHtml}
+      </div>`;
+    }).join('');
+
+    document.getElementById('patron-content').innerHTML = rows;
+    document.getElementById('patron-panel').style.display = 'block';
   }
 
   // ── Campaign Funding tab (full detail) ───────────────────────────────────────

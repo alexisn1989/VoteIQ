@@ -4784,6 +4784,116 @@ def _fetch_va_state_member_context(
             except Exception:
                 pass
 
+            # ── Bill patron topics vs vote record (floor speech proxy) ──────
+            try:
+                import re as _re2
+
+                _SN = ("commend","celebrat","honor","recogni","in memoriam",
+                       "life of","congratul","designat","proclaim")
+                _TM = {
+                    "Healthcare":   ["health","medicaid","prescription","opioid",
+                                     "mental health","cancer","hospital","pharma",
+                                     "nursing","dental","behavioral health","nurse",
+                                     "physician","reproductive","abortion"],
+                    "Housing":      ["housing","rent","affordable housing","homeless",
+                                     "mortgage","eviction","tenant","landlord","zoning"],
+                    "Environment":  ["climate","environment","clean energy","renewable",
+                                     "emissions","conservation","pollution","carbon",
+                                     "solar","wind energy","chesapeake","water quality",
+                                     "stormwater","forest"],
+                    "Education":    ["education","school","student loan","college",
+                                     "university","workforce training","teacher",
+                                     "curriculum","early childhood"],
+                    "Labor/Economy":["labor","worker","wage","minimum wage","employ",
+                                     "union","small business","manufactur","econom",
+                                     "tariff","paid leave","noncompete"],
+                    "Taxation":     ["tax","revenue","fiscal","budget","appropriation",
+                                     "income tax","property tax"],
+                    "Gun Policy":   ["gun","firearm","second amendment",
+                                     "background check","weapon"],
+                    "Criminal Justice":["criminal","crime","sentenc","prison","jail",
+                                        "parole","probation","police","expunge",
+                                        "juvenile"],
+                    "Transportation":["highway","transportation","road","transit",
+                                      "rail","airport","bridge","vehicle","driver",
+                                      "truck"],
+                    "Technology":   ["technology","artificial intelligence","cyber",
+                                     "internet","data privacy","broadband","autonomous"],
+                    "Gambling":     ["gaming","casino","lottery","sports betting"],
+                    "Alcohol/Tobacco":["alcohol","beer","wine","spirits","tobacco","vapor"],
+                    "Voting/Elections":["election","voter","ballot","redistrict",
+                                        "campaign finance"],
+                }
+
+                def _ctitle(t):
+                    tl = t.lower()
+                    for tp, kws in _TM.items():
+                        if any(kw in tl for kw in kws):
+                            return tp
+                    return ""
+
+                def _primary(desc):
+                    if not desc: return ""
+                    m = _re2.search(
+                        r"Sponsor\(s\):\s*(.+?)(?:\nStatus:|\.\nStatus:|\.\nLatest)",
+                        desc, _re2.DOTALL)
+                    if not m:
+                        m = _re2.search(r"Sponsor\(s\):\s*(.+?)\.?\s*\n", desc)
+                    if not m: return ""
+                    raw = m.group(1).strip().rstrip(".")
+                    sp = [s.strip() for s in raw.split(",") if s.strip()]
+                    return sp[0] if sp else ""
+
+                _bp_last = name.split()[-1]
+                _state_bills = conn.execute(
+                    "SELECT bill_number, title, description FROM va_bills WHERE session='2026'"
+                ).fetchall()
+                _bbt: dict = {}
+                for _br in _state_bills:
+                    _t = (_br[1] or "")
+                    if any(_n in _t.lower() for _n in _SN): continue
+                    _tp = _ctitle(_t)
+                    if not _tp: continue
+                    _pr = _primary(_br[2] or "")
+                    if _pr:
+                        _bbt.setdefault(_tp, []).append((_br[0], _t, _pr))
+
+                _bp_votes = conn.execute(
+                    "SELECT bill_id, option FROM va_legislator_recent_votes "
+                    "WHERE session='2026' AND option IN ('yes','no') "
+                    "AND lower(voter_name) LIKE lower(?)",
+                    (f"%{_bp_last}%",)
+                ).fetchall()
+                _vm = {r[0]: r[1] for r in _bp_votes}
+
+                bp_lines = []
+                for _tp, _tbs in _bbt.items():
+                    _mine = [b for b in _tbs if _bp_last.lower() in b[2].lower()]
+                    if not _mine: continue
+                    _mids = {b[0] for b in _mine}
+                    _other = [b for b in _tbs if b[0] not in _mids and b[0] in _vm]
+                    if _other:
+                        _yes = sum(1 for b in _other if _vm[b[0]] == "yes")
+                        _pct = round(100 * _yes / len(_other))
+                        _flag = " ⚠ SPONSORS BUT VOTES NO" if _pct < 40 and len(_mine) >= 2 and len(_other) >= 2 else ""
+                        _samp = [b[0] for b in _mine[:3]]
+                        bp_lines.append(
+                            f"  {_tp}: sponsors {len(_mine)} bills ({', '.join(_samp)}) "
+                            f"— votes yes {_pct}% on other {_tp} bills ({_yes}/{len(_other)}){_flag}"
+                        )
+                    else:
+                        _samp = [b[0] for b in _mine[:3]]
+                        bp_lines.append(
+                            f"  {_tp}: sponsors {len(_mine)} bills ({', '.join(_samp)})"
+                        )
+
+                if bp_lines:
+                    bp_lines.sort(key=lambda x: "⚠" in x, reverse=True)
+                    lines.append(f"\nBill Patron Topics — 2026 Session:")
+                    lines.extend(bp_lines)
+            except Exception:
+                pass
+
             blocks.append("\n".join(lines))
 
         conn.close()

@@ -880,6 +880,126 @@ def _fetch_profile(conn, name: str) -> dict:
     except Exception:
         profile["lobbyist_connections"] = []
 
+    # ── Bill patron topics vs vote record (floor speech proxy) ────────────────
+    _STATE_NOISE: tuple[str, ...] = (
+        "commend", "celebrat", "honor", "recogni", "in memoriam",
+        "life of", "congratul", "designat", "proclaim",
+    )
+    _STATE_TOPIC_MAP: dict[str, list[str]] = {
+        "Healthcare":   ["health", "medicaid", "prescription", "opioid", "mental health",
+                         "cancer", "hospital", "insurance coverage", "pharma", "drug pricing",
+                         "nursing", "dental", "behavioral health", "nurse", "physician",
+                         "reproductive", "abortion", "contracepti"],
+        "Housing":      ["housing", "rent", "affordable housing", "homeless", "mortgage",
+                         "eviction", "tenant", "landlord", "zoning", "short-term rental"],
+        "Environment":  ["climate", "environment", "clean energy", "renewable", "emissions",
+                         "conservation", "pollution", "carbon", "solar", "wind energy",
+                         "chesapeake", "water quality", "stormwater", "forest"],
+        "Education":    ["education", "school", "student loan", "college", "university",
+                         "workforce training", "higher education", "teacher", "curriculum",
+                         "early childhood"],
+        "Labor/Economy": ["labor", "worker", "wage", "minimum wage", "employ", "union",
+                          "small business", "manufactur", "econom", "trade", "tariff",
+                          "paid leave", "noncompete"],
+        "Taxation":     ["tax", "revenue", "fiscal", "budget", "appropriation",
+                         "income tax", "property tax"],
+        "Gun Policy":   ["gun", "firearm", "second amendment", "background check", "weapon"],
+        "Criminal Justice": ["criminal", "crime", "sentenc", "prison", "jail", "parole",
+                             "probation", "police", "law enforcement", "expunge", "juvenile"],
+        "Transportation": ["highway", "transportation", "road", "transit", "rail", "airport",
+                           "bridge", "vehicle", "driver", "truck", "bicycle", "pedestrian"],
+        "Technology":   ["technology", "artificial intelligence", "cyber", "internet",
+                         "data privacy", "broadband", "semiconductor", "autonomous"],
+        "Gambling":     ["gaming", "casino", "lottery", "sports betting", "wagering"],
+        "Alcohol/Tobacco": ["alcohol", "beer", "wine", "spirits", "distill",
+                            "tobacco", "vapor"],
+        "Voting/Elections": ["election", "voter", "ballot", "redistrict", "campaign finance"],
+    }
+
+    def _classify_bill_title(title: str) -> str:
+        tl = title.lower()
+        for topic, kws in _STATE_TOPIC_MAP.items():
+            if any(kw in tl for kw in kws):
+                return topic
+        return ""
+
+    def _is_noise_bill(title: str) -> bool:
+        tl = title.lower()
+        return any(n in tl for n in _STATE_NOISE)
+
+    def _extract_primary_sponsor(desc: str) -> str:
+        if not desc:
+            return ""
+        import re as _re
+        m = _re.search(
+            r"Sponsor\(s\):\s*(.+?)(?:\nStatus:|\.\nStatus:|\.\nLatest)",
+            desc, _re.DOTALL,
+        )
+        if not m:
+            m = _re.search(r"Sponsor\(s\):\s*(.+?)\.?\s*\n", desc)
+        if not m:
+            return ""
+        raw = m.group(1).strip().rstrip(".")
+        sponsors = [s.strip() for s in raw.split(",") if s.strip()]
+        return sponsors[0] if sponsors else ""
+
+    try:
+        bp_last = resolved.strip().split()[-1]
+
+        all_state_bills = conn.execute(
+            "SELECT bill_number, title, description FROM va_bills WHERE session='2026'"
+        ).fetchall()
+
+        bills_by_topic: dict[str, list[dict]] = {}
+        for brow in all_state_bills:
+            t = brow["title"] or ""
+            if _is_noise_bill(t):
+                continue
+            topic = _classify_bill_title(t)
+            if not topic:
+                continue
+            primary = _extract_primary_sponsor(brow["description"] or "")
+            if primary:
+                bills_by_topic.setdefault(topic, []).append({
+                    "bill": brow["bill_number"],
+                    "title": t,
+                    "primary": primary,
+                })
+
+        patron_topics: list[dict] = []
+        bp_votes = conn.execute(
+            """SELECT bill_id, option FROM va_legislator_recent_votes
+               WHERE session='2026' AND option IN ('yes','no') AND voter_name=?""",
+            (resolved,),
+        ).fetchall()
+        voted_map = {r["bill_id"]: r["option"] for r in bp_votes}
+
+        for topic, topic_bills in bills_by_topic.items():
+            my_bills = [b for b in topic_bills if bp_last.lower() in b["primary"].lower()]
+            if not my_bills:
+                continue
+            my_ids = {b["bill"] for b in my_bills}
+            other = [b for b in topic_bills if b["bill"] not in my_ids and b["bill"] in voted_map]
+            if other:
+                yes = sum(1 for b in other if voted_map[b["bill"]] == "yes")
+                pct = round(100 * yes / len(other))
+                flag = pct < 40 and len(my_bills) >= 2 and len(other) >= 2
+            else:
+                pct, flag = None, False
+            patron_topics.append({
+                "topic":         topic,
+                "patron_count":  len(my_bills),
+                "patron_bills":  [{"bill": b["bill"], "title": b["title"]} for b in my_bills[:4]],
+                "yes_pct":       pct,
+                "vote_sample":   len(other) if other else 0,
+                "flag":          flag,
+            })
+
+        patron_topics.sort(key=lambda x: (-x["patron_count"], x["topic"]))
+        profile["bill_patron_topics"] = patron_topics
+    except Exception:
+        profile["bill_patron_topics"] = []
+
     return profile
 
 
