@@ -4325,6 +4325,87 @@ def _fetch_va_state_member_context(
             except Exception:
                 pass
 
+            # ── Governor alignment (from governor_actions + recent_votes) ────
+            try:
+                gov_row = conn.execute(
+                    """WITH latest AS (
+                           SELECT voter_name, bill_id, session, option,
+                                  ROW_NUMBER() OVER (
+                                      PARTITION BY voter_name, bill_id, session
+                                      ORDER BY vote_date DESC
+                                  ) AS rn
+                           FROM va_legislator_recent_votes
+                       ),
+                       deduped AS (SELECT voter_name, bill_id, session, option
+                                   FROM latest WHERE rn = 1),
+                       scored AS (
+                           SELECT ga.governor,
+                                  CASE WHEN ga.action = 'signed' AND d.option = 'yes' THEN 1
+                                       WHEN ga.action IN ('vetoed','veto_sustained')
+                                            AND d.option = 'no' THEN 1
+                                       ELSE 0 END AS aligned,
+                                  CASE WHEN d.option IN ('yes','no') THEN 1 ELSE 0 END AS countable
+                           FROM governor_actions ga
+                           JOIN deduped d ON d.bill_id = ga.bill_number
+                                          AND d.session = ga.session
+                           JOIN va_legislator_vote_summary vs
+                                ON lower(vs.voter_name) LIKE lower('%' || ? || '%')
+                                AND d.voter_name = vs.voter_name
+                                AND vs.session = ga.session
+                           WHERE ga.action IN ('signed','vetoed','veto_sustained')
+                       )
+                       SELECT governor, SUM(countable) voted,
+                              SUM(aligned) aligned_ct,
+                              CAST(ROUND(100.0*SUM(aligned)/NULLIF(SUM(countable),0)) AS INTEGER) pct
+                       FROM scored GROUP BY governor HAVING voted >= 5 LIMIT 1""",
+                    (name.split()[-1],),  # match by last name for flexibility
+                ).fetchone()
+                if gov_row:
+                    gov, voted, aligned_ct, pct = gov_row
+                    opposed_ct = voted - aligned_ct
+                    lines.append(
+                        f"\nGovernor Alignment ({gov}): {pct}% aligned"
+                        f" ({aligned_ct} aligned, {opposed_ct} opposed on {voted} governor-signed/vetoed bills)"
+                    )
+                    # Opposition votes (bills where legislator bucked the governor)
+                    opp = conn.execute(
+                        """WITH latest AS (
+                               SELECT voter_name, bill_id, session, option, title,
+                                      ROW_NUMBER() OVER (
+                                          PARTITION BY voter_name, bill_id, session
+                                          ORDER BY vote_date DESC
+                                      ) AS rn
+                               FROM va_legislator_recent_votes
+                           ),
+                           deduped AS (SELECT voter_name, bill_id, session, option, title
+                                       FROM latest WHERE rn = 1)
+                           SELECT ga.bill_number, ga.action, ga.title, d.option
+                           FROM governor_actions ga
+                           JOIN deduped d ON d.bill_id = ga.bill_number AND d.session = ga.session
+                           JOIN va_legislator_vote_summary vs
+                                ON lower(vs.voter_name) LIKE lower('%' || ? || '%')
+                                AND d.voter_name = vs.voter_name AND vs.session = ga.session
+                           WHERE ga.action IN ('signed','vetoed','veto_sustained')
+                             AND d.option IN ('yes','no')
+                             AND NOT (
+                                 (ga.action = 'signed' AND d.option = 'yes') OR
+                                 (ga.action IN ('vetoed','veto_sustained') AND d.option = 'no')
+                             )
+                           ORDER BY ga.action_date DESC LIMIT 5""",
+                        (name.split()[-1],),
+                    ).fetchall()
+                    if opp:
+                        lines.append("  Opposition votes (bucked the governor):")
+                        for r in opp:
+                            story = (
+                                f"voted NO on {gov}-signed bill"
+                                if r[1] == "signed"
+                                else f"voted YES on {gov}-vetoed bill"
+                            )
+                            lines.append(f"    {r[0]} — {story} | {r[2][:70]}")
+            except Exception:
+                pass
+
             blocks.append("\n".join(lines))
 
         conn.close()

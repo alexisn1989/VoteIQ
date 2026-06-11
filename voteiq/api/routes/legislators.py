@@ -297,6 +297,91 @@ def _fetch_profile(conn, name: str) -> dict:
         if not any(r["topic"].lower().startswith(p) for p in _NOISE)
     ]
 
+    # ── Governor alignment score ──────────────────────────────────────────────
+    try:
+        gov_rows = conn.execute("""
+            WITH latest_vote AS (
+                SELECT voter_name, bill_id, session,
+                       option, title,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY voter_name, bill_id, session
+                           ORDER BY vote_date DESC
+                       ) AS rn
+                FROM va_legislator_recent_votes
+            ),
+            deduped AS (
+                SELECT voter_name, bill_id, session, option, title
+                FROM latest_vote WHERE rn = 1
+            ),
+            scored AS (
+                SELECT ga.bill_number, ga.action, ga.title AS gov_title,
+                       d.option, d.title,
+                       ga.governor,
+                       CASE
+                           WHEN ga.action = 'signed'
+                                AND d.option = 'yes'  THEN 1
+                           WHEN ga.action IN ('vetoed','veto_sustained')
+                                AND d.option = 'no'   THEN 1
+                           ELSE 0
+                       END AS aligned,
+                       CASE WHEN d.option IN ('yes','no') THEN 1 ELSE 0 END AS countable
+                FROM governor_actions ga
+                JOIN deduped d ON d.bill_id = ga.bill_number
+                               AND d.session = ga.session
+                WHERE d.voter_name = ?
+                  AND ga.action IN ('signed','vetoed','veto_sustained')
+            )
+            SELECT governor,
+                   COUNT(*) AS total,
+                   SUM(countable) AS voted,
+                   SUM(aligned) AS aligned_ct,
+                   CAST(ROUND(100.0 * SUM(aligned) / NULLIF(SUM(countable), 0)) AS INTEGER) AS pct
+            FROM scored
+            GROUP BY governor
+            HAVING voted > 0
+            LIMIT 1
+        """, (resolved,)).fetchone()
+
+        if gov_rows and gov_rows["voted"] >= 5:
+            opposed_ct = gov_rows["voted"] - gov_rows["aligned_ct"]
+            profile["governor_alignment"] = {
+                "governor":   gov_rows["governor"],
+                "pct":        gov_rows["pct"],
+                "aligned_ct": gov_rows["aligned_ct"],
+                "opposed_ct": opposed_ct,
+                "total_voted": gov_rows["voted"],
+            }
+            # Key opposition votes (bucked the governor — most newsworthy)
+            opp_rows = conn.execute("""
+                WITH latest_vote AS (
+                    SELECT voter_name, bill_id, session, option, title,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY voter_name, bill_id, session
+                               ORDER BY vote_date DESC
+                           ) AS rn
+                    FROM va_legislator_recent_votes
+                ),
+                deduped AS (SELECT voter_name, bill_id, session, option, title
+                            FROM latest_vote WHERE rn = 1)
+                SELECT ga.bill_number, ga.action, ga.title, d.option
+                FROM governor_actions ga
+                JOIN deduped d ON d.bill_id = ga.bill_number AND d.session = ga.session
+                WHERE d.voter_name = ?
+                  AND ga.action IN ('signed','vetoed','veto_sustained')
+                  AND d.option IN ('yes','no')
+                  AND NOT (
+                      (ga.action = 'signed' AND d.option = 'yes') OR
+                      (ga.action IN ('vetoed','veto_sustained') AND d.option = 'no')
+                  )
+                ORDER BY ga.action_date DESC
+                LIMIT 5
+            """, (resolved,)).fetchall()
+            profile["governor_alignment"]["opposition_votes"] = [dict(r) for r in opp_rows]
+        else:
+            profile["governor_alignment"] = None
+    except Exception:
+        profile["governor_alignment"] = None
+
     # ── Campaign finance sectors ─────────────────────────────────────────────
     # Guard: query only the columns that actually exist (Render may have a
     # stale schema from before overall_va_pct / alignment_json were added).

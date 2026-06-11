@@ -224,6 +224,14 @@
     </div>
   </div>
 
+  <!-- Governor Alignment opposition detail -->
+  <div id="gov-align-panel" class="eff-panel" style="display:none">
+    <div class="insights-header">Governor Alignment <em id="gov-align-subtitle"></em></div>
+    <div id="gov-align-bars"></div>
+    <div id="gov-opp-votes"></div>
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;color:var(--muted);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase">2026 session · bills the governor signed or vetoed</div>
+  </div>
+
   <!-- Legislative Effectiveness by Topic -->
   <div id="effectiveness-panel" class="eff-panel" style="display:none">
     <div class="insights-header">Legislative Effectiveness <em id="eff-subtitle"></em></div>
@@ -402,14 +410,26 @@
   const spCount   = (D.sponsored_bills  || []).length;
   const coCount   = (D.cosponsored_bills || []).length;
 
+  const govAlign   = D.governor_alignment || null;
   const statRow = document.getElementById('stat-row');
+  const govChip = govAlign
+    ? (() => {
+        const pct = govAlign.pct;
+        const col = pct >= 70 ? '#2d6a4f' : pct >= 40 ? '#c75000' : '#b91c1c';
+        const gov = govAlign.governor || 'Governor';
+        return `<div class="stat-box" title="${govAlign.aligned_ct} aligned, ${govAlign.opposed_ct} opposed on ${govAlign.total_voted} governor-signed/vetoed bills">
+          <span class="stat-num" style="color:${col}">${pct}%</span>
+          <span class="stat-label">w/ ${esc(gov)}</span></div>`;
+      })()
+    : '';
   statRow.innerHTML = `
     <div class="stat-box"><span class="stat-num yes">${yesRate !== null ? yesRate + '%' : '—'}</span><span class="stat-label">Yes Rate</span></div>
     <div class="stat-box"><span class="stat-num no">${noRate !== null ? noRate + '%' : '—'}</span><span class="stat-label">No Rate</span></div>
     <div class="stat-box"><span class="stat-num nv">${nvRate !== null ? nvRate + '%' : '—'}</span><span class="stat-label">Not Voting</span></div>
     <div class="stat-box"><span class="stat-num">${total.toLocaleString()}</span><span class="stat-label">Votes Cast</span></div>
     <div class="stat-box"><span class="stat-num">${spCount}</span><span class="stat-label">Bills Intro.</span></div>
-    <div class="stat-box"><span class="stat-num">${coCount}</span><span class="stat-label">Co-Sponsored</span></div>`;
+    <div class="stat-box"><span class="stat-num">${coCount}</span><span class="stat-label">Co-Sponsored</span></div>
+    ${govChip}`;
   statRow.style.display = 'flex';
 
   // ── Breakdown bar ────────────────────────────────────────────────────────────
@@ -607,6 +627,45 @@
     }
 
     document.getElementById('insights-grid').style.display = 'grid';
+  }
+
+  // ── Governor Alignment ───────────────────────────────────────────────────────
+  if (govAlign && govAlign.total_voted >= 5) {
+    const pct  = govAlign.pct;
+    const col  = pct >= 70 ? '#2d6a4f' : pct >= 40 ? '#c75000' : '#b91c1c';
+    const gov  = govAlign.governor || 'Governor';
+    const opp  = govAlign.opposed_ct;
+    document.getElementById('gov-align-subtitle').innerHTML =
+      `${pct}% aligned with ${esc(gov)} <span style="color:${col}">&#x25cf;</span>`;
+    // Dual-bar: aligned (green) vs opposed (red)
+    document.getElementById('gov-align-bars').innerHTML = `
+      <div class="eff-row" style="margin-bottom:12px">
+        <div class="eff-label">Aligned</div>
+        <div class="eff-track">
+          <div class="eff-pass" style="width:${pct}%;background:${col}"></div>
+          <div class="eff-fail" style="width:${100-pct}%"></div>
+        </div>
+        <div class="eff-pct">${govAlign.aligned_ct}/${govAlign.total_voted}</div>
+      </div>`;
+    const oppVotes = govAlign.opposition_votes || [];
+    if (oppVotes.length) {
+      const actionLabel = a => a === 'signed' ? 'Signed' : 'Vetoed';
+      const voteLabel   = v => v === 'yes' ? 'voted YES' : 'voted NO';
+      const rows = oppVotes.map(v => {
+        const story = v.action === 'signed'
+          ? `voted NO on a bill Spanberger signed`
+          : `voted YES on a bill Spanberger vetoed`;
+        return `<div style="padding:5px 0;border-top:1px solid var(--mid);font-size:0.75rem">
+          <span class="bill-id">${esc(v.bill_number)}</span>
+          <span style="color:var(--muted);margin:0 6px">·</span>
+          <span style="color:#b91c1c;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.06em">${story}</span>
+          <div style="color:var(--navy);margin-top:2px">${esc((v.title||v.gov_title||'').substring(0,90))}</div>
+        </div>`;
+      }).join('');
+      document.getElementById('gov-opp-votes').innerHTML =
+        `<div style="margin-top:10px;font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px">Opposition votes (bucked the governor)</div>${rows}`;
+    }
+    document.getElementById('gov-align-panel').style.display = 'block';
   }
 
   // ── Legislative Effectiveness by Topic ───────────────────────────────────────
