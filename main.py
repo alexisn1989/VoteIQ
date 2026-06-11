@@ -4474,6 +4474,68 @@ def _fetch_va_state_member_context(
             except Exception:
                 pass
 
+            # ── Voting similarity (allies & opponents across all roll calls) ──
+            try:
+                last = name.split()[-1]
+                sim_rows = conn.execute(
+                    """SELECT other.voter_name, vs.party,
+                              SUM(CASE WHEN a.option=other.option THEN 1 ELSE 0 END) agree,
+                              COUNT(*) total,
+                              ROUND(100.0*SUM(CASE WHEN a.option=other.option
+                                             THEN 1 ELSE 0 END)/COUNT(*), 1) pct
+                       FROM va_legislator_recent_votes a
+                       JOIN va_legislator_recent_votes other
+                           ON a.bill_id=other.bill_id AND a.session=other.session
+                       JOIN va_legislator_vote_summary vs
+                           ON vs.voter_name=other.voter_name AND vs.session='2026'
+                       WHERE lower(a.voter_name) LIKE lower(?)
+                         AND a.session='2026'
+                         AND a.option IN ('yes','no')
+                         AND other.option IN ('yes','no')
+                         AND other.voter_name != a.voter_name
+                       GROUP BY other.voter_name
+                       HAVING total >= 15""",
+                    (f"%{last}%",),
+                ).fetchall()
+                my_party_row = conn.execute(
+                    """SELECT party FROM va_legislator_vote_summary
+                       WHERE lower(voter_name) LIKE lower(?) AND session='2026' LIMIT 1""",
+                    (f"%{last}%",),
+                ).fetchone()
+                my_party = my_party_row[0] if my_party_row else ""
+                if sim_rows:
+                    same = sorted(
+                        [r for r in sim_rows if r[1] == my_party],
+                        key=lambda x: x[4], reverse=True,
+                    )
+                    cross = sorted(
+                        [r for r in sim_rows if r[1] != my_party],
+                        key=lambda x: x[4], reverse=True,
+                    )
+                    opposed = sorted(cross, key=lambda x: x[4])
+                    lines.append(
+                        f"\nVoting Similarity — 2026 Session ({len(sim_rows)} peers with ≥15 shared votes):"
+                    )
+                    if same:
+                        lines.append("  Top same-party voting allies:")
+                        for r in same[:5]:
+                            lines.append(f"    {r[4]:.0f}% ({r[2]}/{r[3]}) — {r[0]}")
+                        outliers = [r for r in same if r[4] < 90]
+                        if outliers:
+                            lines.append("  Same-party lowest agreement (caucus divergence):")
+                            for r in sorted(outliers, key=lambda x: x[4])[:3]:
+                                lines.append(f"    {r[4]:.0f}% ({r[2]}/{r[3]}) — {r[0]}")
+                    if cross:
+                        lines.append("  Most bipartisan (cross-party allies):")
+                        for r in cross[:4]:
+                            lines.append(f"    {r[4]:.0f}% ({r[2]}/{r[3]}) [{r[1]}] — {r[0]}")
+                    if opposed:
+                        lines.append("  Most opposed (near-perfect opposition):")
+                        for r in opposed[:3]:
+                            lines.append(f"    {r[4]:.0f}% ({r[2]}/{r[3]}) [{r[1]}] — {r[0]}")
+            except Exception:
+                pass
+
             blocks.append("\n".join(lines))
 
         conn.close()

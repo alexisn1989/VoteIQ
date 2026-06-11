@@ -239,6 +239,13 @@
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;color:var(--muted);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase">Sponsored bills · pass rate by topic · all sessions</div>
   </div>
 
+  <!-- Voting Coalitions Panel -->
+  <div id="allies-panel" class="eff-panel" style="display:none">
+    <div class="insights-header">Voting Coalitions <em id="allies-subtitle"></em></div>
+    <div id="allies-content"></div>
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;color:var(--muted);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase">2026 session · roll call agreement across all shared votes</div>
+  </div>
+
   <!-- Tabs -->
   <div class="tabs-wrap" id="tabs-wrap" style="display:none">
     <div class="tab-list" id="tab-list">
@@ -689,6 +696,44 @@
       </div>`;
     }).join('');
     document.getElementById('effectiveness-panel').style.display = 'block';
+  }
+
+  // ── Voting Coalitions ────────────────────────────────────────────────────────
+  const alliesData = D.voting_allies || null;
+  if (alliesData) {
+    const same    = alliesData.same_party     || [];
+    const cross   = alliesData.cross_party    || [];
+    const opposed = alliesData.most_opposed   || [];
+    const outliers= alliesData.caucus_outliers|| [];
+    if (same.length || cross.length) {
+      const subtitle = `${same.length + cross.length} peers compared`;
+      document.getElementById('allies-subtitle').textContent = subtitle;
+
+      const col = (items, label, fmtPct) => {
+        if (!items.length) return '';
+        const rows = items.map(r => {
+          const pColor = fmtPct(r.pct);
+          const partySuffix = r.party && r.party !== (D.party||'') ?
+            ` <span style="font-size:0.62rem;font-weight:700;color:${r.party.startsWith('R')?'#b91c1c':'#1d4ed8'}">[${r.party.charAt(0)}]</span>` : '';
+          return `<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px">
+            <div style="width:34px;font-size:0.75rem;font-weight:700;color:${pColor};text-align:right;flex-shrink:0">${r.pct.toFixed(0)}%</div>
+            <div style="font-size:0.78rem;color:var(--navy);line-height:1.2">${esc(r.voter_name)}${partySuffix}</div>
+          </div>`;
+        }).join('');
+        return `<div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin:8px 0 5px">${label}</div>${rows}`;
+      };
+
+      const leftHtml  = col(same.slice(0,6), 'Voting Allies', p => '#2d6a4f')
+                      + col(cross.slice(0,4), 'Bipartisan Allies', p => '#c75000');
+      const rightHtml = col(opposed.slice(0,5), 'Most Opposed', p => '#b91c1c')
+                      + col(outliers.slice(0,3), 'Caucus Divergence', p => '#c75000');
+
+      document.getElementById('allies-content').innerHTML =
+        `<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:4px">
+           <div>${leftHtml}</div><div>${rightHtml}</div>
+         </div>`;
+      document.getElementById('allies-panel').style.display = 'block';
+    }
   }
 
   // ── Campaign Funding tab (full detail) ───────────────────────────────────────

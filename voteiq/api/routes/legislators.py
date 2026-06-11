@@ -567,6 +567,51 @@ def _fetch_profile(conn, name: str) -> dict:
         )
     profile["donor_analysis"] = donor_rec  # None if no match
 
+    # ── Voting similarity matrix (allies & opponents) ────────────────────────
+    try:
+        sim_rows = conn.execute(
+            """SELECT other.voter_name, vs.party,
+                      SUM(CASE WHEN a.option=other.option THEN 1 ELSE 0 END) agree,
+                      COUNT(*) total,
+                      ROUND(100.0*SUM(CASE WHEN a.option=other.option
+                                     THEN 1 ELSE 0 END)/COUNT(*), 1) pct
+               FROM va_legislator_recent_votes a
+               JOIN va_legislator_recent_votes other
+                   ON a.bill_id=other.bill_id AND a.session=other.session
+               JOIN va_legislator_vote_summary vs
+                   ON vs.voter_name=other.voter_name AND vs.session='2026'
+               WHERE a.voter_name = ? AND a.session='2026'
+                 AND a.option IN ('yes','no')
+                 AND other.option IN ('yes','no')
+                 AND other.voter_name != a.voter_name
+               GROUP BY other.voter_name
+               HAVING total >= 15""",
+            (resolved,),
+        ).fetchall()
+        my_party = profile.get("party", "")
+        same = sorted(
+            [dict(voter_name=r["voter_name"], party=r["party"],
+                  agree=r["agree"], total=r["total"], pct=r["pct"])
+             for r in sim_rows if r["party"] == my_party],
+            key=lambda x: x["pct"], reverse=True,
+        )
+        cross = sorted(
+            [dict(voter_name=r["voter_name"], party=r["party"],
+                  agree=r["agree"], total=r["total"], pct=r["pct"])
+             for r in sim_rows if r["party"] != my_party],
+            key=lambda x: x["pct"], reverse=True,
+        )
+        profile["voting_allies"] = {
+            "same_party":  same[:8],
+            "cross_party": cross[:5],
+            "most_opposed": sorted(cross, key=lambda x: x["pct"])[:5],
+            "caucus_outliers": sorted(
+                [r for r in same if r["pct"] < 90], key=lambda x: x["pct"]
+            )[:5],
+        }
+    except Exception:
+        profile["voting_allies"] = None
+
     return profile
 
 
