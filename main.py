@@ -4536,6 +4536,128 @@ def _fetch_va_state_member_context(
             except Exception:
                 pass
 
+            # ── Financial disclosure conflicts ──────────────────────────────
+            try:
+                disc_last = name.split()[-1]
+                _disc_sec_rows = conn.execute(
+                    """SELECT entity_name, sector, amount_range
+                       FROM legislator_financial_disclosures
+                       WHERE lower(legislator_name) LIKE lower(?)
+                         AND part = 'securities'
+                         AND entity_name NOT IN ('NONE DISCLOSED','REDACTED','N/A','','None')
+                         AND entity_name IS NOT NULL""",
+                    (f"%{disc_last}%",),
+                ).fetchall()
+                _disc_cmte_rows = conn.execute(
+                    """SELECT committee, role FROM va_committee_assignments
+                       WHERE role IN ('chair','vice_chair')
+                         AND lower(member_name) LIKE lower(?)""",
+                    (f"%{disc_last}%",),
+                ).fetchall()
+                if _disc_sec_rows and _disc_cmte_rows:
+                    _E_SEC = {
+                        "abbvie":"Healthcare","pfizer":"Healthcare","merck":"Healthcare",
+                        "eli lilly":"Healthcare","lilly":"Healthcare",
+                        "astrazeneca":"Healthcare","astra zeneca":"Healthcare",
+                        "johnson":"Healthcare","bristol myers":"Healthcare",
+                        "novartis":"Healthcare","amgen":"Healthcare",
+                        "gilead":"Healthcare","biogen":"Healthcare",
+                        "unitedhealth":"Healthcare","cvs":"Healthcare",
+                        "anthem":"Healthcare","cigna":"Healthcare",
+                        "humana":"Healthcare","abbott":"Healthcare",
+                        "medtronic":"Healthcare","regeneron":"Healthcare",
+                        "moderna":"Healthcare","stryker":"Healthcare",
+                        "danaher":"Healthcare","mckesson":"Healthcare",
+                        "exxon":"Energy","chevron":"Energy",
+                        "conocophillips":"Energy","duke energy":"Energy",
+                        "dominion energy":"Energy","nextera":"Energy",
+                        "amer electric":"Energy","american electric":"Energy",
+                        "halliburton":"Energy","marathon oil":"Energy",
+                        "valero":"Energy","phillips 66":"Energy",
+                        "pioneer natural":"Energy","baker hughes":"Energy",
+                        "jpmorgan":"Finance","jp morgan":"Finance",
+                        "wells fargo":"Finance","bank of america":"Finance",
+                        "citigroup":"Finance","goldman sachs":"Finance",
+                        "morgan stanley":"Finance","blackrock":"Finance",
+                        "ameriprise":"Finance","towne bank":"Finance",
+                        "truist":"Finance","capital one":"Finance",
+                        "american express":"Finance","berkshire":"Finance",
+                        "brinker capital":"Finance","aflac":"Finance",
+                        "allstate":"Finance","metlife":"Finance",
+                        "prudential":"Finance","mastercard":"Finance",
+                        "microsoft":"Technology","apple":"Technology",
+                        "amazon":"Technology","alphabet":"Technology",
+                        "google":"Technology","nvidia":"Technology",
+                        "intel":"Technology","qualcomm":"Technology",
+                        "cisco":"Technology","oracle":"Technology",
+                        "salesforce":"Technology","adobe":"Technology",
+                        "broadcom":"Technology","asml":"Technology",
+                        "evolv":"Technology","amdocs":"Technology",
+                        "accenture":"Technology","at&t":"Technology",
+                        "verizon":"Technology","comcast":"Technology",
+                        "boeing":"Defense","lockheed":"Defense",
+                        "raytheon":"Defense","northrop":"Defense",
+                        "general dynamics":"Defense","l3harris":"Defense",
+                        "leidos":"Defense","booz allen":"Defense",
+                        "altria":"Alcohol/Tobacco","philip morris":"Alcohol/Tobacco",
+                        "molson":"Alcohol/Tobacco","anheuser":"Alcohol/Tobacco",
+                        "diageo":"Alcohol/Tobacco",
+                        "realty income":"Real Estate","prologis":"Real Estate",
+                        "welltower":"Real Estate","avalonbay":"Real Estate",
+                    }
+                    _C_CMTE = {
+                        "Healthcare": ["health","behavioral health","health professions"],
+                        "Energy":     ["energy","agriculture","natural resources",
+                                       "transportation","highway safety"],
+                        "Finance":    ["finance","appropriations","commerce",
+                                       "labor and commerce"],
+                        "Technology": ["technology","communications"],
+                        "Defense":    ["public safety","firearms"],
+                        "Alcohol/Tobacco": ["abc","gaming"],
+                        "Real Estate": ["housing"],
+                    }
+                    held: dict[str, list[str]] = {}
+                    for _row in _disc_sec_rows:
+                        _ent = (_row[0] or "").strip()
+                        _sec = (_row[1] or "").strip()
+                        if not _sec:
+                            _el = _ent.lower()
+                            for _kw, _s in _E_SEC.items():
+                                if _kw in _el:
+                                    _sec = _s
+                                    break
+                        if _sec:
+                            held.setdefault(_sec, [])
+                            if _ent not in held[_sec]:
+                                held[_sec].append(_ent)
+                    conflict_lines = []
+                    for _sector, _ents in held.items():
+                        for _cr in _disc_cmte_rows:
+                            _cl = _cr[0].lower()
+                            if any(_kw in _cl for _kw in _C_CMTE.get(_sector, [])):
+                                _sample = ", ".join(_ents[:3])
+                                conflict_lines.append(
+                                    f"  ⚠ [{_cr[1]}] {_cr[0]} / holds {_sector}: {_sample}"
+                                )
+                    if conflict_lines:
+                        lines.append(
+                            f"\nFinancial Disclosure Conflicts ({len(conflict_lines)} flagged):"
+                        )
+                        lines.extend(conflict_lines)
+                    elif held:
+                        _cmte_str = "; ".join(
+                            f"{r[1]} of {r[0]}" for r in _disc_cmte_rows[:2]
+                        )
+                        _sec_str = ", ".join(
+                            f"{k}({len(v)})" for k, v in list(held.items())[:4]
+                        )
+                        lines.append(
+                            f"\nFinancial Disclosures: {_cmte_str}. "
+                            f"Holdings by sector: {_sec_str}. No direct sector conflicts detected."
+                        )
+            except Exception:
+                pass
+
             blocks.append("\n".join(lines))
 
         conn.close()

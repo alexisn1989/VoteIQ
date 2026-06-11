@@ -246,6 +246,13 @@
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;color:var(--muted);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase">2026 session · roll call agreement across all shared votes</div>
   </div>
 
+  <!-- Financial Conflicts Panel -->
+  <div id="conflicts-panel" class="eff-panel" style="display:none">
+    <div class="insights-header">Financial Disclosure Conflicts <em id="conflicts-subtitle"></em></div>
+    <div id="conflicts-content"></div>
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;color:var(--muted);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase">Securities holdings cross-referenced against committee chair/vice-chair roles</div>
+  </div>
+
   <!-- Tabs -->
   <div class="tabs-wrap" id="tabs-wrap" style="display:none">
     <div class="tab-list" id="tab-list">
@@ -734,6 +741,62 @@
          </div>`;
       document.getElementById('allies-panel').style.display = 'block';
     }
+  }
+
+  // ── Financial Disclosure Conflicts ──────────────────────────────────────────
+  const conflicts   = D.financial_conflicts  || [];
+  const holdings    = D.financial_holdings   || {};
+  const hasHoldings = Object.keys(holdings).length > 0;
+  if (conflicts.length > 0 || hasHoldings) {
+    const SECTOR_BADGE = {
+      'Healthcare':      '#0d6e4f',
+      'Finance':         '#1e3a8a',
+      'Technology':      '#5b21b6',
+      'Energy':          '#b45309',
+      'Defense':         '#374151',
+      'Alcohol/Tobacco': '#7f1d1d',
+      'Real Estate':     '#065f46',
+    };
+
+    let html = '';
+
+    if (conflicts.length > 0) {
+      document.getElementById('conflicts-subtitle').textContent =
+        `${conflicts.length} potential conflict${conflicts.length > 1 ? 's' : ''} flagged`;
+      html += `<div style="font-size:0.72rem;color:#b91c1c;font-weight:600;margin-bottom:10px;letter-spacing:0.02em">
+        ⚠ Securities holdings overlap with committee oversight area</div>`;
+      html += conflicts.map(c => {
+        const badge = SECTOR_BADGE[c.sector] || '#374151';
+        const holdingList = (c.holdings || []).map(h =>
+          `<span style="font-size:0.7rem;color:var(--navy)">${esc(h.entity)}</span>${h.amount_range ? ` <em style="color:var(--muted);font-size:0.68rem">(${esc(h.amount_range)})</em>` : ''}`
+        ).join('<br>');
+        return `<div style="border-left:3px solid ${badge};padding:8px 10px;margin-bottom:10px;background:rgba(185,28,28,0.04);border-radius:0 4px 4px 0">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span style="font-size:0.62rem;font-weight:700;background:${badge};color:#fff;padding:2px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:0.06em">${esc(c.sector)}</span>
+            <span style="font-size:0.73rem;font-weight:600;color:var(--navy)">${esc(c.role === 'chair' ? 'Chair' : 'Vice-Chair')}, ${esc(c.committee)}</span>
+          </div>
+          <div style="margin-left:4px">${holdingList}</div>
+        </div>`;
+      }).join('');
+    } else {
+      document.getElementById('conflicts-subtitle').textContent = 'no direct conflicts';
+    }
+
+    if (hasHoldings) {
+      html += `<div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin:${conflicts.length?'16px':'0'} 0 8px">All classified holdings</div>`;
+      html += `<div style="display:flex;flex-wrap:wrap;gap:8px">` +
+        Object.entries(holdings).map(([sector, items]) => {
+          const badge = SECTOR_BADGE[sector] || '#374151';
+          return `<div style="font-size:0.72rem;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:5px 8px">
+            <span style="font-weight:700;color:${badge}">${esc(sector)}</span>
+            <span style="color:var(--muted);margin-left:4px">(${items.length})</span><br>
+            <span style="color:var(--navy);font-size:0.68rem">${items.slice(0,3).map(h=>esc(h.entity)).join(', ')}${items.length>3?'…':''}</span>
+          </div>`;
+        }).join('') + `</div>`;
+    }
+
+    document.getElementById('conflicts-content').innerHTML = html;
+    document.getElementById('conflicts-panel').style.display = 'block';
   }
 
   // ── Campaign Funding tab (full detail) ───────────────────────────────────────

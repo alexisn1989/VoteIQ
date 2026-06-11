@@ -612,6 +612,134 @@ def _fetch_profile(conn, name: str) -> dict:
     except Exception:
         profile["voting_allies"] = None
 
+    # ── Financial disclosure conflicts (securities vs committee chair roles) ──
+    _ENTITY_SECTOR: dict[str, str] = {
+        "abbvie": "Healthcare", "pfizer": "Healthcare", "merck": "Healthcare",
+        "eli lilly": "Healthcare", "lilly": "Healthcare",
+        "astrazeneca": "Healthcare", "astra zeneca": "Healthcare",
+        "johnson": "Healthcare", "bristol myers": "Healthcare",
+        "novartis": "Healthcare", "amgen": "Healthcare",
+        "gilead": "Healthcare", "biogen": "Healthcare",
+        "unitedhealth": "Healthcare", "united health": "Healthcare",
+        "cvs health": "Healthcare", "anthem": "Healthcare",
+        "cigna": "Healthcare", "humana": "Healthcare",
+        "abbott": "Healthcare", "medtronic": "Healthcare",
+        "alcon": "Healthcare", "regeneron": "Healthcare",
+        "moderna": "Healthcare", "stryker": "Healthcare",
+        "boston scientific": "Healthcare", "danaher": "Healthcare",
+        "mckesson": "Healthcare", "cardinal health": "Healthcare",
+        "exxon": "Energy", "chevron": "Energy",
+        "conocophillips": "Energy", "duke energy": "Energy",
+        "dominion energy": "Energy", "nextera": "Energy",
+        "amer electric": "Energy", "american electric": "Energy",
+        "halliburton": "Energy", "marathon oil": "Energy",
+        "valero": "Energy", "phillips 66": "Energy",
+        "pioneer natural": "Energy", "baker hughes": "Energy",
+        "jpmorgan": "Finance", "jp morgan": "Finance",
+        "wells fargo": "Finance", "bank of america": "Finance",
+        "citigroup": "Finance", "goldman sachs": "Finance",
+        "morgan stanley": "Finance", "blackrock": "Finance",
+        "ameriprise": "Finance", "charles schwab": "Finance",
+        "towne bank": "Finance", "truist": "Finance",
+        "pnc financial": "Finance", "capital one": "Finance",
+        "american express": "Finance", "berkshire": "Finance",
+        "brinker capital": "Finance", "aflac": "Finance",
+        "allstate": "Finance", "metlife": "Finance",
+        "prudential": "Finance", "unum": "Finance",
+        "visa inc": "Finance", "mastercard": "Finance",
+        "microsoft": "Technology", "apple": "Technology",
+        "amazon": "Technology", "alphabet": "Technology",
+        "google": "Technology", "meta platforms": "Technology",
+        "nvidia": "Technology", "intel": "Technology",
+        "qualcomm": "Technology", "cisco": "Technology",
+        "oracle": "Technology", "ibm": "Technology",
+        "salesforce": "Technology", "adobe": "Technology",
+        "broadcom": "Technology", "asml": "Technology",
+        "analog devices": "Technology", "arista": "Technology",
+        "evolv": "Technology", "amdocs": "Technology",
+        "accenture": "Technology", "at&t": "Technology",
+        "verizon": "Technology", "comcast": "Technology",
+        "boeing": "Defense", "lockheed": "Defense",
+        "raytheon": "Defense", "northrop": "Defense",
+        "general dynamics": "Defense", "l3harris": "Defense",
+        "leidos": "Defense", "booz allen": "Defense",
+        "altria": "Alcohol/Tobacco", "philip morris": "Alcohol/Tobacco",
+        "molson": "Alcohol/Tobacco", "constellation brands": "Alcohol/Tobacco",
+        "anheuser": "Alcohol/Tobacco", "diageo": "Alcohol/Tobacco",
+        "realty income": "Real Estate", "prologis": "Real Estate",
+        "welltower": "Real Estate", "avalonbay": "Real Estate",
+        "simon property": "Real Estate", "public storage": "Real Estate",
+    }
+    _CONFLICT_CMTE_KWS: dict[str, list[str]] = {
+        "Healthcare": ["health", "behavioral health", "health professions"],
+        "Energy":     ["energy", "agriculture", "natural resources",
+                       "transportation", "highway safety"],
+        "Finance":    ["finance", "appropriations", "commerce",
+                       "labor and commerce"],
+        "Technology": ["technology", "communications"],
+        "Defense":    ["public safety", "firearms"],
+        "Alcohol/Tobacco": ["abc", "gaming"],
+        "Real Estate": ["housing"],
+    }
+
+    def _classify_entity(ename: str) -> str:
+        el = ename.lower()
+        for kw, sector in _ENTITY_SECTOR.items():
+            if kw in el:
+                return sector
+        return ""
+
+    try:
+        disc_last = resolved.strip().split()[-1]
+        sec_rows = conn.execute(
+            """SELECT entity_name, sector, amount_range
+               FROM legislator_financial_disclosures
+               WHERE lower(legislator_name) LIKE lower(?)
+                 AND part = 'securities'
+                 AND entity_name NOT IN ('NONE DISCLOSED','REDACTED','N/A','','None')
+                 AND entity_name IS NOT NULL""",
+            (f"%{disc_last}%",),
+        ).fetchall()
+        cmte_chair_rows = conn.execute(
+            """SELECT committee, role FROM va_committee_assignments
+               WHERE role IN ('chair','vice_chair')
+                 AND lower(member_name) LIKE lower(?)""",
+            (f"%{disc_last}%",),
+        ).fetchall()
+
+        holdings_by_sector: dict[str, list[dict]] = {}
+        for row in sec_rows:
+            entity = (row["entity_name"] or "").strip()
+            sector = (row["sector"] or "").strip()
+            if not sector:
+                sector = _classify_entity(entity)
+            if sector:
+                holdings_by_sector.setdefault(sector, [])
+                if not any(h["entity"] == entity for h in holdings_by_sector[sector]):
+                    holdings_by_sector[sector].append({
+                        "entity": entity,
+                        "amount_range": row["amount_range"] or "",
+                    })
+
+        conflicts: list[dict] = []
+        for sector, holdings in holdings_by_sector.items():
+            cmte_kws = _CONFLICT_CMTE_KWS.get(sector, [])
+            for cr in cmte_chair_rows:
+                cmte_lower = cr["committee"].lower()
+                if any(kw in cmte_lower for kw in cmte_kws):
+                    conflicts.append({
+                        "sector":    sector,
+                        "committee": cr["committee"],
+                        "role":      cr["role"],
+                        "holdings":  holdings[:5],
+                    })
+
+        profile["financial_conflicts"] = conflicts
+        profile["financial_holdings"] = {k: v[:5] for k, v in holdings_by_sector.items()}
+    except Exception:
+        profile["financial_conflicts"] = []
+        profile["financial_holdings"] = {}
+
     return profile
 
 
