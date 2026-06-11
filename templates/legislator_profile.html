@@ -253,6 +253,13 @@
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;color:var(--muted);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase">Securities holdings cross-referenced against committee chair/vice-chair roles</div>
   </div>
 
+  <!-- Lobbyist Activity Panel -->
+  <div id="lobbyist-panel" class="eff-panel" style="display:none">
+    <div class="insights-header">Lobbyist Activity in Committee Areas <em id="lobbyist-subtitle"></em></div>
+    <div id="lobbyist-content"></div>
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;color:var(--muted);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase">Registered principals (2026-2027) whose sector matches this member's committee oversight</div>
+  </div>
+
   <!-- Tabs -->
   <div class="tabs-wrap" id="tabs-wrap" style="display:none">
     <div class="tab-list" id="tab-list">
@@ -797,6 +804,49 @@
 
     document.getElementById('conflicts-content').innerHTML = html;
     document.getElementById('conflicts-panel').style.display = 'block';
+  }
+
+  // ── Lobbyist Activity ────────────────────────────────────────────────────────
+  const lobbyistConns = D.lobbyist_connections || [];
+  if (lobbyistConns.length > 0) {
+    const SECTOR_BADGE = {
+      'Healthcare':      '#0d6e4f',
+      'Finance':         '#1e3a8a',
+      'Technology':      '#5b21b6',
+      'Energy':          '#b45309',
+      'Agriculture':     '#3f6212',
+      'Gambling':        '#78350f',
+      'Alcohol/Tobacco': '#7f1d1d',
+      'Transportation':  '#075985',
+      'Real Estate':     '#065f46',
+      'Education':       '#1e3a8a',
+      'Defense':         '#374151',
+      'Labor':           '#6b21a8',
+    };
+    const totalPrincipals = lobbyistConns.reduce((s, c) => s + c.principal_count, 0);
+    document.getElementById('lobbyist-subtitle').textContent =
+      `${lobbyistConns.length} committee area${lobbyistConns.length > 1 ? 's' : ''} · ${totalPrincipals} registered principals`;
+
+    const html = lobbyistConns.map(c => {
+      const badge = SECTOR_BADGE[c.sector] || '#374151';
+      const topList = (c.top_principals || []).map(p =>
+        `<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:2px">
+          <span style="font-size:0.7rem;color:var(--navy)">${esc(p.name)}</span>
+          <span style="font-size:0.65rem;color:var(--muted);white-space:nowrap">${p.count} lobbyist${p.count !== 1 ? 's' : ''}</span>
+        </div>`
+      ).join('');
+      return `<div style="border-left:3px solid ${badge};padding:8px 10px;margin-bottom:10px;background:var(--surface);border-radius:0 4px 4px 0">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="font-size:0.62rem;font-weight:700;background:${badge};color:#fff;padding:2px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:0.06em">${esc(c.sector)}</span>
+          <span style="font-size:0.73rem;font-weight:600;color:var(--navy)">${esc(c.role === 'chair' ? 'Chair' : 'Vice-Chair')}, ${esc(c.committee)}</span>
+          <span style="font-size:0.68rem;color:var(--muted);margin-left:auto">${c.principal_count} principals · ${c.lobbyist_count} lobbyists</span>
+        </div>
+        <div style="margin-left:4px">${topList}</div>
+      </div>`;
+    }).join('');
+
+    document.getElementById('lobbyist-content').innerHTML = html;
+    document.getElementById('lobbyist-panel').style.display = 'block';
   }
 
   // ── Campaign Funding tab (full detail) ───────────────────────────────────────

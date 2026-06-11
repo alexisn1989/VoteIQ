@@ -4658,6 +4658,132 @@ def _fetch_va_state_member_context(
             except Exception:
                 pass
 
+            # ── Lobbyist connections (principal sector vs committee oversight) ──
+            try:
+                _lob_last = name.split()[-1]
+                _lob_cmte = conn.execute(
+                    """SELECT committee, role FROM va_committee_assignments
+                       WHERE role IN ('chair','vice_chair')
+                         AND lower(member_name) LIKE lower(?)""",
+                    (f"%{_lob_last}%",),
+                ).fetchall()
+                if _lob_cmte:
+                    _P_SEC = {
+                        "health":"Healthcare","hospital":"Healthcare",
+                        "medical":"Healthcare","dental":"Healthcare",
+                        "pharma":"Healthcare","pharmaceutical":"Healthcare",
+                        "nursing":"Healthcare","cancer":"Healthcare",
+                        "diabetes":"Healthcare","behavioral health":"Healthcare",
+                        "mental health":"Healthcare","heart association":"Healthcare",
+                        "physical therapy":"Healthcare","pharmacy":"Healthcare",
+                        "aarp":"Healthcare","physician":"Healthcare",
+                        "astrazeneca":"Healthcare","amgen":"Healthcare",
+                        "biogen":"Healthcare","pfizer":"Healthcare",
+                        "boehringer":"Healthcare","biotechnology":"Healthcare",
+                        "electric power":"Energy","electric coop":"Energy",
+                        "power agency":"Energy","solar":"Energy",
+                        "natural gas":"Energy","petroleum":"Energy",
+                        "nuclear":"Energy","clean power":"Energy",
+                        "clean energy":"Energy","renewable":"Energy",
+                        "coal":"Energy","dominion":"Energy",
+                        "appalachian power":"Energy","atmos":"Energy",
+                        "bloom energy":"Energy",
+                        "bank":"Finance","financial":"Finance",
+                        "insurance":"Finance","credit union":"Finance",
+                        "lending":"Finance","mortgage":"Finance",
+                        "life insurer":"Finance","life insurance":"Finance",
+                        "casualty":"Finance","aflac":"Finance",
+                        "google":"Technology","amazon.com":"Technology",
+                        "apple inc":"Technology","microsoft":"Technology",
+                        "tiktok":"Technology","salesforce":"Technology",
+                        "waymo":"Technology","autonomous vehicle":"Technology",
+                        "artificial intelligence":"Technology",
+                        "broadband":"Technology","software":"Technology",
+                        "at&t":"Technology","digital innovation":"Technology",
+                        "robotics":"Technology","technology council":"Technology",
+                        "accenture":"Technology","cyber":"Technology",
+                        "agriculture":"Agriculture","equine":"Agriculture",
+                        "livestock":"Agriculture","fisheries":"Agriculture",
+                        "seafood":"Agriculture","dairy":"Agriculture",
+                        "harvest":"Agriculture","forestry":"Agriculture",
+                        "casino":"Gambling","gaming corporation":"Gambling",
+                        "gaming llc":"Gambling","gaming, llc":"Gambling",
+                        "sports betting":"Gambling","lottery":"Gambling",
+                        "bally":"Gambling","boyd gaming":"Gambling",
+                        "beer wholesal":"Alcohol/Tobacco","wine":"Alcohol/Tobacco",
+                        "spirits":"Alcohol/Tobacco","brewery":"Alcohol/Tobacco",
+                        "anheuser":"Alcohol/Tobacco","altria":"Alcohol/Tobacco",
+                        "tobacco":"Alcohol/Tobacco","vapor":"Alcohol/Tobacco",
+                        "highway contractor":"Transportation",
+                        "transit":"Transportation","railroad":"Transportation",
+                        "airline":"Transportation","trucking":"Transportation",
+                        "motor vehicle":"Transportation","transurban":"Transportation",
+                        "real estate":"Real Estate","realt":"Real Estate",
+                        "homebuilder":"Real Estate","airbnb":"Real Estate",
+                        "education":"Education","community college":"Education",
+                        "university":"Education",
+                        "firearm":"Defense","gun":"Defense",
+                        "law enforcement":"Defense",
+                        "afl-cio":"Labor",
+                    }
+                    _C_LOB = {
+                        "Healthcare":    ["health","behavioral health","health professions"],
+                        "Energy":        ["energy","natural resources",
+                                          "transportation infrastructure","highway safety"],
+                        "Finance":       ["finance","appropriations","commerce",
+                                          "labor and commerce"],
+                        "Technology":    ["technology","communications"],
+                        "Agriculture":   ["agriculture","natural resources"],
+                        "Gambling":      ["abc","gaming"],
+                        "Alcohol/Tobacco":["abc"],
+                        "Transportation":["transportation","highway safety"],
+                        "Real Estate":   ["housing","counties, cities"],
+                        "Education":     ["education"],
+                        "Defense":       ["public safety","firearms"],
+                        "Labor":         ["labor","commerce and labor"],
+                    }
+                    all_p = conn.execute(
+                        """SELECT principal_name, COUNT(*) AS n
+                           FROM lobbyist_registrations
+                           WHERE year_range='2026-2027' AND status='Approved'
+                           GROUP BY principal_name"""
+                    ).fetchall()
+                    p_by_sec: dict = {}
+                    for _pr in all_p:
+                        _pl = (_pr[0] or "").lower()
+                        for _kw, _s in _P_SEC.items():
+                            if _kw in _pl:
+                                p_by_sec.setdefault(_s, []).append((_pr[0], _pr[1]))
+                                break
+                    lob_lines = []
+                    seen_sec = set()
+                    for _cr in _lob_cmte:
+                        _cl = _cr[0].lower()
+                        for _sec, _kws in _C_LOB.items():
+                            if _sec in seen_sec:
+                                continue
+                            if any(_kw in _cl for _kw in _kws):
+                                _plist = p_by_sec.get(_sec, [])
+                                if _plist:
+                                    seen_sec.add(_sec)
+                                    _top = sorted(_plist, key=lambda x: x[1], reverse=True)[:5]
+                                    _total = sum(p[1] for p in _plist)
+                                    _top_str = ", ".join(
+                                        f"{p[0]} ({p[1]})" for p in _top
+                                    )
+                                    lob_lines.append(
+                                        f"  [{_cr[1]}] {_cr[0]} — "
+                                        f"{len(_plist)} {_sec} principals, "
+                                        f"{_total} lobbyists: {_top_str}"
+                                    )
+                    if lob_lines:
+                        lines.append(
+                            f"\nLobbyist Activity in Committee Areas (2026-2027):"
+                        )
+                        lines.extend(lob_lines)
+            except Exception:
+                pass
+
             blocks.append("\n".join(lines))
 
         conn.close()

@@ -740,6 +740,146 @@ def _fetch_profile(conn, name: str) -> dict:
         profile["financial_conflicts"] = []
         profile["financial_holdings"] = {}
 
+    # ── Lobbyist connections (principal-sector vs committee oversight) ─────────
+    _PRINCIPAL_SECTOR: dict[str, str] = {
+        # Healthcare
+        "health": "Healthcare", "hospital": "Healthcare", "medical": "Healthcare",
+        "dental": "Healthcare", "pharma": "Healthcare", "pharmaceutical": "Healthcare",
+        "nursing": "Healthcare", "cancer": "Healthcare", "diabetes": "Healthcare",
+        "behavioral health": "Healthcare", "mental health": "Healthcare",
+        "heart association": "Healthcare", "physical therapy": "Healthcare",
+        "pharmacy": "Healthcare", "aarp": "Healthcare", "physician": "Healthcare",
+        "optom": "Healthcare", "astrazeneca": "Healthcare", "amgen": "Healthcare",
+        "biogen": "Healthcare", "pfizer": "Healthcare", "boehringer": "Healthcare",
+        "biotechnology": "Healthcare",
+        # Energy
+        "electric power": "Energy", "electric coop": "Energy",
+        "power agency": "Energy", "solar": "Energy", "natural gas": "Energy",
+        "petroleum": "Energy", "nuclear": "Energy", "clean power": "Energy",
+        "clean energy": "Energy", "renewable": "Energy", "coal": "Energy",
+        "dominion": "Energy", "appalachian power": "Energy", "atmos": "Energy",
+        "bloom energy": "Energy",
+        # Finance
+        "bank": "Finance", "financial": "Finance", "insurance": "Finance",
+        "credit union": "Finance", "lending": "Finance", "mortgage": "Finance",
+        "life insurer": "Finance", "life insurance": "Finance",
+        "casualty": "Finance", "aflac": "Finance",
+        # Technology (specific names, not generic "technology")
+        "google": "Technology", "amazon.com": "Technology",
+        "apple inc": "Technology", "microsoft": "Technology",
+        "tiktok": "Technology", "salesforce": "Technology",
+        "waymo": "Technology", "autonomous vehicle": "Technology",
+        "artificial intelligence": "Technology", "broadband": "Technology",
+        "software": "Technology", "at&t": "Technology",
+        "digital innovation": "Technology", "robotics": "Technology",
+        "technology council": "Technology", "accenture": "Technology",
+        "cyber": "Technology",
+        # Agriculture
+        "agriculture": "Agriculture", "equine": "Agriculture",
+        "livestock": "Agriculture", "fisheries": "Agriculture",
+        "seafood": "Agriculture", "dairy": "Agriculture",
+        "harvest": "Agriculture", "forestry": "Agriculture",
+        # Gambling
+        "casino": "Gambling", "gaming corporation": "Gambling",
+        "gaming llc": "Gambling", "gaming, llc": "Gambling",
+        "sports betting": "Gambling", "lottery": "Gambling",
+        "bally": "Gambling", "boyd gaming": "Gambling",
+        # Alcohol / Tobacco
+        "beer wholesal": "Alcohol/Tobacco", "wine": "Alcohol/Tobacco",
+        "spirits": "Alcohol/Tobacco", "brewery": "Alcohol/Tobacco",
+        "anheuser": "Alcohol/Tobacco", "altria": "Alcohol/Tobacco",
+        "tobacco": "Alcohol/Tobacco", "distill": "Alcohol/Tobacco",
+        "vapor": "Alcohol/Tobacco",
+        # Transportation
+        "highway contractor": "Transportation", "transit": "Transportation",
+        "railroad": "Transportation", "airline": "Transportation",
+        "trucking": "Transportation", "motor vehicle": "Transportation",
+        "transurban": "Transportation",
+        # Real Estate
+        "real estate": "Real Estate", "realt": "Real Estate",
+        "homebuilder": "Real Estate", "apartment and office": "Real Estate",
+        "airbnb": "Real Estate",
+        # Education
+        "education": "Education", "community college": "Education",
+        "university": "Education",
+        # Defense / Firearms
+        "firearm": "Defense", "gun": "Defense", "law enforcement": "Defense",
+        # Labor
+        "afl-cio": "Labor",
+    }
+    _CMTE_LOBBY_MAP: dict[str, list[str]] = {
+        "Healthcare":    ["health", "behavioral health", "health professions"],
+        "Energy":        ["energy", "natural resources", "transportation infrastructure",
+                          "highway safety"],
+        "Finance":       ["finance", "appropriations", "commerce",
+                          "labor and commerce"],
+        "Technology":    ["technology", "communications"],
+        "Agriculture":   ["agriculture", "natural resources"],
+        "Gambling":      ["abc", "gaming"],
+        "Alcohol/Tobacco": ["abc"],
+        "Transportation": ["transportation", "highway safety"],
+        "Real Estate":   ["housing", "counties, cities"],
+        "Education":     ["education"],
+        "Defense":       ["public safety", "firearms"],
+        "Labor":         ["labor", "commerce and labor"],
+    }
+
+    try:
+        lob_last = resolved.strip().split()[-1]
+        lob_cmte_rows = conn.execute(
+            """SELECT committee, role FROM va_committee_assignments
+               WHERE role IN ('chair','vice_chair')
+                 AND lower(member_name) LIKE lower(?)""",
+            (f"%{lob_last}%",),
+        ).fetchall()
+
+        lob_connections: list[dict] = []
+        if lob_cmte_rows:
+            all_principals = conn.execute(
+                """SELECT principal_name, COUNT(*) AS n
+                   FROM lobbyist_registrations
+                   WHERE year_range = '2026-2027' AND status = 'Approved'
+                   GROUP BY principal_name""",
+            ).fetchall()
+
+            def _classify_principal(pname: str) -> str:
+                pl = pname.lower()
+                for kw, sec in _PRINCIPAL_SECTOR.items():
+                    if kw in pl:
+                        return sec
+                return ""
+
+            principals_by_sector: dict[str, list[tuple]] = {}
+            for prow in all_principals:
+                sec = _classify_principal(prow["principal_name"])
+                if sec:
+                    principals_by_sector.setdefault(sec, []).append(
+                        (prow["principal_name"], prow["n"])
+                    )
+
+            for cr in lob_cmte_rows:
+                cmte_lower = cr["committee"].lower()
+                for sector, cmte_kws in _CMTE_LOBBY_MAP.items():
+                    if any(kw in cmte_lower for kw in cmte_kws):
+                        plist = principals_by_sector.get(sector, [])
+                        if plist:
+                            top = sorted(plist, key=lambda x: x[1], reverse=True)[:6]
+                            total_lob = sum(p[1] for p in plist)
+                            lob_connections.append({
+                                "committee":       cr["committee"],
+                                "role":            cr["role"],
+                                "sector":          sector,
+                                "principal_count": len(plist),
+                                "lobbyist_count":  total_lob,
+                                "top_principals": [
+                                    {"name": p[0], "count": p[1]} for p in top
+                                ],
+                            })
+
+        profile["lobbyist_connections"] = lob_connections
+    except Exception:
+        profile["lobbyist_connections"] = []
+
     return profile
 
 
