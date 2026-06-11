@@ -1686,18 +1686,27 @@ _CLAUDE_SONNET_MODEL = os.getenv("CLAUDE_SONNET_MODEL", "claude-sonnet-4-6")
 _CLAUDE_HAIKU_MODEL = os.getenv("CLAUDE_HAIKU_MODEL", "claude-haiku-4-5-20251001")
 
 
-def _claude_reply(system_prompt, messages, max_tokens, model: str | None = None):
-    from voteiq.api.claude import cached_system_prompt
-
+def _claude_reply(system_prompt, messages, max_tokens, model: str | None = None,
+                  cache_ttl: str | None = None):
+    # cache_ttl ("5m" or "1h") rides on the system block's cache_control;
+    # 1h costs 2x on cache writes but keeps research sessions warm across
+    # the gaps between questions.
     model_name = model or _CLAUDE_SONNET_MODEL
+    cache_control: dict = {"type": "ephemeral"}
+    if cache_ttl and cache_ttl != "5m":
+        cache_control["ttl"] = cache_ttl
+    system_blocks = [{
+        "type": "text",
+        "text": system_prompt,
+        "cache_control": cache_control,
+    }]
     last_error = None
     for attempt in range(3):
         try:
             response = client.messages.create(
                 model=model_name,
                 max_tokens=max_tokens,
-                cache_control={"type": "ephemeral"},
-                system=cached_system_prompt(system_prompt),
+                system=system_blocks,
                 messages=[{"role": m.role, "content": m.content} for m in messages],
             )
             return response.content[0].text

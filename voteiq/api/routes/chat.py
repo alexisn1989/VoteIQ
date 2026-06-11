@@ -4160,7 +4160,7 @@ async def chat(req: ChatRequest):
         scope_prefix = f"Query Scope Guidance: This query is unclear about scope ({scope_context['scope_explanation']}). {scope_context['scope_notes']}\n\n"
 
     base_prompt = get_system_prompt(voice=req.voice, query_context=query_context)
-    max_tokens  = TIER_MAX_TOKENS.get(req.tier, TIER_MAX_TOKENS["free"])
+    tier_model, max_tokens = get_model(req.tier)  # paid tiers route to Opus
 
     transcript_context = ""
     if query_context.get("touches_speech_context"):
@@ -4267,7 +4267,8 @@ When citing a vote, include the bill name and Yea/Nay. When citing donors or ind
     sources_used = _track_sources(combined_context)
 
     try:
-        reply = _m._claude_reply(system_prompt, req.messages, max_tokens=max_tokens, cache_ttl=cache_ttl)
+        reply = _m._claude_reply(system_prompt, req.messages, max_tokens=max_tokens,
+                                 model=tier_model, cache_ttl=cache_ttl)
         # Add sources footer if sources were used
         sources_footer = _format_sources_footer(sources_used)
         if sources_footer and "Sources:" not in reply:
