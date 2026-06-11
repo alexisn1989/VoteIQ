@@ -80,6 +80,7 @@ _NICKNAMES = {
     "richard": "rick", "edward": "ed", "anthony": "tony", "nicholas": "nick",
     "samuel": "sam", "benjamin": "ben", "andrew": "andy", "stephen": "steve",
     "steven": "steve", "patricia": "pat", "deborah": "debbie", "elizabeth": "liz",
+    "charles": "charlie", "lillian": "lily", "will": "bill",
 }
 
 
@@ -101,6 +102,65 @@ def _name_key(full_name: str) -> str:
     first = _NICKNAMES.get(tokens[0].lower(), tokens[0].lower())
     last = tokens[-1].lower()
     return f"{first} {last}"
+
+
+def _same_person(a: str, b: str) -> bool:
+    """True when two name strings refer to the same legislator.
+
+    Keys must match on first AND last name so shared surnames never
+    cross-match (Don Scott vs Phillip A. Scott). A degenerate key — a
+    surname-only string like 'J.D. "Danny" Diggs', whose initials and quoted
+    nickname are stripped, leaving 'diggs diggs' — may match on surname alone.
+    """
+    ka, kb = _name_key(a), _name_key(b)
+    if not ka or not kb:
+        return False
+    if ka == kb:
+        return True
+    fa, la = ka.split()[0], ka.split()[-1]
+    fb, lb = kb.split()[0], kb.split()[-1]
+    return la == lb and (fa == la or fb == lb)
+
+
+def _person_name_variants(conn, table: str, column: str, person_name: str) -> list[str]:
+    """Exact name strings in table.column that belong to person_name.
+
+    Replaces last-name LIKE joins, which cross-matched legislators sharing a
+    surname and treated ', Jr.' as a surname (matching every Jr. in the
+    table). Matches whole names via _name_key; falls back to surname-only
+    when exactly one person in the column carries that surname. Returns []
+    when the person can't be identified unambiguously — callers should treat
+    that as "no data", never fall back to a broader match.
+    """
+    if not person_name:
+        return []
+    try:
+        rows = [r[0] for r in conn.execute(
+            f"SELECT DISTINCT {column} FROM {table}"
+        ).fetchall() if r[0]]
+    except Exception:
+        return []
+    variants = [n for n in rows if _same_person(n, person_name)]
+    target_key = _name_key(person_name)
+    if variants:
+        # A surname-only target ("Scott" -> degenerate key) matches every
+        # Scott — bail out if it matched more than one distinct person.
+        keys = {_name_key(n) for n in variants}
+        if (target_key and target_key.split()[0] == target_key.split()[-1]
+                and len(keys) > 1):
+            return []
+        return variants
+    if not target_key:
+        return []
+    t_last = target_key.split()[-1]
+    by_person: dict[str, list[str]] = {}
+    for n in rows:
+        k = _name_key(n)
+        if k and k.split()[-1] == t_last:
+            by_person.setdefault(k, []).append(n)
+    if len(by_person) == 1:
+        return next(iter(by_person.values()))
+    return []
 
 
 def _inject(template: str, key: str, data) -> str:
@@ -195,15 +255,20 @@ def _fetch_profile(conn, name: str) -> dict:
     """, (name,)).fetchone()
 
     if not row:
-        last = name.strip().split()[-1] if name.strip().split() else name
-        row = conn.execute("""
+        # Resolve by whole-name key, not LIKE %last% — a surname lookup like
+        # "Phillip Scott" must never resolve to Don Scott's profile.
+        cands = conn.execute("""
             SELECT voter_name, chamber, party,
                    yes_count, no_count, not_voting, abstain, total_votes,
                    ROUND(CAST(yes_count AS REAL) / MAX(total_votes, 1) * 100, 1) AS yes_rate
             FROM va_legislator_vote_summary
-            WHERE session = '2026' AND lower(voter_name) LIKE lower(?)
-            LIMIT 1
-        """, (f"%{last}%",)).fetchone()
+            WHERE session = '2026'
+        """).fetchall()
+        # Surname-only input ("Scott") matches every Scott via the degenerate
+        # key rule, so accept only when all matches are the same person.
+        matches = [r for r in cands if _same_person(r["voter_name"], name)]
+        if matches and len({_name_key(r["voter_name"]) for r in matches}) == 1:
+            row = matches[0]
 
     if not row:
         raise HTTPException(status_code=404, detail=f"Legislator '{name}' not found")
@@ -408,21 +473,25 @@ def _fetch_profile(conn, name: str) -> dict:
         "education":         ["Education", "Education Unions"],
     }
     try:
-        last = bill_name.strip().split()[-1]
+        cmte_variants = _person_name_variants(
+            conn, "va_committee_assignments", "member_name", resolved)
         cmte_rows = conn.execute(
-            """SELECT committee, role FROM va_committee_assignments
+            f"""SELECT committee, role FROM va_committee_assignments
                WHERE role IN ('chair','vice_chair')
-                 AND lower(member_name) LIKE lower(?)""",
-            (f"%{last}%",),
-        ).fetchall()
+                 AND member_name IN ({",".join("?" * len(cmte_variants))})""",
+            cmte_variants,
+        ).fetchall() if cmte_variants else []
         profile["committee_roles"] = [
             {"committee": r["committee"], "role": r["role"]} for r in cmte_rows
         ]
+        fin_variants = _person_name_variants(
+            conn, "campaign_finance_summary", "name", resolved)
         fin_sec_row = conn.execute(
-            "SELECT by_sector_json FROM campaign_finance_summary"
-            " WHERE source='va_sbe' AND lower(name) LIKE lower(?) LIMIT 1",
-            (f"%{last}%",),
-        ).fetchone()
+            f"SELECT by_sector_json FROM campaign_finance_summary"
+            f" WHERE source='va_sbe' AND name IN ({','.join('?' * len(fin_variants))})"
+            f" LIMIT 1",
+            fin_variants,
+        ).fetchone() if fin_variants else None
         donor_sectors_lower = (
             [s["sector"].lower() for s in json.loads(fin_sec_row["by_sector_json"] or "[]")[:8]]
             if fin_sec_row else []
@@ -690,22 +759,25 @@ def _fetch_profile(conn, name: str) -> dict:
         return ""
 
     try:
-        disc_last = resolved.strip().split()[-1]
+        disc_variants = _person_name_variants(
+            conn, "legislator_financial_disclosures", "legislator_name", resolved)
         sec_rows = conn.execute(
-            """SELECT entity_name, sector, amount_range
+            f"""SELECT entity_name, sector, amount_range
                FROM legislator_financial_disclosures
-               WHERE lower(legislator_name) LIKE lower(?)
+               WHERE legislator_name IN ({",".join("?" * len(disc_variants))})
                  AND part = 'securities'
                  AND entity_name NOT IN ('NONE DISCLOSED','REDACTED','N/A','','None')
                  AND entity_name IS NOT NULL""",
-            (f"%{disc_last}%",),
-        ).fetchall()
+            disc_variants,
+        ).fetchall() if disc_variants else []
+        disc_cmte_variants = _person_name_variants(
+            conn, "va_committee_assignments", "member_name", resolved)
         cmte_chair_rows = conn.execute(
-            """SELECT committee, role FROM va_committee_assignments
+            f"""SELECT committee, role FROM va_committee_assignments
                WHERE role IN ('chair','vice_chair')
-                 AND lower(member_name) LIKE lower(?)""",
-            (f"%{disc_last}%",),
-        ).fetchall()
+                 AND member_name IN ({",".join("?" * len(disc_cmte_variants))})""",
+            disc_cmte_variants,
+        ).fetchall() if disc_cmte_variants else []
 
         holdings_by_sector: dict[str, list[dict]] = {}
         for row in sec_rows:
@@ -825,13 +897,14 @@ def _fetch_profile(conn, name: str) -> dict:
     }
 
     try:
-        lob_last = resolved.strip().split()[-1]
+        lob_variants = _person_name_variants(
+            conn, "va_committee_assignments", "member_name", resolved)
         lob_cmte_rows = conn.execute(
-            """SELECT committee, role FROM va_committee_assignments
+            f"""SELECT committee, role FROM va_committee_assignments
                WHERE role IN ('chair','vice_chair')
-                 AND lower(member_name) LIKE lower(?)""",
-            (f"%{lob_last}%",),
-        ).fetchall()
+                 AND member_name IN ({",".join("?" * len(lob_variants))})""",
+            lob_variants,
+        ).fetchall() if lob_variants else []
 
         lob_connections: list[dict] = []
         if lob_cmte_rows:

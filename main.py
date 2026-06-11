@@ -4193,6 +4193,89 @@ def _fetch_governor_action_context(query: str, bill_numbers: list[str] | None = 
     return "\n\n".join(blocks)
 
 
+_VA_NICKNAMES = {
+    "david": "dave", "joseph": "joe", "joshua": "josh", "william": "bill",
+    "robert": "bob", "michael": "mike", "christopher": "chris", "daniel": "dan",
+    "thomas": "tom", "kathleen": "kathy", "jennifer": "jen", "matthew": "matt",
+    "richard": "rick", "edward": "ed", "anthony": "tony", "nicholas": "nick",
+    "samuel": "sam", "benjamin": "ben", "andrew": "andy", "stephen": "steve",
+    "steven": "steve", "patricia": "pat", "deborah": "debbie", "elizabeth": "liz",
+    "charles": "charlie", "lillian": "lily", "will": "bill",
+}
+
+
+def _va_name_key(full_name: str) -> str:
+    """Normalize a VA legislator name to a 'first last' key.
+
+    Mirrors voteiq.api.routes.legislators._name_key: drops quoted nicknames,
+    Jr/Sr suffixes, punctuation, and single-letter initials, then normalizes
+    the first name through the nickname map. Both first and last must match
+    so shared surnames never cross-match.
+    """
+    n = re.sub(r'"[^"]*"', "", full_name or "")
+    n = re.sub(r"\b(Jr|Sr|II|III|IV)\b", "", n, flags=re.I)
+    n = re.sub(r"[.,]", " ", n)
+    tokens = [t for t in n.split() if len(t) > 1]
+    if not tokens:
+        return ""
+    first = _VA_NICKNAMES.get(tokens[0].lower(), tokens[0].lower())
+    return f"{first} {tokens[-1].lower()}"
+
+
+def _va_same_person(a: str, b: str) -> bool:
+    """True when two name strings refer to the same legislator.
+
+    A degenerate key (surname-only string, e.g. 'J.D. "Danny" Diggs' reduces
+    to 'diggs diggs') may match on surname alone; two real first names never
+    cross-match on a shared surname (Don Scott vs Phillip A. Scott).
+    """
+    ka, kb = _va_name_key(a), _va_name_key(b)
+    if not ka or not kb:
+        return False
+    if ka == kb:
+        return True
+    fa, la = ka.split()[0], ka.split()[-1]
+    fb, lb = kb.split()[0], kb.split()[-1]
+    return la == lb and (fa == la or fb == lb)
+
+
+def _va_name_variants(conn, table: str, column: str, person_name: str) -> list[str]:
+    """Exact name strings in table.column that belong to person_name.
+
+    Replaces last-name LIKE joins, which cross-matched legislators sharing a
+    surname and treated ', Jr.' as a surname. Surname-only match is accepted
+    only when exactly one person in the column carries that surname. Returns
+    [] when the person can't be identified unambiguously.
+    """
+    if not person_name:
+        return []
+    try:
+        rows = [r[0] for r in conn.execute(
+            f"SELECT DISTINCT {column} FROM {table}"
+        ).fetchall() if r[0]]
+    except Exception:
+        return []
+    variants = [n for n in rows if _va_same_person(n, person_name)]
+    target_key = _va_name_key(person_name)
+    if variants:
+        keys = {_va_name_key(n) for n in variants}
+        if (target_key and target_key.split()[0] == target_key.split()[-1]
+                and len(keys) > 1):
+            return []
+        return variants
+    if not target_key:
+        return []
+    t_last = target_key.split()[-1]
+    by_person: dict[str, list[str]] = {}
+    for n in rows:
+        k = _va_name_key(n)
+        if k and k.split()[-1] == t_last:
+            by_person.setdefault(k, []).append(n)
+    if len(by_person) == 1:
+        return next(iter(by_person.values()))
+    return []
+
+
 def _fetch_va_state_member_context(
     query: str,
     hod_info: dict | None = None,
@@ -4226,6 +4309,26 @@ def _fetch_va_state_member_context(
         keywords = [w for w in q_lower.split() if len(w) > 4]
 
         for name, chamber_label, lis_id in members_to_fetch:
+            # Resolve this member's exact name strings in each table once.
+            # Last-name LIKE joins cross-matched legislators sharing a
+            # surname (Don Scott vs Phillip A. Scott) and matched ', Jr.'
+            # against every other Jr. in the chamber.
+            _v_votes = _va_name_variants(
+                conn, "va_legislator_recent_votes", "voter_name", name)
+            _v_summary = _va_name_variants(
+                conn, "va_legislator_vote_summary", "voter_name", name)
+            _v_cmte = _va_name_variants(
+                conn, "va_committee_assignments", "member_name", name)
+            _v_disc = _va_name_variants(
+                conn, "legislator_financial_disclosures", "legislator_name", name)
+            _v_fin = _va_name_variants(
+                conn, "campaign_finance_summary", "name", name)
+            _ph_votes = ",".join("?" * len(_v_votes))
+            _ph_summary = ",".join("?" * len(_v_summary))
+            _ph_cmte = ",".join("?" * len(_v_cmte))
+            _ph_disc = ",".join("?" * len(_v_disc))
+            _ph_fin = ",".join("?" * len(_v_fin))
+
             if keywords:
                 kw_conditions = " OR ".join(
                     ["lower(title) LIKE ? OR lower(subjects) LIKE ?"] * len(keywords)
@@ -4329,7 +4432,7 @@ def _fetch_va_state_member_context(
             # ── Governor alignment (from governor_actions + recent_votes) ────
             try:
                 gov_row = conn.execute(
-                    """WITH latest AS (
+                    f"""WITH latest AS (
                            SELECT voter_name, bill_id, session, option,
                                   ROW_NUMBER() OVER (
                                       PARTITION BY voter_name, bill_id, session
@@ -4350,7 +4453,7 @@ def _fetch_va_state_member_context(
                            JOIN deduped d ON d.bill_id = ga.bill_number
                                           AND d.session = ga.session
                            JOIN va_legislator_vote_summary vs
-                                ON lower(vs.voter_name) LIKE lower('%' || ? || '%')
+                                ON vs.voter_name IN ({_ph_summary})
                                 AND d.voter_name = vs.voter_name
                                 AND vs.session = ga.session
                            WHERE ga.action IN ('signed','vetoed','veto_sustained')
@@ -4359,8 +4462,8 @@ def _fetch_va_state_member_context(
                               SUM(aligned) aligned_ct,
                               CAST(ROUND(100.0*SUM(aligned)/NULLIF(SUM(countable),0)) AS INTEGER) pct
                        FROM scored GROUP BY governor HAVING voted >= 5 LIMIT 1""",
-                    (name.split()[-1],),  # match by last name for flexibility
-                ).fetchone()
+                    _v_summary,
+                ).fetchone() if _v_summary else None
                 if gov_row:
                     gov, voted, aligned_ct, pct = gov_row
                     opposed_ct = voted - aligned_ct
@@ -4370,7 +4473,7 @@ def _fetch_va_state_member_context(
                     )
                     # Opposition votes (bills where legislator bucked the governor)
                     opp = conn.execute(
-                        """WITH latest AS (
+                        f"""WITH latest AS (
                                SELECT voter_name, bill_id, session, option, title,
                                       ROW_NUMBER() OVER (
                                           PARTITION BY voter_name, bill_id, session
@@ -4384,7 +4487,7 @@ def _fetch_va_state_member_context(
                            FROM governor_actions ga
                            JOIN deduped d ON d.bill_id = ga.bill_number AND d.session = ga.session
                            JOIN va_legislator_vote_summary vs
-                                ON lower(vs.voter_name) LIKE lower('%' || ? || '%')
+                                ON vs.voter_name IN ({_ph_summary})
                                 AND d.voter_name = vs.voter_name AND vs.session = ga.session
                            WHERE ga.action IN ('signed','vetoed','veto_sustained')
                              AND d.option IN ('yes','no')
@@ -4393,7 +4496,7 @@ def _fetch_va_state_member_context(
                                  (ga.action IN ('vetoed','veto_sustained') AND d.option = 'no')
                              )
                            ORDER BY ga.action_date DESC LIMIT 5""",
-                        (name.split()[-1],),
+                        _v_summary,
                     ).fetchall()
                     if opp:
                         lines.append("  Opposition votes (bucked the governor):")
@@ -4433,21 +4536,20 @@ def _fetch_va_state_member_context(
                 "education":         ["Education", "Education Unions"],
             }
             try:
-                last = name.strip().split()[-1]
                 cmte_rows = conn.execute(
-                    """SELECT committee, role FROM va_committee_assignments
+                    f"""SELECT committee, role FROM va_committee_assignments
                        WHERE role IN ('chair','vice_chair')
-                         AND lower(member_name) LIKE lower(?)""",
-                    (f"%{last}%",),
-                ).fetchall()
+                         AND member_name IN ({_ph_cmte})""",
+                    _v_cmte,
+                ).fetchall() if _v_cmte else []
                 if cmte_rows:
                     # Get this legislator's donor sectors
                     fin_row = conn.execute(
-                        """SELECT by_sector_json FROM campaign_finance_summary
-                           WHERE source='va_sbe' AND lower(name) LIKE lower(?)
+                        f"""SELECT by_sector_json FROM campaign_finance_summary
+                           WHERE source='va_sbe' AND name IN ({_ph_fin})
                            LIMIT 1""",
-                        (f"%{last}%",),
-                    ).fetchone()
+                        _v_fin,
+                    ).fetchone() if _v_fin else None
                     import json as _json
                     donor_sectors = (
                         [s["sector"].lower() for s in _json.loads(fin_row[0] or "[]")[:8]]
@@ -4477,9 +4579,8 @@ def _fetch_va_state_member_context(
 
             # ── Voting similarity (allies & opponents across all roll calls) ──
             try:
-                last = name.split()[-1]
                 sim_rows = conn.execute(
-                    """SELECT other.voter_name, vs.party,
+                    f"""SELECT other.voter_name, vs.party,
                               SUM(CASE WHEN a.option=other.option THEN 1 ELSE 0 END) agree,
                               COUNT(*) total,
                               ROUND(100.0*SUM(CASE WHEN a.option=other.option
@@ -4489,20 +4590,20 @@ def _fetch_va_state_member_context(
                            ON a.bill_id=other.bill_id AND a.session=other.session
                        JOIN va_legislator_vote_summary vs
                            ON vs.voter_name=other.voter_name AND vs.session='2026'
-                       WHERE lower(a.voter_name) LIKE lower(?)
+                       WHERE a.voter_name IN ({_ph_votes})
                          AND a.session='2026'
                          AND a.option IN ('yes','no')
                          AND other.option IN ('yes','no')
-                         AND other.voter_name != a.voter_name
+                         AND other.voter_name NOT IN ({_ph_votes})
                        GROUP BY other.voter_name
                        HAVING total >= 15""",
-                    (f"%{last}%",),
-                ).fetchall()
+                    _v_votes + _v_votes,
+                ).fetchall() if _v_votes else []
                 my_party_row = conn.execute(
-                    """SELECT party FROM va_legislator_vote_summary
-                       WHERE lower(voter_name) LIKE lower(?) AND session='2026' LIMIT 1""",
-                    (f"%{last}%",),
-                ).fetchone()
+                    f"""SELECT party FROM va_legislator_vote_summary
+                       WHERE voter_name IN ({_ph_summary}) AND session='2026' LIMIT 1""",
+                    _v_summary,
+                ).fetchone() if _v_summary else None
                 my_party = my_party_row[0] if my_party_row else ""
                 if sim_rows:
                     same = sorted(
@@ -4539,22 +4640,21 @@ def _fetch_va_state_member_context(
 
             # ── Financial disclosure conflicts ──────────────────────────────
             try:
-                disc_last = name.split()[-1]
                 _disc_sec_rows = conn.execute(
-                    """SELECT entity_name, sector, amount_range
+                    f"""SELECT entity_name, sector, amount_range
                        FROM legislator_financial_disclosures
-                       WHERE lower(legislator_name) LIKE lower(?)
+                       WHERE legislator_name IN ({_ph_disc})
                          AND part = 'securities'
                          AND entity_name NOT IN ('NONE DISCLOSED','REDACTED','N/A','','None')
                          AND entity_name IS NOT NULL""",
-                    (f"%{disc_last}%",),
-                ).fetchall()
+                    _v_disc,
+                ).fetchall() if _v_disc else []
                 _disc_cmte_rows = conn.execute(
-                    """SELECT committee, role FROM va_committee_assignments
+                    f"""SELECT committee, role FROM va_committee_assignments
                        WHERE role IN ('chair','vice_chair')
-                         AND lower(member_name) LIKE lower(?)""",
-                    (f"%{disc_last}%",),
-                ).fetchall()
+                         AND member_name IN ({_ph_cmte})""",
+                    _v_cmte,
+                ).fetchall() if _v_cmte else []
                 if _disc_sec_rows and _disc_cmte_rows:
                     _E_SEC = {
                         "abbvie":"Healthcare","pfizer":"Healthcare","merck":"Healthcare",
@@ -4661,13 +4761,12 @@ def _fetch_va_state_member_context(
 
             # ── Lobbyist connections (principal sector vs committee oversight) ──
             try:
-                _lob_last = name.split()[-1]
                 _lob_cmte = conn.execute(
-                    """SELECT committee, role FROM va_committee_assignments
+                    f"""SELECT committee, role FROM va_committee_assignments
                        WHERE role IN ('chair','vice_chair')
-                         AND lower(member_name) LIKE lower(?)""",
-                    (f"%{_lob_last}%",),
-                ).fetchall()
+                         AND member_name IN ({_ph_cmte})""",
+                    _v_cmte,
+                ).fetchall() if _v_cmte else []
                 if _lob_cmte:
                     _P_SEC = {
                         "health":"Healthcare","hospital":"Healthcare",
@@ -4845,7 +4944,6 @@ def _fetch_va_state_member_context(
                     sp = [s.strip() for s in raw.split(",") if s.strip()]
                     return sp[0] if sp else ""
 
-                _bp_last = name.split()[-1]
                 _state_bills = conn.execute(
                     "SELECT bill_number, title, description FROM va_bills WHERE session='2026'"
                 ).fetchall()
@@ -4860,16 +4958,16 @@ def _fetch_va_state_member_context(
                         _bbt.setdefault(_tp, []).append((_br[0], _t, _pr))
 
                 _bp_votes = conn.execute(
-                    "SELECT bill_id, option FROM va_legislator_recent_votes "
-                    "WHERE session='2026' AND option IN ('yes','no') "
-                    "AND lower(voter_name) LIKE lower(?)",
-                    (f"%{_bp_last}%",)
-                ).fetchall()
+                    f"SELECT bill_id, option FROM va_legislator_recent_votes "
+                    f"WHERE session='2026' AND option IN ('yes','no') "
+                    f"AND voter_name IN ({_ph_votes})",
+                    _v_votes,
+                ).fetchall() if _v_votes else []
                 _vm = {r[0]: r[1] for r in _bp_votes}
 
                 bp_lines = []
                 for _tp, _tbs in _bbt.items():
-                    _mine = [b for b in _tbs if _bp_last.lower() in b[2].lower()]
+                    _mine = [b for b in _tbs if _va_same_person(b[2], name)]
                     if not _mine: continue
                     _mids = {b[0] for b in _mine}
                     _other = [b for b in _tbs if b[0] not in _mids and b[0] in _vm]
