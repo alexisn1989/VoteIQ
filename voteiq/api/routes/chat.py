@@ -2467,9 +2467,11 @@ def _direct_governor_correlation_reply(user_query: str) -> str:
     Caller MUST gate this behind _premium_analyst_enabled(req).
     """
     q = (user_query or "").lower()
-    _gov = any(t in q for t in (
-        "governor", "spanberger", "signed", "vetoed", "veto", "bill", "action",
-    ))
+    # Require an explicit governor reference. Generic action words ("bill",
+    # "signed") used to qualify, which hijacked questions about other
+    # politicians — e.g. "how does Kiggans vote on defense bills" returned
+    # a Spanberger donor-correlation brief.
+    _gov = "governor" in q or "spanberger" in q
     _money = any(t in q for t in (
         "donor", "sector", "finance", "financ", "campaign", "contribut",
         "donation", "money", "fund", "industry", "correlat",
@@ -3266,6 +3268,15 @@ def _direct_va_legislator_reply(user_query: str, premium: bool = False) -> str:
 
     # Skip governor-specific queries
     if "spanberger" in q or "abigail" in q or "governor" in q:
+        return ""
+
+    # Lobbying, conflict-of-interest, financial-disclosure, and
+    # voting-similarity questions need the full analyst context — this
+    # brief doesn't cover those datasets, so let them pass through.
+    if any(t in q for t in (
+        "lobby", "conflict", "similar", "allies", "disclosure",
+        "stock", "holdings", "coalition",
+    )):
         return ""
 
     # Must have legislative context keywords

@@ -1,4 +1,8 @@
+import json
+import os
 import sqlite3
+from pathlib import Path
+
 from voteiq.db import federal, virginia
 from voteiq.analysis.governor_action_money import (
     get_governor_action_analysis_guardrails,
@@ -7,6 +11,75 @@ from voteiq.analysis.governor_action_money import (
     get_governor_action_top_sponsors,
     get_governor_action_voteiq_finding,
 )
+
+_BASE_DIR = Path(__file__).resolve().parents[2]
+_data_dir = os.getenv("DATA_DIR", str(_BASE_DIR))
+_POLLS_DB = os.path.join(_data_dir if os.path.isdir(_data_dir) else str(_BASE_DIR), "polls.db")
+
+
+def get_finance_summary_from_cache(name: str, source: str | None = None) -> dict | None:
+    """Exact-name row from the campaign_finance_summary cache table.
+
+    Exact (case-insensitive) match only — fuzzy surname matching caused
+    cross-legislator attribution elsewhere in the codebase, so a miss
+    returns None and the caller simply omits the finance block.
+    """
+    if not name:
+        return None
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        conn.row_factory = sqlite3.Row
+        sql = ("SELECT name, source, chamber, district, party, latest_cycle, "
+               "total_raised, top_sector, top_sector_pct, by_sector_json, "
+               "top_donors_json, overall_va_pct "
+               "FROM campaign_finance_summary WHERE lower(name) = lower(?)")
+        params: list = [name]
+        if source:
+            sql += " AND source = ?"
+            params.append(source)
+        row = conn.execute(sql + " LIMIT 1", params).fetchone()
+        conn.close()
+        return dict(row) if row else None
+    except Exception:
+        return None
+
+
+def format_finance_summary_for_chat(cf: dict, source_tables: list | None = None) -> str:
+    """Render a cached finance summary as a descriptive chat-context block."""
+    src_label = "FEC" if cf.get("source") == "fec" else "Virginia SBE"
+    lines = [f"[Campaign Finance Summary — {cf.get('name')} ({src_label})]"]
+    total = cf.get("total_raised")
+    if total:
+        cycle = cf.get("latest_cycle") or ""
+        cyc = f" (through {cycle})" if cycle else ""
+        lines.append(f"Total raised: ${float(total):,.0f}{cyc}")
+    if cf.get("top_sector"):
+        pct = cf.get("top_sector_pct")
+        pct_str = f" ({pct}% of total)" if pct else ""
+        lines.append(f"Top donor sector: {cf['top_sector']}{pct_str}")
+    if cf.get("overall_va_pct") is not None:
+        lines.append(f"Share from Virginia donors: {cf['overall_va_pct']}%")
+    try:
+        sectors = json.loads(cf.get("by_sector_json") or "[]")[:6]
+        if sectors:
+            lines.append("By sector:")
+            for s in sectors:
+                lines.append(f"  {s.get('sector')}: ${float(s.get('total') or 0):,.0f}")
+    except Exception:
+        pass
+    try:
+        donors = json.loads(cf.get("top_donors_json") or "[]")[:5]
+        if donors:
+            lines.append("Top donors:")
+            for d in donors:
+                nm = d.get("contributor_name") or d.get("name") or ""
+                amt = d.get("total") or d.get("amount") or 0
+                lines.append(f"  {nm}: ${float(amt):,.0f}")
+    except Exception:
+        pass
+    if source_tables:
+        lines.append(f"Source tables: {', '.join(source_tables)}")
+    return "\n".join(lines)
 
 
 def get_federal_sector_totals(candidate_id: str, cycle: int = 2024) -> list:
