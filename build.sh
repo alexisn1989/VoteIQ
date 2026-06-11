@@ -504,6 +504,43 @@ else
     echo "  Already have ${FA_COUNT} federal alignment rows — skipping"
 fi
 
+# ── STEP 4f: Seed congress missed-vote tables (nominations + bills) ──────────
+echo ""
+echo "[STEP 4f] Seeding congress_missed_nominations and congress_missed_bills..."
+
+if [ ! -f data/congress_missed_votes_seed.sql ]; then
+    echo "⚠ data/congress_missed_votes_seed.sql not found — missed-vote context will be empty"
+else
+    python3 - <<PYEOF
+import sqlite3, os, sys
+
+data_dir = os.environ.get("DATA_DIR", os.getcwd())
+db = os.path.join(data_dir, "polls.db")
+conn = sqlite3.connect(db)
+try:
+    n_nom  = conn.execute("SELECT COUNT(*) FROM congress_missed_nominations").fetchone()[0]
+    n_bill = conn.execute("SELECT COUNT(*) FROM congress_missed_bills").fetchone()[0]
+    if n_nom >= 13 and n_bill >= 16:
+        print(f"  Already populated ({n_nom} nominations, {n_bill} bills) — skipping")
+        sys.exit(0)
+except Exception:
+    pass
+try:
+    with open("data/congress_missed_votes_seed.sql", "r", encoding="utf-8") as f:
+        conn.executescript(f.read())
+    conn.commit()
+    n_nom  = conn.execute("SELECT COUNT(*) FROM congress_missed_nominations").fetchone()[0]
+    n_bill = conn.execute("SELECT COUNT(*) FROM congress_missed_bills").fetchone()[0]
+    print(f"  congress_missed_nominations: {n_nom} rows")
+    print(f"  congress_missed_bills:       {n_bill} rows")
+except Exception as e:
+    print(f"  WARNING: missed-vote seed failed: {e}", file=sys.stderr)
+finally:
+    conn.close()
+PYEOF
+    [ $? -ne 0 ] && echo "⚠ Missed-vote seed failed" || echo "✓ Missed-vote tables seeded"
+fi
+
 # ── STEP 5: Build committee_testimony_proxy (derived from polls.db) ───────────
 echo ""
 echo "[STEP 5] Building committee testimony proxy (all sessions)..."
