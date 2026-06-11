@@ -130,6 +130,13 @@
   .topic-fill  { height: 100%; background: var(--navy); border-radius: 2px; transition: width 0.5s ease; }
   .topic-count { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; color: var(--muted); flex: 0 0 28px; text-align: right; }
   @media (max-width: 640px) { .insights-grid { grid-template-columns: 1fr; } }
+  .eff-panel { background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 18px 20px; margin: 12px 0; }
+  .eff-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+  .eff-label { font-family: 'Barlow', sans-serif; font-size: 0.76rem; color: var(--navy); flex: 0 0 170px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .eff-track { flex: 1; height: 8px; background: var(--mid); border-radius: 2px; overflow: hidden; display: flex; }
+  .eff-pass  { height: 100%; background: #2d6a4f; transition: width 0.5s ease; }
+  .eff-fail  { height: 100%; background: var(--mid); transition: width 0.5s ease; }
+  .eff-pct   { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; color: var(--muted); flex: 0 0 42px; text-align: right; }
 
   /* ── Finance section ── */
   .sector-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
@@ -215,6 +222,13 @@
       <div id="sector-bars-inline"></div>
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;color:var(--muted);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase">Who funds this legislator's campaign — not specific bills · <a href="#" onclick="document.querySelector('[data-tab=finance]').click();return false;" style="color:var(--red);text-decoration:none">Full detail →</a></div>
     </div>
+  </div>
+
+  <!-- Legislative Effectiveness by Topic -->
+  <div id="effectiveness-panel" class="eff-panel" style="display:none">
+    <div class="insights-header">Legislative Effectiveness <em id="eff-subtitle"></em></div>
+    <div id="effectiveness-bars"></div>
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;color:var(--muted);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase">Sponsored bills · pass rate by topic · all sessions</div>
   </div>
 
   <!-- Tabs -->
@@ -593,6 +607,29 @@
     }
 
     document.getElementById('insights-grid').style.display = 'grid';
+  }
+
+  // ── Legislative Effectiveness by Topic ───────────────────────────────────────
+  const passRates = D.topic_pass_rates || [];
+  if (passRates.length) {
+    const totalIntro  = passRates.reduce((s, t) => s + t.total, 0);
+    const totalPassed = passRates.reduce((s, t) => s + t.passed_count, 0);
+    document.getElementById('eff-subtitle').textContent =
+      `${totalPassed} of ${totalIntro} bills passed`;
+    document.getElementById('effectiveness-bars').innerHTML = passRates.map(t => {
+      const passPct = t.pass_pct;
+      const failPct = 100 - passPct;
+      const passColor = passPct === 0 ? 'var(--mid)' : '#2d6a4f';
+      return `<div class="eff-row">
+        <div class="eff-label" title="${esc(t.topic)}">${esc(t.topic)}</div>
+        <div class="eff-track">
+          <div class="eff-pass" style="width:${passPct}%;background:${passColor}"></div>
+          <div class="eff-fail" style="width:${failPct}%"></div>
+        </div>
+        <div class="eff-pct">${t.passed_count}/${t.total}</div>
+      </div>`;
+    }).join('');
+    document.getElementById('effectiveness-panel').style.display = 'block';
   }
 
   // ── Campaign Funding tab (full detail) ───────────────────────────────────────

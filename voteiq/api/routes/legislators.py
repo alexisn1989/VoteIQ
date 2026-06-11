@@ -261,6 +261,42 @@ def _fetch_profile(conn, name: str) -> dict:
         LIMIT 12
     """, (bill_name, bill_name)).fetchall()]
 
+    # ── Bill pass rate by topic (all sessions, sponsored bills only) ─────────
+    _NOISE = (
+        "governor", "confirming", "celebrating", "memorial",
+        "recognizing", "commending", "designating", "in memoriam",
+        "joint resolution", "congratulat",
+    )
+    raw_pass_rates = conn.execute("""
+        WITH deduped AS (
+            SELECT DISTINCT bill_id, title, status_label
+            FROM va_legislator_sponsored_bills
+            WHERE lower(legislator_name) = lower(?)
+              AND title != '' AND title IS NOT NULL
+        ),
+        with_topic AS (
+            SELECT CASE WHEN instr(title, ';') > 0
+                        THEN trim(substr(title, 1, instr(title, ';') - 1))
+                        ELSE substr(title, 1, 50) END AS topic,
+                   CASE WHEN status_label = 'Passed' THEN 1 ELSE 0 END AS passed
+            FROM deduped
+        )
+        SELECT topic,
+               COUNT(*) AS total,
+               SUM(passed) AS passed_count,
+               CAST(ROUND(100.0 * SUM(passed) / COUNT(*)) AS INTEGER) AS pass_pct
+        FROM with_topic
+        GROUP BY topic
+        HAVING total >= 2
+        ORDER BY total DESC, passed_count DESC
+        LIMIT 20
+    """, (bill_name,)).fetchall()
+
+    profile["topic_pass_rates"] = [
+        dict(r) for r in raw_pass_rates
+        if not any(r["topic"].lower().startswith(p) for p in _NOISE)
+    ]
+
     # ── Campaign finance sectors ─────────────────────────────────────────────
     # Guard: query only the columns that actually exist (Render may have a
     # stale schema from before overall_va_pct / alignment_json were added).
