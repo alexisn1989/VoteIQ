@@ -7701,6 +7701,55 @@ def _fetch_federal_context(member: dict) -> str:
     except Exception:
         pass
 
+    # ── FEC independent expenditures (Super PAC outside spending) ────────────
+    try:
+        conn_ie = sqlite3.connect(_POLLS_DB)
+        ie_rows = conn_ie.execute(
+            """SELECT support_oppose,
+                      SUM(expenditure_amount) AS total,
+                      COUNT(DISTINCT committee_id) AS pac_count
+               FROM fec_independent_expenditures
+               WHERE bioguide_id = ?
+               GROUP BY support_oppose""",
+            (bio,),
+        ).fetchall()
+        top_pacs = conn_ie.execute(
+            """SELECT committee_name, support_oppose,
+                      SUM(expenditure_amount) AS total, cycle
+               FROM fec_independent_expenditures
+               WHERE bioguide_id = ?
+               GROUP BY committee_id, support_oppose
+               ORDER BY total DESC LIMIT 6""",
+            (bio,),
+        ).fetchall()
+        cycles_ie = conn_ie.execute(
+            "SELECT DISTINCT cycle FROM fec_independent_expenditures"
+            " WHERE bioguide_id = ? ORDER BY cycle DESC LIMIT 2",
+            (bio,),
+        ).fetchall()
+        conn_ie.close()
+        if ie_rows:
+            support = sum(r[1] for r in ie_rows if r[0] == "S")
+            oppose  = sum(r[1] for r in ie_rows if r[0] == "O")
+            cycle_str = "/".join(str(r[0]) for r in cycles_ie)
+            net = support - oppose
+            net_dir = "net FOR candidate" if net > 0 else "net AGAINST candidate"
+            lines.append(
+                f"\nFEC Independent Expenditures (Super PAC outside spending, {cycle_str} cycle):\n"
+                f"  Support (FOR): ${support:,.0f}  |  Oppose (AGAINST): ${oppose:,.0f}\n"
+                f"  Net: {net_dir} ${abs(net):,.0f}"
+            )
+            if top_pacs:
+                lines.append("  Top PACs by spending:")
+                for pac_name, so, total, cycle in top_pacs:
+                    direction = "FOR" if so == "S" else "AGAINST"
+                    lines.append(f"    {direction} ${total:>12,.0f} ({cycle}) — {pac_name}")
+            lines.append("  Source: FEC Schedule E (fec.gov)")
+        else:
+            lines.append("\nFEC Independent Expenditures: No outside spending data for this member.")
+    except Exception:
+        pass
+
     return "\n".join(lines)
 
 
