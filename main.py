@@ -5245,8 +5245,41 @@ def _fetch_ie_context(bioguide_ids: list[str], question: str) -> str:
     return "\n\n".join(blocks)
 
 
+_BILL_TITLE_LOOKUP: dict[str, str] | None = None
+
+
+def _bill_title_lookup() -> dict[str, str]:
+    """Map normalized federal bill keys ('HR3632') to bill titles.
+
+    congress_votes.bill stores 'H R 3632' while the bill tables store
+    bill_type/bill_number separately; vote 'question' text is purely
+    procedural ('On Passage'), so titles are the only way to know what a
+    roll call was about. Built once, ~1.6k rows across three tables.
+    """
+    global _BILL_TITLE_LOOKUP
+    if _BILL_TITLE_LOOKUP is not None:
+        return _BILL_TITLE_LOOKUP
+    lookup: dict[str, str] = {}
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        for table in ("congress_bills", "congress_bill_details", "federal_bills"):
+            try:
+                for bt, bn, title in conn.execute(
+                    f"SELECT bill_type, bill_number, title FROM {table}"
+                ):
+                    if bt and bn and title:
+                        lookup.setdefault(f"{str(bt).upper()}{bn}", str(title))
+            except Exception:
+                pass
+        conn.close()
+    except Exception:
+        pass
+    _BILL_TITLE_LOOKUP = lookup
+    return lookup
+
+
 def _fetch_finance_context(bioguide_ids: list[str], question: str) -> str:
-    """Return a formatted PAC/industry donation block correlated with voting patterns."""
+    """Return PAC/industry donations plus descriptive votes on same-topic bills."""
     if not _PAC_CACHE or not bioguide_ids:
         return ""
 
@@ -5268,9 +5301,15 @@ def _fetch_finance_context(bioguide_ids: list[str], question: str) -> str:
         member_name = pac_rows[0].get("member_name", bgid)
         cycle       = pac_rows[0].get("cycle", "")
 
-        # Filter to relevant industries, or show top 5 if it's a money question
+        # Filter to relevant industries, or show top 5 if it's a money question.
+        # Substring match: hint keys are short ("Defense") while PAC cache
+        # industries are compound ("Defense & Aerospace").
         if relevant_industries:
-            filtered = [r for r in pac_rows if r["industry"] in relevant_industries]
+            filtered = [
+                r for r in pac_rows
+                if any(ind.lower() in r["industry"].lower()
+                       for ind in relevant_industries)
+            ]
         elif is_money_question:
             filtered = sorted(pac_rows, key=lambda r: r["total"], reverse=True)[:5]
         else:
@@ -5288,31 +5327,71 @@ def _fetch_finance_context(bioguide_ids: list[str], question: str) -> str:
             donor_str = f"  (top: {donors})" if donors else ""
             lines.append(f"  {r['industry']:20s}: ${r['total']:>10,.0f}{donor_str}")
 
-        # Cross-reference: does voting record align with top donor industries?
+        # Votes on bills whose TITLE matches the industry's topic keywords.
+        # Vote 'question' text is purely procedural ('On Passage'), so titles
+        # are resolved via _bill_title_lookup. Final-passage votes only, one
+        # per bill (latest — cache is date-DESC). Topic match only: a Yea is
+        # not evidence the vote favored the industry, so report counts
+        # descriptively with citable bill numbers.
         votes = _VOTES_CACHE.get(bgid, [])
         if votes and relevant_industries:
+            titles = _bill_title_lookup()
             corr_lines: list[str] = []
             for industry in relevant_industries:
-                if not any(r["industry"] == industry for r in filtered):
+                if not any(industry.lower() in r["industry"].lower()
+                           for r in filtered):
                     continue
                 hints = _INDUSTRY_TOPIC_HINTS.get(industry, [])
-                related_votes = [
-                    v for v in votes
-                    if any(h in (v.get("question") or "").lower() for h in hints)
-                ][:6]
-                if related_votes:
-                    yeas = sum(1 for v in related_votes if "yea" in (v.get("member_vote") or "").lower())
-                    nays = len(related_votes) - yeas
-                    corr_lines.append(
-                        f"  {industry} votes: {yeas} Yea / {nays} Nay on {len(related_votes)} related bills"
-                    )
+
+                def _hint_in_title(h: str, tl: str) -> bool:
+                    # Word-start anchored so 'war' can't match 'Award';
+                    # short hints require a full word, longer ones may be a
+                    # prefix ('pharma' -> 'pharmaceutical').
+                    tail = r"\b" if len(h) <= 4 else ""
+                    return re.search(rf"\b{re.escape(h)}{tail}", tl) is not None
+
+                seen_bills: dict[str, dict] = {}
+                for v in votes:
+                    q = (v.get("question") or "").lower()
+                    if "passage" not in q and "suspend the rules and pass" not in q:
+                        continue
+                    bkey = re.sub(r"[\s.]", "", (v.get("bill") or "")).upper()
+                    if not bkey or bkey in seen_bills:
+                        continue
+                    title = titles.get(bkey, "")
+                    if title and any(_hint_in_title(h, title.lower()) for h in hints):
+                        seen_bills[bkey] = v
+                if not seen_bills:
+                    continue
+                yeas = sum(1 for v in seen_bills.values()
+                           if "yea" in (v.get("member_vote") or "").lower())
+                nays = sum(1 for v in seen_bills.values()
+                           if "nay" in (v.get("member_vote") or "").lower())
+                sample = ", ".join(
+                    f"{v.get('bill', '').strip()} ({(v.get('member_vote') or '?')})"
+                    for v in list(seen_bills.values())[:3]
+                )
+                corr_lines.append(
+                    f"  {industry}-topic bills: {yeas} Yea / {nays} Nay on "
+                    f"{len(seen_bills)} final-passage vote"
+                    f"{'s' if len(seen_bills) != 1 else ''} — e.g. {sample}"
+                )
             if corr_lines:
-                lines.append(f"  Voting alignment:")
+                lines.append(
+                    "  Final-passage votes on bills whose title matches the industry "
+                    "topic (keyword match only — Yea/Nay is NOT evidence of voting "
+                    "for or against the industry's interests; verify each bill's "
+                    "direction before drawing conclusions):"
+                )
                 lines.extend(corr_lines)
 
     if not lines:
         return ""
-    return "CAMPAIGN FINANCE & INDUSTRY CORRELATION (source: FEC.gov, fec.gov/data):\n" + "\n".join(lines)
+    return (
+        "CAMPAIGN FINANCE BY INDUSTRY (source: FEC.gov, fec.gov/data — "
+        "donations and votes listed separately; do not assert correlation, "
+        "causation, or quid pro quo):\n" + "\n".join(lines)
+    )
 
 
 _SPANBERGER_FINANCE_CACHE: str | None = None
