@@ -3983,7 +3983,8 @@ def _fetch_news_context(query: str, politician_name: str = "", limit: int = 4) -
             return "\n\n".join(blocks)
         conn.close()
     except Exception as e:
-        return f"[news_error]\nCould not load news context: {e}"
+        print(f"news context error: {type(e).__name__}: {e}")
+        return f"[news_error]\nCould not load news context ({type(e).__name__})."
 
     try:
         conn = sqlite3.connect(_POLLS_DB)

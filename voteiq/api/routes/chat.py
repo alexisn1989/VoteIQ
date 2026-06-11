@@ -1002,13 +1002,15 @@ def _build_bills_context(
                 [user_query], model=_m._BILLS_MODEL, input_type="query"
             ).embeddings[0]
         except Exception as e:
-            chroma_error = f"Voyage AI unavailable: {e}"
+            print(f"voyage embed error: {type(e).__name__}: {e}")
+            chroma_error = f"Voyage AI unavailable ({type(e).__name__})"
 
     if query_vec is not None:
         try:
             results = _m._query_chroma(query_vec, n_results=10)
         except Exception as e:
-            chroma_error = f"ChromaDB unavailable: {e}"
+            print(f"chroma query error: {type(e).__name__}: {e}")
+            chroma_error = f"ChromaDB unavailable ({type(e).__name__})"
 
     exact_lookup_note = ""
     try:
@@ -1382,7 +1384,8 @@ def _build_bills_context(
         context = "\n\n---\n\n".join(context_blocks)
     except Exception as e:
         context = ""
-        chroma_error = f"Result parsing error: {e}"
+        print(f"chroma result parsing error: {type(e).__name__}: {e}")
+        chroma_error = f"Result parsing error ({type(e).__name__})"
 
     return context, exact_lookup_note, use_haiku, chroma_error
 
@@ -4341,7 +4344,10 @@ Additional rules:
         reply = _with_source_line(reply)
         return ChatResponse(reply=reply)
     except Exception as e:
-        return ChatResponse(reply=f"Gemini Error: {str(e)}")
+        print(f"gemini-chat error: {type(e).__name__}: {e}")
+        return ChatResponse(
+            reply="VoteIQ's AI assistant is temporarily unavailable. Please try again shortly."
+        )
 
 
 @router.post("/api/election-chat", response_model=ChatResponse)
