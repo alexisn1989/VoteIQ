@@ -28,15 +28,20 @@ def cached_system_prompt(system: str) -> list[dict]:
     ]
 
 
-def get_model(tier: str, use_haiku: bool = False) -> tuple[str, int]:
+def get_model(tier: str, use_haiku: bool = False, simple: bool = False) -> tuple[str, int]:
     """
     Returns (model_string, max_tokens) for the given tier.
-    use_haiku=True overrides tier model — used for short/simple queries.
+    use_haiku=True overrides tier model — used for cached exact bill lookups.
+    simple=True downshifts paid tiers from Opus to Sonnet — short factual
+    questions don't need analysis-grade reasoning; free tier is unaffected
+    (already Sonnet).
     """
     from voteiq.config.tiers import TIER_FEATURES, TIER_MAX_TOKENS
     tier = (tier or "free").lower().strip()
     if use_haiku:
         model = _HAIKU_MODEL
+    elif simple:
+        model = _SONNET_MODEL
     else:
         model = TIER_FEATURES.get(tier, TIER_FEATURES["free"])["model"]
     max_tokens = TIER_MAX_TOKENS.get(tier, 1500)

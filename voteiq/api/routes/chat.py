@@ -4160,7 +4160,22 @@ async def chat(req: ChatRequest):
         scope_prefix = f"Query Scope Guidance: This query is unclear about scope ({scope_context['scope_explanation']}). {scope_context['scope_notes']}\n\n"
 
     base_prompt = get_system_prompt(voice=req.voice, query_context=query_context)
-    tier_model, max_tokens = get_model(req.tier)  # paid tiers route to Opus
+    # Paid tiers route to Opus, but short factual questions early in a
+    # conversation downshift to Sonnet — Opus is reserved for analysis-grade
+    # queries. Conservative: any investigative/analytical marker keeps Opus.
+    _simple_q = (
+        len(req.messages) < 3
+        and len((last_question or "").split()) <= 12
+        and not any(t in (last_question or "").lower() for t in (
+            "analy", "compar", "correlat", "pattern", "trend", "conflict",
+            "why", "how does", "how do", "relationship", "versus", " vs ",
+            "donor", "funding", "money", "contribut", "pac", "lobby",
+            "disclosure", "across", "similar", "alli", "oppos",
+            "investigat", "voting record", "every", "all of", "history",
+            "over time", "break down", "deep", "explain",
+        ))
+    )
+    tier_model, max_tokens = get_model(req.tier, simple=_simple_q)
 
     transcript_context = ""
     if query_context.get("touches_speech_context"):
