@@ -23,6 +23,52 @@ if [ $? -ne 0 ]; then
 fi
 echo "✓ Dependencies installed"
 
+# ── STEP 1b: Optional full-DB seed from URL ───────────────────────────────────
+# Replaces the cached polls.db wholesale with a gzipped copy downloaded from
+# POLLS_DB_SEED_URL. Bump POLLS_DB_SEED_VERSION in the Render dashboard to
+# trigger a (re-)download; the version marker on the disk prevents
+# re-downloading on every deploy. Used to ship the locally-built database
+# (disclosures, lobbyists, committee data, full Schedule A) to production.
+if [ -n "${POLLS_DB_SEED_URL:-}" ]; then
+    echo ""
+    echo "[STEP 1b] Checking polls.db seed..."
+    SEED_VERSION="${POLLS_DB_SEED_VERSION:-1}"
+    SEED_MARKER="$DISK_PATH/.polls_db_seed_version"
+    CURRENT_SEED="$(cat "$SEED_MARKER" 2>/dev/null || echo none)"
+    if [ "$CURRENT_SEED" = "$SEED_VERSION" ]; then
+        echo "  Seed version $SEED_VERSION already applied — skipping download"
+    else
+        echo "  Downloading seed version $SEED_VERSION (had: $CURRENT_SEED)..."
+        if curl -fL --retry 3 -o /tmp/polls_seed.db.gz "$POLLS_DB_SEED_URL"; then
+            echo "  Downloaded $(ls -lh /tmp/polls_seed.db.gz | awk '{print $5}') — decompressing..."
+            if gunzip -c /tmp/polls_seed.db.gz > "$DISK_PATH/polls.db.new" 2>/dev/null; then
+                TABLE_COUNT=$(python3 -c "
+import sqlite3
+try:
+    print(sqlite3.connect('$DISK_PATH/polls.db.new').execute(
+        \"SELECT COUNT(*) FROM sqlite_master WHERE type='table'\").fetchone()[0])
+except Exception:
+    print(0)
+" 2>/dev/null || echo 0)
+                if [ "${TABLE_COUNT:-0}" -ge 20 ] 2>/dev/null; then
+                    mv "$DISK_PATH/polls.db.new" "$DISK_PATH/polls.db"
+                    echo "$SEED_VERSION" > "$SEED_MARKER"
+                    echo "  ✓ polls.db seeded: $TABLE_COUNT tables, $(ls -lh "$DISK_PATH/polls.db" | awk '{print $5}')"
+                else
+                    echo "  ⚠ Seed failed sanity check ($TABLE_COUNT tables) — keeping existing db"
+                    rm -f "$DISK_PATH/polls.db.new"
+                fi
+            else
+                echo "  ⚠ Seed is not valid gzip — keeping existing db"
+                rm -f "$DISK_PATH/polls.db.new"
+            fi
+            rm -f /tmp/polls_seed.db.gz
+        else
+            echo "  ⚠ Seed download failed — keeping existing db"
+        fi
+    fi
+fi
+
 # ── STEP 2: Ensure polls.db exists with campaign finance data ─────────────────
 echo ""
 echo "[STEP 2] Setting up polls.db (campaign finance)..."

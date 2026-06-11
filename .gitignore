@@ -57,3 +57,4 @@ node_modules/
 
 # ChromaDB local data
 chroma_data/
+*.db.gz
