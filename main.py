@@ -7353,6 +7353,56 @@ def _federal_member_by_name(text: str) -> dict | None:
     return None
 
 
+# ── Floor speech topic classifier ────────────────────────────────────────────
+# Used to classify CREC titles for speeches AND bill titles for vote comparison.
+_NOISE_SPEECH_PATTERNS: tuple[str, ...] = (
+    "additional cosponsor", "additional sponsor", "daily digest",
+    "electing members", "providing for consideration", "honoring ",
+    "congratulat", "recognizing ", "commending ", "celebrating ",
+    "in memoriam", "constitutional authority statement",
+    "public bills and resolutions", "waiving a requirement",
+    "waiving points", "text of senate amendment", "text of amendment",
+    "amendments submitted", "measures discharged", "message from",
+    "introduction of bills", "submission of concurrent",
+    "executive reports", "vote on ", "cloture motion", "recess",
+    "adjourn", "c-span",
+)
+
+_FLOOR_TOPIC_CLASSIFIER: dict[str, list[str]] = {
+    "Healthcare":       ["health", "medicare", "medicaid", "prescription",
+                         "opioid", "mental health", "cancer", "hospital",
+                         "insurance coverage", "pharma", "drug pricing"],
+    "Housing":          ["housing", " rent ", "affordable housing", "homeless",
+                         "mortgage", "eviction", "tenant", "hud "],
+    "Defense/Veterans": ["defense", "military", "veteran", "armed forces",
+                         "army", "navy", "air force", "marines",
+                         "national guard", "pentagon", "troop"],
+    "Education":        ["education", "school", "student loan", "college",
+                         "university", "workforce training", "higher education",
+                         "pell grant"],
+    "Environment":      ["climate", "environment", "clean energy", "renewable",
+                         "emissions", "conservation", "epa ", "pollution",
+                         "carbon", "solar", "wind energy"],
+    "Foreign Policy":   ["ukraine", "foreign", "iran", "china", "nato",
+                         "israel", "taiwan", "sanction", "russia",
+                         "middle east", "diplomacy"],
+    "Labor/Economy":    ["labor", "worker", "wage", "job creation", "employ",
+                         "union", "small business", "manufactur", "econom",
+                         "trade", "tariff", "workforce"],
+    "Immigration":      ["immigrat", "border security", "asylum", "undocumented",
+                         "deportat", " visa ", "refugee"],
+    "Gun Policy":       ["gun", "firearm", "second amendment", "background check"],
+    "Taxation":         ["tax cut", "tax credit", "irs ", "revenue act",
+                         "deficit", "debt ceiling", "fiscal"],
+    "Infrastructure":   ["infrastructure", "transportation", "broadband",
+                         "transit", "highway", "rail", "airport", "bridge act"],
+    "Technology":       ["technology", " ai ", "artificial intelligence",
+                         "cyber", "internet", "data privacy", "semiconductor"],
+    "Social Security":  ["social security", "retirement security", "pension",
+                         "disability benefit"],
+}
+
+
 def _fetch_federal_context(member: dict) -> str:
     """Build a plain-text context block for a VA federal member: votes + sponsored bills."""
     bio = member["bioguide_id"]
@@ -7747,6 +7797,119 @@ def _fetch_federal_context(member: dict) -> str:
             lines.append("  Source: FEC Schedule E (fec.gov)")
         else:
             lines.append("\nFEC Independent Expenditures: No outside spending data for this member.")
+    except Exception:
+        pass
+
+    # ── Floor speech topics vs. voting record ────────────────────────────────
+    try:
+        conn_sp = sqlite3.connect(_POLLS_DB)
+        speech_titles = conn_sp.execute(
+            "SELECT lower(title) FROM congress_floor_statements WHERE bioguide_id = ?",
+            (bio,),
+        ).fetchall()
+        # Strip spaces + dots so "H R 3632" → "HR3632" matches "HR"+"3632".
+        # Restrict to final-passage-type questions (exclude recommit/procedural)
+        # and deduplicate by title so one bill isn't counted multiple times.
+        vote_title_rows = conn_sp.execute(
+            """SELECT lower(resolved_title) AS title, member_vote
+               FROM (
+                   SELECT COALESCE(cb.title, bd.title, fb.title, '') AS resolved_title,
+                          cv.member_vote,
+                          ROW_NUMBER() OVER (
+                              PARTITION BY COALESCE(cb.title, bd.title, fb.title, cv.bill)
+                              ORDER BY cv.vote_date DESC
+                          ) AS rn
+                   FROM congress_votes cv
+                   LEFT JOIN congress_bills cb
+                       ON cv.congress = cb.congress
+                       AND replace(replace(cv.bill,' ',''),'.','') = upper(cb.bill_type) || cb.bill_number
+                   LEFT JOIN congress_bill_details bd
+                       ON cv.congress = bd.congress
+                       AND replace(replace(cv.bill,' ',''),'.','') = upper(bd.bill_type) || bd.bill_number
+                   LEFT JOIN federal_bills fb
+                       ON cv.congress = fb.congress
+                       AND replace(replace(cv.bill,' ',''),'.','') = upper(fb.bill_type) || fb.bill_number
+                   WHERE cv.bioguide_id = ?
+                     AND cv.member_vote IN ('Yea','Yes','Aye','Nay','No','Naye')
+                     AND COALESCE(cb.title, bd.title, fb.title, '') != ''
+                     AND cv.question NOT LIKE '%Recommit%'
+                     AND cv.question NOT LIKE '%Motion to Commit%'
+                     AND cv.question NOT LIKE '%Previous Question%'
+               )
+               WHERE rn = 1""",
+            (bio,),
+        ).fetchall()
+        total_votes = conn_sp.execute(
+            "SELECT COUNT(*) FROM congress_votes WHERE bioguide_id = ?", (bio,)
+        ).fetchone()[0]
+        conn_sp.close()
+
+        def _classify_floor_title(t: str) -> str | None:
+            if not t:
+                return None
+            for pat in _NOISE_SPEECH_PATTERNS:
+                if t.startswith(pat):
+                    return None
+            for topic, kws in _FLOOR_TOPIC_CLASSIFIER.items():
+                if any(kw in t for kw in kws):
+                    return topic
+            return None
+
+        speech_counts: dict[str, int] = {}
+        for (t,) in speech_titles:
+            topic = _classify_floor_title(t)
+            if topic:
+                speech_counts[topic] = speech_counts.get(topic, 0) + 1
+
+        vote_yes: dict[str, int] = {}
+        vote_total: dict[str, int] = {}
+        for t, mv in vote_title_rows:
+            topic = _classify_floor_title(t)
+            if topic:
+                vote_total[topic] = vote_total.get(topic, 0) + 1
+                if mv.upper() in ("YEA", "YES", "AYE"):
+                    vote_yes[topic] = vote_yes.get(topic, 0) + 1
+
+        if speech_counts:
+            top_topics = sorted(speech_counts.items(), key=lambda x: x[1], reverse=True)[:8]
+            total_stmts = len(speech_titles)
+            classified_votes = len(vote_title_rows)
+            cov_note = (
+                f" | vote comparison: {classified_votes}/{total_votes} votes with matched titles"
+                if total_votes else ""
+            )
+            lines.append(
+                f"\nFloor Speech Topics vs. Voting Record "
+                f"(119th Congress, {total_stmts} floor statements{cov_note}):"
+            )
+            for topic, sp_ct in top_topics:
+                if sp_ct < 2:
+                    continue
+                tot = vote_total.get(topic, 0)
+                yes = vote_yes.get(topic, 0)
+                if tot >= 5:
+                    rate = round(yes * 100 / tot)
+                    rate_str = f"votes YES {rate}% ({yes}/{tot} matched bills)"
+                    if rate < 35:
+                        flag = "  ⚠ TALKS BUT VOTES NO"
+                    elif rate >= 75:
+                        flag = "  (talk/vote consistent)"
+                    else:
+                        flag = ""
+                elif tot > 0:
+                    rate_str = f"votes YES {round(yes*100/tot)}% ({yes}/{tot} — sparse)"
+                    flag = ""
+                else:
+                    rate_str = "no matched bill votes"
+                    flag = ""
+                lines.append(f"  {topic:<20}: {sp_ct:>3} speeches | {rate_str}{flag}")
+        elif speech_titles:
+            lines.append(
+                f"\nFloor Speeches: {len(speech_titles)} statements found "
+                "(topics not classified — mostly procedural)."
+            )
+        else:
+            lines.append("\nFloor Speeches: Not yet ingested for this member.")
     except Exception:
         pass
 
