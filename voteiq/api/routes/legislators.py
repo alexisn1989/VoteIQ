@@ -382,6 +382,68 @@ def _fetch_profile(conn, name: str) -> dict:
     except Exception:
         profile["governor_alignment"] = None
 
+    # ── Committee roles + donor-overlap flags ────────────────────────────────
+    _CMTE_SECTOR_MAP: dict[str, list[str]] = {
+        "abc":               ["Wine & Spirits"],
+        "gaming":            ["Gambling/Casinos"],
+        "agriculture":       ["Agribusiness", "Livestock & Poultry"],
+        "natural resources": ["Fossil Fuels", "Agribusiness"],
+        "conservation":      ["Fossil Fuels"],
+        "finance":           ["Financial Services", "Banking", "Investment & Securities"],
+        "appropriations":    ["Financial Services", "Banking"],
+        "commerce":          ["Financial Services", "Utilities", "Retail"],
+        "labor":             ["Trial Lawyers", "Building & Industrial Unions",
+                              "Public Employee Unions"],
+        "courts":            ["Trial Lawyers", "Corporate Law", "Legal"],
+        "technology":        ["Telecom", "Software & IT", "IT & Engineering",
+                              "Artificial Intelligence"],
+        "communications":    ["Telecom"],
+        "health profession": ["Health Professionals", "Pharma", "Health Insurance"],
+        "health":            ["Health Professionals", "Hospitals", "Pharma",
+                              "Health Insurance", "Healthcare Worker Unions"],
+        "transportation":    ["Transportation"],
+        "housing":           ["Realtors", "Commercial Real Estate", "Homebuilders"],
+        "insurance":         ["Insurance", "Financial Services"],
+        "energy":            ["Utilities", "Fossil Fuels", "Renewables"],
+        "education":         ["Education", "Education Unions"],
+    }
+    try:
+        last = bill_name.strip().split()[-1]
+        cmte_rows = conn.execute(
+            """SELECT committee, role FROM va_committee_assignments
+               WHERE role IN ('chair','vice_chair')
+                 AND lower(member_name) LIKE lower(?)""",
+            (f"%{last}%",),
+        ).fetchall()
+        profile["committee_roles"] = [
+            {"committee": r["committee"], "role": r["role"]} for r in cmte_rows
+        ]
+        fin_sec_row = conn.execute(
+            "SELECT by_sector_json FROM campaign_finance_summary"
+            " WHERE source='va_sbe' AND lower(name) LIKE lower(?) LIMIT 1",
+            (f"%{last}%",),
+        ).fetchone()
+        donor_sectors_lower = (
+            [s["sector"].lower() for s in json.loads(fin_sec_row["by_sector_json"] or "[]")[:8]]
+            if fin_sec_row else []
+        )
+        flags: list[dict] = []
+        for r in cmte_rows:
+            cmte_lower = r["committee"].lower()
+            for kw, sectors in _CMTE_SECTOR_MAP.items():
+                if kw in cmte_lower:
+                    for sec in sectors:
+                        if sec.lower() in donor_sectors_lower:
+                            flags.append({
+                                "committee": r["committee"],
+                                "role": r["role"],
+                                "sector": sec,
+                            })
+        profile["committee_influence_flags"] = flags
+    except Exception:
+        profile["committee_roles"] = []
+        profile["committee_influence_flags"] = []
+
     # ── Campaign finance sectors ─────────────────────────────────────────────
     # Guard: query only the columns that actually exist (Render may have a
     # stale schema from before overall_va_pct / alignment_json were added).

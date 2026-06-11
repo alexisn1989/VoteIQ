@@ -4406,6 +4406,74 @@ def _fetch_va_state_member_context(
             except Exception:
                 pass
 
+            # ── Committee-donor influence signal ─────────────────────────────
+            _CMTE_SECTOR_MAP: dict[str, list[str]] = {
+                "abc":               ["Wine & Spirits"],
+                "gaming":            ["Gambling/Casinos"],
+                "agriculture":       ["Agribusiness", "Livestock & Poultry"],
+                "natural resources": ["Fossil Fuels", "Agribusiness"],
+                "conservation":      ["Fossil Fuels"],
+                "finance":           ["Financial Services", "Banking", "Investment & Securities"],
+                "appropriations":    ["Financial Services", "Banking"],
+                "commerce":          ["Financial Services", "Utilities", "Retail"],
+                "labor":             ["Trial Lawyers", "Building & Industrial Unions",
+                                      "Public Employee Unions"],
+                "courts":            ["Trial Lawyers", "Corporate Law", "Legal"],
+                "technology":        ["Telecom", "Software & IT", "IT & Engineering",
+                                      "Artificial Intelligence"],
+                "communications":    ["Telecom"],
+                "health profession": ["Health Professionals", "Pharma", "Health Insurance"],
+                "health":            ["Health Professionals", "Hospitals", "Pharma",
+                                      "Health Insurance", "Healthcare Worker Unions"],
+                "transportation":    ["Transportation"],
+                "housing":           ["Realtors", "Commercial Real Estate", "Homebuilders"],
+                "insurance":         ["Insurance", "Financial Services"],
+                "energy":            ["Utilities", "Fossil Fuels", "Renewables"],
+                "education":         ["Education", "Education Unions"],
+            }
+            try:
+                last = name.strip().split()[-1]
+                cmte_rows = conn.execute(
+                    """SELECT committee, role FROM va_committee_assignments
+                       WHERE role IN ('chair','vice_chair')
+                         AND lower(member_name) LIKE lower(?)""",
+                    (f"%{last}%",),
+                ).fetchall()
+                if cmte_rows:
+                    # Get this legislator's donor sectors
+                    fin_row = conn.execute(
+                        """SELECT by_sector_json FROM campaign_finance_summary
+                           WHERE source='va_sbe' AND lower(name) LIKE lower(?)
+                           LIMIT 1""",
+                        (f"%{last}%",),
+                    ).fetchone()
+                    import json as _json
+                    donor_sectors = (
+                        [s["sector"].lower() for s in _json.loads(fin_row[0] or "[]")[:8]]
+                        if fin_row else []
+                    )
+                    flags: list[str] = []
+                    for cmte, role in cmte_rows:
+                        cmte_lower = cmte.lower()
+                        for kw, sectors in _CMTE_SECTOR_MAP.items():
+                            if kw in cmte_lower:
+                                for sec in sectors:
+                                    if sec.lower() in donor_sectors:
+                                        flags.append(
+                                            f"  ⚠ {role.upper()}, {cmte}: top donor sector = {sec}"
+                                        )
+                    role_lines = [
+                        f"  {r[1].replace('_', ' ').title()}: {r[0]}"
+                        for r in cmte_rows
+                    ]
+                    lines.append("\nCommittee Leadership:")
+                    lines.extend(role_lines)
+                    if flags:
+                        lines.append("Committee-Donor Overlap Flags:")
+                        lines.extend(flags)
+            except Exception:
+                pass
+
             blocks.append("\n".join(lines))
 
         conn.close()
