@@ -4281,6 +4281,50 @@ def _fetch_va_state_member_context(
                     f"  {r['bill_number']} ({r['session']}) — {r['title'][:80]}\n"
                     f"    Status: {r['status']}{subj}"
                 )
+            # ── Bill success rate by topic (from va_legislator_sponsored_bills) ──
+            _NOISE_PREFIXES = (
+                "governor", "confirming", "celebrating", "memorial",
+                "recognizing", "commending", "designating", "in memoriam",
+                "joint resolution", "congratulat",
+            )
+            try:
+                topic_rows = conn.execute(
+                    """WITH deduped AS (
+                           SELECT DISTINCT bill_id, title, status_label
+                           FROM va_legislator_sponsored_bills
+                           WHERE legislator_name = ?
+                       ),
+                       with_topic AS (
+                           SELECT
+                               CASE WHEN instr(title, ';') > 0
+                                    THEN trim(substr(title, 1, instr(title, ';') - 1))
+                                    ELSE substr(title, 1, 50) END AS topic,
+                               status_label
+                           FROM deduped
+                       )
+                       SELECT topic,
+                              COUNT(*) AS total,
+                              SUM(CASE WHEN status_label = 'Passed' THEN 1 ELSE 0 END) AS passed
+                       FROM with_topic
+                       GROUP BY topic
+                       HAVING total >= 2
+                       ORDER BY total DESC, passed DESC
+                       LIMIT 12""",
+                    (name,),
+                ).fetchall()
+                substantive = [
+                    r for r in topic_rows
+                    if not any(r[0].lower().startswith(p) for p in _NOISE_PREFIXES)
+                ]
+                if substantive:
+                    lines.append("  Bill success rate by topic (pass/introduced):")
+                    for topic, total, passed in substantive:
+                        pct = round(passed * 100.0 / total)
+                        bar = "█" * (pct // 10) + "░" * (10 - pct // 10)
+                        lines.append(f"    {bar} {pct:3d}% {topic[:45]} ({passed}/{total})")
+            except Exception:
+                pass
+
             blocks.append("\n".join(lines))
 
         conn.close()
@@ -7419,6 +7463,56 @@ def _fetch_federal_context(member: dict) -> str:
                     f"  {dt[:10] if dt else ''} {bill}: {title}"
                     f" | {result} {yea}-{nay} (margin={margin:+d}){flag_str}{note_str}"
                 )
+    except Exception:
+        pass
+
+    # ── Missed vote trend (monthly, from congress_votes) ─────────────────────
+    try:
+        conn_tr = sqlite3.connect(_POLLS_DB)
+        trend_rows = conn_tr.execute(
+            """WITH totals AS (
+                   SELECT substr(vote_date, 1, 7) AS month, COUNT(*) AS total_votes
+                   FROM congress_votes WHERE bioguide_id = ?
+                   GROUP BY month
+               ),
+               missed AS (
+                   SELECT substr(vote_date, 1, 7) AS month, COUNT(*) AS not_voting
+                   FROM congress_votes
+                   WHERE bioguide_id = ? AND member_vote = 'Not Voting'
+                   GROUP BY month
+               )
+               SELECT t.month,
+                      COALESCE(m.not_voting, 0) AS nv,
+                      t.total_votes,
+                      ROUND(COALESCE(m.not_voting, 0) * 100.0 / t.total_votes, 1) AS pct
+               FROM totals t LEFT JOIN missed m USING (month)
+               ORDER BY t.month""",
+            (bio, bio),
+        ).fetchall()
+        conn_tr.close()
+        if trend_rows:
+            spike_months = [r for r in trend_rows if r[3] >= 15.0]
+            total_all = sum(r[2] for r in trend_rows)
+            total_nv = sum(r[1] for r in trend_rows)
+            overall_pct = round(total_nv * 100.0 / total_all, 1) if total_all else 0
+            early = [r for r in trend_rows if r[0] <= "2025-06"]
+            recent = [r for r in trend_rows if r[0] >= "2026-01"]
+            early_pct = round(sum(r[1] for r in early) * 100.0 / max(sum(r[2] for r in early), 1), 1)
+            recent_pct = round(sum(r[1] for r in recent) * 100.0 / max(sum(r[2] for r in recent), 1), 1)
+            trend_note = ""
+            if recent_pct > early_pct + 5:
+                trend_note = f" ⬆ WORSENING ({early_pct}% early → {recent_pct}% recent)"
+            elif recent_pct < early_pct - 5:
+                trend_note = f" ⬇ IMPROVING ({early_pct}% early → {recent_pct}% recent)"
+            lines.append(
+                f"\nMissed Vote Trend (119th Congress): overall {overall_pct}%{trend_note}"
+            )
+            if spike_months:
+                lines.append("  Spike months (≥15% missed):")
+                for month, nv, tot, pct in spike_months:
+                    lines.append(f"    {month}: {nv}/{tot} votes missed ({pct}%)")
+            month_strs = [f"{r[0]}: {r[3]}%" for r in trend_rows]
+            lines.append("  Monthly: " + " | ".join(month_strs))
     except Exception:
         pass
 
