@@ -42,10 +42,19 @@ _EXTRA_DBS = (
 
 
 def _table_count(db_path: str) -> int:
-    """Return the number of tables, or -1 if the db can't be read."""
+    """Return the number of tables, or -1 if the db can't be opened/validated.
+
+    Runs PRAGMA quick_check so incompatible schema objects (e.g. indexes or
+    triggers compiled against a newer SQLite) are caught before the swap, not
+    after. Querying sqlite_master alone is not sufficient because it bypasses
+    schema compilation.
+    """
     try:
         conn = sqlite3.connect(db_path)
         try:
+            result = conn.execute("PRAGMA quick_check").fetchone()
+            if not result or result[0] != "ok":
+                return -1
             return conn.execute(
                 "SELECT COUNT(*) FROM sqlite_master WHERE type='table'"
             ).fetchone()[0]
