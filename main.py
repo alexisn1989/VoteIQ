@@ -1,3 +1,4 @@
+import runtime_seed  # noqa: F401 — seeds polls.db from POLLS_DB_SEED_URL; must run before anything opens the db
 from contextlib import asynccontextmanager
 from voteiq.services.data_meta import ensure_schema as _ensure_data_meta, get_all as _get_data_meta
 from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Form, Query, Depends, Header
