@@ -216,7 +216,7 @@ def _external_polling_reply(query: str) -> str | None:
         return None
 
     try:
-        conn = sqlite3.connect(_POLLS_DB)
+        conn = sqlite3.connect(_POLLS_DB, timeout=30)
         conn.row_factory = sqlite3.Row
         if not _polling_tables_available(conn):
             conn.close()
@@ -1518,7 +1518,7 @@ def _direct_governor_veto_reply(user_query: str) -> str:
     action_counts: dict[str, int] = {}
     try:
         if os.path.exists(_POLLS_DB):
-            conn = sqlite3.connect(_POLLS_DB)
+            conn = sqlite3.connect(_POLLS_DB, timeout=30)
             conn.row_factory = sqlite3.Row
             action_counts = {
                 row["action"]: int(row["count"])
@@ -1903,7 +1903,7 @@ def _admin_table_count(db_path: str, table: str) -> int | None:
     if not os.path.exists(db_path):
         return None
     try:
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(db_path, timeout=30)
         count = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
         conn.close()
         return int(count)
@@ -2167,7 +2167,7 @@ def _find_identity_name(user_query: str) -> str:
         return ""
     names: set[str] = set()
     try:
-        conn = sqlite3.connect(_POLLS_DB)
+        conn = sqlite3.connect(_POLLS_DB, timeout=30)
         for table, column in (
             ("congress_members", "name"),
             ("va_finance_people", "person_name"),
@@ -2223,7 +2223,7 @@ def _direct_identity_crosswalk_reply(user_query: str) -> str:
 
     rows: dict[str, list[sqlite3.Row]] = {}
     try:
-        conn = sqlite3.connect(_POLLS_DB)
+        conn = sqlite3.connect(_POLLS_DB, timeout=30)
         conn.row_factory = sqlite3.Row
         name_like = f"%{name.replace(',', '').split()[-1].lower()}%"
         rows["congress_members"] = conn.execute(
@@ -2481,7 +2481,7 @@ def _direct_governor_correlation_reply(user_query: str) -> str:
         return ""
 
     try:
-        conn = sqlite3.connect(_POLLS_DB)
+        conn = sqlite3.connect(_POLLS_DB, timeout=30)
         conn.row_factory = sqlite3.Row
 
         # Overall action counts
@@ -2637,7 +2637,7 @@ def _direct_governor_eo_reply(user_query: str) -> str:
     rows = []
     try:
         if os.path.exists(_POLLS_DB):
-            conn = sqlite3.connect(_POLLS_DB)
+            conn = sqlite3.connect(_POLLS_DB, timeout=30)
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 """
@@ -2733,7 +2733,7 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
     # Finance data — best-effort; missing tables do not abort the function.
     # Prefer the pre-aggregated seed tables (va_finance_*); fall back to raw va_cf_schedule_a.
     try:
-        conn = sqlite3.connect(_POLLS_DB)
+        conn = sqlite3.connect(_POLLS_DB, timeout=30)
         conn.row_factory = sqlite3.Row
 
         def _table_exists(name: str) -> bool:
@@ -2856,7 +2856,7 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
 
     # Governor actions — required; return "" only if this block fails
     try:
-        conn = sqlite3.connect(_POLLS_DB)
+        conn = sqlite3.connect(_POLLS_DB, timeout=30)
         conn.row_factory = sqlite3.Row
         # Bail out cleanly if the table doesn't exist yet
         if not conn.execute(
@@ -3089,7 +3089,7 @@ def _direct_va_finance_reply(user_query: str, premium: bool = False) -> str:
     finance_person = None
 
     try:
-        conn = sqlite3.connect(_POLLS_DB)
+        conn = sqlite3.connect(_POLLS_DB, timeout=30)
         conn.row_factory = sqlite3.Row
 
         # Require the pre-aggregated cycle-totals table (seeded from data/finance_seed.sql)
@@ -3309,7 +3309,7 @@ def _direct_va_legislator_reply(user_query: str, premium: bool = False) -> str:
     finance = None
 
     try:
-        conn = sqlite3.connect(_POLLS_DB)
+        conn = sqlite3.connect(_POLLS_DB, timeout=30)
         conn.row_factory = sqlite3.Row
 
         if not conn.execute(
@@ -3531,7 +3531,7 @@ def _fetch_floor_statements(
         return ""
     try:
         import sqlite3
-        conn = sqlite3.connect(_POLLS_DB)
+        conn = sqlite3.connect(_POLLS_DB, timeout=30)
         conn.row_factory = sqlite3.Row
         params: list = [bioguide_id]
         kw_clause = ""
@@ -3578,7 +3578,7 @@ def _fetch_transcript_context(query: str, bill_id: str | None = None,
     blocks: list[str] = []
 
     try:
-        conn = sqlite3.connect(_POLLS_DB)
+        conn = sqlite3.connect(_POLLS_DB, timeout=30)
         conn.row_factory = sqlite3.Row
 
         # ── hearing_segments ──────────────────────────────────────────────────
@@ -5210,7 +5210,7 @@ async def _investigate_data_quality(complaint: str, evidence_url: str, db_path: 
     """Query databases to investigate data quality issue."""
     import sqlite3
 
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=30)
     cursor = conn.cursor()
     investigation = ""
 

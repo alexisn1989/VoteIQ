@@ -32,12 +32,19 @@ _POLLS_DB = os.path.join(os.getenv("DATA_DIR", str(_BASE_DIR)), "polls.db")
 
 
 def _conn() -> sqlite3.Connection:
-    c = sqlite3.connect(_POLLS_DB, timeout=15)
+    c = sqlite3.connect(_POLLS_DB, timeout=30)
     c.row_factory = sqlite3.Row
+    c.execute("PRAGMA busy_timeout=30000")
     return c
 
 
+_schema_ensured = False
+
+
 def _ensure_schema(conn: sqlite3.Connection) -> None:
+    global _schema_ensured
+    if _schema_ensured:
+        return
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS spike_watchlist (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -69,6 +76,7 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
         );
     """)
     conn.commit()
+    _schema_ensured = True
 
 
 # ── Models ────────────────────────────────────────────────────────────────────

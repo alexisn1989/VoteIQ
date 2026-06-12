@@ -223,8 +223,11 @@ def _connect(db_key: str) -> sqlite3.Connection | None:
     path = _resolve_db_path(db_key)
     if path is None:
         return None
-    conn = sqlite3.connect(path)
+    # timeout=30: wait up to 30 s for a lock instead of raising immediately.
+    # busy_timeout covers the SQLite layer for any lock not caught by Python.
+    conn = sqlite3.connect(path, timeout=30)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA busy_timeout=30000")
     return conn
 
 
