@@ -3276,6 +3276,8 @@ def _direct_va_legislator_reply(user_query: str, premium: bool = False) -> str:
     if any(t in q for t in (
         "lobby", "conflict", "similar", "allies", "disclosure",
         "stock", "holdings", "coalition",
+        "vote with", "votes with", "aligned with donor", "donor align",
+        "alignment", "follow the money", "pay to vote",
     )):
         return ""
 
