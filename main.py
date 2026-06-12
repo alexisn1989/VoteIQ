@@ -1136,19 +1136,24 @@ def _build_legislator_name_index() -> None:
         last = mbr.get("name", "").split(",")[0].strip().lower()
         if last:
             _FEDERAL_LAST_NAMES.add(last)
-    # State: load from legislative_intelligence.db.legislators
-    # Name format is "First Last" so take the final word
-    _li_db = os.path.join(BASE_DIR, "legislative_intelligence.db")
-    if os.path.exists(_li_db):
+    # State: load from the legislators tables that actually carry VA state
+    # legislators. polls.db is the primary (always-seeded) source; openstates
+    # supplements it. Both store names as "First Last", so the last word is the
+    # surname. Paths use _DATA_DIR so the persistent disk is found in production
+    # (BASE_DIR is the read-only code dir and has no db on Render).
+    for _state_db in (_POLLS_DB, _OPENSTATES_DB):
+        if not os.path.exists(_state_db):
+            continue
         try:
-            conn = sqlite3.connect(_li_db)
-            for row in conn.execute("SELECT name FROM legislators WHERE active=1"):
+            conn = sqlite3.connect(_state_db)
+            for row in conn.execute("SELECT name FROM legislators"):
                 parts = (row[0] or "").strip().split()
                 if parts:
                     _STATE_LAST_NAMES.add(parts[-1].lower())
             conn.close()
         except Exception as exc:
-            print(f"State legislator name index skipped: {exc}")
+            print(f"State legislator name index skipped for "
+                  f"{os.path.basename(_state_db)}: {exc}")
     print(
         f"Legislator name index: {len(_FEDERAL_LAST_NAMES)} federal, "
         f"{len(_STATE_LAST_NAMES)} state last names."
