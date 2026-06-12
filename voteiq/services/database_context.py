@@ -4109,6 +4109,226 @@ def _add_spike_alerts_context(blocks: list[str], query: str) -> None:
         pass
 
 
+# ── Donor-vote alignment, electoral races, congressional hearings ─────────────
+# Dedicated structured builders for analytically rich tables that the generic
+# all-table keyword scan serves poorly: JSON-packed metrics, numeric rankings,
+# and parent/child joins that a 3-row LIKE dump cannot surface usefully.
+
+_ALIGNMENT_TRIGGER = re.compile(
+    r"\b(alignment|aligned|vote[s]?\s+with\s+(?:their\s+)?donor|donor[\s-]*align|"
+    r"sector\s+yes[\s-]*rate|voting\s+with\s+(?:the\s+)?money|"
+    r"pay[\s-]*to[\s-]*vote|bought\s+vote)\b",
+    re.I,
+)
+
+_RACE_TRIGGER = re.compile(
+    r"\b(race|races|running\s+for|who\s+(?:is|are)\s+running|candidate[s]?|"
+    r"election|primary|on\s+the\s+ballot|governor['’]?s?\s+race|"
+    r"senate\s+race|house\s+race|attorney\s+general|lieutenant\s+governor|"
+    r"lt\.?\s+governor)\b",
+    re.I,
+)
+
+_HEARING_TRIGGER = re.compile(
+    r"\b(hearing[s]?|testified|testimony\s+before|committee\s+hearing)\b",
+    re.I,
+)
+
+
+def _add_donor_vote_alignment_context(blocks: list[str], query: str, terms: list[str]) -> None:
+    """Per-legislator donor-sector vs vote alignment (donor_vote_alignment).
+
+    Surfaces the structured alignment metrics (sector yes-rate vs other yes-rate,
+    alignment delta) that the generic keyword scan can't read out of the packed
+    by_sector_json column. Fires on alignment keywords or when a named legislator
+    appears with alignment intent.
+    """
+    names = _person_terms(terms)
+    triggered = bool(_ALIGNMENT_TRIGGER.search(query or ""))
+    # A bare name (esp. a common first name like "Mark") must not pull alignment
+    # rows on its own — require donor/vote intent alongside the name.
+    has_money_or_vote = (
+        _is_campaign_finance_query(query)
+        or bool(re.search(r"\bvot(?:e|es|ed|ing)\b", query or "", re.I))
+    )
+    if not triggered and not (names and has_money_or_vote):
+        return
+    try:
+        conn = _connect("polls")
+        if conn is None:
+            return
+        if not _table_exists(conn, "donor_vote_alignment"):
+            conn.close()
+            return
+        cols = (
+            "name, party, chamber, top_donor_sector, top_sector_amt, "
+            "sector_yes_rate, other_yes_rate, alignment_delta, "
+            "sector_vote_count, other_vote_count"
+        )
+        rows: list = []
+        if names:
+            clause, params = _like_any_clause(["name"], names)
+            rows = conn.execute(
+                f"SELECT {cols} FROM donor_vote_alignment WHERE {clause} "
+                "ORDER BY ABS(alignment_delta) DESC LIMIT 4",
+                tuple(params),
+            ).fetchall()
+        if not rows and triggered:
+            rows = conn.execute(
+                f"SELECT {cols} FROM donor_vote_alignment "
+                "ORDER BY ABS(alignment_delta) DESC LIMIT 8"
+            ).fetchall()
+        conn.close()
+        if not rows:
+            return
+        lines = [
+            "[Database Context - donor_vote_alignment]",
+            "How often a legislator votes YES on bills touching their TOP donor sector "
+            "vs. their YES rate on all other bills. alignment_delta = sector_rate - "
+            "other_rate (positive = votes more favorably on bills affecting their "
+            "biggest funders). Correlation, not proof of causation:",
+        ]
+        for r in rows:
+            name, party, chamber, sector, amt, syr, oyr, delta, sc, oc = r
+            amt_s = f"${amt:,.0f}" if amt is not None else "n/a"
+            syr_s = f"{syr:.0f}%" if syr is not None else "n/a"
+            oyr_s = f"{oyr:.0f}%" if oyr is not None else "n/a"
+            delta_s = f"{delta:+.1f}" if delta is not None else "n/a"
+            lines.append(
+                f"• {name} ({party}, {chamber}) — top donor sector: {sector} "
+                f"({amt_s}). YES on {sector} bills: {syr_s} ({sc} votes) vs. {oyr_s} on "
+                f"others ({oc} votes). Alignment delta: {delta_s} pts."
+            )
+        blocks.append("\n".join(lines))
+    except Exception:
+        pass
+
+
+def _add_vpap_race_context(blocks: list[str], query: str) -> None:
+    """Virginia electoral races and their candidates' fundraising.
+
+    Joins vpap_races to vpap_candidates so 'who is running for X' / 'the YEAR
+    governor race' questions get the field plus money raised/spent/cash-on-hand,
+    instead of a keyword dump that can't relate candidates to their race.
+    """
+    if not _RACE_TRIGGER.search(query or ""):
+        return
+    try:
+        conn = _connect("polls")
+        if conn is None:
+            return
+        if not _table_exists(conn, "vpap_races"):
+            conn.close()
+            return
+        q_lower = (query or "").lower()
+        years = set(YEAR_RE.findall(query or ""))
+        office_kw = [
+            kw for kw in (
+                "governor", "senate", "house", "attorney general",
+                "lieutenant", "congress", "delegate",
+            )
+            if kw in q_lower
+        ]
+        race_rows = conn.execute(
+            "SELECT race_key, office, district, year, election_date "
+            "FROM vpap_races ORDER BY year DESC, office"
+        ).fetchall()
+        selected = []
+        for r in race_rows:
+            _rk, office, _district, year, _edate = r
+            office_l = (office or "").lower()
+            if years and str(year) not in years:
+                continue
+            if office_kw and not any(k in office_l for k in office_kw):
+                continue
+            selected.append(r)
+        if not selected:
+            selected = race_rows[:6]
+        if not selected:
+            conn.close()
+            return
+        lines = [
+            "[Database Context - vpap_races / vpap_candidates]",
+            "Virginia electoral races tracked by VoteIQ, with candidate fundraising "
+            "(VPAP/FEC):",
+        ]
+        for r in selected[:6]:
+            rk, office, district, year, edate = r
+            dist_s = f" district {district}" if district else ""
+            lines.append(f"\n{office}{dist_s} ({year}) — election {edate or 'TBD'}:")
+            cands = conn.execute(
+                "SELECT name, party, incumbent, money_raised, cash_on_hand "
+                "FROM vpap_candidates WHERE race_key=? ORDER BY money_raised DESC",
+                (rk,),
+            ).fetchall()
+            if not cands:
+                lines.append("  (no candidates recorded yet)")
+            for c in cands[:8]:
+                nm, party, inc, raised, coh = c
+                inc_s = " (incumbent)" if inc else ""
+                raised_s = f"${raised:,.0f}" if raised else "$0"
+                coh_s = f"${coh:,.0f}" if coh else "$0"
+                lines.append(
+                    f"  • {nm} ({party}){inc_s} — raised {raised_s}, "
+                    f"cash on hand {coh_s}"
+                )
+        conn.close()
+        blocks.append("\n".join(lines))
+    except Exception:
+        pass
+
+
+def _add_congress_hearings_context(blocks: list[str], query: str, terms: list[str]) -> None:
+    """Congressional hearing records for VA's federal delegation (congress_hearings).
+
+    Matches by member name first, then by topic against the hearing title/text/
+    committee, returning the most recent matches.
+    """
+    if not _HEARING_TRIGGER.search(query or ""):
+        return
+    try:
+        conn = _connect("polls")
+        if conn is None:
+            return
+        if not _table_exists(conn, "congress_hearings"):
+            conn.close()
+            return
+        names = _person_terms(terms)
+        rows: list = []
+        if names:
+            clause, params = _like_any_clause(["member_name"], names)
+            rows = conn.execute(
+                "SELECT member_name, chamber, committee, hearing_date, title "
+                f"FROM congress_hearings WHERE {clause} "
+                "ORDER BY hearing_date DESC LIMIT 6",
+                tuple(params),
+            ).fetchall()
+        if not rows:
+            topic = _generic_search_terms(query, terms)
+            if topic:
+                clause, params = _like_any_clause(["title", "text", "committee"], topic)
+                rows = conn.execute(
+                    "SELECT member_name, chamber, committee, hearing_date, title "
+                    f"FROM congress_hearings WHERE {clause} "
+                    "ORDER BY hearing_date DESC LIMIT 6",
+                    tuple(params),
+                ).fetchall()
+        conn.close()
+        if not rows:
+            return
+        lines = [
+            "[Database Context - congress_hearings]",
+            "Congressional hearing records involving Virginia's federal delegation:",
+        ]
+        for r in rows:
+            nm, chamber, committee, hdate, title = r
+            comm_s = f" — {committee}" if committee else ""
+            lines.append(f"• {hdate}: {title} ({nm}, {chamber}{comm_s})")
+        blocks.append("\n".join(lines))
+    except Exception:
+        pass
+
+
 def build_database_context(query: str, max_chars: int = 22000, pro: bool = False) -> str:
     q = query or ""
     blocks: list[str] = []
@@ -4149,6 +4369,10 @@ def build_database_context(query: str, max_chars: int = 22000, pro: bool = False
     _add_indy_exp_context(blocks, q, terms)
     _add_pac_vote_correlation_context(blocks, q, terms)
     _add_spike_alerts_context(blocks, q)
+    # Structured access to analytically rich tables the generic scan serves poorly
+    _add_donor_vote_alignment_context(blocks, q, terms)
+    _add_vpap_race_context(blocks, q)
+    _add_congress_hearings_context(blocks, q, terms)
     if _is_campaign_finance_query(q):
         _add_campaign_finance_context(blocks, q, terms)
         _add_governor_action_context(blocks, q, terms, session)
