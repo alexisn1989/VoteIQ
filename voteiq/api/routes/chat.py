@@ -3253,6 +3253,131 @@ def _direct_va_finance_reply(user_query: str, premium: bool = False) -> str:
     return "\n".join(lines)
 
 
+_ALIGNMENT_INTENT = re.compile(
+    r"\b(vote[s]?\s+with\s+(his|her|their|the)?\s*donor|donor[\s-]*align|"
+    r"alignment|follow\s+the\s+money|pay[\s-]*to[\s-]*vote|"
+    r"vote[s]?\s+with\s+(his|her|their)?\s*funders?|"
+    r"funded.{1,20}vote|donor.{1,20}vote|vote.{1,20}donor)\b",
+    re.I,
+)
+
+
+def _direct_donor_alignment_reply(user_query: str) -> str:
+    """Direct SQL analysis: does legislator X vote with their donors?
+
+    Bypasses the Claude API entirely — generates the alignment analysis
+    from donor_vote_alignment data deterministically so the user gets an
+    instant, structured answer instead of waiting for model inference on
+    a 22K-char context blob.
+    """
+    import re as _re
+    import json as _json
+
+    q = (user_query or "").lower()
+    if not _ALIGNMENT_INTENT.search(user_query):
+        return ""
+    if not os.path.exists(_POLLS_DB):
+        return ""
+
+    name_candidates = _re.findall(
+        r'\b([A-Z][a-zA-Z]+(?:\.?\s+[A-Z][a-zA-Z]+)+)\b', user_query
+    )
+    if not name_candidates:
+        return ""
+
+    try:
+        conn = sqlite3.connect(_POLLS_DB, timeout=30)
+        conn.row_factory = sqlite3.Row
+
+        row = None
+        matched_name = None
+        for name in name_candidates:
+            row = conn.execute(
+                "SELECT * FROM donor_vote_alignment WHERE lower(name) = ?",
+                (name.lower(),),
+            ).fetchone()
+            if not row:
+                last = name.strip().split()[-1]
+                if len(last) >= 4:
+                    row = conn.execute(
+                        "SELECT * FROM donor_vote_alignment "
+                        "WHERE lower(name) LIKE ? LIMIT 1",
+                        (f"%{last.lower()}%",),
+                    ).fetchone()
+            if row:
+                matched_name = name
+                break
+
+        conn.close()
+        if not row:
+            return ""
+
+        name      = row["name"]
+        party     = row["party"] or ""
+        chamber   = row["chamber"] or "Legislator"
+        sector    = row["top_donor_sector"] or "Unknown"
+        amt       = row["top_sector_amt"] or 0
+        syr       = row["sector_yes_rate"]
+        oyr       = row["other_yes_rate"]
+        delta     = row["alignment_delta"]
+        sc        = row["sector_vote_count"] or 0
+        oc        = row["other_vote_count"] or 0
+
+        try:
+            by_sector = _json.loads(row["by_sector_json"] or "[]")
+        except Exception:
+            by_sector = []
+
+        # Verdict
+        if delta is None:
+            verdict = "Insufficient data to determine alignment."
+        elif delta >= 10:
+            verdict = f"**Yes — strong alignment.** {name} votes YES on {sector}-related bills {delta:+.1f} percentage points more often than on everything else."
+        elif delta >= 4:
+            verdict = f"**Moderate alignment.** {name} votes YES on {sector}-related bills {delta:+.1f} pts more often than other bills."
+        elif delta <= -4:
+            verdict = f"**No alignment detected.** {name} actually votes YES on {sector}-related bills {abs(delta):.1f} pts *less* often than other bills — giving less favorable to their top donors."
+        else:
+            verdict = f"**No clear alignment.** The {delta:+.1f} pt difference is within noise — {name}'s voting pattern on {sector} bills is similar to their overall rate."
+
+        lines = [
+            "**Donor-Vote Alignment Analysis**",
+            f"Subject: {name} ({party}, Virginia {chamber})",
+            f"Question: Does their voting record favor their top donor sector?",
+            "",
+            f"**Top Donor Sector: {sector}** — ${amt:,.0f} received",
+            f"- YES rate on {sector} bills: {syr:.1f}% ({sc} votes)",
+            f"- YES rate on all other bills: {oyr:.1f}% ({oc} votes)",
+            f"- Alignment delta: {delta:+.1f} percentage points",
+            "",
+            verdict,
+        ]
+
+        if by_sector:
+            lines += ["", "**All Sector Breakdown** (YES rate by donor sector):"]
+            for s in sorted(by_sector, key=lambda x: x.get("yes_rate", 0), reverse=True)[:8]:
+                s_name = s.get("sector", "?")
+                s_yr   = s.get("yes_rate", 0)
+                s_tot  = s.get("total", 0)
+                marker = " ← top donor sector" if s_name == sector else ""
+                lines.append(f"- {s_name}: {s_yr:.0f}% YES ({s_tot} votes){marker}")
+
+        lines += [
+            "",
+            "**Methodology**",
+            "Alignment delta = (YES rate on bills tagged to top donor sector) minus "
+            "(YES rate on all other bills). Positive = votes more favorably on bills "
+            "affecting their biggest funders. Correlation only — not proof of influence.",
+            "",
+            f"*Source: VoteIQ donor_vote_alignment table, updated {row['updated_at'][:10] if row['updated_at'] else 'recently'}.*",
+        ]
+
+        return "\n".join(lines)
+
+    except Exception:
+        return ""
+
+
 def _direct_va_legislator_reply(user_query: str, premium: bool = False) -> str:
     """Direct SQL reply for VA state delegate/senator profile queries.
 
@@ -4016,7 +4141,8 @@ async def chat(req: ChatRequest):
     if direct_source_reply:
         return ChatResponse(reply=direct_source_reply)
     direct_governor_reply = (
-        _direct_va_legislator_reply(last_question, premium=_premium_analyst_enabled(req))
+        _direct_donor_alignment_reply(last_question)
+        or _direct_va_legislator_reply(last_question, premium=_premium_analyst_enabled(req))
         or _direct_va_finance_reply(last_question, premium=_premium_analyst_enabled(req))
         or _direct_spanberger_governor_overview_reply(last_question)
         or _direct_governor_eo_reply(last_question)
@@ -4321,7 +4447,8 @@ async def gemini_chat(request: Request, req: ChatRequest):
     if direct_source_reply:
         return ChatResponse(reply=direct_source_reply)
     direct_governor_reply = (
-        _direct_va_legislator_reply(user_query, premium=_premium_analyst_enabled(req))
+        _direct_donor_alignment_reply(user_query)
+        or _direct_va_legislator_reply(user_query, premium=_premium_analyst_enabled(req))
         or _direct_va_finance_reply(user_query, premium=_premium_analyst_enabled(req))
         or _direct_spanberger_governor_overview_reply(user_query)
         or _direct_governor_eo_reply(user_query)
@@ -4439,7 +4566,8 @@ async def bills_chat(req: BillsChatRequest):
     if direct_source_reply:
         return ChatResponse(reply=direct_source_reply)
     direct_governor_reply = (
-        _direct_va_legislator_reply(user_query, premium=_premium_analyst_enabled(req))
+        _direct_donor_alignment_reply(user_query)
+        or _direct_va_legislator_reply(user_query, premium=_premium_analyst_enabled(req))
         or _direct_va_finance_reply(user_query, premium=_premium_analyst_enabled(req))
         or _direct_spanberger_governor_overview_reply(user_query)
         or _direct_governor_eo_reply(user_query)
@@ -4569,7 +4697,8 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
         return StreamingResponse(_source_gen(), media_type="text/event-stream")
 
     direct_governor_reply = (
-        _direct_va_legislator_reply(user_query, premium=_premium_analyst_enabled(req))
+        _direct_donor_alignment_reply(user_query)
+        or _direct_va_legislator_reply(user_query, premium=_premium_analyst_enabled(req))
         or _direct_va_finance_reply(user_query, premium=_premium_analyst_enabled(req))
         or _direct_spanberger_governor_overview_reply(user_query)
         or _direct_governor_eo_reply(user_query)
