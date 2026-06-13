@@ -3254,10 +3254,10 @@ def _direct_va_finance_reply(user_query: str, premium: bool = False) -> str:
 
 
 _ALIGNMENT_INTENT = re.compile(
-    r"\b(vote[s]?\s+with\s+(his|her|their|the)?\s*donor|donor[\s-]*align|"
+    r"\b(vote[s]?\s+with\s+(his|her|their|the)?\s*donors?|donor[\s-]*align|"
     r"alignment|follow\s+the\s+money|pay[\s-]*to[\s-]*vote|"
     r"vote[s]?\s+with\s+(his|her|their)?\s*funders?|"
-    r"funded.{1,20}vote|donor.{1,20}vote|vote.{1,20}donor)\b",
+    r"funded.{1,20}vote|donors?.{1,20}vote|vote.{1,20}donors?)\b",
     re.I,
 )
 

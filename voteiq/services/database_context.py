@@ -4396,9 +4396,13 @@ def build_database_context(query: str, max_chars: int = 22000, pro: bool = False
     if _ANALYSIS_TRIGGER.search(q) or _is_campaign_finance_query(q):
         _add_donor_analysis_context(blocks, q)
 
-    # Add comprehensive SQL table search as fallback for any unmatched keywords
-    # This ensures all SQL tables are searched before RAG context
-    _add_generic_sql_search_context(blocks, q, terms)
+    # Comprehensive all-table SQL scan — TRUE last-resort fallback.
+    # It dumps up to 45 raw rows and drowns the targeted analytical blocks
+    # above it. Only run it when the targeted builders found little or
+    # nothing, so a clean analytical answer is never buried in raw rows.
+    targeted_chars = sum(len(b) for b in blocks)
+    if targeted_chars < 1200:
+        _add_generic_sql_search_context(blocks, q, terms)
 
     context = "\n\n---\n\n".join(blocks)
     if len(context) > max_chars:
