@@ -4163,10 +4163,21 @@ def _add_donor_vote_alignment_context(blocks: list[str], query: str, terms: list
         if not _table_exists(conn, "donor_vote_alignment"):
             conn.close()
             return
-        cols = (
+        # The rebuilt table carries honest-framing columns (share of total +
+        # any larger non-industry source). They are absent until the seed is
+        # refreshed, so include them only when present.
+        have = {c[1] for c in conn.execute(
+            "PRAGMA table_info(donor_vote_alignment)"
+        ).fetchall()}
+        rich = {"top_sector_share", "nonindustry_dominant", "nonindustry_amt"} <= have
+        base = (
             "name, party, chamber, top_donor_sector, top_sector_amt, "
             "sector_yes_rate, other_yes_rate, alignment_delta, "
             "sector_vote_count, other_vote_count"
+        )
+        cols = base + (
+            ", top_sector_share, nonindustry_dominant, nonindustry_amt"
+            if rich else ""
         )
         rows: list = []
         if names:
@@ -4186,21 +4197,32 @@ def _add_donor_vote_alignment_context(blocks: list[str], query: str, terms: list
             return
         lines = [
             "[Database Context - donor_vote_alignment]",
-            "How often a legislator votes YES on bills touching their TOP donor sector "
-            "vs. their YES rate on all other bills. alignment_delta = sector_rate - "
-            "other_rate (positive = votes more favorably on bills affecting their "
-            "biggest funders). Correlation, not proof of causation:",
+            "How often a legislator votes YES on bills touching their largest INDUSTRY "
+            "donor sector vs. their YES rate on all other bills. alignment_delta = "
+            "sector_rate - other_rate (positive = votes more favorably on bills "
+            "affecting their biggest industry funders). Small point gaps on few votes "
+            "are not significant. Correlation, not proof of causation:",
         ]
         for r in rows:
-            name, party, chamber, sector, amt, syr, oyr, delta, sc, oc = r
+            name, party, chamber, sector, amt, syr, oyr, delta, sc, oc = r[:10]
             amt_s = f"${amt:,.0f}" if amt is not None else "n/a"
             syr_s = f"{syr:.0f}%" if syr is not None else "n/a"
             oyr_s = f"{oyr:.0f}%" if oyr is not None else "n/a"
             delta_s = f"{delta:+.1f}" if delta is not None else "n/a"
+            extra = ""
+            if rich:
+                share, nonind, nonind_amt = r[10], r[11], r[12]
+                if share is not None:
+                    amt_s += f" / {share:.0f}% of total raised"
+                if nonind:
+                    extra = (
+                        f" Their single largest source is {nonind} "
+                        f"(${(nonind_amt or 0):,.0f}, non-industry party/leadership money)."
+                    )
             lines.append(
-                f"• {name} ({party}, {chamber}) — top donor sector: {sector} "
+                f"• {name} ({party}, {chamber}) — top industry donor sector: {sector} "
                 f"({amt_s}). YES on {sector} bills: {syr_s} ({sc} votes) vs. {oyr_s} on "
-                f"others ({oc} votes). Alignment delta: {delta_s} pts."
+                f"others ({oc} votes). Alignment delta: {delta_s} pts.{extra}"
             )
         blocks.append("\n".join(lines))
     except Exception:

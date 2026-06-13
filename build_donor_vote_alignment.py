@@ -130,27 +130,70 @@ CFS_TO_BILL_SECTOR: dict[str, str | None] = {
 # The set of bill sectors actually produced by SECTOR_KEYWORDS
 _BILL_SECTORS = set(SECTOR_KEYWORDS.keys())
 
+# Non-industry CFS buckets — party/leadership/individual money that isn't
+# tied to a legislative sector. Used to surface the real largest source.
+_NON_INDUSTRY = {"Ideological", "Individual/Other", "Retail"}
 
-def _resolve_donor_sector(top_sector: str, by_sector_json: str) -> str | None:
+
+def _resolve_donor_sector(
+    top_sector: str, by_sector_json: str, total_raised: float | None = None
+) -> dict | None:
     """
-    Map a CFS top_sector to a bill sector name.
-    If the top sector maps to None (Ideological, etc.), walk by_sector_json
-    to find the first sector that has a valid mapping.
+    Map a CFS top_sector to a bill sector, walking the donor breakdown so an
+    unmappable #1 (Ideological, etc.) falls through to the first industry
+    sector. Returns the bill sector AND its real dollars/share — never the
+    largest-sector amount — plus any larger non-industry source.
+
+    Returns dict {bill_sector, cfs_sector, amount, share, total,
+                  nonindustry_dominant, nonindustry_amt} or None.
     """
-    mapped = CFS_TO_BILL_SECTOR.get(top_sector)
-    if mapped is not None:
-        return mapped
-    # top_sector is unmappable — try next sectors from the donor breakdown
     try:
         sectors = json.loads(by_sector_json or "[]")
     except Exception:
-        return None
+        sectors = []
+
+    total = total_raised or sum((e.get("total") or 0) for e in sectors) or 0.0
+
+    # First mappable sector in amount-desc order (top_sector is sectors[0])
+    # decides the label; the amount sums ALL CFS sectors under that bill
+    # sector (e.g. Wine & Spirits + Tobacco both feed "Alcohol/Gambling").
+    bill_sector = cfs_sector = None
     for entry in sectors:
-        sec = entry.get("sector", "")
-        candidate = CFS_TO_BILL_SECTOR.get(sec)
-        if candidate is not None:
-            return candidate
-    return None
+        mapped = CFS_TO_BILL_SECTOR.get(entry.get("sector", ""))
+        if mapped is not None:
+            bill_sector, cfs_sector = mapped, entry.get("sector", "")
+            break
+    if bill_sector is None:
+        mapped = CFS_TO_BILL_SECTOR.get(top_sector)
+        if mapped is None:
+            return None
+        bill_sector, cfs_sector = mapped, top_sector
+
+    amount = sum(
+        (e.get("total") or 0.0)
+        for e in sectors
+        if CFS_TO_BILL_SECTOR.get(e.get("sector", "")) == bill_sector
+    )
+
+    # Largest non-industry bucket, only reported if it outweighs the industry.
+    nonind_name, nonind_amt = None, 0.0
+    for entry in sectors:
+        if entry.get("sector") in _NON_INDUSTRY:
+            a = entry.get("total") or 0.0
+            if a > nonind_amt:
+                nonind_amt, nonind_name = a, entry.get("sector")
+    if nonind_amt <= amount:
+        nonind_name, nonind_amt = None, 0.0
+
+    return {
+        "bill_sector": bill_sector,
+        "cfs_sector":  cfs_sector,
+        "amount":      amount,
+        "share":       (amount / total * 100) if total else None,
+        "total":       total,
+        "nonindustry_dominant": nonind_name,
+        "nonindustry_amt":      nonind_amt,
+    }
 
 
 # ── Name normalisation ────────────────────────────────────────────────────────
@@ -186,7 +229,11 @@ CREATE TABLE IF NOT EXISTS donor_vote_alignment (
     party            TEXT,
     chamber          TEXT,
     top_donor_sector TEXT,
-    top_sector_amt   REAL,
+    top_sector_amt   REAL,   -- $ from the labeled INDUSTRY sector (not largest sector)
+    top_sector_share REAL,   -- top_sector_amt as % of total_raised
+    total_raised     REAL,
+    nonindustry_dominant TEXT, -- larger non-industry source (Ideological/etc), if any
+    nonindustry_amt  REAL,
     sector_yes_rate  REAL,   -- % YES on bills in top-donor sector
     other_yes_rate   REAL,   -- % YES on all other sectored bills
     alignment_delta  REAL,   -- sector_yes_rate - other_yes_rate
@@ -200,9 +247,22 @@ CREATE INDEX IF NOT EXISTS idx_dva_sector ON donor_vote_alignment(top_donor_sect
 CREATE INDEX IF NOT EXISTS idx_dva_delta  ON donor_vote_alignment(alignment_delta);
 """
 
+# Additive columns so an existing table picks up the corrected fields.
+_ADDED_COLUMNS = [
+    ("top_sector_share",     "REAL"),
+    ("total_raised",         "REAL"),
+    ("nonindustry_dominant", "TEXT"),
+    ("nonindustry_amt",      "REAL"),
+]
+
 
 def _ensure_table(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA)
+    for col, decl in _ADDED_COLUMNS:
+        try:
+            conn.execute(f"ALTER TABLE donor_vote_alignment ADD COLUMN {col} {decl}")
+        except sqlite3.OperationalError:
+            pass  # column already exists
     conn.commit()
 
 
@@ -285,17 +345,12 @@ def _load_legislator_donor_sectors(
     for leg_id, name, party, chamber, top_sector, total_raised, bsj in rows:
         if not name or not top_sector:
             continue
-        # Map CFS sector name → bill sector name (fall back through by_sector_json)
-        bill_sector = _resolve_donor_sector(top_sector, bsj or "[]")
-        if bill_sector is None:
+        # Resolve CFS sector → bill sector with its REAL dollars/share
+        resolved = _resolve_donor_sector(top_sector, bsj or "[]", total_raised)
+        if resolved is None:
             continue  # no mappable sector — skip this legislator
-        try:
-            sectors = json.loads(bsj)
-            top_amt = sectors[0]["total"] if sectors else 0.0
-        except Exception:
-            top_amt = 0.0
         key = _norm_name(name)
-        result[key] = (leg_id, name, party, chamber, bill_sector, top_amt)
+        result[key] = (leg_id, name, party, chamber, resolved)
     return result
 
 
@@ -416,7 +471,8 @@ def main(sessions: list[str]) -> None:
             skipped_no_match += 1
             continue
 
-        leg_id, name, party, chamber, top_sector, top_amt = donor_map[norm]
+        leg_id, name, party, chamber, resolved = donor_map[norm]
+        top_sector = resolved["bill_sector"]
 
         result = _compute_alignment(voter_name, top_sector, contested, bill_sectors)
         if result is None:
@@ -427,17 +483,22 @@ def main(sessions: list[str]) -> None:
             """
             INSERT INTO donor_vote_alignment
                 (legislator_id, name, party, chamber,
-                 top_donor_sector, top_sector_amt,
+                 top_donor_sector, top_sector_amt, top_sector_share, total_raised,
+                 nonindustry_dominant, nonindustry_amt,
                  sector_yes_rate, other_yes_rate, alignment_delta,
                  sector_vote_count, other_vote_count,
                  by_sector_json, updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(legislator_id) DO UPDATE SET
                 name             = excluded.name,
                 party            = excluded.party,
                 chamber          = excluded.chamber,
                 top_donor_sector = excluded.top_donor_sector,
                 top_sector_amt   = excluded.top_sector_amt,
+                top_sector_share = excluded.top_sector_share,
+                total_raised     = excluded.total_raised,
+                nonindustry_dominant = excluded.nonindustry_dominant,
+                nonindustry_amt  = excluded.nonindustry_amt,
                 sector_yes_rate  = excluded.sector_yes_rate,
                 other_yes_rate   = excluded.other_yes_rate,
                 alignment_delta  = excluded.alignment_delta,
@@ -448,7 +509,8 @@ def main(sessions: list[str]) -> None:
             """,
             (
                 leg_id, name, party, chamber,
-                top_sector, top_amt,
+                top_sector, resolved["amount"], resolved["share"], resolved["total"],
+                resolved["nonindustry_dominant"], resolved["nonindustry_amt"],
                 result["sector_yes_rate"],
                 result["other_yes_rate"],
                 result["alignment_delta"],
