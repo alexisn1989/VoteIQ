@@ -208,6 +208,12 @@ def main():
         "    motion     TEXT,",
         "    title      TEXT",
         ");",
+        # Indexes for the legislator-profile voting-similarity self-join and the
+        # per-legislator recent-vote lookup. Without these SQLite builds an
+        # AUTOMATIC index on every request, which stalls the profile page on
+        # memory-constrained hosts (Render).
+        "CREATE INDEX IF NOT EXISTS idx_lrv_voter_session ON va_legislator_recent_votes(voter_name, session);",
+        "CREATE INDEX IF NOT EXISTS idx_lrv_bill_session  ON va_legislator_recent_votes(bill_id, session);",
         f"DELETE FROM va_legislator_recent_votes WHERE session = '{SESSION}';",
         "",
     ]

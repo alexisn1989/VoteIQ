@@ -14,9 +14,11 @@ STEPS: list[tuple[str, list[str], int]] = [
     ("ingest_openstates.py",           [],                          300),
     ("ingest_bill.py",                 [],                          300),
     ("ingest_governor_actions.py",     [],                          120),  # must run after openstates
+    ("ingest_governor_eos.py",         [],                          180),
     ("ingest_va_polls.py",             ["--source", "fivethirtyeight",
                                         "--source", "votehub",
                                         "--source", "news"],        180),
+    ("ingest_va_news.py",              ["--limit", "50"],           300),
     ("ingest_vpap.py",                 [],                          180),
     ("ingest_va_finance.py",           [],                          300),
     ("ingest_committees.py",           [],                          120),
@@ -43,7 +45,14 @@ OPTIONAL: list[tuple[str, list[str], int, str]] = [
                                                               1800, "VOTEIQ_BUILD_LEGISLATIVE_INTELLIGENCE"),
     ("ingest_congress.py",        ["--congress", "119"],       600,  "CONGRESS_API_KEY"),
     ("ingest_congress_votes.py",  ["--house-limit", "300"],    600,  "CONGRESS_API_KEY"),
+    # Floor statements — runs after congress votes so member table is fresh
+    ("ingest_floor_statements.py", ["--fetch-text"],           900,  "CONGRESS_API_KEY"),
     ("ingest_fec_pacs.py",        [],                          1800, "FEC_API_KEY"),
+    # FEC independent expenditures (Schedule E) — current + prior cycle
+    ("ingest_fec_schedule_e.py",  ["--cycle", "2026"],         600,  "FEC_API_KEY"),
+    ("ingest_fec_schedule_e.py",  ["--cycle", "2025"],         600,  "FEC_API_KEY"),
+    # Rebuild donor-vote alignment after any finance update
+    ("build_donor_vote_alignment.py", ["--sessions", "2025", "2026"], 600, "VOTEIQ_BUILD_STATE_FINANCE"),
 ]
 
 

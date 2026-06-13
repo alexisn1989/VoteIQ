@@ -40,6 +40,59 @@ def ensure_schema() -> None:
     conn.close()
 
 
+# Performance indexes that must exist for hot read paths but may be missing
+# on deployments whose polls.db predates the index (the seed only adds them on
+# a fresh rebuild). Each is cheap to create on its small table. Creating an
+# index that already exists is a no-op (IF NOT EXISTS), so this is safe to run
+# on every startup. Format: (index_name, table_name, create_sql).
+_PERFORMANCE_INDEXES = [
+    (
+        "idx_lrv_voter_session",
+        "va_legislator_recent_votes",
+        "CREATE INDEX IF NOT EXISTS idx_lrv_voter_session "
+        "ON va_legislator_recent_votes(voter_name, session)",
+    ),
+    (
+        "idx_lrv_bill_session",
+        "va_legislator_recent_votes",
+        "CREATE INDEX IF NOT EXISTS idx_lrv_bill_session "
+        "ON va_legislator_recent_votes(bill_id, session)",
+    ),
+]
+
+
+def ensure_performance_indexes() -> None:
+    """Create missing hot-path indexes. Safe + cheap to call at startup.
+
+    Without idx_lrv_* the legislator-profile voting-similarity self-join makes
+    SQLite build an AUTOMATIC index on every request, which stalls the profile
+    page on memory-constrained hosts (Render). Each CREATE is a no-op when the
+    index already exists, so this never does real work on a healthy DB.
+    """
+    try:
+        conn = sqlite3.connect(_db_path(), timeout=15)
+    except Exception:
+        return
+    try:
+        existing_tables = {
+            r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+        for _idx_name, table_name, sql in _PERFORMANCE_INDEXES:
+            if table_name not in existing_tables:
+                continue  # table not built yet on this deployment — skip
+            try:
+                conn.execute(sql)
+            except Exception:
+                pass
+        conn.commit()
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
 def stamp(
     table_name: str,
     row_count: int | None = None,

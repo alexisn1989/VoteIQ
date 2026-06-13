@@ -1,6 +1,6 @@
 import runtime_seed  # noqa: F401 — seeds polls.db from POLLS_DB_SEED_URL; must run before anything opens the db
 from contextlib import asynccontextmanager
-from voteiq.services.data_meta import ensure_schema as _ensure_data_meta, get_all as _get_data_meta
+from voteiq.services.data_meta import ensure_schema as _ensure_data_meta, get_all as _get_data_meta, ensure_performance_indexes as _ensure_performance_indexes
 from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Form, Query, Depends, Header
 from civic_analyst import run_analyst, lookup_member
 from voteiq.queries.timing import get_donation_timing, get_timing_summary
@@ -754,6 +754,10 @@ async def _startup_ingest() -> None:
         _ensure_data_meta()   # create __data_meta table if not present
     except Exception as _exc:
         print(f"[startup] _ensure_data_meta failed (non-fatal): {_exc}")
+    try:
+        _ensure_performance_indexes()   # hot-path indexes (legislator profile)
+    except Exception as _exc:
+        print(f"[startup] _ensure_performance_indexes failed (non-fatal): {_exc}")
     threading.Thread(target=_poll_ingest_background, daemon=True).start()
     threading.Thread(target=_run_fec_ingest_background, daemon=True).start()
     threading.Thread(target=_run_fec_2026_background, daemon=True).start()

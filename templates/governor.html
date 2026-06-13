@@ -127,6 +127,50 @@
     .leg-table thead th:nth-child(6),
     .leg-table td:nth-child(6) { display: none; }
   }
+
+  /* ── Chat Panel ───────────────────────────────────────────────────────────── */
+  .cp-overlay { position: fixed; inset: 0; background: rgba(13,27,42,0.42); z-index: 199; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+  .cp-overlay.open { opacity: 1; pointer-events: auto; }
+  .cp-panel { position: fixed; top: 0; right: 0; width: 440px; max-width: 100vw; height: 100vh; background: white; border-left: 3px double var(--navy); display: flex; flex-direction: column; z-index: 200; transform: translateX(100%); transition: transform 0.28s cubic-bezier(0.4,0,0.2,1); box-shadow: -6px 0 32px rgba(0,0,0,0.14); }
+  .cp-panel.open { transform: translateX(0); }
+  .cp-head { background: var(--navy); color: white; padding: 16px 18px 14px; flex-shrink: 0; }
+  .cp-eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--mid); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+  .cp-close { background: none; border: none; color: var(--mid); cursor: pointer; font-size: 1.1rem; line-height: 1; padding: 2px 6px; transition: color 0.15s; }
+  .cp-close:hover { color: white; }
+  .cp-title { font-family: 'Playfair Display', serif; font-size: 0.95rem; font-weight: 700; line-height: 1.35; color: white; margin-bottom: 8px; }
+  .cp-meta { font-size: 0.74rem; color: #9ab; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .cp-abadge { display: inline-block; font-family: 'Barlow Condensed', sans-serif; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 7px; border: 1.5px solid; }
+  .cp-abadge.signed  { color: #6de0a0; border-color: #6de0a0; }
+  .cp-abadge.vetoed  { color: #ff9a9a; border-color: #ff9a9a; }
+  .cp-abadge.amended { color: #ffd080; border-color: #ffd080; }
+  .cp-abadge.eo      { color: #9ab;    border-color: #9ab; }
+  .cp-src { font-size: 0.68rem; color: #7ab; text-decoration: none; border-bottom: 1px dotted #7ab; white-space: nowrap; }
+  .cp-src:hover { color: white; border-bottom-color: white; }
+  .cp-msgs { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+  .cp-msg { display: flex; gap: 8px; align-items: flex-start; }
+  .cp-msg.cp-user { flex-direction: row-reverse; }
+  .cp-av { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Barlow Condensed', sans-serif; font-size: 0.56rem; font-weight: 700; flex-shrink: 0; }
+  .cp-msg.cp-bot .cp-av { background: var(--navy); color: white; }
+  .cp-msg.cp-user .cp-av { background: var(--red); color: white; }
+  .cp-bubble { padding: 9px 12px; font-size: 0.82rem; line-height: 1.58; max-width: calc(100% - 38px); border-radius: 3px; }
+  .cp-msg.cp-bot .cp-bubble { background: var(--light); color: var(--navy); border: 1px solid var(--mid); }
+  .cp-msg.cp-user .cp-bubble { background: var(--navy); color: white; }
+  .cp-bubble p { margin: 0 0 7px; } .cp-bubble p:last-child { margin-bottom: 0; }
+  .cp-bubble ul, .cp-bubble ol { margin: 5px 0 7px 16px; }
+  .cp-bubble strong { font-weight: 600; }
+  .cp-bubble h3, .cp-bubble h4 { font-size: 0.86rem; font-weight: 700; margin: 8px 0 4px; }
+  .cp-typing-dots { display: flex; gap: 4px; align-items: center; padding: 9px 12px; }
+  .cp-typing-dots span { width: 5px; height: 5px; background: var(--muted); border-radius: 50%; animation: cpbounce 1.2s infinite; }
+  .cp-typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .cp-typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes cpbounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
+  .cp-input-row { padding: 10px 12px; border-top: 1px solid var(--mid); display: flex; gap: 8px; align-items: flex-end; flex-shrink: 0; background: white; }
+  .cp-input { flex: 1; font-family: 'Barlow', sans-serif; font-size: 0.82rem; padding: 8px 11px; border: 2px solid var(--mid); color: var(--navy); outline: none; resize: none; min-height: 38px; max-height: 120px; overflow-y: auto; transition: border-color 0.18s; }
+  .cp-input:focus { border-color: var(--navy); }
+  .cp-send { font-family: 'Barlow Condensed', sans-serif; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 0 14px; height: 38px; background: var(--navy); color: white; border: none; cursor: pointer; transition: background 0.18s; flex-shrink: 0; }
+  .cp-send:hover:not(:disabled) { background: var(--red); }
+  .cp-send:disabled { background: var(--mid); cursor: default; }
+  @media (max-width: 640px) { .cp-panel { width: 100vw; } }
 </style>
 </head>
 <body>
@@ -287,7 +331,7 @@
       return;
     }
 
-    grid.innerHTML = EOS.map(eo => {
+    grid.innerHTML = EOS.map((eo, idx) => {
       let topics = [];
       try { topics = JSON.parse(eo.policy_topics || '[]'); } catch (_) {}
       const topicHtml = topics.slice(0, 4)
@@ -300,11 +344,7 @@
       // Clean up order number: remove trailing "(2026)" or "(YYYY)"
       const num = (eo.order_number || '').replace(/\s*\(\d{4}\)\s*$/, '').trim();
 
-      const clickAttr = eo.source_url
-        ? ` onclick="window.open('${esc(eo.source_url)}','_blank')"`
-        : '';
-
-      return `<div class="eo-card"${clickAttr}>
+      return `<div class="eo-card" onclick="openEOChat(${idx})" title="Click to ask about this order">
         <div class="eo-card-header">
           <span class="eo-num">EO&thinsp;${esc(num)}</span>
           <span class="eo-date">${fmtDate(eo.signed_date)}</span>
@@ -355,10 +395,9 @@
     }
 
     tbody.innerHTML = rows.map(r => {
-      const pc    = partyClass(r.sponsor_party);
-      const click = r.source_url
-        ? ` onclick="window.open('${esc(r.source_url)}','_blank')"`
-        : '';
+      const pc       = partyClass(r.sponsor_party);
+      const billIdx  = BILLS.indexOf(r);
+      const click    = ` onclick="openBillChat(${billIdx})" title="Click to ask about this bill"`;
       const title = (r.title || '');
       const titleDisplay = title.length > 110 ? title.slice(0, 110) + '…' : title;
 
@@ -415,6 +454,255 @@
   buildStats();
   buildEOs();
   render();
+})();
+</script>
+
+<!-- ── Chat panel ──────────────────────────────────────────────────────────── -->
+<div class="cp-overlay" id="cp-overlay"></div>
+<div class="cp-panel" id="cp-panel">
+  <div class="cp-head">
+    <div class="cp-eyebrow">
+      <span id="cp-type-label">Detail</span>
+      <button class="cp-close" id="cp-close" title="Close">&#10005;</button>
+    </div>
+    <div class="cp-title" id="cp-title">—</div>
+    <div class="cp-meta" id="cp-meta"></div>
+  </div>
+  <div class="cp-msgs" id="cp-msgs"></div>
+  <div class="cp-input-row">
+    <textarea class="cp-input" id="cp-input" rows="1" placeholder="Ask a follow-up question…"></textarea>
+    <button class="cp-send" id="cp-send">Ask</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  const panel   = document.getElementById('cp-panel');
+  const overlay = document.getElementById('cp-overlay');
+  const msgList = document.getElementById('cp-msgs');
+  const cpInput = document.getElementById('cp-input');
+  const cpSend  = document.getElementById('cp-send');
+  const cpTitle = document.getElementById('cp-title');
+  const cpMeta  = document.getElementById('cp-meta');
+  const cpType  = document.getElementById('cp-type-label');
+
+  let history = [];
+  let busy    = false;
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function hesc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function fmtD(d) {
+    if (!d) return '—';
+    const p = d.split('-');
+    if (p.length < 3) return d;
+    const M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${M[+p[1]-1]} ${+p[2]}, ${p[0]}`;
+  }
+
+  function dot() { return '<span style="color:#456;margin:0 2px">·</span>'; }
+
+  // ── Panel open / close ─────────────────────────────────────────────────────
+  function openPanel() {
+    panel.classList.add('open');
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => cpInput.focus(), 300);
+  }
+
+  function closePanel() {
+    panel.classList.remove('open');
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+    history = [];
+    msgList.innerHTML = '';
+  }
+
+  document.getElementById('cp-close').addEventListener('click', closePanel);
+  overlay.addEventListener('click', closePanel);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && panel.classList.contains('open')) closePanel();
+  });
+
+  // ── DOM helpers ────────────────────────────────────────────────────────────
+  function appendTyping() {
+    const wrap = document.createElement('div');
+    wrap.className = 'cp-msg cp-bot';
+    wrap.id = 'cp-typing-row';
+    wrap.innerHTML = '<div class="cp-av">IQ</div><div class="cp-bubble cp-typing-dots"><span></span><span></span><span></span></div>';
+    msgList.appendChild(wrap);
+    msgList.scrollTop = msgList.scrollHeight;
+  }
+
+  function removeTyping() {
+    const t = document.getElementById('cp-typing-row');
+    if (t) t.remove();
+  }
+
+  function appendUserBubble(text) {
+    const wrap = document.createElement('div');
+    wrap.className = 'cp-msg cp-user';
+    wrap.innerHTML = `<div class="cp-av">You</div><div class="cp-bubble">${hesc(text)}</div>`;
+    msgList.appendChild(wrap);
+    msgList.scrollTop = msgList.scrollHeight;
+  }
+
+  function appendBotBubble() {
+    const wrap = document.createElement('div');
+    wrap.className = 'cp-msg cp-bot';
+    const bubble = document.createElement('div');
+    bubble.className = 'cp-bubble';
+    wrap.innerHTML = '<div class="cp-av">IQ</div>';
+    wrap.appendChild(bubble);
+    msgList.appendChild(wrap);
+    msgList.scrollTop = msgList.scrollHeight;
+    return bubble;
+  }
+
+  // ── Stream from API ────────────────────────────────────────────────────────
+  async function sendMessage(text, silent) {
+    if (busy) return;
+    busy = true;
+    cpSend.disabled = true;
+
+    if (!silent) appendUserBubble(text);
+    history.push({ role: 'user', content: text });
+    appendTyping();
+
+    let fullReply   = '';
+    let streamBubble = null;
+
+    try {
+      const res = await fetch('/api/bills-chat-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: history, voice: 'standard' }),
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop();
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const payload = line.slice(6).trim();
+          if (payload === '[DONE]') break;
+          try {
+            const obj = JSON.parse(payload);
+            if (obj.error) {
+              removeTyping();
+              const b = appendBotBubble();
+              b.innerHTML = '<em>Sorry, something went wrong — please try again.</em>';
+              busy = false; cpSend.disabled = false; return;
+            }
+            if (obj.token !== undefined) {
+              fullReply += obj.token;
+              if (!streamBubble) { removeTyping(); streamBubble = appendBotBubble(); }
+              try {
+                streamBubble.innerHTML = window.marked ? marked.parse(fullReply) : hesc(fullReply);
+              } catch (_) { streamBubble.textContent = fullReply; }
+              msgList.scrollTop = msgList.scrollHeight;
+            }
+          } catch (_) {}
+        }
+      }
+    } catch (_) {
+      removeTyping();
+      const b = appendBotBubble();
+      b.innerHTML = '<em>Connection error — please try again.</em>';
+    }
+
+    if (fullReply) history.push({ role: 'assistant', content: fullReply });
+    if (!streamBubble) removeTyping();
+    busy = false;
+    cpSend.disabled = false;
+    cpInput.focus();
+  }
+
+  // ── Input wiring ───────────────────────────────────────────────────────────
+  cpSend.addEventListener('click', () => {
+    const text = cpInput.value.trim();
+    if (!text || busy) return;
+    cpInput.value = '';
+    cpInput.style.height = 'auto';
+    sendMessage(text, false);
+  });
+
+  cpInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); cpSend.click(); }
+  });
+
+  cpInput.addEventListener('input', () => {
+    cpInput.style.height = 'auto';
+    cpInput.style.height = Math.min(cpInput.scrollHeight, 120) + 'px';
+  });
+
+  // ── Public entry points ────────────────────────────────────────────────────
+  window.openBillChat = function (idx) {
+    const bill = (window._GOV_DATA || {}).bills && window._GOV_DATA.bills[idx];
+    if (!bill) return;
+
+    history = [];
+    msgList.innerHTML = '';
+    cpType.textContent = 'Bill Detail';
+    cpTitle.textContent = bill.title || bill.bill_number || '—';
+
+    const ak  = bill.action_key || '';
+    const cls = ['signed','vetoed','amended'].includes(ak) ? ak : 'other';
+    const parts = [];
+    if (bill.bill_number)  parts.push(`<strong style="color:white">${hesc(bill.bill_number)}</strong>`);
+    if (ak)                parts.push(`<span class="cp-abadge ${cls}">${hesc(bill.action_label || ak)}</span>`);
+    if (bill.action_date)  parts.push(fmtD(bill.action_date));
+    if (bill.sponsor_name) parts.push(hesc(bill.sponsor_name));
+    if (bill.source_url)   parts.push(`<a class="cp-src" href="${hesc(bill.source_url)}" target="_blank" rel="noopener">Official source ↗</a>`);
+    cpMeta.innerHTML = parts.join(dot());
+
+    openPanel();
+
+    const action  = bill.action_label || bill.action_key || 'acted on';
+    const sponsor = bill.sponsor_name ? ` Sponsored by ${bill.sponsor_name}.` : '';
+    sendMessage(
+      `Tell me about Virginia ${bill.bill_number}: ${bill.title}. Governor Spanberger ${action} this bill on ${fmtD(bill.action_date)}.${sponsor}`,
+      true
+    );
+  };
+
+  window.openEOChat = function (idx) {
+    const eo = (window._GOV_DATA || {}).executive_orders && window._GOV_DATA.executive_orders[idx];
+    if (!eo) return;
+
+    history = [];
+    msgList.innerHTML = '';
+    cpType.textContent = 'Executive Order';
+    const num = (eo.order_number || '').replace(/\s*\(\d{4}\)\s*$/, '').trim();
+    cpTitle.textContent = eo.title || (`EO ${num}`) || '—';
+
+    const parts = [];
+    if (num)            parts.push(`<span class="cp-abadge eo">EO ${hesc(num)}</span>`);
+    if (eo.signed_date) parts.push(fmtD(eo.signed_date));
+    if (eo.source_url)  parts.push(`<a class="cp-src" href="${hesc(eo.source_url)}" target="_blank" rel="noopener">Official source ↗</a>`);
+    cpMeta.innerHTML = parts.join(dot());
+
+    openPanel();
+
+    const summary = (eo.summary || '').slice(0, 280);
+    sendMessage(
+      `Tell me about Virginia Executive Order ${num}: ${eo.title}, signed by Governor Spanberger on ${fmtD(eo.signed_date)}.${summary ? ' ' + summary : ''}`,
+      true
+    );
+  };
 })();
 </script>
 

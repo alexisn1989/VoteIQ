@@ -2560,38 +2560,100 @@ def _direct_governor_correlation_reply(user_query: str) -> str:
         })
 
     _ACTION_LABEL = {
-        "signed": "Signed into law",
+        "signed": "Signed",
         "vetoed": "Vetoed",
-        "amended": "Amended / returned",
+        "amended": "Amended/returned",
     }
 
+    # ── Baseline rates across all bills ──────────────────────────────────────
+    total_all = sum(action_counts.values())
+    base: dict[str, float] = {
+        a: action_counts.get(a, 0) / total_all * 100 if total_all else 0.0
+        for a in ("signed", "vetoed", "amended")
+    }
+    cov_pct = matched_bills * 100 // total_bills if total_bills else 0
+
+    # ── Pivot sectors_by_action → sector_summary ─────────────────────────────
+    # sectors_by_action: {action: {sector: count}}
+    # sector_summary:    {sector: {action: count, "total": n}}
+    sector_summary: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    for action, sc in sectors_by_action.items():
+        for sector, cnt in sc.items():
+            sector_summary[sector][action] += cnt
+            sector_summary[sector]["total"] += cnt
+    # Sort by total bills descending
+    top_sectors = sorted(sector_summary.items(), key=lambda x: x[1]["total"], reverse=True)[:8]
+
+    # ── Build output ──────────────────────────────────────────────────────────
     lines = [
-        "## Governor Spanberger — Campaign Donor Sector Correlation (2026 Session)",
+        "## Governor Spanberger — Bill Sponsor Donor Sectors by Governor Action (2026 Session)",
         "",
-        "**Bill outcome totals:**",
+        "**Analysis Type:** Descriptive Correlation &nbsp;|&nbsp; "
+        "**Causal Evidence:** None &nbsp;|&nbsp; "
+        "**Inference Level:** Low",
+        "",
+        "---",
+        "",
+        "### How This Analysis Works",
+        "For each bill that Governor Spanberger acted on during the 2026 session, VoteIQ:",
+        "1. Identifies the bill's primary sponsor.",
+        "2. Looks up that **sponsor's** largest donor sector from Virginia SBE campaign-finance records.",
+        "3. Groups the governor's action (signed / vetoed / amended) under that sector label.",
+        "",
+        "> **Important:** The sector label belongs to the **bill sponsor's fundraising profile**, "
+        "not the bill's subject matter. A bill counted under \"Wine & Spirits\" may address "
+        "education, transportation, health care, elections, or any other policy area. "
+        "These figures describe sponsor fundraising profiles only and cannot be read as evidence "
+        "that any industry was favored or disfavored by the governor.",
+        "",
+        "---",
+        "",
+        "### Session Totals & Baseline Rates",
+        f"- Signed: {action_counts.get('signed', 0):,} bills ({base['signed']:.1f}%)",
+        f"- Vetoed: {action_counts.get('vetoed', 0):,} bills ({base['vetoed']:.1f}%)",
+        f"- Amended/returned: {action_counts.get('amended', 0):,} bills ({base['amended']:.1f}%)",
+        f"- **Total: {total_all:,} bills**",
+        "",
+        f"**Finance coverage:** {matched_bills:,} of {total_bills:,} sponsor records ({cov_pct}%) "
+        "matched to Virginia SBE campaign-finance data.",
+        "",
+        "---",
+        "",
+        "### Bill Sponsor Donor Sectors by Governor Action",
+        "*(Sponsors with matched finance records only. Sector = sponsor's largest donor sector, "
+        "not the bill's subject matter. Rates shown against session baseline in parentheses.)*",
+        "",
     ]
-    for action, label in _ACTION_LABEL.items():
-        cnt = action_counts.get(action, 0)
-        if cnt:
-            lines.append(f"- {label}: {cnt:,} bills")
+
+    for sector, counts in top_sectors:
+        total_s  = counts["total"]
+        signed_s = counts.get("signed", 0)
+        vetoed_s = counts.get("vetoed", 0)
+        amended_s = counts.get("amended", 0)
+        signed_rate  = signed_s  / total_s * 100 if total_s else 0.0
+        vetoed_rate  = vetoed_s  / total_s * 100 if total_s else 0.0
+        amended_rate = amended_s / total_s * 100 if total_s else 0.0
+
+        def _delta(rate: float, base_rate: float) -> str:
+            d = rate - base_rate
+            return f" ▲+{d:.1f}pp" if d >= 2 else (f" ▼{d:.1f}pp" if d <= -2 else "")
+
+        lines += [
+            f"**{sector}** — {total_s} bill{'s' if total_s != 1 else ''} "
+            f"(sponsors with this top donor sector)",
+            f"- Signed: {signed_s} ({signed_rate:.1f}%{_delta(signed_rate, base['signed'])} vs baseline)",
+            f"- Vetoed: {vetoed_s} ({vetoed_rate:.1f}%{_delta(vetoed_rate, base['vetoed'])} vs baseline)",
+            f"- Amended/returned: {amended_s} ({amended_rate:.1f}%{_delta(amended_rate, base['amended'])} vs baseline)",
+            "",
+        ]
 
     lines += [
+        "---",
         "",
-        f"**Finance data coverage:** {matched_bills:,} of {total_bills:,} bills ({matched_bills*100//total_bills if total_bills else 0}%) "
-        f"matched to sponsor campaign-finance records.",
-        "",
-        "**Top donor sectors by governor action** *(sponsors with matched finance records only)*:",
+        "### Top Bill Sponsors by Governor Action",
+        "*(Sponsor's largest donor sector shown in brackets — sector reflects their fundraising profile, "
+        "not the bill content.)*",
     ]
-
-    for action, label in _ACTION_LABEL.items():
-        sector_counts = sectors_by_action.get(action, {})
-        if not sector_counts:
-            continue
-        lines.append(f"\n*{label}:*")
-        for sector, cnt in sorted(sector_counts.items(), key=lambda x: x[1], reverse=True)[:5]:
-            lines.append(f"- {sector}: {cnt} bill{'s' if cnt != 1 else ''}")
-
-    lines += ["", "**Top bill sponsors by action:**"]
     for action, label in _ACTION_LABEL.items():
         rows = sponsors_by_action.get(action, [])
         if not rows:
@@ -2599,7 +2661,7 @@ def _direct_governor_correlation_reply(user_query: str) -> str:
         lines.append(f"\n*{label} — top 5 sponsors:*")
         for r in rows[:5]:
             party = f" ({r['sponsor_party'][0]})" if r["sponsor_party"] else ""
-            sector_note = f", top sector: {r['top_sector']}" if r["top_sector"] else ""
+            sector_note = f" [donor sector: {r['top_sector']}]" if r["top_sector"] else " [sector: unmatched]"
             raised_note = f", raised ${r['total_raised']:,.0f}" if r["total_raised"] else ""
             lines.append(
                 f"- {r['sponsor_name']}{party}: {r['bill_count']} bill{'s' if r['bill_count'] != 1 else ''}"
@@ -2609,9 +2671,18 @@ def _direct_governor_correlation_reply(user_query: str) -> str:
     lines += [
         "",
         "---",
-        "*Correlation does not imply causation. VoteIQ reports public-record overlaps only "
-        "and does not infer motive, reward, pressure, influence, or policy intent. "
-        "Finance data: Virginia SBE public records. Sources: Virginia LIS · VPAP.*",
+        "",
+        "### Data Limits",
+        "- Sponsor donor sectors are derived from campaign-finance records, not bill text or legislative intent.",
+        "- A sponsor's largest donor sector may be entirely unrelated to the content of any specific bill.",
+        "- Correlation does not imply causation.",
+        "- VoteIQ does not infer motive, influence, favoritism, corruption, reward, pressure, or policy intent.",
+        "- Governor actions may be driven by policy, legal, fiscal, constitutional, administrative, "
+        "or political considerations not captured in campaign-finance data.",
+        "- Unmatched sponsors (~" + str(100 - cov_pct) + "% of records) are excluded from sector tables.",
+        "",
+        "---",
+        "*Finance data: Virginia SBE public records. Sources: Virginia LIS · VPAP.*",
     ]
 
     return "\n".join(lines)
@@ -3282,6 +3353,52 @@ def _direct_donor_alignment_reply(user_query: str) -> str:
     name_candidates = _re.findall(
         r'\b([A-Z][a-zA-Z]+(?:\.?\s+[A-Z][a-zA-Z]+)+)\b', user_query
     )
+    if not name_candidates and os.path.exists(_POLLS_DB):
+        # All-lowercase query (e.g. "does aaron rouse vote with his donors"):
+        # extract non-stop tokens and resolve against the DB directly.
+        _stop = {
+            "does", "vote", "votes", "with", "his", "her", "their", "the", "did",
+            "donors", "donor", "money", "funds", "funded", "backers", "funder",
+            "funders", "follow", "pay", "voting", "record", "they", "align",
+            "aligned", "alignment", "always", "never", "often", "much", "how",
+        }
+        _tokens = [w for w in _re.findall(r'\b[a-z]{3,}\b', q) if w not in _stop]
+        if _tokens:
+            try:
+                _dc = sqlite3.connect(_POLLS_DB, timeout=15)
+                _dc.row_factory = sqlite3.Row
+                _matched = None
+                # Try every pair — stops at the first uniquely-resolving pair
+                for _i in range(len(_tokens)):
+                    for _j in range(_i + 1, len(_tokens)):
+                        _t1, _t2 = _tokens[_i], _tokens[_j]
+                        _rows = _dc.execute(
+                            "SELECT DISTINCT name FROM donor_vote_alignment "
+                            "WHERE lower(name) LIKE ? AND lower(name) LIKE ?",
+                            (f"%{_t1}%", f"%{_t2}%"),
+                        ).fetchall()
+                        if len(_rows) == 1:
+                            _matched = [_rows[0]["name"]]
+                            break
+                    if _matched:
+                        break
+                # Single long-token fallback
+                if not _matched:
+                    for _t in _tokens:
+                        if len(_t) >= 5:
+                            _rows = _dc.execute(
+                                "SELECT DISTINCT name FROM donor_vote_alignment "
+                                "WHERE lower(name) LIKE ?",
+                                (f"%{_t}%",),
+                            ).fetchall()
+                            if len(_rows) == 1:
+                                _matched = [_rows[0]["name"]]
+                                break
+                _dc.close()
+                if _matched:
+                    name_candidates = _matched
+            except Exception:
+                pass
     if not name_candidates:
         return ""
 

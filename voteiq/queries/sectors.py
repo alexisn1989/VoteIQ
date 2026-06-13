@@ -18,28 +18,130 @@ _POLLS_DB = os.path.join(_data_dir if os.path.isdir(_data_dir) else str(_BASE_DI
 
 
 def get_finance_summary_from_cache(name: str, source: str | None = None) -> dict | None:
-    """Exact-name row from the campaign_finance_summary cache table.
+    """Return a campaign_finance_summary row for the given name.
 
-    Exact (case-insensitive) match only — fuzzy surname matching caused
-    cross-legislator attribution elsewhere in the codebase, so a miss
-    returns None and the caller simply omits the finance block.
+    Tries in order:
+    1. Exact case-insensitive match.
+    2. First-token + last-token LIKE match (handles middle initials, e.g.
+       "Aaron Rouse" → "Aaron R. Rouse").  Only used when this resolves
+       to a single row, to avoid cross-legislator mis-attribution.
     """
     if not name:
         return None
+    _SELECT = (
+        "SELECT name, source, chamber, district, party, latest_cycle, "
+        "total_raised, top_sector, top_sector_pct, by_sector_json, "
+        "top_donors_json, overall_va_pct "
+        "FROM campaign_finance_summary"
+    )
     try:
         conn = sqlite3.connect(_POLLS_DB)
         conn.row_factory = sqlite3.Row
-        sql = ("SELECT name, source, chamber, district, party, latest_cycle, "
-               "total_raised, top_sector, top_sector_pct, by_sector_json, "
-               "top_donors_json, overall_va_pct "
-               "FROM campaign_finance_summary WHERE lower(name) = lower(?)")
-        params: list = [name]
-        if source:
-            sql += " AND source = ?"
-            params.append(source)
-        row = conn.execute(sql + " LIMIT 1", params).fetchone()
+
+        # 1. Exact match
+        src_clause = " AND source = ?" if source else ""
+        params: list = [name] + ([source] if source else [])
+        row = conn.execute(
+            f"{_SELECT} WHERE lower(name) = lower(?){src_clause} LIMIT 1",
+            params,
+        ).fetchone()
+        if row:
+            conn.close()
+            return dict(row)
+
+        # 2. First + last token fallback (handles middle initials)
+        tokens = name.strip().split()
+        if len(tokens) >= 2:
+            first, last = tokens[0].lower(), tokens[-1].lower()
+            src_clause2 = " AND source = ?" if source else ""
+            params2: list = [f"%{first}%", f"%{last}%"] + ([source] if source else [])
+            rows = conn.execute(
+                f"{_SELECT} WHERE lower(name) LIKE ? AND lower(name) LIKE ?{src_clause2}",
+                params2,
+            ).fetchall()
+            if len(rows) == 1:
+                conn.close()
+                return dict(rows[0])
+
         conn.close()
-        return dict(row) if row else None
+        return None
+    except Exception:
+        return None
+
+
+# FEC individual-contribution occupation labels that are NOT industry sectors.
+# When these appear as top_sector, the model should not treat them as industries.
+_FEC_OCCUPATION_LABELS = {
+    "retired", "self-employed", "self employed", "other", "homemaker",
+    "not employed", "unemployed", "student", "information requested",
+    "none", "n/a", "na",
+}
+
+
+def _top_industry_sector(top_sector: str | None, by_sector_json: str | None) -> tuple[str | None, bool]:
+    """Return (sector_label, is_occupation_label).
+
+    If top_sector is a FEC occupation label (not an industry), scan by_sector_json
+    for the highest-dollar real industry sector and return that instead, with
+    is_occupation_label=True so callers can add a clarifying note.
+    """
+    if not top_sector:
+        return None, False
+    if top_sector.lower().strip() not in _FEC_OCCUPATION_LABELS:
+        return top_sector, False
+    # top_sector is an occupation label — find the first real industry sector
+    try:
+        sectors = json.loads(by_sector_json or "[]")
+        for s in sectors:
+            label = (s.get("sector") or "").strip()
+            if label and label.lower() not in _FEC_OCCUPATION_LABELS:
+                return label, True
+    except Exception:
+        pass
+    return top_sector, True  # fallback: return original with flag
+
+
+def _get_donor_type_breakdown(candidate_name: str) -> dict | None:
+    """Query va_cf_schedule_a for individual vs org/PAC + small/large donor stats."""
+    if not candidate_name:
+        return None
+    parts = candidate_name.lower().split()
+    if len(parts) < 2:
+        return None
+    first, last = parts[0], parts[-1]
+    try:
+        conn = sqlite3.connect(_POLLS_DB, timeout=15)
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            """
+            SELECT
+                is_individual,
+                COUNT(*)                                                   AS txns,
+                ROUND(SUM(amount), 0)                                      AS total,
+                ROUND(AVG(amount), 0)                                      AS avg_amt,
+                SUM(CASE WHEN amount <  250 THEN 1 ELSE 0 END)            AS small_n,
+                ROUND(SUM(CASE WHEN amount <  250 THEN amount ELSE 0 END), 0) AS small_total,
+                SUM(CASE WHEN amount >= 10000 THEN 1 ELSE 0 END)           AS large_n,
+                ROUND(SUM(CASE WHEN amount >= 10000 THEN amount ELSE 0 END), 0) AS large_total
+            FROM va_cf_schedule_a
+            WHERE lower(candidate_name) LIKE ? AND lower(candidate_name) LIKE ?
+              AND amount > 0
+            GROUP BY is_individual
+            """,
+            (f"%{first}%", f"%{last}%"),
+        ).fetchall()
+        conn.close()
+        if not rows:
+            return None
+        result: dict = {"individual": {}, "org_pac": {}}
+        grand_total = 0.0
+        for r in rows:
+            d = dict(r)
+            grand_total += d["total"] or 0
+            key = "individual" if r["is_individual"] else "org_pac"
+            result[key] = d
+        result["grand_total"] = grand_total
+        return result
     except Exception:
         return None
 
@@ -54,13 +156,23 @@ def format_finance_summary_for_chat(cf: dict, source_tables: list | None = None)
         cyc = f" (through {cycle})" if cycle else ""
         lines.append(f"Total raised: ${float(total):,.0f}{cyc}")
     if cf.get("top_sector"):
+        industry_sector, is_occ = _top_industry_sector(
+            cf["top_sector"], cf.get("by_sector_json")
+        )
         pct = cf.get("top_sector_pct")
         pct_str = f" ({pct}% of total)" if pct else ""
-        lines.append(f"Top donor sector: {cf['top_sector']}{pct_str}")
+        if is_occ:
+            if industry_sector and industry_sector != cf["top_sector"]:
+                lines.append(f"Top industry donor sector: {industry_sector}")
+        else:
+            lines.append(f"Top donor sector: {industry_sector}{pct_str}")
     if cf.get("overall_va_pct") is not None:
         lines.append(f"Share from Virginia donors: {cf['overall_va_pct']}%")
     try:
-        sectors = json.loads(cf.get("by_sector_json") or "[]")[:6]
+        sectors = [
+            s for s in json.loads(cf.get("by_sector_json") or "[]")
+            if (s.get("sector") or "").lower().strip() not in _FEC_OCCUPATION_LABELS
+        ][:6]
         if sectors:
             lines.append("By sector:")
             for s in sectors:
@@ -77,6 +189,49 @@ def format_finance_summary_for_chat(cf: dict, source_tables: list | None = None)
                 lines.append(f"  {nm}: ${float(amt):,.0f}")
     except Exception:
         pass
+    # Donor type breakdown — VA SBE only (individual vs org/PAC, small vs large)
+    if cf.get("source") == "va_sbe":
+        breakdown = _get_donor_type_breakdown(cf.get("name", ""))
+        if breakdown:
+            gt = breakdown["grand_total"] or 1
+            ind = breakdown.get("individual", {})
+            org = breakdown.get("org_pac", {})
+            ind_total = ind.get("total") or 0
+            org_total = org.get("total") or 0
+            lines.append("Donor type breakdown:")
+            if ind_total:
+                lines.append(
+                    f"  Individual donors: {ind_total/gt*100:.0f}% of total "
+                    f"(${ind_total:,.0f} across {ind.get('txns',0):,} donations, "
+                    f"avg ${ind.get('avg_amt',0):,.0f})"
+                )
+                small_n   = ind.get("small_n", 0)
+                small_tot = ind.get("small_total", 0)
+                large_n   = ind.get("large_n", 0)
+                large_tot = ind.get("large_total", 0)
+                if small_tot:
+                    lines.append(
+                        f"    Small donors (<$250): {small_tot/gt*100:.1f}% of total "
+                        f"(${small_tot:,.0f}, {small_n:,} donations)"
+                    )
+                if large_tot:
+                    lines.append(
+                        f"    Large individual donors ($10k+): {large_tot/gt*100:.1f}% of total "
+                        f"(${large_tot:,.0f}, {large_n:,} donations)"
+                    )
+            if org_total:
+                lines.append(
+                    f"  Org/PAC donors: {org_total/gt*100:.0f}% of total "
+                    f"(${org_total:,.0f} across {org.get('txns',0):,} contributions, "
+                    f"avg ${org.get('avg_amt',0):,.0f})"
+                )
+                large_n   = org.get("large_n", 0)
+                large_tot = org.get("large_total", 0)
+                if large_tot:
+                    lines.append(
+                        f"    Large org/PAC contributions ($10k+): {large_tot/gt*100:.1f}% of total "
+                        f"(${large_tot:,.0f}, {large_n:,} contributions)"
+                    )
     if source_tables:
         lines.append(f"Source tables: {', '.join(source_tables)}")
     return "\n".join(lines)
