@@ -2721,7 +2721,7 @@ def _add_generic_sql_search_context(blocks: list[str], query: str, terms: list[s
                         SELECT {', '.join(_quote_identifier(col) for col in select_cols)}
                         FROM {_quote_identifier(table)}
                         WHERE {clause}
-                        LIMIT 3
+                        LIMIT 2
                     """, tuple(params)).fetchall()
                 except Exception as exc:
                     skipped_tables.append(f"{db_key}.{table}: search_error:{type(exc).__name__}")
@@ -2734,8 +2734,11 @@ def _add_generic_sql_search_context(blocks: list[str], query: str, terms: list[s
                     f"searched_columns={', '.join(search_cols)}"
                 )
                 for found in rows:
-                    lines.append(f"  - {_row_to_line(found, max_value=220)}")
-                if matches >= 45:
+                    lines.append(f"  - {_row_to_line(found, max_value=150)}")
+                # Cap the dump hard — it is a last-resort fallback, not the
+                # main context. Keeping it small leaves room for the model to
+                # actually read it instead of drowning in raw rows.
+                if matches >= 12:
                     lines.append("search_limit_reached=true")
                     blocks.append("\n".join(lines))
                     return
@@ -4430,11 +4433,11 @@ def build_database_context(query: str, max_chars: int = 22000, pro: bool = False
         _add_donor_analysis_context(blocks, q)
 
     # Comprehensive all-table SQL scan — TRUE last-resort fallback.
-    # It dumps up to 45 raw rows and drowns the targeted analytical blocks
-    # above it. Only run it when the targeted builders found little or
-    # nothing, so a clean analytical answer is never buried in raw rows.
-    targeted_chars = sum(len(b) for b in blocks)
-    if targeted_chars < 1200:
+    # It dumps raw rows and drowns the targeted analytical blocks above it,
+    # so only run it when NO targeted builder produced anything. A small,
+    # real targeted block (e.g. a 492-char race result) must still suppress
+    # the dump — otherwise a clean answer gets buried in 20K of raw rows.
+    if not blocks:
         _add_generic_sql_search_context(blocks, q, terms)
 
     context = "\n\n---\n\n".join(blocks)

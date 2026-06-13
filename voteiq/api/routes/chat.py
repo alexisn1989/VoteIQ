@@ -4334,9 +4334,9 @@ async def chat(req: ChatRequest):
         _direct_donor_alignment_reply(last_question)
         or _direct_va_legislator_reply(last_question, premium=_premium_analyst_enabled(req))
         or _direct_va_finance_reply(last_question, premium=_premium_analyst_enabled(req))
-        or _direct_spanberger_governor_overview_reply(last_question)
         or _direct_governor_eo_reply(last_question)
         or _direct_governor_veto_reply(last_question)
+        or _direct_spanberger_governor_overview_reply(last_question)
         or (_direct_governor_correlation_reply(last_question) if _premium_analyst_enabled(req) else None)
     )
     if direct_governor_reply:
@@ -4640,9 +4640,9 @@ async def gemini_chat(request: Request, req: ChatRequest):
         _direct_donor_alignment_reply(user_query)
         or _direct_va_legislator_reply(user_query, premium=_premium_analyst_enabled(req))
         or _direct_va_finance_reply(user_query, premium=_premium_analyst_enabled(req))
-        or _direct_spanberger_governor_overview_reply(user_query)
         or _direct_governor_eo_reply(user_query)
         or _direct_governor_veto_reply(user_query)
+        or _direct_spanberger_governor_overview_reply(user_query)
         or (_direct_governor_correlation_reply(user_query) if _premium_analyst_enabled(req) else None)
     )
     if direct_governor_reply:
@@ -4759,9 +4759,9 @@ async def bills_chat(req: BillsChatRequest):
         _direct_donor_alignment_reply(user_query)
         or _direct_va_legislator_reply(user_query, premium=_premium_analyst_enabled(req))
         or _direct_va_finance_reply(user_query, premium=_premium_analyst_enabled(req))
-        or _direct_spanberger_governor_overview_reply(user_query)
         or _direct_governor_eo_reply(user_query)
         or _direct_governor_veto_reply(user_query)
+        or _direct_spanberger_governor_overview_reply(user_query)
         or (_direct_governor_correlation_reply(user_query) if _premium_analyst_enabled(req) else None)
     )
     if direct_governor_reply:
@@ -4890,9 +4890,9 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
         _direct_donor_alignment_reply(user_query)
         or _direct_va_legislator_reply(user_query, premium=_premium_analyst_enabled(req))
         or _direct_va_finance_reply(user_query, premium=_premium_analyst_enabled(req))
-        or _direct_spanberger_governor_overview_reply(user_query)
         or _direct_governor_eo_reply(user_query)
         or _direct_governor_veto_reply(user_query)
+        or _direct_spanberger_governor_overview_reply(user_query)
         or (_direct_governor_correlation_reply(user_query) if _premium_analyst_enabled(req) else None)
     )
     if direct_governor_reply:
