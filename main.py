@@ -534,6 +534,60 @@ def _run_federal_alignment_background() -> None:
         print(f"[fed-alignment] Error: {exc}")
 
 
+def _run_state_alignment_background() -> None:
+    """Rebuild STATE donor vote-donor alignment when the table predates the
+    honest-framing schema (top_sector_share) or has too few rows.
+
+    Runs at startup against the live persistent disk, so the corrected
+    industry-sector dollars land without a full polls.db reseed. Needs
+    openstates_va.db (votes + bills); if that sibling is absent we keep the
+    seeded rows rather than wipe them to zero.
+    """
+    try:
+        conn = sqlite3.connect(_POLLS_DB)
+        cols = {r[1] for r in conn.execute(
+            "PRAGMA table_info(donor_vote_alignment)"
+        ).fetchall()}
+        count = conn.execute(
+            "SELECT COUNT(*) FROM donor_vote_alignment "
+            "WHERE legislator_id NOT LIKE 'bioguide:%'"
+        ).fetchone()[0]
+        conn.close()
+        if count >= 50 and "top_sector_share" in cols:
+            print(f"[state-alignment] {count} rows with current schema — skipping.")
+            return
+    except Exception:
+        pass
+    try:
+        n_votes = sqlite3.connect(_OPENSTATES_DB).execute(
+            "SELECT COUNT(*) FROM votes"
+        ).fetchone()[0]
+    except Exception:
+        n_votes = 0
+    if n_votes < 1000:
+        print(f"[state-alignment] openstates_va.db unavailable "
+              f"({n_votes} votes) — keeping seeded rows.")
+        return
+    print("[state-alignment] Building state vote-donor alignment…")
+    script = os.path.join(BASE_DIR, "build_donor_vote_alignment.py")
+    if not os.path.exists(script):
+        print("[state-alignment] build_donor_vote_alignment.py not found — skipping.")
+        return
+    try:
+        result = subprocess.run(
+            [sys.executable, script, "--sessions", "2024", "2025", "2026"],
+            capture_output=True, text=True, timeout=300,
+        )
+        if result.returncode == 0:
+            print(f"[state-alignment] Done.\n{result.stdout[-400:]}")
+        else:
+            print(f"[state-alignment] Failed (rc={result.returncode}): {result.stderr[-300:]}")
+    except subprocess.TimeoutExpired:
+        print("[state-alignment] Timed out.")
+    except Exception as exc:
+        print(f"[state-alignment] Error: {exc}")
+
+
 def _run_party_breakdown_background() -> None:
     """Fetch congressional party-breakdown XML and compute party unity stats if missing."""
     from datetime import datetime, timezone, timedelta
@@ -758,6 +812,7 @@ async def _startup_ingest() -> None:
     threading.Thread(target=_run_fec_ingest_background, daemon=True).start()
     threading.Thread(target=_run_fec_2026_background, daemon=True).start()
     threading.Thread(target=_run_federal_alignment_background, daemon=True).start()
+    threading.Thread(target=_run_state_alignment_background, daemon=True).start()
     threading.Thread(target=_run_party_breakdown_background, daemon=True).start()
     threading.Thread(target=_run_schedule_e_background, daemon=True).start()
     threading.Thread(target=_congress_ingest_background, daemon=True).start()
