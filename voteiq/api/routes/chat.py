@@ -3291,25 +3291,61 @@ def _direct_donor_alignment_reply(user_query: str) -> str:
 
         row = None
         matched_name = None
+        ambiguous: list = []
         for name in name_candidates:
+            nl = name.lower().strip()
+            tokens = nl.split()
+
+            # 1) Exact full-name match
             row = conn.execute(
                 "SELECT * FROM donor_vote_alignment WHERE lower(name) = ?",
-                (name.lower(),),
+                (nl,),
             ).fetchone()
-            if not row:
-                last = name.strip().split()[-1]
-                if len(last) >= 4:
+
+            # 2) First-name prefix AND last-name — requires BOTH to match so
+            #    "Phillip Scott" matches "Phillip A. Scott", never "Don Scott".
+            if not row and len(tokens) >= 2:
+                first, last = tokens[0], tokens[-1]
+                if len(first) >= 3 and len(last) >= 3:
                     row = conn.execute(
                         "SELECT * FROM donor_vote_alignment "
-                        "WHERE lower(name) LIKE ? LIMIT 1",
-                        (f"%{last.lower()}%",),
+                        "WHERE lower(name) LIKE ? AND lower(name) LIKE ? LIMIT 1",
+                        (f"{first}%", f"%{last}%"),
                     ).fetchone()
+
+            # 3) Last-name only — ONLY if it resolves to a single person.
+            #    If several legislators share the surname, never guess: ask.
+            if not row:
+                last = tokens[-1]
+                if len(last) >= 4:
+                    cands = conn.execute(
+                        "SELECT DISTINCT name FROM donor_vote_alignment "
+                        "WHERE lower(name) LIKE ?",
+                        (f"%{last}%",),
+                    ).fetchall()
+                    uniq = sorted({c["name"] for c in cands})
+                    if len(uniq) == 1:
+                        row = conn.execute(
+                            "SELECT * FROM donor_vote_alignment WHERE name = ?",
+                            (uniq[0],),
+                        ).fetchone()
+                    elif len(uniq) > 1:
+                        ambiguous = uniq
+
             if row:
                 matched_name = name
                 break
 
         conn.close()
         if not row:
+            if ambiguous:
+                opts = "\n".join(f"- {n}" for n in ambiguous[:8])
+                return (
+                    "**More than one legislator matches that name.** "
+                    "Which did you mean?\n\n" + opts +
+                    "\n\nAsk again with the full name and I'll run the "
+                    "donor-vote alignment analysis."
+                )
             return ""
 
         name      = row["name"]
@@ -3328,17 +3364,87 @@ def _direct_donor_alignment_reply(user_query: str) -> str:
         except Exception:
             by_sector = []
 
-        # Verdict
-        if delta is None:
-            verdict = "Insufficient data to determine alignment."
+        # ── Statistical significance: two-proportion z-test ──────────
+        # Raw percentage-point gaps mislead at low baselines: +5 pts on a
+        # 6% base (≈6 of 54 votes) looks like "alignment" but is well within
+        # chance. The z-test tells us whether the gap is real or noise.
+        import math as _math
+
+        def _two_prop_z(p1, n1, p2, n2):
+            if not n1 or not n2:
+                return None, None
+            x1, x2 = p1 * n1, p2 * n2
+            pooled = (x1 + x2) / (n1 + n2)
+            se = _math.sqrt(pooled * (1 - pooled) * (1 / n1 + 1 / n2))
+            if se == 0:
+                return None, None
+            z_ = (p1 - p2) / se
+            p_ = 2 * (1 - 0.5 * (1 + _math.erf(abs(z_) / _math.sqrt(2))))
+            return z_, p_
+
+        syr_f = (syr or 0) / 100.0
+        oyr_f = (oyr or 0) / 100.0
+        z, pval = _two_prop_z(syr_f, sc, oyr_f, oc)
+        significant = pval is not None and pval < 0.05
+        low_baseline = syr_f < 0.20 and oyr_f < 0.20
+        ratio = (syr_f / oyr_f) if oyr_f > 0 else None
+        _MIN_VOTES = 8
+
+        # Verdict — gated on statistical significance, not raw point gap
+        if delta is None or sc < _MIN_VOTES or oc < _MIN_VOTES:
+            verdict = (
+                f"**Insufficient data.** Too few recorded votes "
+                f"({sc} on {sector} bills, {oc} on others) to assess alignment reliably."
+            )
+        elif z is None:
+            verdict = "**Insufficient data to determine alignment.**"
+        elif not significant:
+            verdict = (
+                f"**No statistically significant alignment.** The gap between "
+                f"{sector} bills ({syr:.1f}%) and all other bills ({oyr:.1f}%) is within "
+                f"the range expected by chance (p={pval:.2f} — not significant at the 95% "
+                f"level). On this record, {name}'s voting on {sector} bills can't be "
+                f"distinguished from their overall pattern."
+            )
         elif delta >= 10:
-            verdict = f"**Yes — strong alignment.** {name} votes YES on {sector}-related bills {delta:+.1f} percentage points more often than on everything else."
+            verdict = (
+                f"**Strong alignment.** {name} votes YES on {sector} bills {delta:+.1f} pts "
+                f"more often than on other bills, and the difference is statistically "
+                f"significant (p={pval:.3f})."
+            )
         elif delta >= 4:
-            verdict = f"**Moderate alignment.** {name} votes YES on {sector}-related bills {delta:+.1f} pts more often than other bills."
+            verdict = (
+                f"**Moderate alignment.** {name} votes YES on {sector} bills {delta:+.1f} pts "
+                f"more often than on other bills (statistically significant, p={pval:.3f})."
+            )
         elif delta <= -4:
-            verdict = f"**No alignment detected.** {name} actually votes YES on {sector}-related bills {abs(delta):.1f} pts *less* often than other bills — giving less favorable to their top donors."
+            verdict = (
+                f"**Votes against their top donor sector.** {name} votes YES on {sector} bills "
+                f"{abs(delta):.1f} pts *less* often than other bills (statistically significant, "
+                f"p={pval:.3f})."
+            )
         else:
-            verdict = f"**No clear alignment.** The {delta:+.1f} pt difference is within noise — {name}'s voting pattern on {sector} bills is similar to their overall rate."
+            verdict = (
+                f"**Marginal alignment.** A small but statistically detectable "
+                f"{delta:+.1f} pt difference (p={pval:.3f})."
+            )
+
+        if low_baseline and delta is not None and sc >= _MIN_VOTES and oc >= _MIN_VOTES:
+            verdict += (
+                f" Note: {name} votes YES on under 20% of *all* bills, so this reflects "
+                f"marginal differences within a mostly-NO record — not broad support."
+            )
+
+        stat_line = (
+            f"- Statistical test: two-proportion z = {z:.2f}, p = {pval:.3f} "
+            f"→ {'significant' if significant else 'not significant'} at 95% confidence"
+            if z is not None else
+            "- Statistical test: not computable (too few votes)"
+        )
+        ratio_line = (
+            f"- Relative: {ratio:.1f}× as likely to vote YES on {sector} bills"
+            if ratio and ratio > 0 else None
+        )
 
         lines = [
             "**Donor-Vote Alignment Analysis**",
@@ -3349,6 +3455,11 @@ def _direct_donor_alignment_reply(user_query: str) -> str:
             f"- YES rate on {sector} bills: {syr:.1f}% ({sc} votes)",
             f"- YES rate on all other bills: {oyr:.1f}% ({oc} votes)",
             f"- Alignment delta: {delta:+.1f} percentage points",
+        ]
+        if ratio_line:
+            lines.append(ratio_line)
+        lines += [
+            stat_line,
             "",
             verdict,
         ]
@@ -3366,8 +3477,10 @@ def _direct_donor_alignment_reply(user_query: str) -> str:
             "",
             "**Methodology**",
             "Alignment delta = (YES rate on bills tagged to top donor sector) minus "
-            "(YES rate on all other bills). Positive = votes more favorably on bills "
-            "affecting their biggest funders. Correlation only — not proof of influence.",
+            "(YES rate on all other bills). Significance is a two-proportion z-test: it "
+            "asks whether the gap is larger than would be expected from chance given the "
+            "number of votes — so a few-point gap on a small sample is reported as "
+            "not significant. Correlation only — not proof of influence.",
             "",
             f"*Source: VoteIQ donor_vote_alignment table, updated {row['updated_at'][:10] if row['updated_at'] else 'recently'}.*",
         ]
