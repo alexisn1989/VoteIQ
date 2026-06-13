@@ -3364,6 +3364,67 @@ def _direct_donor_alignment_reply(user_query: str) -> str:
         except Exception:
             by_sector = []
 
+        # ── Correct the donor-dollar framing ─────────────────────────
+        # The stored top_sector_amt is the legislator's LARGEST sector
+        # (often "Ideological" party money), not the industry sector the
+        # row is labeled with — and many rows are labeled with an industry
+        # promoted only because the real #1 was non-industry. Recompute the
+        # real industry dollars live and surface any larger non-industry
+        # source, so we never claim "Alcohol/Gambling $1.3M" when that
+        # money is actually party/leadership PAC money.
+        _BILL_TO_CFS = {
+            "Energy/Utilities": ("Utilities", "Fossil Fuels"),
+            "Alcohol/Gambling": ("Wine & Spirits", "Tobacco"),
+            "Finance":          ("Financial Services",),
+            "Housing":          ("Commercial Real Estate",),
+            "Agriculture":      ("Agribusiness",),
+            "Criminal Justice": ("Trial Lawyers",),
+            "Tech/Data":        ("Software & IT", "IT & Engineering"),
+            "Education":        ("Education",),
+            "Healthcare":       ("Healthcare",),
+            "Transportation":   ("Transportation",),
+            "Labor":            ("Labor",),
+            "Environment":      ("Environment",),
+        }
+        _NON_INDUSTRY = {"Ideological", "Individual/Other", "Retail"}
+        donor_amt   = amt          # fallback to stored value
+        donor_total = 0.0
+        donor_share = None
+        nonind_name = None
+        nonind_amt  = 0.0
+        try:
+            _fc = sqlite3.connect(_POLLS_DB, timeout=30)
+            _fc.row_factory = sqlite3.Row
+            _frow = _fc.execute(
+                "SELECT total_raised, by_sector_json FROM campaign_finance_summary "
+                "WHERE name = ? AND source = 'va_sbe' LIMIT 1",
+                (name,),
+            ).fetchone()
+            _fc.close()
+            if _frow:
+                _fsectors = _json.loads(_frow["by_sector_json"] or "[]")
+                donor_total = _frow["total_raised"] or sum(
+                    (e.get("total") or 0) for e in _fsectors
+                )
+                _cfs_names = _BILL_TO_CFS.get(sector, ())
+                donor_amt = sum(
+                    (e.get("total") or 0)
+                    for e in _fsectors
+                    if e.get("sector") in _cfs_names
+                ) or amt
+                if donor_total:
+                    donor_share = donor_amt / donor_total * 100
+                # Largest non-industry bucket, if it outweighs the industry sector
+                for e in _fsectors:
+                    if e.get("sector") in _NON_INDUSTRY:
+                        a = e.get("total") or 0
+                        if a > nonind_amt:
+                            nonind_amt, nonind_name = a, e.get("sector")
+                if nonind_amt <= donor_amt:
+                    nonind_name = None
+        except Exception:
+            pass
+
         # ── Statistical significance: two-proportion z-test ──────────
         # Raw percentage-point gaps mislead at low baselines: +5 pts on a
         # 6% base (≈6 of 54 votes) looks like "alignment" but is well within
@@ -3446,12 +3507,20 @@ def _direct_donor_alignment_reply(user_query: str) -> str:
             if ratio and ratio > 0 else None
         )
 
+        if donor_share is not None and donor_total:
+            sector_header = (
+                f"**Largest industry-PAC donor sector: {sector}** — "
+                f"${donor_amt:,.0f} ({donor_share:.0f}% of ${donor_total:,.0f} raised)"
+            )
+        else:
+            sector_header = f"**Largest industry-PAC donor sector: {sector}** — ${donor_amt:,.0f}"
+
         lines = [
             "**Donor-Vote Alignment Analysis**",
             f"Subject: {name} ({party}, Virginia {chamber})",
-            f"Question: Does their voting record favor their top donor sector?",
+            f"Question: Does their voting record favor their largest industry donor sector?",
             "",
-            f"**Top Donor Sector: {sector}** — ${amt:,.0f} received",
+            sector_header,
             f"- YES rate on {sector} bills: {syr:.1f}% ({sc} votes)",
             f"- YES rate on all other bills: {oyr:.1f}% ({oc} votes)",
             f"- Alignment delta: {delta:+.1f} percentage points",
@@ -3460,17 +3529,25 @@ def _direct_donor_alignment_reply(user_query: str) -> str:
             lines.append(ratio_line)
         lines += [
             stat_line,
+        ]
+        if nonind_name:
+            lines.append(
+                f"- Context: their single largest funding source is "
+                f"{nonind_name} (${nonind_amt:,.0f}), party/leadership money not tied "
+                f"to a specific industry — {sector} is their top *industry* sector."
+            )
+        lines += [
             "",
             verdict,
         ]
 
         if by_sector:
-            lines += ["", "**All Sector Breakdown** (YES rate by donor sector):"]
+            lines += ["", "**YES rate by bill sector** (how they vote on each sector's bills):"]
             for s in sorted(by_sector, key=lambda x: x.get("yes_rate", 0), reverse=True)[:8]:
                 s_name = s.get("sector", "?")
                 s_yr   = s.get("yes_rate", 0)
                 s_tot  = s.get("total", 0)
-                marker = " ← top donor sector" if s_name == sector else ""
+                marker = " ← their top industry donor sector" if s_name == sector else ""
                 lines.append(f"- {s_name}: {s_yr:.0f}% YES ({s_tot} votes){marker}")
 
         lines += [
