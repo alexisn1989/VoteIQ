@@ -308,7 +308,8 @@ _FINANCE_QUERY_TERMS = (
     "fundraising", "fundraiser",
     "raised", "donor", "donors", "money", "contribution", "contributions",
     "donation", "donations", "campaign", "campaing", "campain",
-    "filing", "filings", "sbe", "vpap", "funding", "funded",
+    "filing", "filings", "sbe", "vpap", "funding", "funded", "funds",
+    "bankroll", "bankrolled", "backers",
 )
 
 
@@ -323,7 +324,8 @@ def _campaign_finance_terms(query: str, terms: list[str]) -> list[str]:
         "finicial", "fiance", "finace", "fundraising",
         "fundraiser", "raised", "donor", "donors", "money", "contribution",
         "contributions", "record", "records", "filing", "filings", "sbe",
-        "vpap", "funding", "funded", "public", "source", "sources",
+        "vpap", "funding", "funded", "funds", "fund", "bankroll",
+        "bankrolled", "backers", "public", "source", "sources",
         "research", "report", "overview", "with", "why", "return", "returned", "data",
         "issue", "problem", "lookup", "retrieval", "debug", "debugger",
         "bill", "bills", "action", "actions", "activity", "activities",
@@ -1043,6 +1045,8 @@ def _person_terms(terms: list[str]) -> list[str]:
         "public", "search", "research", "report", "overview", "profile",
         "office", "status", "finance", "financial", "campaign", "donor",
         "donors", "money", "contribution", "contributions", "voteiq",
+        "funds", "fund", "funded", "funding", "bankroll", "bankrolled",
+        "backers", "who",
     }
     return [term for term in terms if term not in generic]
 
@@ -1063,7 +1067,15 @@ def _add_person_vote_context(blocks: list[str], query: str, terms: list[str], se
             "office", "status", "who is",
         )
     )
-    has_name_only_query = len(people) >= 2 and len(terms) <= 3
+    # A bare-name query pulls the full voting record + sponsored bills. That
+    # is right for "Aaron Rouse" / "tell me about X", but wrong for a pure
+    # funding question ("who funds Aaron Rouse") — there the votes/bills are
+    # ~70% of the context and irrelevant, while the donor-analysis block
+    # already covers the answer. Don't trigger the vote dump on finance queries.
+    has_name_only_query = (
+        len(people) >= 2 and len(terms) <= 3
+        and not _is_campaign_finance_query(query)
+    )
     if not (has_vote_term or has_record_term or has_person_context_term or has_name_only_query):
         return
 
