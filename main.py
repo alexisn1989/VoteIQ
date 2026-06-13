@@ -812,7 +812,6 @@ async def _startup_ingest() -> None:
     threading.Thread(target=_run_fec_ingest_background, daemon=True).start()
     threading.Thread(target=_run_fec_2026_background, daemon=True).start()
     threading.Thread(target=_run_federal_alignment_background, daemon=True).start()
-    threading.Thread(target=_run_state_alignment_background, daemon=True).start()
     threading.Thread(target=_run_party_breakdown_background, daemon=True).start()
     threading.Thread(target=_run_schedule_e_background, daemon=True).start()
     threading.Thread(target=_congress_ingest_background, daemon=True).start()
