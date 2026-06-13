@@ -4432,13 +4432,24 @@ def build_database_context(query: str, max_chars: int = 22000, pro: bool = False
     if _ANALYSIS_TRIGGER.search(q) or _is_campaign_finance_query(q):
         _add_donor_analysis_context(blocks, q)
 
-    # Comprehensive all-table SQL scan — TRUE last-resort fallback.
-    # It dumps raw rows and drowns the targeted analytical blocks above it,
-    # so only run it when NO targeted builder produced anything. A small,
-    # real targeted block (e.g. a 492-char race result) must still suppress
-    # the dump — otherwise a clean answer gets buried in 20K of raw rows.
+    # No targeted builder matched. The generic all-table scan used to run
+    # here, but it returns spurious keyword matches — a "school board"
+    # question pulls a "school crossing" bill, a "women in boards of..."
+    # resolution, and a disaster-relief hearing — which the model can stitch
+    # into a confident, fabricated answer on data we don't actually have.
+    # Instead, signal the gap explicitly so the chat admits the topic isn't
+    # covered rather than inventing one. (Admin chat keeps the full scan via
+    # build_admin_database_context.)
     if not blocks:
-        _add_generic_sql_search_context(blocks, q, terms)
+        blocks.append(
+            "[No matching VoteIQ data]\n"
+            "No structured records in the VoteIQ database match this question. "
+            "Do NOT infer or fabricate an answer from unrelated records. Tell the "
+            "user this topic is not in the dataset yet — VoteIQ currently covers "
+            "Virginia state legislators and their votes/bills, the governor's "
+            "actions, the federal delegation, campaign finance, and donor-vote "
+            "alignment — and suggest a question within that scope."
+        )
 
     context = "\n\n---\n\n".join(blocks)
     if len(context) > max_chars:
