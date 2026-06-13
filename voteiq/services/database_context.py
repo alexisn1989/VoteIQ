@@ -2335,6 +2335,17 @@ def _add_federal_bill_context(
 
 def _add_governor_action_context(blocks: list[str], query: str, terms: list[str], session: str) -> None:
     q_lower = (query or "").lower()
+    # A race/election question is about the candidates, not the incumbent's
+    # record — never inject the governor's signing/veto record there unless
+    # the governor is explicitly named. ("who is running for governor" should
+    # not surface Spanberger's legislative record.)
+    _names_governor = "spanberger" in q_lower or "abigail" in q_lower
+    _race_query = any(t in q_lower for t in (
+        "running", "run for", "race", "candidate", "candidates",
+        "election", "primary", "ballot", "challenger", "opponent",
+    ))
+    if _race_query and not _names_governor:
+        return
     has_governor_action_term = any(
         term in q_lower
         for term in ("governor", "veto", "vetoed", "vetoes", "signed", "amended")
