@@ -17,14 +17,21 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
-POLLS_DB  = BASE_DIR / "polls.db"
-OS_DB     = BASE_DIR / "openstates_va.db"
+# On Render the databases live on the persistent disk (DATA_DIR), not the
+# code dir. Mirror build_federal_vote_alignment.py so this can run in-place
+# during the build instead of requiring a full reseed.
+_DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
+if not _DATA_DIR.is_dir():
+    _DATA_DIR = BASE_DIR
+POLLS_DB  = _DATA_DIR / "polls.db"
+OS_DB     = _DATA_DIR / "openstates_va.db"
 
 # ── Bill sector classifier ────────────────────────────────────────────────────
 

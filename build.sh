@@ -550,6 +550,52 @@ else
     echo "  Already have ${FA_COUNT} federal alignment rows — skipping"
 fi
 
+# ── STEP 4e2: Build STATE donor vote-donor alignment ──────────────────────────
+# Rebuilds the state legislator alignment rows in-place from seeded votes +
+# campaign_finance_summary. Runs when the honest-framing column
+# (top_sector_share) is absent, so the correct industry-sector dollars ship
+# without a full 2.2 GB reseed.
+echo ""
+echo "[STEP 4e2] Building state donor vote-donor alignment..."
+SA_STATUS=$(python3 -c "
+import sqlite3, os
+_dd = os.environ.get('DATA_DIR', os.getcwd())
+db = os.path.join(_dd if os.path.isdir(_dd) else os.getcwd(), 'polls.db')
+try:
+    conn = sqlite3.connect(db)
+    cols = {r[1] for r in conn.execute('PRAGMA table_info(donor_vote_alignment)').fetchall()}
+    n = conn.execute(\"SELECT COUNT(*) FROM donor_vote_alignment WHERE legislator_id NOT LIKE 'bioguide:%'\").fetchone()[0]
+    print(f\"{n},{'rich' if 'top_sector_share' in cols else 'old'}\")
+    conn.close()
+except Exception:
+    print('0,old')
+" 2>/dev/null || echo "0,old")
+SA_ROWS=$(echo "$SA_STATUS" | cut -d',' -f1)
+SA_SCHEMA=$(echo "$SA_STATUS" | cut -d',' -f2)
+echo "  state alignment rows: ${SA_ROWS}  /  schema: ${SA_SCHEMA}"
+
+# The state builder needs openstates_va.db (votes + bills). It is an optional
+# seed sibling, so skip the rebuild if it is absent rather than wipe the
+# seeded rows to zero.
+OS_HAS_VOTES=$(python3 -c "
+import sqlite3, os
+_dd = os.environ.get('DATA_DIR', os.getcwd())
+db = os.path.join(_dd if os.path.isdir(_dd) else os.getcwd(), 'openstates_va.db')
+try:
+    print(sqlite3.connect(db).execute('SELECT COUNT(*) FROM votes').fetchone()[0])
+except Exception:
+    print(0)
+" 2>/dev/null || echo 0)
+
+if [ "${OS_HAS_VOTES:-0}" -lt 1000 ]; then
+    echo "  openstates_va.db not available (${OS_HAS_VOTES:-0} votes) — keeping seeded rows"
+elif [ "${SA_ROWS:-0}" -lt 50 ] || [ "$SA_SCHEMA" = "old" ]; then
+    echo "  Rebuilding state alignment (missing rows or pre-honest-framing schema)..."
+    DATA_DIR="$CV_DATA_DIR" python3 build_donor_vote_alignment.py --sessions 2024 2025 2026 2>&1 | tail -6
+else
+    echo "  Already have ${SA_ROWS} state alignment rows with current schema — skipping"
+fi
+
 # ── STEP 4f: Seed congress missed-vote tables (nominations + bills) ──────────
 echo ""
 echo "[STEP 4f] Seeding congress_missed_nominations and congress_missed_bills..."
