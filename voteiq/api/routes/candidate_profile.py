@@ -312,6 +312,75 @@ def _fetch(conn: sqlite3.Connection, cand_id: str) -> dict:
     }
 
 
+@router.get("/candidates/federal", response_class=HTMLResponse)
+def federal_candidates_index():
+    conn = _conn()
+    try:
+        rows = conn.execute("""
+            SELECT c.cand_id, c.name, c.party, c.district, c.ici,
+                   c.total_receipts, c.cash_on_hand, c.ind_contributions,
+                   c.total_disbursements,
+                   COUNT(DISTINCT con.rowid)                       AS itemized_donors,
+                   COALESCE(ROUND(SUM(CASE WHEN con.amount < 200 THEN con.amount ELSE 0 END),0),0) AS grassroots_total,
+                   COALESCE(ROUND(SUM(con.amount),0),0)            AS itemized_total,
+                   COALESCE(ROUND(SUM(CASE WHEN con.state='VA' THEN con.amount ELSE 0 END),0),0) AS instate_total
+            FROM   fec_va_house_candidates c
+            LEFT JOIN fec_va_house_contributions con ON con.cand_id = c.cand_id AND con.amount > 0
+            GROUP  BY c.cand_id
+            ORDER  BY c.total_receipts DESC
+        """).fetchall()
+
+        pac_totals: dict[str, float] = {}
+        for r in conn.execute(
+            "SELECT cand_id, ROUND(SUM(amount),0) AS total FROM fec_va_house_pac_contributions"
+            " WHERE amount > 0 GROUP BY cand_id"
+        ):
+            pac_totals[r["cand_id"]] = r["total"] or 0
+
+        candidates = []
+        for r in rows:
+            it = r["itemized_total"] or 0
+            gr = r["grassroots_total"] or 0
+            ins = r["instate_total"] or 0
+            candidates.append({
+                "cand_id":    r["cand_id"],
+                "name":       _fmt_name(r["name"] or r["cand_id"]),
+                "party":      r["party"] or "?",
+                "district":   r["district"],
+                "ici":        r["ici"] or "",
+                "ici_label":  _ICI_LABEL.get(r["ici"] or "", "Unknown"),
+                "total_receipts": round(r["total_receipts"] or 0, 0),
+                "cash_on_hand":   round(r["cash_on_hand"] or 0, 0),
+                "ind_contributions": round(r["ind_contributions"] or 0, 0),
+                "pac_total":   pac_totals.get(r["cand_id"], 0),
+                "donors":      r["itemized_donors"] or 0,
+                "grassroots_pct": round(100 * gr / it, 1) if it else 0,
+                "instate_pct":    round(100 * ins / it, 1) if it else 0,
+            })
+
+        return _inject("candidates_federal_index.html", "_CANDIDATES", candidates)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Index unavailable: {exc}") from exc
+    finally:
+        conn.close()
+
+
+@router.get("/api/candidates/federal")
+def federal_candidates_index_api():
+    conn = _conn()
+    try:
+        return conn.execute(
+            "SELECT cand_id, name, party, district, ici, total_receipts, cash_on_hand"
+            " FROM fec_va_house_candidates ORDER BY total_receipts DESC"
+        ).fetchall()
+    except HTTPException:
+        raise
+    finally:
+        conn.close()
+
+
 @router.get("/candidate/federal/{cand_id}", response_class=HTMLResponse)
 def federal_candidate_page(cand_id: str):
     conn = _conn()
