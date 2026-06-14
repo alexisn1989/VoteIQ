@@ -130,21 +130,91 @@ TIERS = [
 
 
 def build_emp_sectors(conn: sqlite3.Connection) -> list[dict]:
+    # Merge near-duplicate labels the classifier generated into canonical names
+    CANON: dict[str, str] = {
+        "Finance":               "Finance & Banking",
+        "Real Estate":           "Real Estate & Construction",
+        "Defense":               "Defense & Aerospace",
+        "Technology":            "Technology & IT",
+        "Energy":                "Energy & Oil/Gas",
+        "Hospitality":           "Retail & Hospitality",
+        "Lobbying":              "Lobbying & Consulting",
+        "Consulting":            "Lobbying & Consulting",
+    }
+    # Non-industry labels excluded from the industry donut
+    EXCLUDE_SQL = (
+        "'Other','Other/Unknown','Retired','Retired/Individual',"
+        "'Self-Employed','Homemaker'"
+    )
+
     rows = conn.execute(
-        """
+        f"""
         SELECT employer_sector AS label,
                ROUND(SUM(amount), 0) AS total,
                COUNT(*) AS donors
         FROM   fec_individual_contributions
         WHERE  amount > 0
+          AND  employer_sector IS NOT NULL
+          AND  employer_sector NOT IN ({EXCLUDE_SQL})
         GROUP  BY employer_sector
         ORDER  BY total DESC
         """
     ).fetchall()
-    return [
-        {"label": r["label"] or "Unknown", "total": r["total"], "donors": r["donors"]}
-        for r in rows
-    ]
+
+    merged: dict[str, dict] = {}
+    for r in rows:
+        label = CANON.get(r["label"], r["label"])
+        if label in merged:
+            merged[label]["total"] += r["total"]
+            merged[label]["donors"] += r["donors"]
+        else:
+            merged[label] = {"label": label, "total": r["total"], "donors": r["donors"]}
+
+    # Add Retired sub-sectors by contributor_occupation
+    def _retired_sub(occ: str | None) -> str | None:
+        occ = (occ or "").upper().strip()
+        if any(k in occ for k in ("INVEST", "EQUITY", "CAPITAL", "VENTURE",
+                                   "LANDMAN", "REAL ESTATE", "FINANCIAL",
+                                   "ECON", "TAX PRACT")):
+            return "Retired (Finance/Investing)"
+        if any(k in occ for k in ("ATTORNEY", "LAWYER", "LEGAL", "COUNSEL")):
+            return "Retired (Legal)"
+        if any(k in occ for k in ("PHYSICIAN", "DOCTOR", "HEALTH", "MEDICAL",
+                                   "NURSE", "DENTIST")):
+            return "Retired (Healthcare)"
+        if any(k in occ for k in ("EXEC", "EXECUTIVE", "OWNER", "BUSINESS",
+                                   "CONSUL", "MANAGE", "DIRECTOR", "AUTO DEAL")):
+            return "Retired (Business)"
+        # Generic / unknown occupations — not meaningful to surface
+        if occ in ("", "RETIRED", "NOT EMPLOYED", "NONE", "HOMEMAKER",
+                   "INFORMATION REQUESTED",
+                   "INFORMATION REQUESTED PER BEST EFFORTS",
+                   "SELF EMPLOYED", "SELF-EMPLOYED"):
+            return None
+        return "Retired (Other)"
+
+    ret_rows = conn.execute(
+        f"""
+        SELECT contributor_occupation AS occ,
+               ROUND(SUM(amount), 0) AS total,
+               COUNT(*) AS donors
+        FROM   fec_individual_contributions
+        WHERE  amount > 0
+          AND  employer_sector IN ('Retired', 'Retired/Individual')
+        GROUP  BY contributor_occupation
+        """
+    ).fetchall()
+    for r in ret_rows:
+        sub = _retired_sub(r["occ"])
+        if sub is None:
+            continue
+        if sub in merged:
+            merged[sub]["total"] += r["total"]
+            merged[sub]["donors"] += r["donors"]
+        else:
+            merged[sub] = {"label": sub, "total": r["total"], "donors": r["donors"]}
+
+    return sorted(merged.values(), key=lambda x: -x["total"])
 
 
 def _key_to_name(conn: sqlite3.Connection) -> dict[str, str]:
