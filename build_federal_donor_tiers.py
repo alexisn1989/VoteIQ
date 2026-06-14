@@ -107,21 +107,34 @@ def _federal_donor_data(conn: sqlite3.Connection) -> dict:
         for name, states in cand_states.items()
     }
 
-    # Build last-name → cand_id lookup so profile links work in the donor map
-    _last_to_cid: dict[str, str] = {}
+    # Build last-name → (cand_id, chamber) lookups for profile links in donor map
+    _last_to_house: dict[str, str] = {}
+    _last_to_senate: dict[str, str] = {}
     try:
         for r in conn.execute("SELECT cand_id, name FROM fec_va_house_candidates"):
             last = r["name"].split(",")[0].strip().upper() if "," in r["name"] else r["name"].split()[-1].upper()
-            _last_to_cid[last] = r["cand_id"]
+            _last_to_house[last] = r["cand_id"]
+    except Exception:
+        pass
+    try:
+        for r in conn.execute("SELECT cand_id, name FROM fec_va_senate_candidates"):
+            last = r["name"].split(",")[0].strip().upper() if "," in r["name"] else r["name"].split()[-1].upper()
+            _last_to_senate[last] = r["cand_id"]
     except Exception:
         pass
 
-    def _cand_id_for(display_name: str) -> str:
+    def _cand_id_and_chamber(display_name: str) -> tuple[str, str]:
         last = display_name.split()[-1].upper() if display_name else ""
-        return _last_to_cid.get(last, "")
+        if last in _last_to_house:
+            return _last_to_house[last], "house"
+        if last in _last_to_senate:
+            return _last_to_senate[last], "senate"
+        return "", ""
 
     candidates = sorted(
-        [{"name": k, "party": key_to_party[key], "cand_id": _cand_id_for(k)}
+        [{"name": k, "party": key_to_party[key],
+          "cand_id": _cand_id_and_chamber(k)[0],
+          "chamber": _cand_id_and_chamber(k)[1]}
          for key, k in key_to_name.items()],
         key=lambda c: -sum(s["total"] for s in by_candidate[c["name"]]),
     )

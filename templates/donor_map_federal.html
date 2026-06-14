@@ -207,8 +207,9 @@
     const candMeta=allCandidates.find(c=>c.name===cand)||{};
     const party=candMeta.party||'';
     const badge=party==='Democratic'?'<span class="cand-badge badge-dem">D</span>':party==='Republican'?'<span class="cand-badge badge-rep">R</span>':'';
-    const profileLink=candMeta.cand_id
-      ?`<a href="/candidate/federal/${candMeta.cand_id}" style="display:inline-flex;align-items:center;gap:6px;font-family:'Barlow Condensed',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:7px 16px;background:var(--navy);color:#fff;text-decoration:none;margin-top:12px;transition:background .18s" onmouseover="this.style.background='#1e3a5f'" onmouseout="this.style.background='var(--navy)'">View Full Profile &#8594;</a>`
+    const profilePath=candMeta.cand_id?`/candidate/${candMeta.chamber||'federal'}/${candMeta.cand_id}`:null;
+    const profileLink=profilePath
+      ?`<a href="${profilePath}" style="display:inline-flex;align-items:center;gap:6px;font-family:'Barlow Condensed',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:7px 16px;background:var(--navy);color:#fff;text-decoration:none;margin-top:12px;transition:background .18s" onmouseover="this.style.background='#1e3a5f'" onmouseout="this.style.background='var(--navy)'">View Full Profile &#8594;</a>`
       :'';
     card.className='visible';
     card.innerHTML=`<div class="cand-name">${cand}${badge}</div><div class="cand-stat">Total raised <strong>${fmt(tot)}</strong></div><div class="cand-stat">Donors <strong>${fmtn(don)}</strong></div><div class="cand-stat">States <strong>${data.length}</strong></div>${top?`<div class="cand-stat">Top state <strong>${SNAMES[top.state]||top.state} (${fmt(top.total)})</strong></div>`:''}${profileLink}`;
