@@ -536,7 +536,7 @@ Every output must include:
 # ── Per-tier token budgets ────────────────────────────────────────────────────
 
 TIER_MAX_TOKENS = {
-    "free":       800,
+    "free":       1200,   # raised from 800 — bill-detail / spike-alert responses truncated mid-sentence
     "pro":        1500,
     "newsroom":   2000,
     "campaign":   2000,
