@@ -193,21 +193,31 @@ def _fetch(conn: sqlite3.Connection, cand_id: str) -> dict:
         for r in sector_rows
     ]
 
-    # ── top employers ─────────────────────────────────────────────────────────
+    # ── top employers (business sponsors) ────────────────────────────────────
     _SKIP_EMP = ("RETIRED", "NOT EMPLOYED", "NONE", "N/A", "SELF-EMPLOYED",
                  "SELF EMPLOYED", "HOMEMAKER", "INFORMATION REQUESTED")
+    _SKIP_SECTOR = ("Grassroots", "Retired", "Homemaker", "Student",
+                    "Self-Employed (Other)", "Other", "Other (named employer)")
     emp_rows = conn.execute("""
-        SELECT employer, ROUND(SUM(amount),0) AS total, COUNT(*) AS donors
-        FROM   fec_va_house_contributions
-        WHERE  cand_id = ? AND amount > 0
-          AND  employer IS NOT NULL AND employer != ''
-        GROUP  BY employer ORDER BY total DESC LIMIT 15
+        SELECT e.employer,
+               ROUND(SUM(e.amount),0) AS total, COUNT(*) AS donors,
+               (SELECT i.sector FROM fec_va_house_contributions i
+                WHERE  i.cand_id = e.cand_id AND i.employer = e.employer
+                  AND  i.sector IS NOT NULL
+                  AND  i.sector NOT IN ('Grassroots','Retired','Homemaker','Student',
+                       'Self-Employed (Other)','Other','Other (named employer)')
+                GROUP  BY i.sector ORDER BY COUNT(*) DESC LIMIT 1) AS sector
+        FROM   fec_va_house_contributions e
+        WHERE  e.cand_id = ? AND e.amount > 0
+          AND  e.employer IS NOT NULL AND e.employer != ''
+        GROUP  BY e.employer ORDER BY total DESC LIMIT 35
     """, (cand_id,)).fetchall()
     employers = [
-        {"name": r["employer"], "total": r["total"], "donors": r["donors"]}
+        {"name": r["employer"], "total": r["total"], "donors": r["donors"],
+         "sector": r["sector"] or ""}
         for r in emp_rows
         if r["employer"].upper() not in _SKIP_EMP
-    ][:12]
+    ][:25]
 
     # ── geography ─────────────────────────────────────────────────────────────
     geo_rows = conn.execute("""
@@ -431,14 +441,22 @@ def _fetch_senate(conn: sqlite3.Connection, cand_id: str) -> dict:
     _SKIP_EMP = ("RETIRED", "NOT EMPLOYED", "NONE", "N/A", "SELF-EMPLOYED",
                  "SELF EMPLOYED", "HOMEMAKER", "INFORMATION REQUESTED")
     emp_rows = conn.execute("""
-        SELECT employer, ROUND(SUM(amount),0) AS total, COUNT(*) AS donors
-        FROM   fec_va_senate_contributions
-        WHERE  cand_id = ? AND amount > 0
-          AND  employer IS NOT NULL AND employer != ''
-        GROUP  BY employer ORDER BY total DESC LIMIT 15
+        SELECT e.employer,
+               ROUND(SUM(e.amount),0) AS total, COUNT(*) AS donors,
+               (SELECT i.sector FROM fec_va_senate_contributions i
+                WHERE  i.cand_id = e.cand_id AND i.employer = e.employer
+                  AND  i.sector IS NOT NULL
+                  AND  i.sector NOT IN ('Grassroots','Retired','Homemaker','Student',
+                       'Self-Employed (Other)','Other','Other (named employer)')
+                GROUP  BY i.sector ORDER BY COUNT(*) DESC LIMIT 1) AS sector
+        FROM   fec_va_senate_contributions e
+        WHERE  e.cand_id = ? AND e.amount > 0
+          AND  e.employer IS NOT NULL AND e.employer != ''
+        GROUP  BY e.employer ORDER BY total DESC LIMIT 35
     """, (cand_id,)).fetchall()
-    employers = [{"name": r["employer"], "total": r["total"], "donors": r["donors"]}
-                 for r in emp_rows if r["employer"].upper() not in _SKIP_EMP][:12]
+    employers = [{"name": r["employer"], "total": r["total"], "donors": r["donors"],
+                  "sector": r["sector"] or ""}
+                 for r in emp_rows if r["employer"].upper() not in _SKIP_EMP][:25]
 
     geo_rows = conn.execute("""
         SELECT CASE WHEN state = 'VA' THEN 'In-state' ELSE 'Out-of-state' END AS geo,

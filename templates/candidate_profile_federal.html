@@ -210,7 +210,11 @@ tbody tr:hover td{background:#f9f7f3;}
 
   <!-- employers table -->
   <div class="card" id="emp-card">
-    <div class="card-title">Top Donor Employers</div>
+    <div class="card-title">Business Sponsors</div>
+    <div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">Organizations whose employees donated — ranked by total dollars. Excludes self-employed, retired, and non-employed donors.</div>
+    <div id="emp-search-wrap" style="margin-bottom:10px">
+      <input id="emp-search" type="text" placeholder="Filter businesses…" style="width:100%;max-width:280px;padding:6px 10px;border:1px solid var(--mid);border-radius:5px;font-size:.82rem;font-family:inherit;outline:none">
+    </div>
     <div id="emp-body"></div>
   </div>
 </div>
@@ -448,28 +452,67 @@ tbody tr:hover td{background:#f9f7f3;}
     $('pac-body').innerHTML = '<div class="empty">No PAC contributions on record for this candidate.</div>';
   }
 
-  // ── employers table ───────────────────────────────────────────────────────
+  // ── business sponsors table ───────────────────────────────────────────────
+  const SECTOR_COLORS = {
+    'Finance':'#1e40af','Finance & Banking':'#1e40af',
+    'Legal':'#7c3aed','Legal & Advocacy':'#7c3aed',
+    'Technology':'#0891b2','Technology & IT':'#0891b2',
+    'Healthcare':'#059669','Healthcare & Pharma':'#059669',
+    'Real Estate':'#d97706','Real Estate & Construction':'#d97706',
+    'Energy':'#b45309','Energy & Oil/Gas':'#b45309',
+    'Defense':'#dc2626','Defense & Aerospace':'#dc2626',
+    'Education':'#16a34a',
+    'Consulting':'#6b21a8','Lobbying & Consulting':'#6b21a8',
+    'Business Executive':'#0369a1','Business/Management':'#0369a1',
+    'Government':'#475569','Government/Public':'#475569',
+    'Media/Creative':'#db2777','Telecom & Media':'#db2777',
+    'Agriculture':'#65a30d',
+    'Nonprofit':'#0f766e',
+    'Transportation':'#92400e',
+    'Manufacturing':'#374151',
+  };
   const emps = D.employers || [];
-  if (emps.length) {
-    const empMax = emps[0].total;
-    let html = '<table><thead><tr><th>Employer</th><th class="amt">Total</th><th class="amt">Donors</th></tr></thead><tbody>';
-    emps.forEach(e => {
+  function renderEmps(list) {
+    if (!list.length) { $('emp-body').innerHTML = '<div class="empty">No matching businesses.</div>'; return; }
+    const empMax = list[0].total;
+    let html = '<table style="width:100%"><thead><tr><th style="text-align:left;padding:6px 8px;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Business</th><th style="text-align:left;padding:6px 8px;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Sector</th><th style="text-align:right;padding:6px 8px;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Total</th><th style="text-align:right;padding:6px 8px;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Donors</th></tr></thead><tbody>';
+    list.forEach((e,i) => {
       const barW = pct(e.total, empMax);
-      html += `<tr>
-        <td>
-          <div style="font-weight:500">${e.name}</div>
-          <div style="height:4px;background:var(--mid);margin-top:4px;border-radius:2px">
-            <div style="height:100%;width:${barW}%;background:var(--navy);border-radius:2px"></div>
+      const sColor = SECTOR_COLORS[e.sector] || '#64748b';
+      const sBadge = e.sector ? `<span style="display:inline-block;padding:2px 7px;border-radius:3px;font-size:.65rem;font-weight:700;letter-spacing:.06em;background:${sColor}18;color:${sColor};border:1px solid ${sColor}40;white-space:nowrap">${e.sector}</span>` : '';
+      html += `<tr style="border-bottom:1px solid #f1f5f9">
+        <td style="padding:8px 8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-family:'Barlow Condensed',sans-serif;font-size:.78rem;font-weight:700;color:var(--muted);min-width:18px">${i+1}</span>
+            <div>
+              <div style="font-weight:600;font-size:.88rem">${e.name}</div>
+              <div style="height:3px;background:#e2e8f0;margin-top:4px;border-radius:2px;width:120px">
+                <div style="height:100%;width:${barW}%;background:var(--navy);border-radius:2px"></div>
+              </div>
+            </div>
           </div>
         </td>
-        <td class="amt">${fmt(e.total)}</td>
-        <td class="amt">${e.donors}</td>
+        <td style="padding:8px">${sBadge}</td>
+        <td style="padding:8px;text-align:right;font-weight:600;font-size:.88rem">${fmt(e.total)}</td>
+        <td style="padding:8px;text-align:right;color:var(--muted);font-size:.85rem">${e.donors}</td>
       </tr>`;
     });
     html += '</tbody></table>';
     $('emp-body').innerHTML = html;
+  }
+  if (emps.length) {
+    renderEmps(emps);
+    const empSearch = document.getElementById('emp-search');
+    if (empSearch) {
+      empSearch.addEventListener('input', e => {
+        const q = e.target.value.trim().toLowerCase();
+        renderEmps(q ? emps.filter(x => x.name.toLowerCase().includes(q) || (x.sector||'').toLowerCase().includes(q)) : emps);
+      });
+    }
   } else {
     $('emp-body').innerHTML = '<div class="empty">No employer data available.</div>';
+    const sw = document.getElementById('emp-search-wrap');
+    if (sw) sw.style.display = 'none';
   }
 })();
 </script>
