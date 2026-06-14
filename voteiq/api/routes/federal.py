@@ -55,8 +55,14 @@ def _federal_list(conn) -> list[dict]:
         d = dict(r)
         d["by_sector"] = json.loads(d.pop("by_sector_json") or "[]")
         # Donor tiers: Grassroots (small donors) vs Industry/Corporate
+        # Scoped to latest cycle only — older cycles can contain conduit totals
+        # (e.g. WinRed/ActBlue nationwide totals attributed to each candidate)
         try:
             tiers = conn.execute("""
+                WITH max_cycle AS (
+                    SELECT MAX(cycle) AS mc
+                    FROM fec_industry_totals WHERE bioguide_id = ?
+                )
                 SELECT
                     CASE WHEN industry = 'Grassroots' THEN 'Grassroots (Small Donors)'
                          WHEN industry = 'Other'      THEN 'Unclassified / Other'
@@ -64,25 +70,30 @@ def _federal_list(conn) -> list[dict]:
                     END AS tier,
                     SUM(total_amount)      AS total,
                     SUM(contributor_count) AS cnt
-                FROM fec_industry_totals
-                WHERE bioguide_id = ?
+                FROM fec_industry_totals, max_cycle
+                WHERE bioguide_id = ? AND cycle = mc
                 GROUP BY tier ORDER BY total DESC
-            """, (d["bioguide_id"],)).fetchall()
+            """, (d["bioguide_id"], d["bioguide_id"])).fetchall()
             d["donor_tiers"] = [{"tier": t["tier"], "total": t["total"], "count": t["cnt"]} for t in tiers]
         except sqlite3.OperationalError:
             d["donor_tiers"] = []
         # Granular industry breakdown (excludes Grassroots / Other buckets)
         try:
             ind_rows = conn.execute("""
+                WITH max_cycle AS (
+                    SELECT MAX(cycle) AS mc
+                    FROM fec_industry_totals WHERE bioguide_id = ?
+                )
                 SELECT industry, SUM(total_amount) AS total
-                FROM fec_industry_totals
+                FROM fec_industry_totals, max_cycle
                 WHERE bioguide_id = ?
+                  AND cycle = mc
                   AND industry NOT IN ('Grassroots', 'Other')
                   AND industry IS NOT NULL AND industry != ''
                 GROUP BY industry
                 ORDER BY total DESC
                 LIMIT 10
-            """, (d["bioguide_id"],)).fetchall()
+            """, (d["bioguide_id"], d["bioguide_id"])).fetchall()
             d["industry_breakdown"] = [
                 {"industry": r["industry"], "total": r["total"]} for r in ind_rows
             ]

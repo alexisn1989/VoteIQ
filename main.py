@@ -1254,15 +1254,22 @@ def _load_pac_cache() -> None:
         if not tbl:
             conn.close()
             return
-        # Load the most-recent cycle per member×industry to avoid duplicates across reruns
+        # Load only the most-recent cycle per member to avoid cross-cycle inflation
+        # (older cycles can contain WinRed/ActBlue conduit totals that dwarf actual receipts)
         fresh: dict[str, list[dict]] = {}
         for row in conn.execute(
-            """SELECT bioguide_id, member_name, industry,
-                      total_amount, contributor_count, top_donors,
-                      MAX(cycle) AS cycle
-               FROM fec_industry_totals
-               GROUP BY bioguide_id, industry
-               ORDER BY total_amount DESC"""
+            """WITH max_cycles AS (
+                   SELECT bioguide_id, MAX(cycle) AS max_cycle
+                   FROM fec_industry_totals
+                   GROUP BY bioguide_id
+               )
+               SELECT f.bioguide_id, f.member_name, f.industry,
+                      f.total_amount, f.contributor_count, f.top_donors,
+                      f.cycle
+               FROM fec_industry_totals f
+               JOIN max_cycles mc ON mc.bioguide_id = f.bioguide_id
+                                  AND f.cycle = mc.max_cycle
+               ORDER BY f.total_amount DESC"""
         ):
             bgid = row["bioguide_id"]
             if bgid not in fresh:
