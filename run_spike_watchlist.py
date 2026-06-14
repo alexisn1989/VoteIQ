@@ -171,6 +171,81 @@ def _matches_pattern(name: str, pattern: str | None) -> bool:
     return False
 
 
+# Maps a watchlist entry to the cycle_context.donor_sector it should pull
+# "related legislation" from. Without this, every alert (regardless of the
+# donor's industry) gets the same generic top-N bills for the cycle — so a
+# healthcare donor would surface casino/gambling bills, which reads as broken.
+# Derived from substrings of the watch label (case-insensitive).
+_WATCH_SECTOR_KEYWORDS: list[tuple[str, str]] = [
+    ("alcohol",  "Alcohol/Gambling"),
+    ("gambling", "Alcohol/Gambling"),
+    ("energy",   "Energy/Utilities"),
+    ("dominion", "Energy/Utilities"),
+    ("clean virginia", "Energy/Utilities"),  # Clean Virginia = anti-Dominion energy money
+    ("health",   "Healthcare"),
+    ("housing",  "Housing"),
+    ("transport","Transportation"),
+    ("finance",  "Finance"),
+    ("agricultur","Agriculture"),
+]
+
+
+def _sector_for_watch(label: str | None) -> str | None:
+    """Best-effort map a watch label to a cycle_context.donor_sector, or None
+    for sector-agnostic watches (e.g. 'Any institutional donor >3x')."""
+    low = (label or "").lower()
+    for kw, sector in _WATCH_SECTOR_KEYWORDS:
+        if kw in low:
+            return sector
+    return None
+
+
+def _context_bills_for_watch(
+    conn: sqlite3.Connection, cycle: str, watch: dict
+) -> list[str]:
+    """Return up to 4 related-bill titles for an alert, preferring bills in the
+    donor's own sector before falling back to general high-significance bills.
+    cycle_context titles are already session-qualified (e.g. 'HB1373 (2023): …')
+    so no cross-session re-join is needed and no bill-number ambiguity leaks in.
+    """
+    sector = _sector_for_watch(watch.get("label"))
+    titles: list[str] = []
+    seen: set[str] = set()
+
+    if sector:
+        for r in conn.execute(
+            """
+            SELECT title FROM cycle_context
+            WHERE election_cycle = ? AND significance = 'high' AND donor_sector = ?
+            ORDER BY title LIMIT 4
+            """,
+            (cycle, sector),
+        ).fetchall():
+            t = r["title"][:70]
+            if t not in seen:
+                seen.add(t)
+                titles.append(t)
+
+    # Fill any remaining slots with general high-significance bills for the cycle.
+    if len(titles) < 4:
+        for r in conn.execute(
+            """
+            SELECT title FROM cycle_context
+            WHERE election_cycle = ? AND significance = 'high'
+            ORDER BY donor_sector, title LIMIT 8
+            """,
+            (cycle,),
+        ).fetchall():
+            t = r["title"][:70]
+            if t not in seen:
+                seen.add(t)
+                titles.append(t)
+            if len(titles) >= 4:
+                break
+
+    return titles[:4]
+
+
 # ── Core detection ────────────────────────────────────────────────────────────
 
 def run_watchlist(
@@ -241,15 +316,10 @@ def run_watchlist(
                 if not _matches_pattern(t["canonical_name"], pattern):
                     continue
 
-                # Get context bills for this cycle
+                # Get sector-relevant context bills for this cycle
                 ctx_bills: list[str] = []
                 if not dry_run:
-                    ctx_rows = conn.execute("""
-                        SELECT title FROM cycle_context
-                        WHERE election_cycle = ? AND significance = 'high'
-                        ORDER BY donor_sector, title LIMIT 4
-                    """, (cycle,)).fetchall()
-                    ctx_bills = [r["title"][:70] for r in ctx_rows]
+                    ctx_bills = _context_bills_for_watch(conn, cycle, watch)
 
                 ratio   = round(t["ratio_vs_mean"], 2)
                 pct_chg = t["pct_change_prior"]

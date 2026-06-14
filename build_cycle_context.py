@@ -387,15 +387,18 @@ def _bills_from_openstates(sessions: list[str]) -> list[tuple[str, str, str, str
     placeholders = ",".join("?" for _ in sessions)
     rows = conn.execute(
         f"""
-        SELECT bill_id, session, bill_id, title
+        SELECT bill_id, session, title
         FROM bills
         WHERE session IN ({placeholders}) AND title IS NOT NULL
         """,
         sessions,
     ).fetchall()
     conn.close()
-    # bill_id serves as both id and bill_number in OpenStates (e.g. "HB653")
-    return [(r[0], r[1], r[0], r[3]) for r in rows]
+    # In OpenStates the raw bill_id is just the bill number (e.g. "HB653"), which
+    # is NOT unique across sessions — VA reuses bill numbers every session. Build a
+    # session-qualified composite id ("HB653_2023") so it matches the legiscan_va_bills
+    # format and can never collide cross-session downstream.
+    return [(f"{r[0]}_{r[1]}", r[1], r[0], r[2]) for r in rows]
 
 
 def _insert_bill_matched(
@@ -429,7 +432,12 @@ def _insert_bill_matched(
             if matched_kw is None:
                 continue
 
-            entry_title = f"{bill_num}: {title[:80]}" if title else bill_num
+            # Session-qualify the displayed title. VA reuses bill numbers every
+            # session (e.g. HB1373 = "Casino gaming" in 2023 but "Regional special
+            # ed." in 2026), so a bare "HB1373" is ambiguous and leaks the wrong
+            # bill's description downstream. The "(session)" tag makes every
+            # cycle_context / spike_alerts surface self-disambiguating.
+            entry_title = f"{bill_num} ({session}): {title[:80]}" if title else f"{bill_num} ({session})"
 
             try:
                 conn.execute(
