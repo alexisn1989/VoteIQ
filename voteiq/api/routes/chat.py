@@ -4966,6 +4966,13 @@ When citing a vote, include the bill name and Yea/Nay. When citing donors or ind
     # Track sources used in building context
     sources_used = _track_sources(combined_context)
 
+    # When spike-alert / PAC-correlation / multi-block analytical context is present,
+    # the free tier's 800-token ceiling causes mid-sentence truncation because the LLM
+    # fills the budget before finishing the "What VoteIQ Can and Cannot Confirm" section.
+    # Bump the limit for any response that has substantial injected context.
+    if len(combined_context) > 2000 and max_tokens < 1500:
+        max_tokens = 1500
+
     try:
         reply = _m._claude_reply(system_prompt, req.messages, max_tokens=max_tokens,
                                  model=tier_model, cache_ttl=cache_ttl)
