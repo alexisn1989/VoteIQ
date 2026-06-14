@@ -527,6 +527,88 @@ PYEOF
     [ $? -ne 0 ] && echo "⚠ fec_va_house_contributions seed failed" || echo "✓ fec_va_house_contributions seeded"
 fi
 
+# ── STEP 4c3b: Back-fill sector column on existing fec_va_house_contributions ─
+# Safe no-op if sector is already populated (seed includes it from rebuild date).
+python3 - <<PYEOF
+import sqlite3, os, sys
+data_dir = os.environ.get("DATA_DIR", os.getcwd())
+db = os.path.join(data_dir, "polls.db")
+conn = sqlite3.connect(db)
+try:
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(fec_va_house_contributions)").fetchall()}
+    if "sector" not in cols:
+        conn.execute("ALTER TABLE fec_va_house_contributions ADD COLUMN sector TEXT")
+        conn.commit()
+        print("  Added sector column")
+    nulls = conn.execute("SELECT COUNT(*) FROM fec_va_house_contributions WHERE sector IS NULL").fetchone()[0]
+    if nulls == 0:
+        print("  sector already populated -- skipping back-fill")
+        sys.exit(0)
+    print(f"  Back-filling {nulls:,} sector labels ...")
+    # Inline classifier (mirrors build_va_house_contributions.py)
+    NOT_EMP  = {"NOT EMPLOYED","NONE","N/A","NA","","NOT APPLICABLE","UNEMPLOYED","NOT EMPLOY"}
+    SELF_EMP = {"SELF","SELF EMPLOYED","SELF-EMPLOYED","SELFEMPLOYED"}
+    RETIRED  = {"RETIRED","SEMI-RETIRED","SEMI RETIRED"}
+    LAW_FIRMS = {"HOGAN LOVELLS","HOGAN LOVELLS US LLP","SKADDEN","SIDLEY AUSTIN",
+                 "WILLKIE FARR","PERKINS COIE","COVINGTON","COOLEY","PILLSBURY",
+                 "VENABLE","ARNOLD & PORTER","BLANK ROME","FOLEY","DECHERT",
+                 "HUNTON","KIRKLAND","LATHAM","MORGAN LEWIS","NORTON ROSE",
+                 "REED SMITH","SQUIRE PATTON","WHITE & CASE","WILEY REIN",
+                 "WILLIAMS MULLEN","WILLIAMS MULLENS","MCGUIREWOODS","TROUTMAN"}
+    def classify(emp_raw, occ_raw):
+        emp = (emp_raw or "").strip().upper()
+        occ = (occ_raw or "").strip().upper()
+        e = emp; o = occ
+        if e in NOT_EMP and o in NOT_EMP: return "Grassroots"
+        if "HOMEMAKER" in o or "HOMEMAKER" in e: return "Homemaker"
+        if "STUDENT" in o: return "Student"
+        if any(r in o for r in RETIRED) or (e in RETIRED and o in NOT_EMP|RETIRED|{""}): return "Retired"
+        if any(f in e for f in LAW_FIRMS): return "Legal"
+        use = o if (e in SELF_EMP|NOT_EMP|RETIRED|{""}) else f"{e} {o}"
+        u = use.lower()
+        if any(k in u for k in ["attorney","lawyer","law firm","legal","counsel","litigation","esquire"]): return "Legal"
+        if any(k in u for k in ["farmer","farming","agriculture","rancher","livestock","vineyard"]): return "Agriculture"
+        if any(k in u for k in ["accountant","accounting","cpa","tax practitioner"]): return "Finance"
+        if any(k in u for k in ["software","tech","engineer","developer","data scientist"," ai ","machine learning","cyber","cto","cio","programmer"]): return "Technology"
+        if any(k in u for k in ["professor","teacher","university","college","school","academic","education","faculty","researcher","phd"]): return "Education"
+        if any(k in u for k in [" md","physician","doctor","medical","hospital","healthcare","nurse","dentist","surgeon","pharmacist","psychiatrist","psychologist","therapist"]): return "Healthcare"
+        if any(k in u for k in ["energy","petroleum","oil","gas ","solar","utility","power plant","nuclear","coal","mining"]): return "Energy"
+        if any(k in u for k in ["consultant","consulting","strategist","advisor","policy analyst","lobbyist"]): return "Consulting"
+        if any(k in u for k in ["investor","investment","finance","banker","financial","hedge","equity","capital","securities","wealth","fund manager","asset","portfolio","trader","cfo","economist","venture"]): return "Finance"
+        if any(k in u for k in ["real estate","realtor","property","developer","construction","contractor","builder","architect"]): return "Real Estate"
+        if any(k in u for k in ["writer","author","journalist","editor","publisher","media","communications","filmmaker","artist","musician","designer","creative","photographer","entertainer","cartograph"]): return "Media/Creative"
+        if any(k in u for k in ["nonprofit","non-profit","foundation","charity","ngo","social work","philanthrop","advocacy"]): return "Nonprofit"
+        if any(k in u for k in ["government","federal","state","county","city","public sector","elected","official","military","veteran","usaid","diplomat","intelligence","police","firefighter","civil servant","intel analyst","governor","legislat","senate","congress"]): return "Government/Public"
+        if any(k in u for k in ["candidate","campaign","political","pac "]): return "Political/Campaign"
+        if any(k in u for k in ["executive","ceo","president","coo","managing director","vice president","founder","entrepreneur","owner","principal","chairman","chief"]): return "Business Executive"
+        if any(k in u for k in ["sales","marketing","business","commerce","retail","manager","director","dealer","distribution"]): return "Business/Management"
+        if any(k in u for k in ["scientist","research","laboratory","biolog","chemist","physicist","geologist"]): return "Research/Science"
+        if e not in SELF_EMP|NOT_EMP|RETIRED|{""}:
+            eu = e.lower()
+            if any(k in eu for k in ["university","college","school"]): return "Education"
+            if any(k in eu for k in ["hospital","medical","health","clinic"]): return "Healthcare"
+            if any(k in eu for k in ["law","llp","legal"]): return "Legal"
+            if any(k in eu for k in ["tech","software","systems","data","cyber"]): return "Technology"
+            if any(k in eu for k in ["bank","capital","financial","investment","partners","fund","equity"]): return "Finance"
+            if any(k in eu for k in ["real estate","realty","properties","property","construction"]): return "Real Estate"
+            if any(k in eu for k in ["foundation","nonprofit","non-profit","charitable"]): return "Nonprofit"
+            if any(k in eu for k in ["energy","petroleum","oil","gas","solar","power","electric"]): return "Energy"
+            if any(k in eu for k in ["consulting","advisors","strategies","advisory"]): return "Consulting"
+            return "Other (named employer)"
+        if e in SELF_EMP: return "Self-Employed (Other)"
+        if e in NOT_EMP or e == "": return "Grassroots"
+        return "Other"
+    rows = conn.execute("SELECT id,employer,occupation FROM fec_va_house_contributions WHERE sector IS NULL").fetchall()
+    updates = [(classify(r[1],r[2]),r[0]) for r in rows]
+    conn.executemany("UPDATE fec_va_house_contributions SET sector=? WHERE id=?", updates)
+    conn.commit()
+    print(f"  Back-filled {len(updates):,} sector labels")
+except Exception as e:
+    print(f"  WARNING: sector back-fill failed: {e}", file=sys.stderr)
+finally:
+    conn.close()
+PYEOF
+
 # ── STEP 4d: Ingest congress roll-call votes (VA delegation) ──────────────────
 echo ""
 echo "[STEP 4d] Checking congress_votes table (VA roll-call ingestion)..."
