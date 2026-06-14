@@ -286,20 +286,35 @@ _EMP_SKIP_SECTORS = {
 }
 
 
-def build_top_employers(conn: sqlite3.Connection) -> list[dict]:
-    """Top 20 individual employers by total $ donated across all VA federal candidates."""
-    rows = conn.execute("""
-        SELECT contributor_employer              AS employer,
-               employer_sector                  AS sector,
-               ROUND(SUM(amount), 0)            AS total,
-               COUNT(*)                         AS donors
-        FROM   fec_individual_contributions
-        WHERE  amount > 0
-          AND  contributor_employer IS NOT NULL AND contributor_employer != ''
-        GROUP  BY contributor_employer
-        ORDER  BY total DESC
-        LIMIT  200
-    """).fetchall()
+def build_top_employers(conn: sqlite3.Connection, party: str | None = None) -> list[dict]:
+    """Top 20 individual employers by total $ donated. Pass party to filter by party."""
+    if party:
+        rows = conn.execute("""
+            SELECT f.contributor_employer        AS employer,
+                   f.employer_sector            AS sector,
+                   ROUND(SUM(f.amount), 0)      AS total,
+                   COUNT(*)                     AS donors
+            FROM   fec_individual_contributions f
+            JOIN   congress_members m ON m.bioguide_id = f.bioguide_id
+            WHERE  f.amount > 0 AND m.party = ?
+              AND  f.contributor_employer IS NOT NULL AND f.contributor_employer != ''
+            GROUP  BY f.contributor_employer
+            ORDER  BY total DESC
+            LIMIT  200
+        """, (party,)).fetchall()
+    else:
+        rows = conn.execute("""
+            SELECT contributor_employer              AS employer,
+                   employer_sector                  AS sector,
+                   ROUND(SUM(amount), 0)            AS total,
+                   COUNT(*)                         AS donors
+            FROM   fec_individual_contributions
+            WHERE  amount > 0
+              AND  contributor_employer IS NOT NULL AND contributor_employer != ''
+            GROUP  BY contributor_employer
+            ORDER  BY total DESC
+            LIMIT  200
+        """).fetchall()
 
     out: list[dict] = []
     seen: set[str] = set()
@@ -400,11 +415,13 @@ def main() -> None:
                 deduped[seen_names[n]] = c
         fed["candidates"] = deduped
 
-        fed["emp_sectors"]     = build_emp_sectors(conn)
-        fed["emp_sectors_dem"] = build_emp_sectors(conn, party="Democratic")
-        fed["emp_sectors_rep"] = build_emp_sectors(conn, party="Republican")
-        fed["candidate_tiers"] = build_candidate_tiers(conn)
-        fed["top_employers"]   = build_top_employers(conn)
+        fed["emp_sectors"]      = build_emp_sectors(conn)
+        fed["emp_sectors_dem"]  = build_emp_sectors(conn, party="Democratic")
+        fed["emp_sectors_rep"]  = build_emp_sectors(conn, party="Republican")
+        fed["candidate_tiers"]  = build_candidate_tiers(conn)
+        fed["top_employers"]    = build_top_employers(conn)
+        fed["top_employers_dem"]= build_top_employers(conn, party="Democratic")
+        fed["top_employers_rep"]= build_top_employers(conn, party="Republican")
     finally:
         conn.close()
 

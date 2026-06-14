@@ -486,6 +486,10 @@
       const partyEmpLabel=_activeParty==='all'?'Employer Sector — by $ donated':
         _activeParty==='Democratic'?'Employer Sector — Democrats':'Employer Sector — Republicans';
       if(partySectors.length)drawEmp(partySectors,partyEmpLabel);
+      // update top 20 list for selected party
+      const partyTopLabel=_activeParty==='all'?'Top 20 Business Donors':
+        _activeParty==='Democratic'?'Top 20 Business Donors — Democrats':'Top 20 Business Donors — Republicans';
+      renderTopEmployers(_topEmpByParty[_activeParty]||[],partyTopLabel);
       // reset candidate dropdown
       const sel=document.getElementById('cand-select');if(sel)sel.value='all';
       refresh();
@@ -526,8 +530,13 @@
     }).join('');
   }
 
+  const _topEmpByParty={
+    'all':         D.top_employers||[],
+    'Democratic':  D.top_employers_dem||[],
+    'Republican':  D.top_employers_rep||[],
+  };
   // Initial render from cache
-  renderTopEmployers(D.top_employers||[]);
+  renderTopEmployers(_topEmpByParty['all']);
 
   // Called by map state-click: override both charts with state-filtered data
   window.updateStateCharts=function(sectors,tiers,employers,stateName){
