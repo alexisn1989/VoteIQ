@@ -292,11 +292,25 @@ def api_federal_state_sectors(state: str):
             GROUP  BY employer_sector
             ORDER  BY total DESC
         """, (state,)).fetchall()
-        sectors = [
-            {"label": r["label"], "total": r["total"], "donors": r["donors"]}
-            for r in rows
-            if r["label"] not in _SKIP_SECTORS
-        ]
+        _CANON = {
+            "Finance": "Finance & Banking",
+            "Real Estate": "Real Estate & Construction",
+            "Defense": "Defense & Aerospace",
+            "Technology": "Technology & IT",
+            "Energy": "Energy & Oil/Gas",
+            "Hospitality": "Retail & Hospitality",
+        }
+        merged: dict = {}
+        for r in rows:
+            if r["label"] in _SKIP_SECTORS:
+                continue
+            label = _CANON.get(r["label"], r["label"])
+            if label in merged:
+                merged[label]["total"] += r["total"]
+                merged[label]["donors"] += r["donors"]
+            else:
+                merged[label] = {"label": label, "total": r["total"], "donors": r["donors"]}
+        sectors = sorted(merged.values(), key=lambda x: -x["total"])
         return {"state": state, "sectors": sectors}
     finally:
         conn.close()

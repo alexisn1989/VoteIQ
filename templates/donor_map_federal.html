@@ -383,7 +383,12 @@
     const hdr=document.getElementById('emp-title');
     if(hdr)hdr.textContent=title||'Employer Sector — by $ donated';
   }
-  const _defaultSectors=(D.emp_sectors||[]).filter(x=>x.label!=='Other'&&x.label!=='Unknown');
+  const _sectorsByParty={
+    'all':(D.emp_sectors||[]).filter(x=>x.label!=='Other'&&x.label!=='Unknown'),
+    'Democratic':(D.emp_sectors_dem||[]).filter(x=>x.label!=='Other'&&x.label!=='Unknown'),
+    'Republican':(D.emp_sectors_rep||[]).filter(x=>x.label!=='Other'&&x.label!=='Unknown'),
+  };
+  const _defaultSectors=_sectorsByParty['all'];
   if(_defaultSectors.length)drawEmp(_defaultSectors);
 
   // ── Tier chart: aggregate (party-filtered) or per-candidate ──────────────
@@ -446,7 +451,12 @@
       if(_activeParty==='all')btn.classList.add('all');
       else if(_activeParty==='Democratic')btn.classList.add('dem');
       else btn.classList.add('rep');
-      // also reset candidate dropdown
+      // update sector donut for selected party
+      const partySectors=_sectorsByParty[_activeParty]||_defaultSectors;
+      const partyEmpLabel=_activeParty==='all'?'Employer Sector — by $ donated':
+        _activeParty==='Democratic'?'Employer Sector — Democrats':'Employer Sector — Republicans';
+      if(partySectors.length)drawEmp(partySectors,partyEmpLabel);
+      // reset candidate dropdown
       const sel=document.getElementById('cand-select');if(sel)sel.value='all';
       refresh();
     });

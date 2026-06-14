@@ -157,81 +157,110 @@ TIERS = [
 ]
 
 
-def build_emp_sectors(conn: sqlite3.Connection) -> list[dict]:
-    # Merge near-duplicate labels the classifier generated into canonical names
-    CANON: dict[str, str] = {
-        "Finance":               "Finance & Banking",
-        "Real Estate":           "Real Estate & Construction",
-        "Defense":               "Defense & Aerospace",
-        "Technology":            "Technology & IT",
-        "Energy":                "Energy & Oil/Gas",
-        "Hospitality":           "Retail & Hospitality",
-        "Lobbying":              "Lobbying & Consulting",
-        "Consulting":            "Lobbying & Consulting",
-    }
-    # Non-industry labels excluded from the industry donut
-    EXCLUDE_SQL = (
-        "'Other','Other/Unknown','Retired','Retired/Individual',"
-        "'Self-Employed','Homemaker'"
-    )
+# Canonical sector name map — applied everywhere sectors are displayed
+SECTOR_CANON: dict[str, str] = {
+    "Finance":               "Finance & Banking",
+    "Real Estate":           "Real Estate & Construction",
+    "Defense":               "Defense & Aerospace",
+    "Technology":            "Technology & IT",
+    "Energy":                "Energy & Oil/Gas",
+    "Hospitality":           "Retail & Hospitality",
+    # Keep Lobbying and Consulting separate — merged label was too broad
+    "Lobbying":              "Lobbying",
+    "Consulting":            "Consulting",
+}
+_SECTOR_EXCLUDE_SQL = (
+    "'Other','Other/Unknown','Retired','Retired/Individual',"
+    "'Self-Employed','Homemaker'"
+)
 
-    rows = conn.execute(
-        f"""
-        SELECT employer_sector AS label,
-               ROUND(SUM(amount), 0) AS total,
-               COUNT(*) AS donors
-        FROM   fec_individual_contributions
-        WHERE  amount > 0
-          AND  employer_sector IS NOT NULL
-          AND  employer_sector NOT IN ({EXCLUDE_SQL})
-        GROUP  BY employer_sector
-        ORDER  BY total DESC
-        """
-    ).fetchall()
+
+def _retired_sub(occ: str | None) -> str | None:
+    occ = (occ or "").upper().strip()
+    if any(k in occ for k in ("INVEST", "EQUITY", "CAPITAL", "VENTURE",
+                               "LANDMAN", "REAL ESTATE", "FINANCIAL",
+                               "ECON", "TAX PRACT")):
+        return "Retired (Finance/Investing)"
+    if any(k in occ for k in ("ATTORNEY", "LAWYER", "LEGAL", "COUNSEL")):
+        return "Retired (Legal)"
+    if any(k in occ for k in ("PHYSICIAN", "DOCTOR", "HEALTH", "MEDICAL",
+                               "NURSE", "DENTIST")):
+        return "Retired (Healthcare)"
+    if any(k in occ for k in ("EXEC", "EXECUTIVE", "OWNER", "BUSINESS",
+                               "CONSUL", "MANAGE", "DIRECTOR", "AUTO DEAL")):
+        return "Retired (Business)"
+    if occ in ("", "RETIRED", "NOT EMPLOYED", "NONE", "HOMEMAKER",
+               "INFORMATION REQUESTED",
+               "INFORMATION REQUESTED PER BEST EFFORTS",
+               "SELF EMPLOYED", "SELF-EMPLOYED"):
+        return None
+    return "Retired (Other)"
+
+
+def build_emp_sectors(conn: sqlite3.Connection, party: str | None = None) -> list[dict]:
+    """Employer-sector $ breakdown. Pass party='Democratic'/'Republican' to filter."""
+    if party:
+        rows = conn.execute(
+            f"""
+            SELECT f.employer_sector AS label,
+                   ROUND(SUM(f.amount), 0) AS total,
+                   COUNT(*) AS donors
+            FROM   fec_individual_contributions f
+            JOIN   congress_members m ON m.bioguide_id = f.bioguide_id
+            WHERE  f.amount > 0 AND m.party = ?
+              AND  f.employer_sector IS NOT NULL
+              AND  f.employer_sector NOT IN ({_SECTOR_EXCLUDE_SQL})
+            GROUP  BY f.employer_sector
+            ORDER  BY total DESC
+            """, (party,)
+        ).fetchall()
+        ret_rows = conn.execute(
+            f"""
+            SELECT f.contributor_occupation AS occ,
+                   ROUND(SUM(f.amount), 0) AS total,
+                   COUNT(*) AS donors
+            FROM   fec_individual_contributions f
+            JOIN   congress_members m ON m.bioguide_id = f.bioguide_id
+            WHERE  f.amount > 0 AND m.party = ?
+              AND  f.employer_sector IN ('Retired', 'Retired/Individual')
+            GROUP  BY f.contributor_occupation
+            """, (party,)
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            f"""
+            SELECT employer_sector AS label,
+                   ROUND(SUM(amount), 0) AS total,
+                   COUNT(*) AS donors
+            FROM   fec_individual_contributions
+            WHERE  amount > 0
+              AND  employer_sector IS NOT NULL
+              AND  employer_sector NOT IN ({_SECTOR_EXCLUDE_SQL})
+            GROUP  BY employer_sector
+            ORDER  BY total DESC
+            """
+        ).fetchall()
+        ret_rows = conn.execute(
+            f"""
+            SELECT contributor_occupation AS occ,
+                   ROUND(SUM(amount), 0) AS total,
+                   COUNT(*) AS donors
+            FROM   fec_individual_contributions
+            WHERE  amount > 0
+              AND  employer_sector IN ('Retired', 'Retired/Individual')
+            GROUP  BY contributor_occupation
+            """
+        ).fetchall()
 
     merged: dict[str, dict] = {}
     for r in rows:
-        label = CANON.get(r["label"], r["label"])
+        label = SECTOR_CANON.get(r["label"], r["label"])
         if label in merged:
             merged[label]["total"] += r["total"]
             merged[label]["donors"] += r["donors"]
         else:
             merged[label] = {"label": label, "total": r["total"], "donors": r["donors"]}
 
-    # Add Retired sub-sectors by contributor_occupation
-    def _retired_sub(occ: str | None) -> str | None:
-        occ = (occ or "").upper().strip()
-        if any(k in occ for k in ("INVEST", "EQUITY", "CAPITAL", "VENTURE",
-                                   "LANDMAN", "REAL ESTATE", "FINANCIAL",
-                                   "ECON", "TAX PRACT")):
-            return "Retired (Finance/Investing)"
-        if any(k in occ for k in ("ATTORNEY", "LAWYER", "LEGAL", "COUNSEL")):
-            return "Retired (Legal)"
-        if any(k in occ for k in ("PHYSICIAN", "DOCTOR", "HEALTH", "MEDICAL",
-                                   "NURSE", "DENTIST")):
-            return "Retired (Healthcare)"
-        if any(k in occ for k in ("EXEC", "EXECUTIVE", "OWNER", "BUSINESS",
-                                   "CONSUL", "MANAGE", "DIRECTOR", "AUTO DEAL")):
-            return "Retired (Business)"
-        # Generic / unknown occupations — not meaningful to surface
-        if occ in ("", "RETIRED", "NOT EMPLOYED", "NONE", "HOMEMAKER",
-                   "INFORMATION REQUESTED",
-                   "INFORMATION REQUESTED PER BEST EFFORTS",
-                   "SELF EMPLOYED", "SELF-EMPLOYED"):
-            return None
-        return "Retired (Other)"
-
-    ret_rows = conn.execute(
-        f"""
-        SELECT contributor_occupation AS occ,
-               ROUND(SUM(amount), 0) AS total,
-               COUNT(*) AS donors
-        FROM   fec_individual_contributions
-        WHERE  amount > 0
-          AND  employer_sector IN ('Retired', 'Retired/Individual')
-        GROUP  BY contributor_occupation
-        """
-    ).fetchall()
     for r in ret_rows:
         sub = _retired_sub(r["occ"])
         if sub is None:
@@ -370,9 +399,11 @@ def main() -> None:
                 deduped[seen_names[n]] = c
         fed["candidates"] = deduped
 
-        fed["emp_sectors"] = build_emp_sectors(conn)
+        fed["emp_sectors"]     = build_emp_sectors(conn)
+        fed["emp_sectors_dem"] = build_emp_sectors(conn, party="Democratic")
+        fed["emp_sectors_rep"] = build_emp_sectors(conn, party="Republican")
         fed["candidate_tiers"] = build_candidate_tiers(conn)
-        fed["top_employers"] = build_top_employers(conn)
+        fed["top_employers"]   = build_top_employers(conn)
     finally:
         conn.close()
 
