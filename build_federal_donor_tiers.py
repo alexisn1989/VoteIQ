@@ -168,6 +168,7 @@ SECTOR_CANON: dict[str, str] = {
     # Keep Lobbying and Consulting separate — merged label was too broad
     "Lobbying":              "Lobbying",
     "Consulting":            "Consulting",
+    "Lobbying & Consulting": "Lobbying",  # old classifier label → fold into Lobbying
 }
 _SECTOR_EXCLUDE_SQL = (
     "'Other','Other/Unknown','Retired','Retired/Individual',"
