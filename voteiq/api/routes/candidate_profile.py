@@ -20,6 +20,137 @@ _POLLS_DB = os.environ.get(
 
 _ICI_LABEL = {"I": "Incumbent", "C": "Challenger", "O": "Open Seat"}
 
+# Maps raw sector labels (fec_va_house_contributions.sector) to policy issue areas.
+# None = generic/non-industry, excluded from issue breakdown.
+_SECTOR_TO_ISSUE: dict[str, str | None] = {
+    # Economic / Business
+    "Finance":                   "Economic Policy",
+    "Finance & Banking":         "Economic Policy",
+    "Business Executive":        "Business Interests",
+    "Business/Management":       "Business Interests",
+    "Consulting":                "Business Interests",
+    "Lobbying & Consulting":     "Business Interests",
+    "Lobbying":                  "Business Interests",
+    # Real Estate
+    "Real Estate":               "Real Estate",
+    "Real Estate & Construction":"Real Estate",
+    "Construction":              "Real Estate",
+    # Healthcare
+    "Healthcare":                "Healthcare",
+    "Healthcare & Pharma":       "Healthcare",
+    # Energy / Environment
+    "Energy":                    "Energy & Environment",
+    "Energy & Oil/Gas":          "Energy & Environment",
+    # Defense / Security
+    "Defense":                   "Defense & Security",
+    "Defense & Aerospace":       "Defense & Security",
+    # Legal
+    "Legal":                     "Legal & Advocacy",
+    "Advocacy":                  "Legal & Advocacy",
+    "Nonprofit":                 "Legal & Advocacy",
+    "Ideological/PAC":           "Legal & Advocacy",
+    # Technology
+    "Technology":                "Technology",
+    "Technology & IT":           "Technology",
+    # Education
+    "Education":                 "Education",
+    # Agriculture
+    "Agriculture":               "Agriculture",
+    # Labor
+    "Labor & Unions":            "Labor",
+    # Other identifiable industries
+    "Transportation":            "Transportation",
+    "Manufacturing":             "Manufacturing",
+    "Automotive":                "Manufacturing",
+    "Telecom & Media":           "Media & Comms",
+    "Media/Creative":            "Media & Comms",
+    "Government":                "Government",
+    "Government/Public":         "Government",
+    "Research/Science":          "Education",
+    "Retail & Hospitality":      "Business Interests",
+    "Hospitality":               "Business Interests",
+    # Skip — generic / personal, not policy signals
+    "Retired":                   None,
+    "Homemaker":                 None,
+    "Student":                   None,
+    "Grassroots":                None,
+    "Self-Employed":             None,
+    "Self-Employed (Other)":     None,
+    "Political/Campaign":        None,
+    "Other (named employer)":    None,
+    "Other/Unknown":             None,
+    "Other":                     None,
+}
+
+# Per-issue "lean" inference (donor-base signal, not a political label)
+_ISSUE_LEAN: dict[str, str] = {
+    "Economic Policy":    "Pro-business / deregulation",
+    "Business Interests": "Pro-business / free market",
+    "Real Estate":        "Development & property rights",
+    "Healthcare":         "Pharma / provider interests",
+    "Energy & Environment": "Fossil fuel / energy sector",
+    "Defense & Security": "Military spending / hawkish",
+    "Legal & Advocacy":   "Institutional / bipartisan",
+    "Technology":         "Tech industry / innovation",
+    "Education":          "Academic / research community",
+    "Agriculture":        "Rural / farm interests",
+    "Labor":              "Union-aligned / worker interests",
+    "Government":         "Public sector / civic",
+    "Media & Comms":      "Media / comms industry",
+    "Manufacturing":      "Industrial / supply chain",
+    "Transportation":     "Infrastructure / logistics",
+}
+
+
+def _build_issue_areas(sectors: list[dict]) -> list[dict]:
+    merged: dict[str, float] = {}
+    for s in sectors:
+        issue = _SECTOR_TO_ISSUE.get(s["label"])
+        if issue is None:
+            continue
+        merged[issue] = merged.get(issue, 0.0) + (s["total"] or 0)
+    return [
+        {"label": k, "total": round(v, 0), "lean": _ISSUE_LEAN.get(k, "")}
+        for k, v in sorted(merged.items(), key=lambda x: -x[1])
+        if v > 0
+    ]
+
+
+def _tag_pac(pac: dict) -> dict:
+    n = (pac["name"] or "").upper()
+    if any(k in n for k in ("NRCC", "NRSC", "REPUBLICAN", "FREEDOM CAUCUS",
+                             "CLUB FOR GROWTH", "HERITAGE ACTION", "TRUMP",
+                             "MAGA", "CONSERVATIVE", "TEA PARTY", "PATRIOTS FOR",
+                             "AMERICA FIRST")):
+        tag = "Conservative"
+    elif any(k in n for k in ("DCCC", "DSCC", "DEMOCRAT", "EMILY'S LIST",
+                               "PLANNED PARENTHOOD", "PROGRESSIVE", "SIERRA CLUB",
+                               "BRADY", "EVERYTOWN", "MOVEON", "END CITIZENS",
+                               "RUN FOR SOMETHING")):
+        tag = "Progressive"
+    elif any(k in n for k in ("NRA", "GUN OWNERS", "FIREARM", "SECOND AMENDMENT",
+                               "2ND AMENDMENT", "NSSF")):
+        tag = "Pro-Gun"
+    elif any(k in n for k in ("AFL-CIO", "TEAMSTER", "SEIU", "UFCW", "AFSCME",
+                               "UAW", "IBEW", " UNION", "LABOR")):
+        tag = "Labor"
+    elif any(k in n for k in ("CHAMBER", "NFIB", "NAM ", "BUSINESS ROUNDTABLE")):
+        tag = "Business"
+    elif any(k in n for k in ("HEALTH", "HOSPITAL", "PHARMA", "MEDICAL",
+                               " AMA ", "AHIP", "NURSES")):
+        tag = "Healthcare"
+    elif any(k in n for k in ("OIL", " GAS", "ENERGY", "PETROLEUM", "COAL",
+                               "PIPELINE", "REFIN")):
+        tag = "Energy"
+    elif any(k in n for k in ("DEFENSE", "VETERAN", "MILITARY", "ARMED FORCES")):
+        tag = "Defense"
+    elif any(k in n for k in ("FOR CONGRESS", "FOR VA", "FOR U.S.", "FOR SENATE",
+                               "CAMPAIGN COMMITTEE", "ELECTION FUND")):
+        tag = "Candidate Transfer"
+    else:
+        tag = "Other"
+    return {**pac, "ideology": tag}
+
 
 def _conn():
     if not os.path.isfile(_POLLS_DB):
@@ -172,11 +303,12 @@ def _fetch(conn: sqlite3.Connection, cand_id: str) -> dict:
         "grassroots_total": grassroots_total,
         "grassroots_pct":   grassroots_pct,
         "sectors":          sectors,
+        "issue_areas":      _build_issue_areas(sectors),
         "employers":        employers,
         "geo":              geo,
         "monthly":          monthly,
         "tiers":            tiers,
-        "pacs":             pacs,
+        "pacs":             [_tag_pac(p) for p in pacs],
     }
 
 

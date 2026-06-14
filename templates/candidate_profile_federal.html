@@ -162,6 +162,18 @@ tbody tr:hover td{background:#f9f7f3;}
     </div>
   </div>
 
+  <!-- issue alignment -->
+  <div class="card" id="issue-card">
+    <div class="card-title">Donor Issue Alignment — what industries are funding this candidate</div>
+    <div style="display:grid;grid-template-columns:260px 1fr;gap:24px;align-items:start">
+      <div style="position:relative;height:220px"><canvas id="chart-issue"></canvas></div>
+      <div id="issue-table"></div>
+    </div>
+    <div style="margin-top:12px;font-size:.75rem;color:var(--muted);border-top:1px solid var(--border);padding-top:10px">
+      <strong style="color:var(--navy)">Note:</strong> Issue areas are derived from donor industry sectors — a proxy for which policy constituencies fund this candidate, not a direct statement of their positions.
+    </div>
+  </div>
+
   <!-- grassroots callout -->
   <div class="callout" id="callout-geo">
     <div>
@@ -346,16 +358,88 @@ tbody tr:hover td{background:#f9f7f3;}
   });
   if (!tiers.length) tierWrap.innerHTML = '<div class="empty">No itemized contribution data available.</div>';
 
+  // ── issue alignment donut ─────────────────────────────────────────────────
+  const ISSUE_PAL = {
+    'Business Interests':  '#0d1b2a',
+    'Economic Policy':     '#b8963e',
+    'Real Estate':         '#7c3aed',
+    'Healthcare':          '#0891b2',
+    'Energy & Environment':'#ea580c',
+    'Defense & Security':  '#c8102e',
+    'Legal & Advocacy':    '#1a52c8',
+    'Technology':          '#0369a1',
+    'Education':           '#15803d',
+    'Agriculture':         '#65a30d',
+    'Labor':               '#db2777',
+    'Government':          '#6b21a8',
+    'Media & Comms':       '#64748b',
+    'Transportation':      '#78716c',
+    'Manufacturing':       '#92400e',
+  };
+  const issues = D.issue_areas || [];
+  if (issues.length) {
+    const issueColors = issues.map(i => ISSUE_PAL[i.label] || '#888');
+    new Chart($('chart-issue'), {
+      type: 'doughnut',
+      data: {
+        labels: issues.map(i => i.label),
+        datasets:[{data:issues.map(i=>i.total),backgroundColor:issueColors,borderWidth:2,borderColor:'#fff'}]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{label:function(ctx){
+            const t=ctx.raw,tot=ctx.dataset.data.reduce((a,b)=>a+b,0);
+            return ` ${ctx.label}: ${fmt(t)} (${pct(t,tot)}%)`;
+          }}}
+        }
+      }
+    });
+
+    const issueTotal = issues.reduce((s,i)=>s+i.total, 0);
+    let tbl = '<table><thead><tr><th>Issue Area</th><th class="amt">$</th><th class="amt">Share</th><th>Donor Signal</th></tr></thead><tbody>';
+    issues.forEach((ia, idx) => {
+      const color = ISSUE_PAL[ia.label] || '#888';
+      tbl += `<tr>
+        <td style="display:flex;align-items:center;gap:8px;padding:8px 10px">
+          <span style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0;display:inline-block"></span>
+          <strong>${ia.label}</strong>
+        </td>
+        <td class="amt">${fmt(ia.total)}</td>
+        <td class="amt">${pct(ia.total,issueTotal)}%</td>
+        <td style="font-size:.75rem;color:var(--muted);font-style:italic">${ia.lean}</td>
+      </tr>`;
+    });
+    tbl += '</tbody></table>';
+    $('issue-table').innerHTML = tbl;
+  } else {
+    $('issue-card').style.display = 'none';
+  }
+
   // ── PAC table ─────────────────────────────────────────────────────────────
+  const IDEOLOGY_COLORS = {
+    'Conservative':      '#c8102e',
+    'Progressive':       '#1a52c8',
+    'Pro-Gun':           '#92400e',
+    'Labor':             '#db2777',
+    'Business':          '#0d1b2a',
+    'Healthcare':        '#0891b2',
+    'Energy':            '#ea580c',
+    'Defense':           '#6b21a8',
+    'Candidate Transfer':'#7a7468',
+    'Other':             '#ddd8cc',
+  };
   const pacs = D.pacs || [];
   if (pacs.length) {
-    let html = '<table><thead><tr><th>Committee / PAC</th><th>State</th><th class="amt">Amount</th><th>Type</th></tr></thead><tbody>';
+    let html = '<table><thead><tr><th>Committee / PAC</th><th>Category</th><th>State</th><th class="amt">Amount</th></tr></thead><tbody>';
     pacs.forEach(p => {
+      const ic = IDEOLOGY_COLORS[p.ideology] || '#888';
       html += `<tr>
         <td><strong>${p.name}</strong><br><span style="font-size:.7rem;color:var(--muted)">${p.id}</span></td>
+        <td><span style="display:inline-block;padding:2px 9px;font-family:'Barlow Condensed',sans-serif;font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border:1.5px solid ${ic};color:${ic}">${p.ideology}</span></td>
         <td><span class="st-chip">${p.state||'?'}</span></td>
         <td class="amt">${fmt(p.total)}</td>
-        <td><span style="font-size:.7rem;color:var(--muted)">${p.types}</span></td>
       </tr>`;
     });
     html += '</tbody></table>';
