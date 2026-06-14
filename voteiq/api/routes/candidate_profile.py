@@ -416,6 +416,16 @@ def federal_candidate_api(cand_id: str):
         conn.close()
 
 
+@router.get("/candidate/house/{cand_id}", response_class=HTMLResponse)
+def house_candidate_page(cand_id: str):
+    return federal_candidate_page(cand_id)
+
+
+@router.get("/api/candidate/house/{cand_id}")
+def house_candidate_api(cand_id: str):
+    return federal_candidate_api(cand_id)
+
+
 # ── Senate ────────────────────────────────────────────────────────────────────
 
 def _fmt_party(raw: str) -> str:
