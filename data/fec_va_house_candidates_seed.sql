@@ -130,3 +130,25 @@ VALUES
     ('H6VA11140','ROMA, AMY','DEM',11,'C','C','C00906537',2026,1285227.09,523865.5,1285227.09,0.0,'2026-06-14T04:09:57.663497+00:00'),
     ('H4VA11129','VAN METER, MICHAEL LEWIS','REP',11,'C','N','C00868711',2026,4579.41,4579.41,7678.05,0.0,'2026-06-14T04:09:57.663497+00:00'),
     ('H6VA11066','WALKINSHAW, JAMES','DEM',11,'I','C','C00904367',2026,2279096.13,1515950.92,1482860.32,796235.81,'2026-06-14T04:09:57.663497+00:00');
+-- Derived view: all non-incumbent candidates (challengers + open seat)
+DROP VIEW IF EXISTS fec_va_house_challengers;
+CREATE VIEW fec_va_house_challengers AS
+SELECT
+    cand_id,
+    name,
+    party,
+    district,
+    CASE ici
+        WHEN 'C' THEN 'Challenger'
+        WHEN 'O' THEN 'Open seat'
+        ELSE 'Unknown'
+    END AS race_type,
+    committee_id,
+    cycle,
+    total_receipts,
+    ind_contributions,
+    total_disbursements,
+    cash_on_hand
+FROM fec_va_house_candidates
+WHERE ici != 'I'
+ORDER BY district, total_receipts DESC;
