@@ -793,7 +793,11 @@ def _add_bill_context(blocks: list[str], bills: list[str], session: str, pro: bo
             _query_rows(conn, """
                 SELECT bill_id, session, vote_date, chamber, motion, result, voter_name, option, party, district
                 FROM votes
-                WHERE bill_id=? AND session=?
+                WHERE id IN (
+                  SELECT MAX(id) FROM votes
+                  WHERE bill_id=? AND session=?
+                  GROUP BY voter_name, bill_id, session, motion
+                )
                 ORDER BY vote_date DESC
                 LIMIT 30
             """, (bill, session), f"openstates.votes {bill}", blocks, limit=30)
@@ -1111,7 +1115,11 @@ def _add_person_vote_context(blocks: list[str], query: str, terms: list[str], se
             SELECT bill_id, session, vote_date, chamber, motion, result,
                    voter_name, option, party, district
             FROM votes
-            WHERE session=? AND ({clause})
+            WHERE id IN (
+              SELECT MAX(id) FROM votes
+              WHERE session=? AND ({clause})
+              GROUP BY voter_name, bill_id, session, motion
+            )
             ORDER BY vote_date DESC
             LIMIT 40
         """, [session, *params], "openstates.votes person", blocks, limit=40)

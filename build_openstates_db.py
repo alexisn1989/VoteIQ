@@ -110,6 +110,7 @@ def setup_db(conn):
 
         CREATE INDEX IF NOT EXISTS idx_votes_bill    ON votes(bill_id, session);
         CREATE INDEX IF NOT EXISTS idx_votes_voter   ON votes(voter_name);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_votes_nodup ON votes(voter_name, bill_id, session, motion);
         CREATE INDEX IF NOT EXISTS idx_bills_session ON bills(session);
 
         CREATE TABLE IF NOT EXISTS bill_actions (
@@ -250,7 +251,7 @@ def insert_votes(cur, bill_id: str, session: str, bill: dict):
             title    = role.get("title") or ""
 
             cur.execute("""
-                INSERT INTO votes
+                INSERT OR IGNORE INTO votes
                 (bill_id, session, vote_date, chamber, motion, result,
                  voter_name, option, party, district)
                 VALUES (?,?,?,?,?,?,?,?,?,?)
