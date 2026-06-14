@@ -283,70 +283,132 @@
 
 <!-- ── Federal donor breakdown charts ────────────────────────────────────── -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<style>
+.pbtn{font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:3px 10px;border-radius:4px;border:1px solid var(--border);background:#fff;color:var(--muted);cursor:pointer;transition:all .15s}
+.pbtn:hover{border-color:var(--navy);color:var(--navy)}
+.pbtn.active.all{background:var(--navy);color:#fff;border-color:var(--navy)}
+.pbtn.active.dem{background:#1a52c8;color:#fff;border-color:#1a52c8}
+.pbtn.active.rep{background:#c8102e;color:#fff;border-color:#c8102e}
+</style>
 <div style="max-width:1200px;margin:0 auto;padding:20px 32px 52px;font-family:'Barlow',system-ui,sans-serif">
   <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:18px;display:flex;align-items:center;gap:12px">
     Donor Analysis
     <span style="flex:1;height:1px;background:var(--border);display:inline-block"></span>
   </div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;max-width:680px">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;max-width:960px">
+    <!-- Employer sector donut -->
     <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:20px">
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy);margin-bottom:14px">Employer Sector — by $ donated</div>
       <canvas id="chart-emp"></canvas>
     </div>
-    <div id="tiers-card" style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:20px;display:none">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy);margin-bottom:4px">Large-Donor Tiers — <span id="tiers-cand"></span></div>
-      <div style="font-size:0.72rem;color:var(--muted);margin-bottom:14px">Itemized receipts by gift size. FEC itemized data here is all ≥$1,000 — no small-donor tier exists.</div>
+    <!-- Tier breakdown — aggregate (default) or per-candidate -->
+    <div id="tiers-card" style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:20px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy)">Large-Donor Tiers — <span id="tiers-cand">All Candidates</span></div>
+        <div id="party-btns" style="display:flex;gap:4px;margin-left:auto">
+          <button class="pbtn active all" data-p="all">All</button>
+          <button class="pbtn dem" data-p="Democratic">Dem</button>
+          <button class="pbtn rep" data-p="Republican">Rep</button>
+        </div>
+      </div>
+      <div style="font-size:0.72rem;color:var(--muted);margin-bottom:14px">Itemized receipts ≥$1K split by gift-size band. Select a candidate above to drill down.</div>
       <canvas id="chart-tiers"></canvas>
     </div>
   </div>
-  <div id="tiers-hint" style="font-size:0.8rem;color:var(--muted);margin-top:14px;max-width:680px">Select a candidate from the dropdown above to see how their itemized large-dollar receipts split across gift-size tiers.</div>
 </div>
 <script>
 (function(){
   const D=window._MAP_DATA||{};
   const PAL=['#0d1b2a','#c8102e','#1a52c8','#b8963e','#15803d','#6b21a8','#ea580c','#0891b2','#65a30d','#db2777','#7c3aed'];
+  const TIER_ORDER=['Mid-Level ($1K-$3.3K)','Max-Out ($3.3K-$6.6K)','Super-Max ($6.6K+)'];
+  const TIER_COLORS={'Mid-Level ($1K-$3.3K)':'#15803d','Max-Out ($3.3K-$6.6K)':'#b8963e','Super-Max ($6.6K+)':'#c8102e'};
+
+  function fmtMoney(v){return v>=1e9?'$'+(v/1e9).toFixed(1)+'B':v>=1e6?'$'+(v/1e6).toFixed(1)+'M':'$'+(v/1e3).toFixed(0)+'K';}
+
   function donut(id,labels,vals){
     const c=document.getElementById(id);if(!c)return;
     new Chart(c,{type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:PAL.slice(0,labels.length),borderWidth:2,borderColor:'#fff'}]},
     options:{responsive:true,plugins:{legend:{position:'right',labels:{font:{family:'Barlow',size:11},padding:8,boxWidth:12}},
     tooltip:{callbacks:{label:x=>{const t=x.dataset.data.reduce((a,b)=>a+b,0);const p=(x.parsed/t*100).toFixed(1);
-    const f=x.parsed>=1e9?'$'+(x.parsed/1e9).toFixed(1)+'B':x.parsed>=1e6?'$'+(x.parsed/1e6).toFixed(1)+'M':'$'+(x.parsed/1e3).toFixed(0)+'K';
-    return' '+x.label+': '+f+' ('+p+'%)';}}}}}});
+    return' '+x.label+': '+fmtMoney(x.parsed)+' ('+p+'%)';}}}}}});
   }
-  const s=(D.emp_sectors||[]).filter(x=>x.label!=='Other'&&x.label!=='Unknown');if(s.length)donut('chart-emp',s.map(x=>x.label),s.map(x=>x.total));
+  const s=(D.emp_sectors||[]).filter(x=>x.label!=='Other'&&x.label!=='Unknown');
+  if(s.length)donut('chart-emp',s.map(x=>x.label),s.map(x=>x.total));
 
-  // ── Per-candidate donor-tier doughnut (driven by candidate dropdown) ──
-  const TIERS = D.candidate_tiers || {};
-  const TIER_COLORS = {
-    'Mid-Level ($1K-$3.3K)':'#15803d',
-    'Max-Out ($3.3K-$6.6K)':'#b8963e',
-    'Super-Max ($6.6K+)':'#c8102e',
-  };
+  // ── Tier chart: aggregate (party-filtered) or per-candidate ──────────────
+  const TIERS=D.candidate_tiers||{};
+  const CANDS=D.candidates||[];
   let tierChart=null;
-  window.renderTierChart=function(cand){
-    const card=document.getElementById('tiers-card');
-    const hint=document.getElementById('tiers-hint');
-    const rows=(cand && TIERS[cand]) ? TIERS[cand] : null;
-    if(!rows || !rows.length){
-      if(tierChart){tierChart.destroy();tierChart=null;}
-      card.style.display='none';
-      if(hint) hint.style.display='';
-      return;
+  let _activeCand=null;
+  let _activeParty='all';
+
+  function aggTiers(partyFilter){
+    const nameSet=new Set(
+      (!partyFilter||partyFilter==='all'?CANDS:CANDS.filter(c=>c.party===partyFilter))
+      .map(c=>c.name)
+    );
+    const agg={};
+    for(const [name,rows] of Object.entries(TIERS)){
+      if(!nameSet.has(name))continue;
+      for(const r of rows){
+        if(!agg[r.tier])agg[r.tier]={total:0,count:0};
+        agg[r.tier].total+=r.total;agg[r.tier].count+=r.count;
+      }
     }
-    if(hint) hint.style.display='none';
-    card.style.display='';
-    document.getElementById('tiers-cand').textContent=cand;
+    return TIER_ORDER.filter(t=>agg[t]).map(t=>({tier:t,...agg[t]}));
+  }
+
+  function drawTiers(rows,title){
+    if(!rows||!rows.length)return;
     const labels=rows.map(r=>r.tier);
     const vals=rows.map(r=>r.total);
-    const cols=labels.map((l,i)=>TIER_COLORS[l]||PAL[i%PAL.length]);
-    if(tierChart) tierChart.destroy();
+    const cols=labels.map(l=>TIER_COLORS[l]||'#888');
+    if(tierChart)tierChart.destroy();
     const c=document.getElementById('chart-tiers');
-    tierChart=new Chart(c,{type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:cols,borderWidth:2,borderColor:'#fff'}]},
-      options:{responsive:true,plugins:{legend:{position:'right',labels:{font:{family:'Barlow',size:11},padding:8,boxWidth:12}},
-      tooltip:{callbacks:{label:x=>{const t=x.dataset.data.reduce((a,b)=>a+b,0);const p=(x.parsed/t*100).toFixed(1);
-      const f=x.parsed>=1e9?'$'+(x.parsed/1e9).toFixed(1)+'B':x.parsed>=1e6?'$'+(x.parsed/1e6).toFixed(1)+'M':'$'+(x.parsed/1e3).toFixed(0)+'K';
-      return' '+x.label+': '+f+' ('+p+'%)';}}}}}});
+    tierChart=new Chart(c,{type:'bar',data:{labels,datasets:[{data:vals,backgroundColor:cols,borderRadius:4,borderSkipped:false}]},
+      options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:x=>' '+fmtMoney(x.parsed)}}},
+      scales:{x:{ticks:{callback:v=>fmtMoney(v),font:{family:'Barlow',size:11}},grid:{color:'#f0f0f0'}},
+              y:{ticks:{font:{family:'Barlow',size:11}},grid:{display:false}}}}});
+    document.getElementById('tiers-cand').textContent=title;
+  }
+
+  function refresh(){
+    if(_activeCand&&TIERS[_activeCand]){
+      drawTiers(TIERS[_activeCand],_activeCand);
+    }else{
+      const partyLabel=_activeParty==='all'?'All Candidates':(_activeParty==='Democratic'?'Democrats':'Republicans');
+      drawTiers(aggTiers(_activeParty),partyLabel);
+    }
+  }
+
+  // Party toggle buttons
+  document.querySelectorAll('.pbtn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      _activeParty=btn.dataset.p;
+      _activeCand=null;
+      document.querySelectorAll('.pbtn').forEach(b=>{
+        b.classList.remove('active');
+        ['all','dem','rep'].forEach(c=>b.classList.remove(c));
+      });
+      btn.classList.add('active');
+      if(_activeParty==='all')btn.classList.add('all');
+      else if(_activeParty==='Democratic')btn.classList.add('dem');
+      else btn.classList.add('rep');
+      // also reset candidate dropdown
+      const sel=document.getElementById('cand-select');if(sel)sel.value='all';
+      refresh();
+    });
+  });
+
+  // Called by candidate dropdown
+  window.renderTierChart=function(cand){
+    _activeCand=(!cand||cand==='all')?null:cand;
+    refresh();
   };
+
+  // Initial render — aggregate all
+  refresh();
 })();
 </script>
 </body>
