@@ -4370,6 +4370,241 @@ def _bills_system_prompt(
     )
 
 
+# ── VA federal House 2026 candidate profile (FEC data) ───────────────────────
+
+_VA_HOUSE_SECTOR_TO_ISSUE: dict[str, str | None] = {
+    "Finance": "Economic Policy", "Finance & Banking": "Economic Policy",
+    "Business Executive": "Business Interests", "Business/Management": "Business Interests",
+    "Consulting": "Business Interests", "Lobbying & Consulting": "Business Interests",
+    "Lobbying": "Business Interests", "Retail & Hospitality": "Business Interests",
+    "Hospitality": "Business Interests",
+    "Real Estate": "Real Estate", "Real Estate & Construction": "Real Estate",
+    "Construction": "Real Estate",
+    "Healthcare": "Healthcare", "Healthcare & Pharma": "Healthcare",
+    "Energy": "Energy & Environment", "Energy & Oil/Gas": "Energy & Environment",
+    "Defense": "Defense & Security", "Defense & Aerospace": "Defense & Security",
+    "Legal": "Legal & Advocacy", "Advocacy": "Legal & Advocacy",
+    "Nonprofit": "Legal & Advocacy", "Ideological/PAC": "Legal & Advocacy",
+    "Technology": "Technology", "Technology & IT": "Technology",
+    "Education": "Education", "Research/Science": "Education",
+    "Agriculture": "Agriculture",
+    "Labor & Unions": "Labor",
+    "Transportation": "Transportation",
+    "Manufacturing": "Manufacturing", "Automotive": "Manufacturing",
+    "Telecom & Media": "Media & Comms", "Media/Creative": "Media & Comms",
+    "Government": "Government", "Government/Public": "Government",
+    # skip — not policy signals
+    "Retired": None, "Homemaker": None, "Student": None, "Grassroots": None,
+    "Self-Employed": None, "Self-Employed (Other)": None,
+    "Political/Campaign": None, "Other (named employer)": None,
+    "Other/Unknown": None, "Other": None,
+}
+
+_VA_HOUSE_ISSUE_LEAN: dict[str, str] = {
+    "Economic Policy":    "Pro-business / deregulation",
+    "Business Interests": "Pro-business / free market",
+    "Real Estate":        "Development & property rights",
+    "Healthcare":         "Pharma / provider interests",
+    "Energy & Environment": "Fossil fuel / energy sector",
+    "Defense & Security": "Military spending / hawkish",
+    "Legal & Advocacy":   "Institutional / bipartisan",
+    "Technology":         "Tech industry / innovation",
+    "Education":          "Academic / research community",
+    "Agriculture":        "Rural / farm interests",
+    "Labor":              "Union-aligned / worker interests",
+    "Government":         "Public sector / civic",
+    "Media & Comms":      "Media / comms industry",
+    "Manufacturing":      "Industrial / supply chain",
+    "Transportation":     "Infrastructure / logistics",
+}
+
+
+def _tag_pac_ideology_chat(name: str) -> str:
+    n = (name or "").upper()
+    if any(k in n for k in ("NRCC", "NRSC", "REPUBLICAN", "FREEDOM CAUCUS",
+                             "CLUB FOR GROWTH", "TRUMP", "MAGA", "CONSERVATIVE",
+                             "AMERICA FIRST")):
+        return "Conservative"
+    if any(k in n for k in ("DCCC", "DSCC", "DEMOCRAT", "EMILY'S LIST",
+                             "PLANNED PARENTHOOD", "PROGRESSIVE", "EVERYTOWN",
+                             "END CITIZENS")):
+        return "Progressive"
+    if any(k in n for k in ("NRA", "GUN OWNERS", "FIREARM", "SECOND AMENDMENT")):
+        return "Pro-Gun"
+    if any(k in n for k in ("AFL-CIO", "TEAMSTER", "SEIU", "UFCW", "AFSCME",
+                             "UAW", "IBEW", " UNION", "LABOR")):
+        return "Labor"
+    if any(k in n for k in ("FOR CONGRESS", "FOR VA", "FOR U.S.", "ELECTION FUND",
+                             "CAMPAIGN COMMITTEE")):
+        return "Candidate Transfer"
+    return "Other"
+
+
+def _direct_va_house_fec_candidate_reply(user_query: str) -> str:
+    """SQL profile for 2026 VA federal House candidates from fec_va_house_* tables.
+
+    Fires when a known VA House candidate name + finance/ideology keyword detected.
+    Returns markdown with financials, donor issue alignment, and PAC ideology tags.
+    """
+    q = user_query.lower()
+    FINANCE_KW = {
+        "donor", "fund", "funded", "fundrais", "contribut", "sector",
+        "industri", "support", "issues", "issue", "money", "pac",
+        "finance", "campaign", "profile", "backed", "back", "ideology",
+        "what does", "who fund", "who backs", "backs",
+    }
+    if not any(k in q for k in FINANCE_KW):
+        return ""
+    if not os.path.exists(_POLLS_DB):
+        return ""
+
+    try:
+        conn = sqlite3.connect(_POLLS_DB, timeout=10)
+        conn.row_factory = sqlite3.Row
+
+        # Name matching against fec_va_house_candidates
+        STOP = {
+            "what", "does", "do", "support", "who", "funds", "funded", "is", "are",
+            "tell", "me", "about", "the", "a", "an", "in", "for", "of", "their",
+            "his", "her", "donor", "sector", "industry", "money", "pac", "profile",
+            "issue", "issues", "ideology", "fund", "raise", "raised", "campaign",
+            "finance", "candidate", "congressman", "representative", "how", "much",
+            "and", "or", "with", "from", "by", "on", "at", "to", "has", "backed",
+            "backs", "backs", "behind",
+        }
+        name_tokens = {w for w in re.sub(r"[^a-z\s]", "", q).split() if w not in STOP and len(w) > 2}
+        if not name_tokens:
+            conn.close()
+            return ""
+
+        all_cands = conn.execute(
+            "SELECT cand_id, name, party, district, ici, "
+            "total_receipts, cash_on_hand, total_disbursements "
+            "FROM fec_va_house_candidates"
+        ).fetchall()
+
+        best_cand = None
+        best_score = 0
+        for cand in all_cands:
+            raw = (cand["name"] or "").lower().replace(",", " ")
+            cand_tokens = set(raw.split())
+            score = len(cand_tokens & name_tokens)
+            if score > best_score:
+                best_score = score
+                best_cand = cand
+
+        if not best_cand or best_score < 1:
+            conn.close()
+            return ""
+
+        cand_id = best_cand["cand_id"]
+        raw_name = best_cand["name"] or cand_id
+        if "," in raw_name:
+            last, first = raw_name.split(",", 1)
+            display_name = f"{first.strip().title()} {last.strip().title()}"
+        else:
+            display_name = raw_name.title()
+        ici_label = {"I": "Incumbent", "C": "Challenger", "O": "Open Seat"}.get(
+            best_cand["ici"] or "", "Candidate"
+        )
+
+        # Sector → issue areas
+        sector_rows = conn.execute(
+            "SELECT sector, ROUND(SUM(amount),0) AS total "
+            "FROM fec_va_house_contributions "
+            "WHERE cand_id = ? AND amount > 0 GROUP BY sector",
+            (cand_id,),
+        ).fetchall()
+        issue_merged: dict[str, float] = {}
+        for r in sector_rows:
+            issue = _VA_HOUSE_SECTOR_TO_ISSUE.get(r["sector"])
+            if issue:
+                issue_merged[issue] = issue_merged.get(issue, 0.0) + (r["total"] or 0)
+        issue_areas = sorted(issue_merged.items(), key=lambda x: -x[1])
+        issue_total = sum(v for _, v in issue_areas) or 1
+
+        # PACs
+        pac_rows = conn.execute(
+            "SELECT pac_name, ROUND(SUM(amount),0) AS total "
+            "FROM fec_va_house_pac_contributions "
+            "WHERE cand_id = ? AND amount > 0 GROUP BY pac_name ORDER BY total DESC LIMIT 6",
+            (cand_id,),
+        ).fetchall()
+        pac_total = conn.execute(
+            "SELECT ROUND(SUM(amount),0) FROM fec_va_house_pac_contributions "
+            "WHERE cand_id = ? AND amount > 0",
+            (cand_id,),
+        ).fetchone()[0] or 0
+
+        # Itemized stats
+        row = conn.execute(
+            "SELECT ROUND(SUM(amount),0), COUNT(*), "
+            "ROUND(SUM(CASE WHEN amount < 200 THEN amount ELSE 0 END),0) "
+            "FROM fec_va_house_contributions WHERE cand_id = ? AND amount > 0",
+            (cand_id,),
+        ).fetchone()
+        itemized_total   = row[0] or 0
+        itemized_donors  = row[1] or 0
+        grassroots_total = row[2] or 0
+        grassroots_pct   = round(100 * grassroots_total / itemized_total, 1) if itemized_total else 0
+
+        geo_rows = conn.execute(
+            "SELECT CASE WHEN state='VA' THEN 'in' ELSE 'out' END AS g, ROUND(SUM(amount),0) AS t "
+            "FROM fec_va_house_contributions WHERE cand_id = ? AND amount > 0 GROUP BY g",
+            (cand_id,),
+        ).fetchall()
+        geo_d = {r["g"]: (r["t"] or 0) for r in geo_rows}
+        geo_tot = (geo_d.get("in", 0) + geo_d.get("out", 0)) or 1
+        in_pct = round(100 * geo_d.get("in", 0) / geo_tot)
+
+        conn.close()
+
+        f = lambda v: f"${v:,.0f}"
+
+        lines = [
+            f"## {display_name} — VA-{best_cand['district']:02d} · U.S. House · "
+            f"{best_cand['party']} · {ici_label}",
+            "",
+            "**Campaign Finance** _(FEC 2026 cycle)_",
+            f"- Total raised: {f(best_cand['total_receipts'] or 0)}",
+            f"- Cash on hand: {f(best_cand['cash_on_hand'] or 0)}",
+            f"- Total spent:  {f(best_cand['total_disbursements'] or 0)}",
+            f"- Itemized donors: {itemized_donors:,} · {f(itemized_total)}",
+            f"- PAC / committee money: {f(pac_total)}",
+            f"- Grassroots (<$200): {grassroots_pct}%  ·  In-state: {in_pct}%",
+            "",
+        ]
+
+        if issue_areas:
+            lines.append(
+                "**Donor Issue Alignment** "
+                "_(which industries fund this candidate — proxy for policy priorities, not their stated positions)_"
+            )
+            for issue, total in issue_areas[:8]:
+                pct = round(100 * total / issue_total)
+                lean = _VA_HOUSE_ISSUE_LEAN.get(issue, "")
+                lines.append(f"- **{issue}** — {f(total)} ({pct}%) · _{lean}_")
+            lines.append("")
+
+        if pac_rows:
+            lines.append(f"**PAC & Committee Backing** _{f(pac_total)} total_")
+            for p in pac_rows:
+                tag = _tag_pac_ideology_chat(p["pac_name"])
+                lines.append(f"- {p['pac_name']} · {f(p['total'])} · [{tag}]")
+            lines.append("")
+
+        lines += [
+            f"[Full profile →](/candidate/federal/{cand_id})",
+            "",
+            "_Source: FEC bulk data, 2026 cycle. Sector labels classified by VoteIQ. "
+            "Industry alignment is a donor-base proxy — not a statement of the candidate's positions._",
+        ]
+        return "\n".join(lines)
+
+    except Exception:
+        return ""
+
+
 # ── /chat ─────────────────────────────────────────────────────────────────────
 
 @router.post("/chat", response_model=ChatResponse)
@@ -4454,6 +4689,7 @@ async def chat(req: ChatRequest):
         _direct_donor_alignment_reply(last_question)
         or _direct_va_legislator_reply(last_question, premium=_premium_analyst_enabled(req))
         or _direct_va_finance_reply(last_question, premium=_premium_analyst_enabled(req))
+        or _direct_va_house_fec_candidate_reply(last_question)
         or _direct_governor_eo_reply(last_question)
         or _direct_governor_veto_reply(last_question)
         or _direct_spanberger_governor_overview_reply(last_question)
@@ -4760,6 +4996,7 @@ async def gemini_chat(request: Request, req: ChatRequest):
         _direct_donor_alignment_reply(user_query)
         or _direct_va_legislator_reply(user_query, premium=_premium_analyst_enabled(req))
         or _direct_va_finance_reply(user_query, premium=_premium_analyst_enabled(req))
+        or _direct_va_house_fec_candidate_reply(user_query)
         or _direct_governor_eo_reply(user_query)
         or _direct_governor_veto_reply(user_query)
         or _direct_spanberger_governor_overview_reply(user_query)
@@ -4879,6 +5116,7 @@ async def bills_chat(req: BillsChatRequest):
         _direct_donor_alignment_reply(user_query)
         or _direct_va_legislator_reply(user_query, premium=_premium_analyst_enabled(req))
         or _direct_va_finance_reply(user_query, premium=_premium_analyst_enabled(req))
+        or _direct_va_house_fec_candidate_reply(user_query)
         or _direct_governor_eo_reply(user_query)
         or _direct_governor_veto_reply(user_query)
         or _direct_spanberger_governor_overview_reply(user_query)
@@ -5010,6 +5248,7 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
         _direct_donor_alignment_reply(user_query)
         or _direct_va_legislator_reply(user_query, premium=_premium_analyst_enabled(req))
         or _direct_va_finance_reply(user_query, premium=_premium_analyst_enabled(req))
+        or _direct_va_house_fec_candidate_reply(user_query)
         or _direct_governor_eo_reply(user_query)
         or _direct_governor_veto_reply(user_query)
         or _direct_spanberger_governor_overview_reply(user_query)
