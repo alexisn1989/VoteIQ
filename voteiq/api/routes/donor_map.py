@@ -268,6 +268,70 @@ def donor_map_federal_page():
         conn.close()
 
 
+_SKIP_SECTORS = {"Other", "Unknown", "Other/Unknown", "Retired", "Retired/Individual",
+                  "Self-Employed", "Homemaker", "Grassroots"}
+_TIER_BANDS = [
+    ("Mid-Level ($1K-$3.3K)", 1000.0, 3300.0),
+    ("Max-Out ($3.3K-$6.6K)", 3300.0, 6600.0),
+    ("Super-Max ($6.6K+)", 6600.0, None),
+]
+
+
+@router.get("/api/federal/state-sectors/{state}")
+def api_federal_state_sectors(state: str):
+    """Employer-sector $ breakdown for contributions originating from a given US state."""
+    state = state.upper()
+    conn = _conn()
+    try:
+        rows = conn.execute("""
+            SELECT employer_sector AS label,
+                   ROUND(SUM(amount),0) AS total, COUNT(*) AS donors
+            FROM   fec_individual_contributions
+            WHERE  state = ? AND amount > 0
+              AND  employer_sector IS NOT NULL
+            GROUP  BY employer_sector
+            ORDER  BY total DESC
+        """, (state,)).fetchall()
+        sectors = [
+            {"label": r["label"], "total": r["total"], "donors": r["donors"]}
+            for r in rows
+            if r["label"] not in _SKIP_SECTORS
+        ]
+        return {"state": state, "sectors": sectors}
+    finally:
+        conn.close()
+
+
+@router.get("/api/federal/state-tiers/{state}")
+def api_federal_state_tiers(state: str):
+    """Donor-tier breakdown for itemized federal contributions from a given US state."""
+    state = state.upper()
+    conn = _conn()
+    try:
+        rows = conn.execute("""
+            SELECT amount FROM fec_individual_contributions
+            WHERE  state = ? AND amount > 0
+        """, (state,)).fetchall()
+        agg: dict[str, list] = {}
+        for r in rows:
+            amt = float(r["amount"])
+            for label, lo, hi in _TIER_BANDS:
+                if amt >= lo and (hi is None or amt < hi):
+                    if label not in agg:
+                        agg[label] = [0.0, 0]
+                    agg[label][0] += amt
+                    agg[label][1] += 1
+                    break
+        tiers = [
+            {"tier": label, "total": round(agg[label][0], 0), "count": agg[label][1]}
+            for label, _lo, _hi in _TIER_BANDS
+            if label in agg
+        ]
+        return {"state": state, "tiers": tiers}
+    finally:
+        conn.close()
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  DONOR–LEGISLATION CORRELATION  (/donor-legislation)
 # ══════════════════════════════════════════════════════════════════════════════

@@ -241,6 +241,42 @@
         popup.setLngLat(e.lngLat).setHTML(`<div class="popup-title">${p.name}</div><div class="popup-row"><span>Total donated</span><span>${p.total>0?fmt(p.total):'No data'}</span></div><div class="popup-row"><span>Donors</span><span>${p.donors>0?fmtn(p.donors):'—'}</span></div><div class="popup-row"><span>Share</span><span>${p.pct}%</span></div>`).addTo(map);
       });
       map.on('mouseleave','states-fill',()=>{map.getCanvas().style.cursor='';popup.remove();});
+
+      // ── State click → update sector + tier charts ──────────────────────────
+      let _selectedState=null;
+      map.on('click','states-fill',e=>{
+        if(!e.features.length)return;
+        const abbr=e.features[0].properties.abbr;
+        const name=e.features[0].properties.name;
+        if(!abbr)return;
+
+        // Toggle off if clicking the same state again
+        if(_selectedState===abbr){
+          _selectedState=null;
+          document.getElementById('state-filter-label')?.remove();
+          if(window.resetChartsToDefault)window.resetChartsToDefault();
+          return;
+        }
+        _selectedState=abbr;
+
+        // Show a label indicating state filter is active
+        let lbl=document.getElementById('state-filter-label');
+        if(!lbl){
+          lbl=document.createElement('div');
+          lbl.id='state-filter-label';
+          lbl.style.cssText='font-size:.78rem;color:var(--navy);font-weight:700;margin-top:10px;max-width:960px;display:flex;align-items:center;gap:8px';
+          document.querySelector('.pbtn')?.closest('div')?.closest('div')?.after(lbl);
+        }
+        lbl.innerHTML=`Showing donor profile for <strong>${name}</strong> &nbsp;<button onclick="document.getElementById('state-filter-label').remove();window._selectedState=null;window.resetChartsToDefault&&window.resetChartsToDefault()" style="font-size:.7rem;padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:#fff;cursor:pointer">✕ Clear</button>`;
+
+        // Fetch sector + tier data for this state in parallel
+        Promise.all([
+          fetch(`/api/federal/state-sectors/${abbr}`).then(r=>r.json()),
+          fetch(`/api/federal/state-tiers/${abbr}`).then(r=>r.json()),
+        ]).then(([sec,tiers])=>{
+          if(window.updateStateCharts)window.updateStateCharts(sec.sectors||[],tiers.tiers||[],name);
+        }).catch(()=>{});
+      });
     }).catch(()=>{});
   });
 
@@ -298,7 +334,7 @@
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;max-width:960px">
     <!-- Employer sector donut -->
     <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:20px">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy);margin-bottom:14px">Employer Sector — by $ donated</div>
+      <div id="emp-title" style="font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy);margin-bottom:14px">Employer Sector — by $ donated</div>
       <canvas id="chart-emp"></canvas>
     </div>
     <!-- Tier breakdown — aggregate (default) or per-candidate -->
@@ -325,15 +361,20 @@
 
   function fmtMoney(v){return v>=1e9?'$'+(v/1e9).toFixed(1)+'B':v>=1e6?'$'+(v/1e6).toFixed(1)+'M':'$'+(v/1e3).toFixed(0)+'K';}
 
-  function donut(id,labels,vals){
-    const c=document.getElementById(id);if(!c)return;
-    new Chart(c,{type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:PAL.slice(0,labels.length),borderWidth:2,borderColor:'#fff'}]},
+  let empChart=null;
+  function drawEmp(sectors,title){
+    const c=document.getElementById('chart-emp');if(!c)return;
+    const labels=sectors.map(x=>x.label),vals=sectors.map(x=>x.total);
+    if(empChart)empChart.destroy();
+    empChart=new Chart(c,{type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:PAL.slice(0,labels.length),borderWidth:2,borderColor:'#fff'}]},
     options:{responsive:true,plugins:{legend:{position:'right',labels:{font:{family:'Barlow',size:11},padding:8,boxWidth:12}},
     tooltip:{callbacks:{label:x=>{const t=x.dataset.data.reduce((a,b)=>a+b,0);const p=(x.parsed/t*100).toFixed(1);
     return' '+x.label+': '+fmtMoney(x.parsed)+' ('+p+'%)';}}}}}});
+    const hdr=document.getElementById('emp-title');
+    if(hdr)hdr.textContent=title||'Employer Sector — by $ donated';
   }
-  const s=(D.emp_sectors||[]).filter(x=>x.label!=='Other'&&x.label!=='Unknown');
-  if(s.length)donut('chart-emp',s.map(x=>x.label),s.map(x=>x.total));
+  const _defaultSectors=(D.emp_sectors||[]).filter(x=>x.label!=='Other'&&x.label!=='Unknown');
+  if(_defaultSectors.length)drawEmp(_defaultSectors);
 
   // ── Tier chart: aggregate (party-filtered) or per-candidate ──────────────
   const TIERS=D.candidate_tiers||{};
@@ -404,6 +445,21 @@
   // Called by candidate dropdown
   window.renderTierChart=function(cand){
     _activeCand=(!cand||cand==='all')?null:cand;
+    refresh();
+  };
+
+  // Called by map state-click: override both charts with state-filtered data
+  window.updateStateCharts=function(sectors,tiers,stateName){
+    _activeCand=null;
+    const filtered=sectors.filter(x=>x.label!=='Other'&&x.label!=='Unknown');
+    if(filtered.length)drawEmp(filtered,`${stateName} — Employer Sectors`);
+    if(tiers.length)drawTiers(tiers,`${stateName} Donors`);
+  };
+
+  // Restore both charts to default aggregate view
+  window.resetChartsToDefault=function(){
+    _activeCand=null;
+    if(_defaultSectors.length)drawEmp(_defaultSectors);
     refresh();
   };
 
