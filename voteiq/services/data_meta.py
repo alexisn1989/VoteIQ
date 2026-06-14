@@ -93,6 +93,45 @@ def ensure_performance_indexes() -> None:
         conn.close()
 
 
+def _openstates_db_path() -> str | None:
+    """Locate openstates_va.db using the same multi-path strategy as database_context."""
+    for env_var in ("DATA_DIR", "VOTEIQ_DATA_DIR", "RENDER_DISK_MOUNT_PATH"):
+        val = os.getenv(env_var)
+        if val:
+            p = os.path.join(val, "openstates_va.db")
+            if os.path.exists(p):
+                return p
+    local = str(_BASE_DIR / "openstates_va.db")
+    if os.path.exists(local):
+        return local
+    return None
+
+
+def cleanup_stale_bill_descriptions() -> None:
+    """Delete bill_descriptions rows that contain inflated vote totals baked in
+    from before the vote-deduplication fix (session 2026, generated pre-dedup).
+    The entire 2026 batch is stale — all descriptions were generated when the
+    votes table had 1.4M duplicate rows, so every 2026 'Key vote snapshot'
+    contains an impossible figure like '372-Y, 198-N'.
+    Safe to call at startup: after the first clean run it deletes 0 rows."""
+    path = _openstates_db_path()
+    if not path:
+        return
+    try:
+        conn = sqlite3.connect(path, timeout=15)
+        n = conn.execute(
+            "SELECT COUNT(*) FROM bill_descriptions WHERE session='2026'"
+        ).fetchone()[0]
+        if n:
+            conn.execute("DELETE FROM bill_descriptions WHERE session='2026'")
+            conn.commit()
+            print(f"[startup] Purged {n} stale 2026 bill_descriptions (pre-dedup snapshot).",
+                  flush=True)
+        conn.close()
+    except Exception:
+        pass
+
+
 def stamp(
     table_name: str,
     row_count: int | None = None,
