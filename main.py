@@ -65,11 +65,59 @@ def _require_admin(
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+
+def _seed_senate_tables() -> None:
+    """One-time migration: seed senate FEC tables if they don't exist yet.
+    Skips instantly on subsequent restarts once the tables are populated."""
+    import sqlite3 as _sq
+    db_path = os.environ.get("DATA_DIR", BASE_DIR)
+    db = os.path.join(db_path, "polls.db")
+    seeds = [
+        "fec_va_senate_candidates_seed.sql",
+        "fec_va_senate_contributions_seed.sql",
+        "fec_va_senate_pac_contributions_seed.sql",
+    ]
+    table_map = {
+        "fec_va_senate_candidates_seed.sql":          "fec_va_senate_candidates",
+        "fec_va_senate_contributions_seed.sql":       "fec_va_senate_contributions",
+        "fec_va_senate_pac_contributions_seed.sql":   "fec_va_senate_pac_contributions",
+    }
+    conn = _sq.connect(db)
+    try:
+        for fname in seeds:
+            table = table_map[fname]
+            try:
+                n = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                if n > 0:
+                    print(f"[senate-seed] {table}: {n} rows — skipping")
+                    continue
+            except Exception:
+                pass  # table doesn't exist yet — fall through to seed
+            seed_path = os.path.join(BASE_DIR, "data", fname)
+            if not os.path.exists(seed_path):
+                print(f"[senate-seed] {seed_path} not found — skipping")
+                continue
+            try:
+                with open(seed_path, "r", encoding="utf-8") as f:
+                    conn.executescript(f.read())
+                conn.commit()
+                n = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                print(f"[senate-seed] {table}: seeded {n} rows")
+            except Exception as exc:
+                print(f"[senate-seed] ERROR seeding {table}: {exc}")
+    finally:
+        conn.close()
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     # Runs all startup logic that was previously split across two
     # @app.on_event("startup") handlers (removed for Starlette 1.0 compat).
     import traceback as _tb
+    try:
+        _seed_senate_tables()
+    except Exception as _exc:
+        print(f"[startup] _seed_senate_tables FAILED: {_exc}")
     try:
         print("[startup] _startup_ingest starting...")
         await _startup_ingest()   # defined ~line 450 — data ingestion threads
