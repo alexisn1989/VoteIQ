@@ -302,6 +302,35 @@ def api_federal_state_sectors(state: str):
         conn.close()
 
 
+@router.get("/api/federal/state-top-employers/{state}")
+def api_federal_state_top_employers(state: str):
+    """Top 20 employers by $ donated from a given US state to VA federal candidates."""
+    state = state.upper()
+    conn = _conn()
+    try:
+        rows = conn.execute("""
+            SELECT contributor_employer         AS employer,
+                   employer_sector             AS sector,
+                   ROUND(SUM(amount), 0)       AS total,
+                   COUNT(*)                    AS donors
+            FROM   fec_individual_contributions
+            WHERE  state = ? AND amount > 0
+              AND  contributor_employer IS NOT NULL AND contributor_employer != ''
+              AND  employer_sector NOT IN (
+                       'Retired','Retired/Individual','Self-Employed',
+                       'Homemaker','Other','Other/Unknown','Grassroots')
+            GROUP  BY contributor_employer
+            ORDER  BY total DESC
+            LIMIT  20
+        """, (state,)).fetchall()
+        return {"state": state, "employers": [
+            {"name": r["employer"], "sector": r["sector"] or "", "total": r["total"], "donors": r["donors"]}
+            for r in rows
+        ]}
+    finally:
+        conn.close()
+
+
 @router.get("/api/federal/state-tiers/{state}")
 def api_federal_state_tiers(state: str):
     """Donor-tier breakdown for itemized federal contributions from a given US state."""

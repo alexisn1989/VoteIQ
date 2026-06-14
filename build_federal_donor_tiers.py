@@ -245,6 +245,49 @@ def build_emp_sectors(conn: sqlite3.Connection) -> list[dict]:
     return sorted(merged.values(), key=lambda x: -x["total"])
 
 
+_EMP_SKIP = {
+    "RETIRED", "NOT EMPLOYED", "NONE", "N/A", "NA", "SELF-EMPLOYED", "SELF EMPLOYED",
+    "HOMEMAKER", "INFORMATION REQUESTED",
+    "INFORMATION REQUESTED PER BEST EFFORTS", "NONE PROVIDED",
+}
+_EMP_SKIP_SECTORS = {
+    "Retired", "Retired/Individual", "Self-Employed", "Homemaker",
+    "Other", "Other/Unknown", "Grassroots",
+}
+
+
+def build_top_employers(conn: sqlite3.Connection) -> list[dict]:
+    """Top 20 individual employers by total $ donated across all VA federal candidates."""
+    rows = conn.execute("""
+        SELECT contributor_employer              AS employer,
+               employer_sector                  AS sector,
+               ROUND(SUM(amount), 0)            AS total,
+               COUNT(*)                         AS donors
+        FROM   fec_individual_contributions
+        WHERE  amount > 0
+          AND  contributor_employer IS NOT NULL AND contributor_employer != ''
+        GROUP  BY contributor_employer
+        ORDER  BY total DESC
+        LIMIT  200
+    """).fetchall()
+
+    out: list[dict] = []
+    seen: set[str] = set()
+    for r in rows:
+        name = (r["employer"] or "").strip()
+        key  = name.upper()
+        if key in seen or key in _EMP_SKIP:
+            continue
+        sector = r["sector"] or ""
+        if sector in _EMP_SKIP_SECTORS:
+            continue
+        seen.add(key)
+        out.append({"name": name, "sector": sector, "total": r["total"], "donors": r["donors"]})
+        if len(out) >= 20:
+            break
+    return out
+
+
 def _key_to_name(conn: sqlite3.Connection) -> dict[str, str]:
     """Reproduce the candidate key->display-name map used by _federal_donor_data,
     so candidate_tiers keys match by_candidate keys exactly."""
@@ -329,6 +372,7 @@ def main() -> None:
 
         fed["emp_sectors"] = build_emp_sectors(conn)
         fed["candidate_tiers"] = build_candidate_tiers(conn)
+        fed["top_employers"] = build_top_employers(conn)
     finally:
         conn.close()
 

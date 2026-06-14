@@ -269,12 +269,13 @@
         }
         lbl.innerHTML=`Showing donor profile for <strong>${name}</strong> &nbsp;<button onclick="document.getElementById('state-filter-label').remove();window._selectedState=null;window.resetChartsToDefault&&window.resetChartsToDefault()" style="font-size:.7rem;padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:#fff;cursor:pointer">✕ Clear</button>`;
 
-        // Fetch sector + tier data for this state in parallel
+        // Fetch sector, tier, and top-employer data for this state in parallel
         Promise.all([
           fetch(`/api/federal/state-sectors/${abbr}`).then(r=>r.json()),
           fetch(`/api/federal/state-tiers/${abbr}`).then(r=>r.json()),
-        ]).then(([sec,tiers])=>{
-          if(window.updateStateCharts)window.updateStateCharts(sec.sectors||[],tiers.tiers||[],name);
+          fetch(`/api/federal/state-top-employers/${abbr}`).then(r=>r.json()),
+        ]).then(([sec,tiers,emps])=>{
+          if(window.updateStateCharts)window.updateStateCharts(sec.sectors||[],tiers.tiers||[],emps.employers||[],name);
         }).catch(()=>{});
       });
     }).catch(()=>{});
@@ -350,6 +351,15 @@
       <div style="font-size:0.72rem;color:var(--muted);margin-bottom:14px">Itemized receipts ≥$1K split by gift-size band. Select a candidate above to drill down.</div>
       <canvas id="chart-tiers"></canvas>
     </div>
+  </div>
+
+  <!-- ── Top 20 Business Donors ──────────────────────────────────────────── -->
+  <div style="margin-top:28px;max-width:960px">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:12px">
+      <span id="top-emp-title">Top 20 Business Donors</span>
+      <span style="flex:1;height:1px;background:var(--border);display:inline-block"></span>
+    </div>
+    <div id="top-emp-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:8px"></div>
   </div>
 </div>
 <script>
@@ -448,19 +458,60 @@
     refresh();
   };
 
+  // ── Top 20 business donors table ─────────────────────────────────────────
+  const SECTOR_COLORS={
+    'Finance & Banking':'#1e40af','Finance':'#1e40af',
+    'Legal':'#7c3aed','Real Estate & Construction':'#d97706','Real Estate':'#d97706',
+    'Technology & IT':'#0891b2','Technology':'#0891b2',
+    'Healthcare':'#059669','Defense & Aerospace':'#dc2626','Defense':'#dc2626',
+    'Energy & Oil/Gas':'#b45309','Energy':'#b45309',
+    'Education':'#16a34a','Lobbying & Consulting':'#6b21a8','Consulting':'#6b21a8',
+    'Retail & Hospitality':'#ea580c','Business Executive':'#0369a1',
+    'Agriculture':'#65a30d','Media':'#db2777','Transportation':'#475569',
+  };
+  function fmt$(v){return v>=1e6?'$'+(v/1e6).toFixed(2)+'M':v>=1e3?'$'+(v/1e3).toFixed(0)+'K':'$'+v;}
+
+  function renderTopEmployers(list,title){
+    const el=document.getElementById('top-emp-list');
+    const hdr=document.getElementById('top-emp-title');
+    if(hdr)hdr.textContent=title||'Top 20 Business Donors';
+    if(!el)return;
+    if(!list||!list.length){el.innerHTML='<div style="color:var(--muted);font-size:.82rem">No data</div>';return;}
+    el.innerHTML=list.slice(0,20).map((e,i)=>{
+      const col=SECTOR_COLORS[e.sector]||'#64748b';
+      const badge=e.sector?`<span style="font-size:.65rem;font-weight:700;padding:1px 7px;border-radius:10px;background:${col}18;color:${col};border:1px solid ${col}40;white-space:nowrap">${e.sector}</span>`:'';
+      return`<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#fff;border:1px solid var(--border);border-radius:6px">
+        <span style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:700;color:var(--muted);min-width:22px;text-align:right">${i+1}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.name}</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:2px">${badge}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-weight:700;font-size:.88rem;color:var(--navy)">${fmt$(e.total)}</div>
+          <div style="font-size:.7rem;color:var(--muted)">${e.donors} donor${e.donors!==1?'s':''}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Initial render from cache
+  renderTopEmployers(D.top_employers||[]);
+
   // Called by map state-click: override both charts with state-filtered data
-  window.updateStateCharts=function(sectors,tiers,stateName){
+  window.updateStateCharts=function(sectors,tiers,employers,stateName){
     _activeCand=null;
     const filtered=sectors.filter(x=>x.label!=='Other'&&x.label!=='Unknown');
     if(filtered.length)drawEmp(filtered,`${stateName} — Employer Sectors`);
     if(tiers.length)drawTiers(tiers,`${stateName} Donors`);
+    renderTopEmployers(employers||[],`Top Business Donors — ${stateName}`);
   };
 
-  // Restore both charts to default aggregate view
+  // Restore both charts and top list to default aggregate view
   window.resetChartsToDefault=function(){
     _activeCand=null;
     if(_defaultSectors.length)drawEmp(_defaultSectors);
     refresh();
+    renderTopEmployers(D.top_employers||[]);
   };
 
   // Initial render — aggregate all
