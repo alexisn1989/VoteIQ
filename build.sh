@@ -643,6 +643,99 @@ PYEOF
     [ $? -ne 0 ] && echo "⚠ fec_va_house_pac_contributions seed failed" || echo "✓ fec_va_house_pac_contributions seeded"
 fi
 
+# ── STEP 4c5: Seed FEC VA Senate 2026 candidates ─────────────────────────────
+echo ""
+echo "[STEP 4c5] Seeding fec_va_senate_candidates..."
+if [ ! -f data/fec_va_senate_candidates_seed.sql ]; then
+    echo "⚠ data/fec_va_senate_candidates_seed.sql not found -- skipping"
+else
+python3 - <<PYEOF
+import sqlite3, os, sys
+db = os.path.join(os.environ.get("DATA_DIR", os.getcwd()), "polls.db")
+conn = sqlite3.connect(db)
+try:
+    existing = conn.execute("SELECT COUNT(*) FROM fec_va_senate_candidates").fetchone()[0]
+    if existing > 0:
+        print(f"  fec_va_senate_candidates already has {existing} rows -- skipping")
+        sys.exit(0)
+except Exception:
+    pass
+try:
+    with open("data/fec_va_senate_candidates_seed.sql", "r", encoding="utf-8") as f:
+        conn.executescript(f.read())
+    conn.commit()
+    n = conn.execute("SELECT COUNT(*) FROM fec_va_senate_candidates").fetchone()[0]
+    print(f"  fec_va_senate_candidates: {n} rows")
+except Exception as e:
+    print(f"  ERROR: {e}", file=sys.stderr); sys.exit(1)
+finally:
+    conn.close()
+PYEOF
+    [ $? -ne 0 ] && echo "⚠ fec_va_senate_candidates seed failed" || echo "✓ fec_va_senate_candidates seeded"
+fi
+
+# ── STEP 4c6: Seed FEC VA Senate 2026 individual contributions ────────────────
+echo ""
+echo "[STEP 4c6] Seeding fec_va_senate_contributions (35k rows)..."
+if [ ! -f data/fec_va_senate_contributions_seed.sql ]; then
+    echo "⚠ data/fec_va_senate_contributions_seed.sql not found -- skipping"
+else
+python3 - <<PYEOF
+import sqlite3, os, sys
+db = os.path.join(os.environ.get("DATA_DIR", os.getcwd()), "polls.db")
+conn = sqlite3.connect(db)
+try:
+    existing = conn.execute("SELECT COUNT(*) FROM fec_va_senate_contributions").fetchone()[0]
+    if existing > 0:
+        print(f"  fec_va_senate_contributions already has {existing} rows -- skipping")
+        sys.exit(0)
+except Exception:
+    pass
+try:
+    with open("data/fec_va_senate_contributions_seed.sql", "r", encoding="utf-8") as f:
+        conn.executescript(f.read())
+    conn.commit()
+    n = conn.execute("SELECT COUNT(*) FROM fec_va_senate_contributions").fetchone()[0]
+    print(f"  fec_va_senate_contributions: {n} rows")
+except Exception as e:
+    print(f"  ERROR: {e}", file=sys.stderr); sys.exit(1)
+finally:
+    conn.close()
+PYEOF
+    [ $? -ne 0 ] && echo "⚠ fec_va_senate_contributions seed failed" || echo "✓ fec_va_senate_contributions seeded"
+fi
+
+# ── STEP 4c7: Seed FEC VA Senate 2026 PAC contributions ──────────────────────
+echo ""
+echo "[STEP 4c7] Seeding fec_va_senate_pac_contributions (874 rows)..."
+if [ ! -f data/fec_va_senate_pac_contributions_seed.sql ]; then
+    echo "⚠ data/fec_va_senate_pac_contributions_seed.sql not found -- skipping"
+else
+python3 - <<PYEOF
+import sqlite3, os, sys
+db = os.path.join(os.environ.get("DATA_DIR", os.getcwd()), "polls.db")
+conn = sqlite3.connect(db)
+try:
+    existing = conn.execute("SELECT COUNT(*) FROM fec_va_senate_pac_contributions").fetchone()[0]
+    if existing > 0:
+        print(f"  fec_va_senate_pac_contributions already has {existing} rows -- skipping")
+        sys.exit(0)
+except Exception:
+    pass
+try:
+    with open("data/fec_va_senate_pac_contributions_seed.sql", "r", encoding="utf-8") as f:
+        conn.executescript(f.read())
+    conn.commit()
+    n = conn.execute("SELECT COUNT(*) FROM fec_va_senate_pac_contributions").fetchone()[0]
+    print(f"  fec_va_senate_pac_contributions: {n} rows")
+except Exception as e:
+    print(f"  ERROR: {e}", file=sys.stderr); sys.exit(1)
+finally:
+    conn.close()
+PYEOF
+    [ $? -ne 0 ] && echo "⚠ fec_va_senate_pac_contributions seed failed" || echo "✓ fec_va_senate_pac_contributions seeded"
+fi
+
 # ── STEP 4d: Ingest congress roll-call votes (VA delegation) ──────────────────
 echo ""
 echo "[STEP 4d] Checking congress_votes table (VA roll-call ingestion)..."

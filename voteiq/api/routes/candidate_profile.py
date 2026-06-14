@@ -404,3 +404,225 @@ def federal_candidate_api(cand_id: str):
         raise
     finally:
         conn.close()
+
+
+# ── Senate ────────────────────────────────────────────────────────────────────
+
+def _fmt_party(raw: str) -> str:
+    return {"DEM": "Democratic", "REP": "Republican", "IND": "Independent"}.get(raw.upper(), raw)
+
+
+def _fetch_senate(conn: sqlite3.Connection, cand_id: str) -> dict:
+    cand = conn.execute(
+        "SELECT * FROM fec_va_senate_candidates WHERE cand_id = ?", (cand_id,)
+    ).fetchone()
+    if not cand:
+        raise HTTPException(status_code=404, detail=f"Senate candidate {cand_id!r} not found")
+
+    sector_rows = conn.execute("""
+        SELECT sector, ROUND(SUM(amount),0) AS total, COUNT(*) AS donors
+        FROM   fec_va_senate_contributions
+        WHERE  cand_id = ? AND amount > 0
+        GROUP  BY sector ORDER BY total DESC
+    """, (cand_id,)).fetchall()
+    sectors = [{"label": r["sector"] or "Unknown", "total": r["total"], "donors": r["donors"]}
+               for r in sector_rows]
+
+    _SKIP_EMP = ("RETIRED", "NOT EMPLOYED", "NONE", "N/A", "SELF-EMPLOYED",
+                 "SELF EMPLOYED", "HOMEMAKER", "INFORMATION REQUESTED")
+    emp_rows = conn.execute("""
+        SELECT employer, ROUND(SUM(amount),0) AS total, COUNT(*) AS donors
+        FROM   fec_va_senate_contributions
+        WHERE  cand_id = ? AND amount > 0
+          AND  employer IS NOT NULL AND employer != ''
+        GROUP  BY employer ORDER BY total DESC LIMIT 15
+    """, (cand_id,)).fetchall()
+    employers = [{"name": r["employer"], "total": r["total"], "donors": r["donors"]}
+                 for r in emp_rows if r["employer"].upper() not in _SKIP_EMP][:12]
+
+    geo_rows = conn.execute("""
+        SELECT CASE WHEN state = 'VA' THEN 'In-state' ELSE 'Out-of-state' END AS geo,
+               ROUND(SUM(amount),0) AS total, COUNT(*) AS donors
+        FROM   fec_va_senate_contributions
+        WHERE  cand_id = ? AND amount > 0
+        GROUP  BY geo ORDER BY total DESC
+    """, (cand_id,)).fetchall()
+    geo = [{"label": r["geo"], "total": r["total"], "donors": r["donors"]} for r in geo_rows]
+
+    monthly_rows = conn.execute("""
+        SELECT SUBSTR(contrib_date, 1, 7) AS month,
+               ROUND(SUM(amount),0) AS total, COUNT(*) AS donors
+        FROM   fec_va_senate_contributions
+        WHERE  cand_id = ? AND amount > 0 AND contrib_date IS NOT NULL
+        GROUP  BY month ORDER BY month
+    """, (cand_id,)).fetchall()
+    monthly = [{"month": r["month"], "total": r["total"], "donors": r["donors"]}
+               for r in monthly_rows]
+
+    tier_rows = conn.execute("""
+        SELECT
+            CASE
+                WHEN amount < 200  THEN 'Small (<$200)'
+                WHEN amount < 1000 THEN 'Mid ($200-$1K)'
+                WHEN amount < 3300 THEN 'Large ($1K-$3.3K)'
+                ELSE                    'Max-Out ($3.3K+)'
+            END AS tier,
+            ROUND(SUM(amount),0) AS total, COUNT(*) AS donors,
+            CASE WHEN amount < 200 THEN 1 WHEN amount < 1000 THEN 2
+                 WHEN amount < 3300 THEN 3 ELSE 4 END AS ord
+        FROM   fec_va_senate_contributions
+        WHERE  cand_id = ? AND amount > 0
+        GROUP  BY tier, ord ORDER BY ord
+    """, (cand_id,)).fetchall()
+    tiers = [{"label": r["tier"], "total": r["total"], "donors": r["donors"]} for r in tier_rows]
+
+    pac_rows = conn.execute("""
+        SELECT pac_name, pac_id, pac_state,
+               ROUND(SUM(amount),0) AS total, COUNT(*) AS n,
+               GROUP_CONCAT(DISTINCT transaction_type) AS types
+        FROM   fec_va_senate_pac_contributions
+        WHERE  cand_id = ? AND amount > 0
+        GROUP  BY pac_id, pac_name ORDER BY total DESC
+    """, (cand_id,)).fetchall()
+    pacs = [{"name": r["pac_name"], "id": r["pac_id"], "state": r["pac_state"] or "",
+             "total": r["total"], "n": r["n"], "types": r["types"] or ""}
+            for r in pac_rows]
+
+    itemized = conn.execute(
+        "SELECT ROUND(SUM(amount),0), COUNT(*) FROM fec_va_senate_contributions"
+        " WHERE cand_id = ? AND amount > 0", (cand_id,)
+    ).fetchone()
+    itemized_total  = itemized[0] or 0
+    itemized_donors = itemized[1] or 0
+    pac_total       = sum(p["total"] for p in pacs)
+
+    gr_row = conn.execute(
+        "SELECT ROUND(SUM(amount),0), COUNT(*) FROM fec_va_senate_contributions"
+        " WHERE cand_id = ? AND amount < 200 AND amount > 0", (cand_id,)
+    ).fetchone()
+    grassroots_total = gr_row[0] or 0
+    grassroots_pct   = round(100 * grassroots_total / itemized_total, 1) if itemized_total else 0
+
+    return {
+        "cand_id":          cand_id,
+        "display_name":     _fmt_name(cand["name"] or cand_id),
+        "party":            _fmt_party(cand["party"] or "?"),
+        "district":         None,
+        "office":           "U.S. Senate — Virginia",
+        "ici":              cand["ici"] or "",
+        "ici_label":        _ICI_LABEL.get(cand["ici"] or "", "Unknown"),
+        "committee_id":     cand["committee_id"] or "",
+        "cycle":            cand["cycle"] or 2026,
+        "total_receipts":   round(cand["total_receipts"] or 0, 0),
+        "ind_contributions":round(cand["ind_contributions"] or 0, 0),
+        "total_disbursements": round(cand["total_disbursements"] or 0, 0),
+        "cash_on_hand":     round(cand["cash_on_hand"] or 0, 0),
+        "itemized_total":   itemized_total,
+        "itemized_donors":  itemized_donors,
+        "pac_total":        pac_total,
+        "grassroots_total": grassroots_total,
+        "grassroots_pct":   grassroots_pct,
+        "sectors":          sectors,
+        "issue_areas":      _build_issue_areas(sectors),
+        "employers":        employers,
+        "geo":              geo,
+        "monthly":          monthly,
+        "tiers":            tiers,
+        "pacs":             [_tag_pac(p) for p in pacs],
+        "chamber":          "senate",
+    }
+
+
+@router.get("/candidates/senate", response_class=HTMLResponse)
+def senate_candidates_index():
+    conn = _conn()
+    try:
+        rows = conn.execute("""
+            SELECT c.cand_id, c.name, c.party, c.state, c.ici,
+                   c.total_receipts, c.cash_on_hand, c.ind_contributions,
+                   c.total_disbursements,
+                   COUNT(DISTINCT con.rowid)                       AS itemized_donors,
+                   COALESCE(ROUND(SUM(CASE WHEN con.amount < 200 THEN con.amount ELSE 0 END),0),0) AS grassroots_total,
+                   COALESCE(ROUND(SUM(con.amount),0),0)            AS itemized_total,
+                   COALESCE(ROUND(SUM(CASE WHEN con.state='VA' THEN con.amount ELSE 0 END),0),0) AS instate_total
+            FROM   fec_va_senate_candidates c
+            LEFT JOIN fec_va_senate_contributions con ON con.cand_id = c.cand_id AND con.amount > 0
+            GROUP  BY c.cand_id
+            ORDER  BY c.total_receipts DESC
+        """).fetchall()
+
+        pac_totals: dict[str, float] = {}
+        for r in conn.execute(
+            "SELECT cand_id, ROUND(SUM(amount),0) AS total FROM fec_va_senate_pac_contributions"
+            " WHERE amount > 0 GROUP BY cand_id"
+        ):
+            pac_totals[r["cand_id"]] = r["total"] or 0
+
+        candidates = []
+        for r in rows:
+            it = r["itemized_total"] or 0
+            gr = r["grassroots_total"] or 0
+            ins = r["instate_total"] or 0
+            candidates.append({
+                "cand_id":    r["cand_id"],
+                "name":       _fmt_name(r["name"] or r["cand_id"]),
+                "party":      _fmt_party(r["party"] or "?"),
+                "district":   None,
+                "office":     "U.S. Senate",
+                "ici":        r["ici"] or "",
+                "ici_label":  _ICI_LABEL.get(r["ici"] or "", "Unknown"),
+                "total_receipts": round(r["total_receipts"] or 0, 0),
+                "cash_on_hand":   round(r["cash_on_hand"] or 0, 0),
+                "ind_contributions": round(r["ind_contributions"] or 0, 0),
+                "pac_total":   pac_totals.get(r["cand_id"], 0),
+                "donors":      r["itemized_donors"] or 0,
+                "grassroots_pct": round(100 * gr / it, 1) if it else 0,
+                "instate_pct":    round(100 * ins / it, 1) if it else 0,
+            })
+
+        return _inject("candidates_senate_index.html", "_CANDIDATES", candidates)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Senate index unavailable: {exc}") from exc
+    finally:
+        conn.close()
+
+
+@router.get("/api/candidates/senate")
+def senate_candidates_index_api():
+    conn = _conn()
+    try:
+        return conn.execute(
+            "SELECT cand_id, name, party, state, ici, total_receipts, cash_on_hand"
+            " FROM fec_va_senate_candidates ORDER BY total_receipts DESC"
+        ).fetchall()
+    except HTTPException:
+        raise
+    finally:
+        conn.close()
+
+
+@router.get("/candidate/senate/{cand_id}", response_class=HTMLResponse)
+def senate_candidate_page(cand_id: str):
+    conn = _conn()
+    try:
+        data = _fetch_senate(conn, cand_id.upper())
+        return _inject("candidate_profile_federal.html", "_PROFILE_DATA", data)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Senate profile unavailable: {exc}") from exc
+    finally:
+        conn.close()
+
+
+@router.get("/api/candidate/senate/{cand_id}")
+def senate_candidate_api(cand_id: str):
+    conn = _conn()
+    try:
+        return _fetch_senate(conn, cand_id.upper())
+    except HTTPException:
+        raise
+    finally:
+        conn.close()

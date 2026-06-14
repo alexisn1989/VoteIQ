@@ -230,7 +230,7 @@ tbody tr:hover td{background:#f9f7f3;}
   // ── hero ──────────────────────────────────────────────────────────────────
   document.title = D.display_name + ' — VoteIQ';
   $('cand-name').textContent = D.display_name;
-  $('eyebrow').textContent = `VA-${String(D.district).padStart(2,'0')} · U.S. House · ${D.cycle} Cycle`;
+  $('eyebrow').textContent = D.office ? `${D.office} · ${D.cycle} Cycle` : `VA-${String(D.district).padStart(2,'0')} · U.S. House · ${D.cycle} Cycle`;
 
   const stripe = $('party-stripe');
   const pLower = (D.party||'').toLowerCase();

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VA Senate 2026 Candidates — VoteIQ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0a2342;--navy-mid:#1a3a5c;--gold:#c8a45a;--dem:#2563eb;--rep:#dc2626;
+  --bg:#f4f6f9;--card:#fff;--border:#e2e8f0;--text:#1e293b;--muted:#64748b;
+  --font-head:'Barlow Condensed',sans-serif;--font:'Barlow',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
+.topbar{background:var(--navy);padding:10px 20px;display:flex;align-items:center;gap:12px}
+.topbar a{color:rgba(255,255,255,.7);text-decoration:none;font-family:var(--font-head);font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;transition:color .15s}
+.topbar a:hover{color:#fff}
+.topbar .sep{color:rgba(255,255,255,.3)}
+.topbar .brand{color:#fff;font-weight:700;font-size:1rem;letter-spacing:.08em}
+.hero{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 100%);color:#fff;padding:36px 32px 28px}
+.hero h1{font-family:var(--font-head);font-size:2rem;font-weight:800;letter-spacing:.04em;margin-bottom:6px}
+.hero p{color:rgba(255,255,255,.7);font-size:.95rem;max-width:640px}
+.controls{padding:18px 32px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;background:#fff;border-bottom:1px solid var(--border)}
+.search-wrap{flex:1;min-width:200px;max-width:320px;position:relative}
+.search-wrap input{width:100%;padding:8px 12px 8px 34px;border:1px solid var(--border);border-radius:6px;font-size:.88rem;font-family:var(--font);outline:none;transition:border .15s}
+.search-wrap input:focus{border-color:var(--navy)}
+.search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.4}
+.filter-btns{display:flex;gap:6px}
+.filter-btn{padding:7px 14px;border:1px solid var(--border);border-radius:20px;background:#fff;font-family:var(--font-head);font-size:.78rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .15s}
+.filter-btn:hover{background:var(--bg)}
+.filter-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.filter-btn.dem.active{background:var(--dem);border-color:var(--dem)}
+.filter-btn.rep.active{background:var(--rep);border-color:var(--rep)}
+.count-badge{margin-left:auto;font-family:var(--font-head);font-size:.85rem;color:var(--muted)}
+.table-wrap{overflow-x:auto;padding:0 32px 40px}
+table{width:100%;border-collapse:collapse;font-size:.84rem;margin-top:18px}
+thead th{padding:10px 12px;text-align:left;font-family:var(--font-head);font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);background:var(--bg);border-bottom:2px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;position:sticky;top:0;z-index:2}
+thead th:hover{color:var(--text)}
+thead th.sorted{color:var(--navy)}
+thead th .sort-arrow{display:inline-block;margin-left:4px;opacity:.5;font-size:.7rem}
+thead th.sorted .sort-arrow{opacity:1}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+tbody tr:hover{background:#f8fafc}
+tbody td{padding:10px 12px;vertical-align:middle}
+.td-name a{font-family:var(--font-head);font-weight:700;font-size:.95rem;color:var(--navy);text-decoration:none;letter-spacing:.02em}
+.td-name a:hover{text-decoration:underline}
+.party-badge{display:inline-block;padding:2px 7px;border-radius:3px;font-family:var(--font-head);font-size:.68rem;font-weight:700;letter-spacing:.1em;vertical-align:middle;margin-left:6px}
+.party-badge.dem{background:#dbeafe;color:var(--dem)}
+.party-badge.rep{background:#fee2e2;color:var(--rep)}
+.party-badge.oth{background:#f1f5f9;color:var(--muted)}
+.ici-badge{display:inline-block;padding:2px 7px;border-radius:3px;font-family:var(--font-head);font-size:.65rem;font-weight:700;letter-spacing:.08em;background:var(--bg);color:var(--muted);border:1px solid var(--border)}
+.ici-badge.I{background:#ecfdf5;color:#059669;border-color:#a7f3d0}
+.ici-badge.C{background:#fff7ed;color:#d97706;border-color:#fed7aa}
+.ici-badge.O{background:#f5f3ff;color:#7c3aed;border-color:#ddd6fe}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.bar-cell{min-width:80px}
+.bar-wrap{display:flex;align-items:center;gap:6px}
+.bar-bg{flex:1;height:5px;background:#e2e8f0;border-radius:3px;overflow:hidden;min-width:40px}
+.bar-fill{height:100%;border-radius:3px;background:var(--navy);transition:width .3s}
+.bar-fill.dem{background:var(--dem)}
+.bar-fill.rep{background:var(--rep)}
+.bar-pct{font-size:.78rem;color:var(--muted);min-width:32px;text-align:right}
+.no-results{text-align:center;padding:60px 20px;color:var(--muted);font-family:var(--font-head);font-size:1.1rem;letter-spacing:.06em;text-transform:uppercase;display:none}
+.disclaimer{margin:0 32px 32px;padding:14px 18px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:.78rem;color:#92400e;line-height:1.5}
+.nav-links{display:flex;gap:16px;margin-left:auto}
+.nav-links a{font-family:var(--font-head);font-size:.75rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.7);text-decoration:none;padding:5px 12px;border:1px solid rgba(255,255,255,.25);border-radius:4px;transition:all .15s}
+.nav-links a:hover{color:#fff;border-color:rgba(255,255,255,.6)}
+.nav-links a.active{color:#fff;border-color:#fff;background:rgba(255,255,255,.1)}
+@media(max-width:768px){
+  .hero{padding:24px 16px 18px}
+  .controls{padding:14px 16px}
+  .table-wrap{padding:0 16px 32px}
+  .hero h1{font-size:1.5rem}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/" class="brand">VoteIQ</a>
+  <span class="sep">/</span>
+  <a href="/donor-map-federal">Federal Donor Map</a>
+  <span class="sep">/</span>
+  <span style="color:rgba(255,255,255,.85);font-family:var(--font-head);font-size:.8rem;letter-spacing:.1em;text-transform:uppercase">VA Senate 2026</span>
+  <div class="nav-links">
+    <a href="/candidates/senate" class="active">Senate</a>
+    <a href="/candidates/federal">House</a>
+  </div>
+</div>
+
+<div class="hero">
+  <h1>Virginia U.S. Senate 2026 — Candidates</h1>
+  <p>FEC itemized filings for Virginia's 2026 Senate race. Click any name for full donor profile.</p>
+</div>
+
+<div class="controls">
+  <div class="search-wrap">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="text" id="search" placeholder="Search name or party…">
+  </div>
+  <div class="filter-btns">
+    <button class="filter-btn active" data-party="all">All</button>
+    <button class="filter-btn dem" data-party="Democratic">Democrat</button>
+    <button class="filter-btn rep" data-party="Republican">Republican</button>
+    <button class="filter-btn" data-ici="I">Incumbent</button>
+    <button class="filter-btn" data-ici="C">Challenger</button>
+  </div>
+  <span class="count-badge" id="count-badge"></span>
+</div>
+
+<div class="table-wrap">
+  <table id="cand-table">
+    <thead>
+      <tr>
+        <th data-col="name" class="sorted" data-dir="asc">Candidate <span class="sort-arrow">▲</span></th>
+        <th data-col="ici_label">Role <span class="sort-arrow">▲</span></th>
+        <th data-col="total_receipts" class="num">Raised <span class="sort-arrow">▲</span></th>
+        <th data-col="cash_on_hand" class="num">Cash on Hand <span class="sort-arrow">▲</span></th>
+        <th data-col="pac_total" class="num">PAC $ <span class="sort-arrow">▲</span></th>
+        <th data-col="donors" class="num">Donors <span class="sort-arrow">▲</span></th>
+        <th data-col="grassroots_pct" class="bar-cell">Grassroots % <span class="sort-arrow">▲</span></th>
+        <th data-col="instate_pct" class="bar-cell">In-state % <span class="sort-arrow">▲</span></th>
+      </tr>
+    </thead>
+    <tbody id="cand-tbody"></tbody>
+  </table>
+  <div class="no-results" id="no-results">No candidates match your filters.</div>
+</div>
+
+<div class="disclaimer">
+  <strong>Data note:</strong> Financials from FEC bulk data (2025–2026 cycle). Itemized donor counts reflect Schedule A filings. PAC figures from Schedule B committee-to-candidate transfers. Grassroots % = share of itemized dollars from contributions under $200. Tim Kaine's data reflects his 2024 re-election cycle.
+</div>
+
+<script>
+const CANDS = window._CANDIDATES || [];
+const fmt = v => v==null||v===0?'—':'$'+Math.round(v).toLocaleString();
+const fmtn = v => v==null||v===0?'—':Math.round(v).toLocaleString();
+const fmtp = v => v==null?'—':v.toFixed(1)+'%';
+
+function partyClass(party){
+  if(!party) return 'oth';
+  const p = party.toLowerCase();
+  return p.includes('dem')?'dem':p.includes('rep')?'rep':'oth';
+}
+function partyAbbr(party){
+  if(!party) return '?';
+  const p = party.toLowerCase();
+  return p.includes('dem')?'DEM':p.includes('rep')?'REP':party.substring(0,3).toUpperCase();
+}
+
+function buildRow(c){
+  const pc = partyClass(c.party);
+  const pa = partyAbbr(c.party);
+  const profileHref = c.cand_id ? `/candidate/senate/${c.cand_id}` : null;
+  const nameCell = profileHref
+    ? `<a href="${profileHref}">${c.name}</a>`
+    : `<span style="color:var(--text)">${c.name}</span>`;
+  const grPct = c.grassroots_pct||0;
+  const inPct = c.instate_pct||0;
+  return `<tr data-party="${(c.party||'').toLowerCase()}" data-ici="${c.ici}" data-name="${c.name.toLowerCase()}">
+    <td class="td-name">${nameCell}<span class="party-badge ${pc}">${pa}</span></td>
+    <td><span class="ici-badge ${c.ici}">${c.ici_label}</span></td>
+    <td class="num">${fmt(c.total_receipts)}</td>
+    <td class="num">${fmt(c.cash_on_hand)}</td>
+    <td class="num">${c.pac_total>0?fmt(c.pac_total):'—'}</td>
+    <td class="num">${c.donors>0?fmtn(c.donors):'—'}</td>
+    <td class="bar-cell"><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill ${pc}" style="width:${Math.min(grPct,100)}%"></div></div><span class="bar-pct">${fmtp(grPct)}</span></div></td>
+    <td class="bar-cell"><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill ${pc}" style="width:${Math.min(inPct,100)}%"></div></div><span class="bar-pct">${fmtp(inPct)}</span></div></td>
+  </tr>`;
+}
+
+const tbody = document.getElementById('cand-tbody');
+let sortCol = 'total_receipts', sortDir = -1;
+let partyFilter = 'all', iciFilter = null, searchQ = '';
+
+function getVal(c, col){
+  const v = c[col];
+  if(col==='name'||col==='ici_label') return (v||'').toLowerCase();
+  return typeof v==='number'?v:(parseFloat(v)||0);
+}
+
+function render(){
+  let data = [...CANDS];
+  if(partyFilter!=='all') data=data.filter(c=>(c.party||'').toLowerCase().includes(partyFilter.toLowerCase()));
+  if(iciFilter) data=data.filter(c=>c.ici===iciFilter);
+  if(searchQ){
+    const q=searchQ.toLowerCase();
+    data=data.filter(c=>c.name.toLowerCase().includes(q)||(c.party||'').toLowerCase().includes(q));
+  }
+  data.sort((a,b)=>{
+    const av=getVal(a,sortCol), bv=getVal(b,sortCol);
+    if(av<bv)return -sortDir;
+    if(av>bv)return sortDir;
+    return 0;
+  });
+  tbody.innerHTML = data.map(buildRow).join('');
+  document.getElementById('no-results').style.display = data.length?'none':'block';
+  document.getElementById('count-badge').textContent = data.length+' candidates';
+  document.querySelectorAll('thead th').forEach(th=>{
+    const arrow = th.querySelector('.sort-arrow');
+    if(th.dataset.col===sortCol){
+      th.classList.add('sorted');
+      arrow.textContent = sortDir===1?'▲':'▼';
+    } else {
+      th.classList.remove('sorted');
+      arrow.textContent = '▲';
+    }
+  });
+}
+
+document.querySelectorAll('thead th[data-col]').forEach(th=>{
+  th.addEventListener('click',()=>{
+    const col=th.dataset.col;
+    if(sortCol===col){sortDir*=-1;}
+    else{sortCol=col;sortDir=col==='name'||col==='ici_label'?1:-1;}
+    render();
+  });
+});
+
+document.querySelectorAll('.filter-btn[data-party]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.filter-btn[data-party]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    partyFilter=btn.dataset.party;
+    render();
+  });
+});
+
+document.querySelectorAll('.filter-btn[data-ici]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const val=btn.dataset.ici;
+    if(iciFilter===val){iciFilter=null;btn.classList.remove('active');}
+    else{
+      document.querySelectorAll('.filter-btn[data-ici]').forEach(b=>b.classList.remove('active'));
+      iciFilter=val;btn.classList.add('active');
+    }
+    render();
+  });
+});
+
+document.getElementById('search').addEventListener('input',e=>{
+  searchQ=e.target.value.trim();
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
