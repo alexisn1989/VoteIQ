@@ -365,7 +365,36 @@
 <script>
 (function(){
   const D=window._MAP_DATA||{};
-  const PAL=['#0d1b2a','#c8102e','#1a52c8','#b8963e','#15803d','#6b21a8','#ea580c','#0891b2','#65a30d','#db2777','#7c3aed'];
+  // Semantic sector → color map (consistent across donut, badges, state-click)
+  const SECTOR_PAL={
+    'Finance & Banking':          '#1e3a8a',
+    'Real Estate & Construction': '#d97706',
+    'Defense & Aerospace':        '#b91c1c',
+    'Legal':                      '#7c3aed',
+    'Technology & IT':            '#0891b2',
+    'Healthcare & Pharma':        '#0d9488',
+    'Energy & Oil/Gas':           '#c2410c',
+    'Education':                  '#15803d',
+    'Retail & Hospitality':       '#e11d48',
+    'Telecom & Media':            '#db2777',
+    'Construction':               '#92400e',
+    'Transportation':             '#0369a1',
+    'Lobbying':                   '#334155',
+    'Consulting':                 '#4338ca',
+    'Automotive':                 '#65a30d',
+    'Manufacturing':              '#78716c',
+    'Government':                 '#3730a3',
+    'Advocacy':                   '#c026d3',
+    'Labor & Unions':             '#166534',
+    'Ideological/PAC':            '#991b1b',
+    'Retired (Finance/Investing)':'#3b82f6',
+    'Retired (Legal)':            '#8b5cf6',
+    'Retired (Healthcare)':       '#059669',
+    'Retired (Business)':         '#0284c7',
+    'Retired (Other)':            '#94a3b8',
+  };
+  const _FALLBACK_COLORS=['#6366f1','#f59e0b','#10b981','#ef4444','#06b6d4','#a855f7','#f97316','#14b8a6'];
+  function sectorColor(label,i){return SECTOR_PAL[label]||_FALLBACK_COLORS[i%_FALLBACK_COLORS.length];}
   const TIER_ORDER=['Mid-Level ($1K-$3.3K)','Max-Out ($3.3K-$6.6K)','Super-Max ($6.6K+)'];
   const TIER_COLORS={'Mid-Level ($1K-$3.3K)':'#15803d','Max-Out ($3.3K-$6.6K)':'#b8963e','Super-Max ($6.6K+)':'#c8102e'};
 
@@ -375,8 +404,9 @@
   function drawEmp(sectors,title){
     const c=document.getElementById('chart-emp');if(!c)return;
     const labels=sectors.map(x=>x.label),vals=sectors.map(x=>x.total);
+    const colors=labels.map((l,i)=>sectorColor(l,i));
     if(empChart)empChart.destroy();
-    empChart=new Chart(c,{type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:PAL.slice(0,labels.length),borderWidth:2,borderColor:'#fff'}]},
+    empChart=new Chart(c,{type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:colors,borderWidth:2,borderColor:'#fff'}]},
     options:{responsive:true,plugins:{legend:{position:'right',labels:{font:{family:'Barlow',size:11},padding:8,boxWidth:12}},
     tooltip:{callbacks:{label:x=>{const t=x.dataset.data.reduce((a,b)=>a+b,0);const p=(x.parsed/t*100).toFixed(1);
     return' '+x.label+': '+fmtMoney(x.parsed)+' ('+p+'%)';}}}}}});
@@ -469,16 +499,8 @@
   };
 
   // ── Top 20 business donors table ─────────────────────────────────────────
-  const SECTOR_COLORS={
-    'Finance & Banking':'#1e40af','Finance':'#1e40af',
-    'Legal':'#7c3aed','Real Estate & Construction':'#d97706','Real Estate':'#d97706',
-    'Technology & IT':'#0891b2','Technology':'#0891b2',
-    'Healthcare':'#059669','Defense & Aerospace':'#dc2626','Defense':'#dc2626',
-    'Energy & Oil/Gas':'#b45309','Energy':'#b45309',
-    'Education':'#16a34a','Lobbying & Consulting':'#6b21a8','Consulting':'#6b21a8',
-    'Retail & Hospitality':'#ea580c','Business Executive':'#0369a1',
-    'Agriculture':'#65a30d','Media':'#db2777','Transportation':'#475569',
-  };
+  // Re-use the same semantic palette for top-employer badges
+  const SECTOR_COLORS=SECTOR_PAL;
   function fmt$(v){return v>=1e6?'$'+(v/1e6).toFixed(2)+'M':v>=1e3?'$'+(v/1e3).toFixed(0)+'K':'$'+v;}
 
   function renderTopEmployers(list,title){
