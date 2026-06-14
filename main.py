@@ -375,6 +375,7 @@ _safe_include("voteiq.api.routes.feedback")
 _safe_include("voteiq.api.routes.tasks")
 _safe_include("voteiq.api.routes.governor")
 _safe_include("voteiq.api.routes.legislators")
+_safe_include("voteiq.api.routes.candidate_profile")
 _safe_include("voteiq.api.routes.federal")
 
 # Feature routes (degraded but app stays up if these fail)
