@@ -790,17 +790,50 @@ def _add_bill_context(blocks: list[str], bills: list[str], session: str, pro: bo
                 WHERE bill_id=? AND session=?
                 LIMIT 6
             """, (bill, session), f"openstates.bills {bill}", blocks)
-            _query_rows(conn, """
-                SELECT bill_id, session, vote_date, chamber, motion, result, voter_name, option, party, district
-                FROM votes
-                WHERE id IN (
-                  SELECT MAX(id) FROM votes
-                  WHERE bill_id=? AND session=?
-                  GROUP BY voter_name, bill_id, session, motion
+            # Aggregate vote events rather than sending individual voter rows.
+            # The LLM cannot reliably count 30 raw rows to derive totals, and
+            # it cannot distinguish floor votes from committee votes without help.
+            # Pre-aggregate here so the LLM reads "62-Y 33-N" directly.
+            _FLOOR_MOTION_KEYS = ("VOTE:", "Passage", "Concur", "Conference report",
+                                  "Adoption", "Agree to", "Adopted", "Adopt ")
+            try:
+                agg_rows = conn.execute("""
+                    SELECT vote_date, chamber, motion, result,
+                           SUM(CASE WHEN option='yes' THEN 1 ELSE 0 END)        AS y,
+                           SUM(CASE WHEN option='no'  THEN 1 ELSE 0 END)        AS n,
+                           SUM(CASE WHEN option='not voting' THEN 1 ELSE 0 END) AS nv
+                    FROM votes
+                    WHERE id IN (
+                        SELECT MAX(id) FROM votes
+                        WHERE bill_id=? AND session=?
+                        GROUP BY voter_name, bill_id, session, motion
+                    )
+                    GROUP BY vote_date, chamber, motion
+                    ORDER BY vote_date DESC
+                    LIMIT 20
+                """, (bill, session)).fetchall()
+            except Exception:
+                agg_rows = []
+            if agg_rows:
+                floor_lines, cmte_lines = [], []
+                for r in agg_rows:
+                    dt, cham, motion, result, y, n, nv = r[0], r[1], r[2], r[3], r[4], r[5], r[6]
+                    is_floor = any(k in (motion or "") for k in _FLOOR_MOTION_KEYS)
+                    nv_s = f" {nv}-NV" if nv else ""
+                    line = f"  {dt or 'n/a'} {cham} — {(motion or '').strip()[:50]} — {y}-Y {n}-N{nv_s} ({result})"
+                    (floor_lines if is_floor else cmte_lines).append(line)
+                out = [f"[Database Context - vote events for {bill} ({session})]"]
+                if floor_lines:
+                    out.append("Full-chamber (floor) votes:")
+                    out.extend(floor_lines)
+                if cmte_lines:
+                    out.append("Committee/procedural votes:")
+                    out.extend(cmte_lines)
+                out.append(
+                    "NOTE: Floor vote totals are authoritative. VA House has 100 members; "
+                    "Senate has 40 members. Committee totals reflect smaller panels."
                 )
-                ORDER BY vote_date DESC
-                LIMIT 30
-            """, (bill, session), f"openstates.votes {bill}", blocks, limit=30)
+                blocks.append("\n".join(out))
             if _table_exists(conn, "bill_descriptions"):
                 _query_rows(conn, """
                     SELECT bill_id, session, title, description, source_url
