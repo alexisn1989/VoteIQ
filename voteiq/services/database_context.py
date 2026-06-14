@@ -3087,6 +3087,9 @@ _FTM_MONEY = re.compile(
     re.I,
 )
 _FTM_BILL = re.compile(r"\b(HB|SB|HJ|SJ|HR|SR)\s*-?\s*(\d{1,5})\b", re.I)
+# VA reuses bill numbers every session — extract an explicit 4-digit year from the
+# query so we never silently return the wrong session's bill.
+_FTM_YEAR = re.compile(r"\b(20\d{2})\b")
 
 
 def _add_follow_the_money_context(blocks: list[str], query: str) -> None:
@@ -3104,19 +3107,55 @@ def _add_follow_the_money_context(blocks: list[str], query: str) -> None:
 
     bill_number = (bill_match.group(1).upper() + bill_match.group(2)).replace(" ", "")
 
+    # Extract an explicit year hint from the query (e.g. "HB1373 (2023)" or "2023").
+    # VA reuses bill numbers every session, so without a year we must not silently
+    # return the most-recent session's bill — it is almost certainly the wrong bill.
+    year_hits = _FTM_YEAR.findall(query or "")
+    session_hint = year_hits[0] if year_hits else None
+
     conn = _connect("polls")
     li   = _connect("legislative_intelligence")
     if not conn:
         return
 
     try:
-        # Resolve bill
-        bill_row = conn.execute(
-            "SELECT bill_id, session, title, status_label, primary_sponsor "
-            "FROM legiscan_va_bills WHERE bill_number = ? "
-            "ORDER BY session DESC LIMIT 1",
-            (bill_number,),
-        ).fetchone()
+        # Resolve bill — always scope to a known session to prevent cross-session mismatch
+        if session_hint:
+            bill_row = conn.execute(
+                "SELECT bill_id, session, title, status_label, primary_sponsor "
+                "FROM legiscan_va_bills WHERE bill_number = ? AND session = ? LIMIT 1",
+                (bill_number, session_hint),
+            ).fetchone()
+        else:
+            # No year given — check whether this bill number is unique across sessions
+            all_sessions = [
+                r[0] for r in conn.execute(
+                    "SELECT DISTINCT session FROM legiscan_va_bills "
+                    "WHERE bill_number = ? ORDER BY session DESC",
+                    (bill_number,),
+                ).fetchall()
+            ]
+            if len(all_sessions) > 1:
+                # Ambiguous: same number maps to different bills in different years.
+                # Surface a disambiguation prompt rather than silently returning wrong data.
+                blocks.append(
+                    f"[Follow-the-Money: {bill_number} — Session Required]\n"
+                    f"{bill_number} appears in multiple VA sessions: "
+                    f"{', '.join(all_sessions)}.\n"
+                    f"Virginia reuses bill numbers each session — "
+                    f"{bill_number} is a different bill in every year listed above.\n"
+                    f"Please include the year in your question "
+                    f"(e.g. '{bill_number} 2023') so the correct bill is retrieved."
+                )
+                conn.close()
+                if li:
+                    li.close()
+                return
+            bill_row = conn.execute(
+                "SELECT bill_id, session, title, status_label, primary_sponsor "
+                "FROM legiscan_va_bills WHERE bill_number = ? LIMIT 1",
+                (bill_number,),
+            ).fetchone() if all_sessions else None
         if not bill_row:
             return
 
