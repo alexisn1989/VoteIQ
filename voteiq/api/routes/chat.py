@@ -1644,6 +1644,7 @@ def _direct_governor_veto_reply(user_query: str) -> str:
         "",
         "Source: VoteIQ local SQL records, with bill metadata from Virginia legislative records and veto status cross-checked against the Governor's Office.",
         "VoteIQ does not infer motive, intent, or causation from bill activity.",
+        "Summaries are derived from the text of the bill itself and may reflect the language and framing used by its author.",
     ])
     return "\n".join(lines)
 
@@ -2431,6 +2432,7 @@ def _format_governor_eo_detail(row: sqlite3.Row) -> str:
         "",
         "**Data limits:**",
         "VoteIQ summarizes public executive-order records. This page does not infer motive, policy effectiveness, or political intent.",
+        "Summaries are derived from the text of the order itself and may reflect the language and framing used by its author.",
     ])
     return "\n".join(lines)
 
@@ -2760,6 +2762,7 @@ def _direct_governor_eo_reply(user_query: str) -> str:
         "",
         "Source: VoteIQ local SQL records from polls.db.governor_executive_orders, with source links from the Virginia Governor's Office.",
         "VoteIQ does not infer motive, intent, or causation from executive actions.",
+        "Summaries are derived from the text of the order itself and may reflect the language and framing used by its author.",
     ])
     return "\n".join(lines)
 
