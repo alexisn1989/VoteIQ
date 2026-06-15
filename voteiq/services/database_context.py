@@ -23,6 +23,7 @@ COMMON_DATA_DIRS = (Path("/data"), Path("/var/data"))
 
 BILL_RE = re.compile(r"\b(HB|SB|HJ|SJ|HR|SR|HJR|SJR)\s*-?\s*(\d{1,5})\b", re.I)
 YEAR_RE = re.compile(r"\b20\d{2}\b")
+_HIST_YEAR_RE = re.compile(r"\b(19\d{2})\b")
 
 KNOWN_FEDERAL_PEOPLE = {
     # ── Dual-role members: federal record + current state office ─────────────────
@@ -309,7 +310,7 @@ _FINANCE_QUERY_TERMS = (
     "finance", "financial", "finicial", "fiance", "finace",
     "fundraising", "fundraiser",
     "raised", "donor", "donors", "money", "contribution", "contributions",
-    "donation", "donations", "campaign", "campaing", "campain",
+    "donate", "donated", "donation", "donations", "campaign", "campaing", "campain",
     "filing", "filings", "sbe", "vpap", "funding", "funded", "funds",
     "bankroll", "bankrolled", "backers",
 )
@@ -713,6 +714,8 @@ def _add_bill_context(blocks: list[str], bills: list[str], session: str, pro: bo
     if not bills:
         return
 
+    _before = len(blocks)
+
     conn = _connect("polls")
     if conn:
         for bill in bills:
@@ -881,6 +884,17 @@ def _add_bill_context(blocks: list[str], bills: list[str], session: str, pro: bo
                 LIMIT 4
             """, (bill,), f"virginia_legislature.bills {bill}", blocks)
         conn.close()
+
+    for bill in bills:
+        b_up = bill.upper()
+        if not any(b_up in block.upper() for block in blocks[_before:]):
+            blocks.append(
+                f"[Database Context - polls.va_bills {bill}]\n"
+                f"lookup_status=zero_records\n"
+                f"detail=No record found for bill {bill} in session {session}. "
+                f"This bill number does not exist in the VoteIQ dataset. "
+                f"Do NOT fabricate a vote or outcome for this bill."
+            )
 
 
 def _add_keyword_context(blocks: list[str], query: str, terms: list[str], session: str) -> None:
@@ -4588,6 +4602,62 @@ def build_database_context(query: str, max_chars: int = 22000, pro: bool = False
     # can return their donor-industry breakdown.
     if _ANALYSIS_TRIGGER.search(q) or _is_campaign_finance_query(q):
         _add_donor_analysis_context(blocks, q)
+
+    # ── Known data-gap signals ─────────────────────────────────────────────────
+    # Emit explicit out_of_scope blocks for categories the DB layer cannot satisfy,
+    # so the LLM declines rather than fabricating from unrelated records.
+
+    # Historical years (19xx) — VA state bills/votes/finance start at 2018
+    # Insert at position 0 so it is never truncated by max_chars even when
+    # governor_actions or other builders produce large volumes of content.
+    hist_years = _HIST_YEAR_RE.findall(q)
+    if hist_years:
+        yr = hist_years[0]
+        blocks.insert(
+            0,
+            f"[Database Context - scope]\n"
+            f"lookup_status=out_of_scope\n"
+            f"detail=VoteIQ data coverage starts at 2018 for Virginia state bills, votes, and campaign finance. "
+            f"The year {yr} is before coverage — no records are available for this period. "
+            f"Do NOT fabricate historical results.",
+        )
+
+    # Federal committee assignments — not in dataset
+    if re.search(r"\bcommittee\s+assignment", q_lower):
+        blocks.append(
+            "[Database Context - scope]\n"
+            "lookup_status=out_of_scope\n"
+            "detail=Federal committee assignments are not in the VoteIQ dataset. "
+            "The dataset covers roll-call votes (congress_votes), sponsored bills (congress_bills), "
+            "and campaign finance — not committee membership rosters. "
+            "Do NOT fabricate committee assignments."
+        )
+
+    # Polling and public opinion surveys — explicitly excluded
+    if re.search(r"\bpoll(?:ing|s|ster)?\b|\bsurvey\b|\bapproval\s+rating\b", q_lower):
+        blocks.append(
+            "[Database Context - scope]\n"
+            "SCOPE LIMIT: polling_and_surveys_excluded\n"
+            "lookup_status=out_of_scope\n"
+            "detail=Polling data and public opinion surveys are not in the VoteIQ dataset. "
+            "VoteIQ covers votes, bills, campaign finance, and donor patterns only. "
+            "Do NOT fabricate poll numbers or approval ratings."
+        )
+
+    # Outgoing donations FROM legislators — not tracked (SBE tracks contributions RECEIVED)
+    if re.search(
+        r"\b(?:did|does|do)\s+[\w\s]{1,25}\s+donat(?:e|ed)\s+to\b"
+        r"|\bdonated\s+to\s+(?:the\s+)?(?:dccc|rncc|nrcc|dscc|gop|dnc|rnc|dcc|rcc|\bpac\b)",
+        q_lower,
+    ):
+        blocks.append(
+            "[Database Context - scope]\n"
+            "lookup_status=out_of_scope\n"
+            "detail=VoteIQ tracks campaign contributions RECEIVED by Virginia candidates and committees "
+            "(source: Virginia SBE Schedule A). Outgoing donations FROM legislators or candidates "
+            "TO other committees or party organizations are not in the dataset. "
+            "Do NOT fabricate an outgoing donation amount."
+        )
 
     # No targeted builder matched. The generic all-table scan used to run
     # here, but it returns spurious keyword matches — a "school board"
