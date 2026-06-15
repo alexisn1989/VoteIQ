@@ -16,14 +16,18 @@ echo "Note: The app will continue running during refresh"
 echo "=========================================="
 echo ""
 
+# Resolve persistent disk path (matches build.sh and render.yaml)
+DISK="${DATA_DIR:-/var/data}"
+echo "  Using disk path: $DISK"
+
 # Ensure data directory exists
-mkdir -p /data
+mkdir -p "$DISK"
 
 # Create backup of current cache
-if [ -f /data/polls.db ]; then
+if [ -f "$DISK/polls.db" ]; then
     TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-    echo "[BACKUP] Creating backup: /data/polls.db.backup.$TIMESTAMP"
-    cp /data/polls.db /data/polls.db.backup.$TIMESTAMP
+    echo "[BACKUP] Creating backup: $DISK/polls.db.backup.$TIMESTAMP"
+    cp "$DISK/polls.db" "$DISK/polls.db.backup.$TIMESTAMP"
     echo "✓ Backup created"
 else
     echo "Note: No existing cache to backup"
@@ -45,8 +49,8 @@ python3 build_va_state_finance.py --since 2024 --output polls.db
 if [ $? -ne 0 ]; then
     echo ""
     echo "✗ Build failed - restoring previous cache"
-    if [ -f /data/polls.db.backup.$TIMESTAMP ]; then
-        cp /data/polls.db.backup.$TIMESTAMP /data/polls.db
+    if [ -f "$DISK/polls.db.backup.$TIMESTAMP" ]; then
+        cp "$DISK/polls.db.backup.$TIMESTAMP" "$DISK/polls.db"
     fi
     exit 1
 fi
@@ -83,8 +87,8 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Move to persistent cache
-cp polls.db /data/polls.db
+# Move to persistent disk
+cp polls.db "$DISK/polls.db"
 echo "✓ New data cached to persistent disk"
 
 echo ""
@@ -95,6 +99,6 @@ echo ""
 echo "The app will use the new data on next request"
 echo "No restart needed!"
 echo ""
-echo "Cached data location: /data/polls.db"
-echo "Backup location: /data/polls.db.backup.$TIMESTAMP"
+echo "Cached data location: $DISK/polls.db"
+echo "Backup location: $DISK/polls.db.backup.$TIMESTAMP"
 echo ""

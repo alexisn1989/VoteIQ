@@ -13,9 +13,8 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 router = APIRouter(tags=["donor_map"])
 
 _BASE_DIR = Path(__file__).resolve().parents[3]
-_data_dir_raw = os.getenv("DATA_DIR", str(_BASE_DIR))
-_DATA_DIR = _data_dir_raw if os.path.isdir(_data_dir_raw) else str(_BASE_DIR)
-_POLLS_DB = os.path.join(_DATA_DIR, "polls.db")
+from config.db import POLLS_DB as _POLLS_DB_PATH  # noqa: E402
+_POLLS_DB = str(_POLLS_DB_PATH)
 _CENTROIDS_FILE  = _BASE_DIR / "data" / "zip_centroids.json"
 _CACHE_FILE      = _BASE_DIR / "data" / "donor_map_cache.json"
 _MAPBOX_TOKEN    = os.getenv("MAPBOX_TOKEN", "")

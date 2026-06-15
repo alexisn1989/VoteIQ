@@ -9,8 +9,10 @@ from typing import Iterable
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
+from config.db import POLLS_DB as _POLLS_DB  # noqa: E402
+
 DB_PATHS = {
-    "polls": BASE_DIR / "polls.db",
+    "polls": _POLLS_DB,
     "openstates": BASE_DIR / "openstates_va.db",
     "legislative_intelligence": BASE_DIR / "legislative_intelligence.db",
     "virginia_legislature": BASE_DIR / "virginia_legislature.db",

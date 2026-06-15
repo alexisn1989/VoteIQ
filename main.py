@@ -70,8 +70,7 @@ def _seed_senate_tables() -> None:
     """One-time migration: seed senate FEC tables if they don't exist yet.
     Skips instantly on subsequent restarts once the tables are populated."""
     import sqlite3 as _sq
-    db_path = os.environ.get("DATA_DIR", BASE_DIR)
-    db = os.path.join(db_path, "polls.db")
+    db = _POLLS_DB
     seeds = [
         "fec_va_senate_candidates_seed.sql",
         "fec_va_senate_contributions_seed.sql",
@@ -439,12 +438,10 @@ _safe_include("voteiq.api.routes.watchlist",           prefix="/api")
 _safe_include("voteiq.api.routes.donor_trend",         prefix="/api")
 _safe_include("voteiq.api.routes.disclosures",         prefix="/api")
 
-# DATA_DIR: set to Render persistent disk mount path (e.g. /var/data) in production.
-# Falls back to project root if DATA_DIR directory doesn't exist (e.g. after disk deletion).
-_data_dir_raw = os.getenv("DATA_DIR", BASE_DIR)
-_DATA_DIR = _data_dir_raw if os.path.isdir(_data_dir_raw) else BASE_DIR
+from config.db import POLLS_DB as _POLLS_DB_PATH
+_POLLS_DB = str(_POLLS_DB_PATH)
+_DATA_DIR = str(_POLLS_DB_PATH.parent)
 _OPENSTATES_DB = os.path.join(_DATA_DIR, "openstates_va.db")
-_POLLS_DB = os.path.join(_DATA_DIR, "polls.db")
 _FEC_DB = os.path.join(BASE_DIR, "fec_va.db")
 
 
