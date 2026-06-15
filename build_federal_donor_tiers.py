@@ -333,6 +333,55 @@ def build_top_employers(conn: sqlite3.Connection, party: str | None = None) -> l
     return out
 
 
+def build_top_employers_by_candidate(conn: sqlite3.Connection) -> dict:
+    """Per-candidate top 20 employers by $ donated.
+
+    Keyed by display name exactly like build_candidate_tiers / by_candidate, so
+    the template's candidate dropdown value maps straight to this dict. Applies
+    the same employer/sector skip filters as build_top_employers.
+    """
+    key_to_name = _key_to_name(conn)
+    rows = conn.execute(
+        """
+        SELECT candidate_name, bioguide_id,
+               contributor_employer AS employer,
+               employer_sector      AS sector,
+               amount
+        FROM   fec_individual_contributions
+        WHERE  amount > 0 AND candidate_name IS NOT NULL
+          AND  contributor_employer IS NOT NULL AND contributor_employer != ''
+        """
+    ).fetchall()
+
+    agg: dict[str, dict[str, dict]] = {}
+    for r in rows:
+        bid = (r["bioguide_id"] or "").strip()
+        norm = _norm_name(r["candidate_name"])
+        key = bid if bid else norm.lower()
+        name = key_to_name.get(key)
+        if not name:  # candidate only present in skipped states
+            continue
+        emp = (r["employer"] or "").strip()
+        emp_key = emp.upper()
+        if emp_key in _EMP_SKIP:
+            continue
+        sector = r["sector"] or ""
+        if sector in _EMP_SKIP_SECTORS:
+            continue
+        slot = agg.setdefault(name, {})
+        e = slot.setdefault(emp_key, {"name": emp, "sector": sector, "total": 0.0, "donors": 0})
+        e["total"] += float(r["amount"])
+        e["donors"] += 1
+
+    out: dict[str, list] = {}
+    for name, emps in agg.items():
+        top = sorted(emps.values(), key=lambda x: -x["total"])[:20]
+        for e in top:
+            e["total"] = round(e["total"], 0)
+        out[name] = top
+    return out
+
+
 def _key_to_name(conn: sqlite3.Connection) -> dict[str, str]:
     """Reproduce the candidate key->display-name map used by _federal_donor_data,
     so candidate_tiers keys match by_candidate keys exactly."""
@@ -422,6 +471,7 @@ def main() -> None:
         fed["top_employers"]    = build_top_employers(conn)
         fed["top_employers_dem"]= build_top_employers(conn, party="Democratic")
         fed["top_employers_rep"]= build_top_employers(conn, party="Republican")
+        fed["top_employers_by_candidate"] = build_top_employers_by_candidate(conn)
     finally:
         conn.close()
 

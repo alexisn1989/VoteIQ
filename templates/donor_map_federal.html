@@ -499,6 +499,15 @@
   // Called by candidate dropdown
   window.renderTierChart=function(cand){
     _activeCand=(!cand||cand==='all')?null:cand;
+    // Drive the Top 20 list off the selection: a chosen rep shows that rep's
+    // donors; "all" falls back to the active party's list.
+    if(_activeCand&&_topEmpByCand[_activeCand]&&_topEmpByCand[_activeCand].length){
+      renderTopEmployers(_topEmpByCand[_activeCand],'Top 20 Business Donors — '+_activeCand);
+    }else{
+      const partyTopLabel=_activeParty==='all'?'Top 20 Business Donors':
+        _activeParty==='Democratic'?'Top 20 Business Donors — Democrats':'Top 20 Business Donors — Republicans';
+      renderTopEmployers(_topEmpByParty[_activeParty]||[],partyTopLabel);
+    }
     refresh();
   };
 
@@ -535,6 +544,7 @@
     'Democratic':  D.top_employers_dem||[],
     'Republican':  D.top_employers_rep||[],
   };
+  const _topEmpByCand=D.top_employers_by_candidate||{};
   // Initial render from cache
   renderTopEmployers(_topEmpByParty['all']);
 
