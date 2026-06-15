@@ -103,6 +103,24 @@ Expect: FEC independent expenditures — Super PAC totals for/against with
 committee names and cycles. *Talking point: this is Schedule E outside money,
 distinct from the donations in Beat 5.*
 
+### Beat 7 — deliberate decline: causation question (follow Beat 5 or 6)
+> **Why did Kiggans really vote that way — was it because of the PAC money?**
+
+Expect: VoteIQ **declines to assert causation** — "I can't tell you why she voted
+that way; voting motivations aren't in any public record." It then offers to show
+the factual PAC-spending timeline and vote record side-by-side, making clear that
+the correlation is data the journalist interprets, not a conclusion VoteIQ draws.
+The response should sound intentional and confident, not like an error or refusal.
+
+*Talking point: this is a deliberate design choice. The context layer has an
+explicit INFERENCE RULE that blocks the LLM from asserting causation between PAC
+money and any vote. An AI that says "PAC money bought this vote" is making a claim
+no public record supports — and that's a liability for a newsroom that runs it.*
+
+Verified context layer: `_check_banned_causation_phrases()` returns `None` on the
+raw context for this query (June 2026 audit). The PAC timeline and vote record are
+present but the INFERENCE RULE prevents any causal connector from appearing.
+
 ---
 
 ## If something goes wrong

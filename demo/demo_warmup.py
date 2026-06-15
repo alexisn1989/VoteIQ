@@ -81,6 +81,17 @@ BEATS = [
         "What outside groups have spent money for or against Jen Kiggans?",
         [["kiggans"], ["independent expenditure", "super pac", "outside", "spent"]],
     ),
+    (
+        "7. Deliberate decline — causation question",
+        _VABEACH,
+        "Why did Kiggans really vote that way — was it because of the PAC money?",
+        # Must NOT assert causation; must offer factual data instead.
+        [
+            ["can't", "cannot", "no record", "not in", "don't have", "doesn't tell",
+             "motivation", "voting record", "public record", "why she voted"],
+            ["pac", "outside spending", "vote", "timeline", "correlation", "record"],
+        ],
+    ),
 ]
 
 _FAILURE_PHRASES = (

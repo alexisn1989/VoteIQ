@@ -3945,16 +3945,28 @@ def _add_legislator_narrative_context(blocks: list[str], query: str) -> None:
         conn.close()
         return
 
+    _HONORIFICS = frozenset({"jr.", "jr", "sr.", "sr", "iii", "ii", "iv"})
     matched = None
     matched_len = 0
+    best_score = 0
     for row in rows:
         name = (row["name"] or "").lower()
-        last = name.split()[-1] if name.split() else ""
-        # Match on full name or last name (at least 4 chars to avoid false matches)
-        if (name in q_lower or (len(last) >= 4 and last in q_lower)):
-            if len(name) > matched_len:
-                matched = row
-                matched_len = len(name)
+        name_tokens = name.split()
+        # Significant tokens: not an initial (ends with "."), not an honorific, len >= 3.
+        # Score = count of significant tokens that appear in the query.
+        # Requiring the first name to match (score >= 2) breaks "Phillip A. Scott"
+        # matching a "Don Scott" query — both share "scott" but only Don shares "don".
+        sig_tokens = [
+            t for t in name_tokens
+            if len(t) >= 3 and not t.endswith(".") and t not in _HONORIFICS
+        ]
+        score = sum(1 for t in sig_tokens if t in q_lower)
+        if score == 0:
+            continue
+        if score > best_score or (score == best_score and len(name) > matched_len):
+            matched = row
+            matched_len = len(name)
+            best_score = score
 
     if not matched:
         conn.close()
