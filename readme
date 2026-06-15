@@ -1,0 +1,189 @@
+
+
+# VoteIQ
+
+**A production civic-intelligence platform that answers natural-language questions about Virginia government — grounded in 25 years of public records, not language-model guesswork.**
+
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.135-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![SQLite](https://img.shields.io/badge/SQLite-2.2GB%20·%2076%20tables-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+[![ChromaDB](https://img.shields.io/badge/ChromaDB-vector%20store-FF6B6B)](https://www.trychroma.com/)
+[![Claude](https://img.shields.io/badge/Claude-Sonnet%204.6%20·%20Opus%204.8-D97757)](https://www.anthropic.com/)
+[![GeoPandas](https://img.shields.io/badge/GeoPandas-1.1-139C5A)](https://geopandas.org/)
+[![Render](https://img.shields.io/badge/Deployed-Render-46E3B7)](https://render.com/)
+
+<
+
+---
+
+## What it is
+
+VoteIQ lets voters, journalists, and civic researchers ask questions like *"How did my senator vote on HB 123, and who funds them?"* and get an answer that is **traceable to a public record** — every roll-call vote, dollar amount, and PAC expenditure links back to a source URL.
+
+The hard part isn't calling an LLM. It's making sure the LLM never invents a vote that didn't happen. VoteIQ solves that with a **SQL-first retrieval architecture**: every answer is assembled from verified database rows *before* the model is invoked. The model synthesizes prose from facts it's handed — it is never the source of the facts. When the database has no record, the system says so instead of guessing.
+
+> 📹 *Demo GIF / screenshot goes here — replace this line with a recording of a live query returning a sourced answer.*
+
+---
+
+
+
+This repo demonstrates, in one production system:
+
+- **Retrieval architecture under accuracy constraints** — grounding millions of records so an LLM can't hallucinate facts that carry legal and editorial liability.
+- **Geospatial engineering** — district resolution via GeoPandas spatial joins against Census TIGER shapefiles, plus Folium / Mapbox choropleths over FEC and state campaign-finance data.
+- **Multi-model AI orchestration** — routing across Claude (Sonnet/Opus), Gemini, Voyage embeddings, and Cohere rerank, with caching to control cost and latency.
+- **Constraint engineering** — the whole stack, including `torch`, runs inside a **512 MB** memory ceiling. Memory discipline is a design requirement, not an afterthought.
+- **Safety as architecture** — correlation-vs-causation is enforced at *three independent layers*, not a single prompt instruction that breaks under rephrasing.
+
+---
+
+## Key features
+
+| | |
+|---|---|
+| 🔎 **Grounded answers** | Responses assembled from a SQL context block with source URLs before the model runs. |
+| 🚫 **Refuses to hallucinate** | Explicit `zero_records` / `out_of_scope` gap signals — the system declines rather than fabricating. |
+| ⚖️ **Causation-safe by design** | Dual-gate entry + in-context inference rules + an output-time regex guard on the generated text. |
+| 🗺️ **Geospatial lookups** | District boundary resolution and interactive choropleth maps of donor and spending data. |
+| 🧠 **Tiered model routing** | Free tier → Sonnet 4.6; paid tiers → Opus 4.8, configurable via env vars. |
+| 📄 **Document analysis** | A separate Gemini-backed route for long-form PDFs (e.g. executive orders). |
+| ⚡ **Cost & latency control** | Cohere rerank results and prompt prefixes cached to cut repeat round-trips. |
+
+---
+
+## Architecture
+
+```mermaid
+graph TB
+    U[User / Browser] -->|district + tier + messages| RATE[slowapi Rate Limiter]
+    RATE --> CHAT["/chat — Chat Agent"]
+    RATE --> GCHAT["/api/gemini-chat — PDF Analysis"]
+    RATE --> ECHAT["/api/election-chat — Results Agent"]
+
+    CHAT --> BDC["build_database_context()"]
+    BDC --> LN[Legislator narrative<br/>token-scoring disambiguation]
+    BDC --> CF[Campaign finance<br/>VA SBE Schedule A]
+    BDC --> PAC["PAC–vote correlation<br/>dual-gate + inference rule"]
+    BDC --> FED[Federal roll-call votes]
+    BDC --> GAP[Gap signals<br/>zero_records / out_of_scope]
+
+    LN & CF & PAC & FED --> DB[("polls.db<br/>SQLite 2.2GB · 76 tables")]
+
+    CHAT -->|query embedding| VOYAGE[Voyage AI<br/>voyage-law-2]
+    VOYAGE --> CHROMA[("ChromaDB<br/>bill text · speeches · news")]
+    CHROMA --> COHERE[Cohere rerank-english-v3.0]
+    COHERE <-->|cache hit/miss| RCACHE[(Rerank cache)]
+
+    BDC -->|assembled SQL context| CHAT
+    CHAT -->|free| SONNET[Claude Sonnet 4.6]
+    CHAT -->|paid| OPUS[Claude Opus 4.8]
+    SONNET & OPUS --> CAUS["Causation guard<br/>banned-phrase regex"]
+    CAUS -->|safe response| U
+
+    style PAC fill:#ff6b6b,color:#fff
+    style CAUS fill:#ffa94d,color:#000
+    style GAP fill:#74c0fc,color:#000
+    style DB fill:#51cf66,color:#000
+```
+
+**Request flow:** query arrives with district/tier metadata → rate limiter → `build_database_context()` runs keyword-gated SQL queries and assembles verified, sourced context blocks (inserting gap signals where data is absent) → Voyage embeds the query, ChromaDB retrieves candidate documents, Cohere reranks them (cache-first) → full context goes to the tier-appropriate model → output passes a causation safety check → sourced response returned.
+
+---
+
+## How grounding works
+
+The model is a **synthesizer, not a source.** Before each response, the context builder hands the LLM verified rows like this:
+
+```text
+[Database Context — federal vote lookup]
+Source: Congress.gov / House Clerk roll-call tables
+target_name=Jennifer A. Kiggans; bioguide_id=K000399
+congress_votes summary: congress=119; total_votes=550; yea_votes=409; ...
+source_url=https://clerk.house.gov/Votes/2026/0200
+```
+
+It does **not** receive *"tell me what you know about Kiggans's record."* If no row matches, the builder injects an explicit gap signal instead of empty context:
+
+```text
+[Database Context — va_bills HB999]
+lookup_status=zero_records
+detail=No record found for HB999 in session 2026.
+Do NOT fabricate a vote or outcome for this bill.
+```
+
+A newsroom that publishes *"Senator X voted Yes on HB 123"* needs that to be true. An LLM confabulating from approximate embeddings is a liability — so embeddings are **supplemental** (bill text, speech excerpts, news) and never override a SQL-sourced count, vote, or dollar figure.
+
+---
+
+## The PAC–vote correlation layer
+
+The most carefully engineered component surfaces the relationship between PAC money and votes **without ever asserting causation** — a claim no public record can support. Three independent defenses:
+
+1. **Dual-gate entry** — the function only runs when the query contains *both* PAC vocabulary *and* vote vocabulary.
+2. **In-context inference rule** — every assembled block closes with an explicit instruction that the data shows correlation only.
+3. **Output-time guard** — a compiled regex of forbidden causal connectors checks the generated text before it ever reaches the client.
+
+The result: *"PAC money bought this vote"* is **structurally impossible to generate**, not merely discouraged.
+
+---
+
+## Tech stack
+
+**AI / retrieval** — Anthropic Claude (Sonnet 4.6 / Opus 4.8), Google Gemini 2.5 Flash, Voyage AI (`voyage-law-2`), Cohere Rerank (`rerank-english-v3.0`), ChromaDB
+**API** — FastAPI, Gunicorn + Uvicorn (2 workers), Pydantic, SlowAPI rate limiting
+**Geospatial** — GeoPandas (district lookups), Folium (interactive choropleths)
+**Data** — SQLite (single 2.2 GB file, no ORM), Render persistent disk
+**Infra** — Render Standard, weekly cron ingestion, env-var model pinning, autoDeploy on `main`
+
+---
+
+## Data assets
+
+| Asset | Volume | Source |
+|---|---|---|
+| Virginia roll-call votes | ~1.3M votes, 25 years | OpenStates / LegiScan, VA SBE |
+| Campaign contributions (Schedule A) | 2,212,860 records | Virginia SBE |
+| Campaign finance reports | 213,942 records | Virginia SBE |
+| Committee testimony | 150,904 records | Legislative proxy data |
+| Congressional floor statements | 110,025 records | Congress.gov / House Clerk |
+| FEC independent expenditures | Per-cycle | FEC.gov Schedule E |
+| VA lobbyist registry | Annual | DPOR |
+| Legislator civic profiles | 168 pre-generated narratives | Derived from DB |
+| Election results | 2018–2025 | Virginia SBE |
+
+---
+
+## Engineering decisions & tradeoffs
+
+A few choices that show the reasoning, not just the result:
+
+- **SQL-first, RAG-supplemental.** More complex retrieval logic in exchange for never confabulating a vote count. Accuracy beats apparent fluency.
+- **Explicit decline over silent gaps.** *"I don't know"* feels less impressive than a confident wrong answer — and is exactly why newsrooms trust it.
+- **Single-file SQLite over Postgres.** Data is read-heavy with weekly ingestion, so concurrent writes aren't needed. Gains: zero connection overhead, trivial backup, and it runs on the cheapest tier with a persistent disk.
+- **Pre-generated legislator narratives.** Trades occasional staleness for cutting a 30–60s live-generation step off every legislator query.
+- **Memory-bounded ingestion.** Render Standard caps at 512 MB and the stack already loads `torch`, so weekly ingestion runs *inside the web container* via an admin endpoint rather than spawning an OOM-prone subprocess at startup.
+
+---
+
+## Deployment
+
+Deployed on **Render Standard** behind 2 Uvicorn workers with a 120s timeout (data-rich Opus responses can take 60–90s). A 2.2 GB SQLite file lives on a persistent disk seeded once at build time, not rebuilt per deploy. A weekly cron job ingests fresh congressional data by calling an admin endpoint inside the container that owns the disk — cron jobs can't mount disks directly.
+
+---
+
+## Roadmap
+
+VoteIQ is one product in a broader civic-data ecosystem. Near-term: a Mapbox choropleth layer, expanded news grounding, and notification delivery. The differentiator is **local-government coverage** — city-council votes, municipal finance, and zoning — data no standardized national tool currently surfaces.
+
+---
+
+## About
+
+Built solo, from scratch, by a developer with a GIS background — combining spatial analysis, retrieval architecture, and production AI engineering into a platform real newsrooms can rely on. The guiding principle: **reverse the direction of surveillance** — use AI to make public data accessible to citizens, rather than harvesting personal data from them.
+
+
+
+*Every claim traceable to a public record.*
+
+</div>
