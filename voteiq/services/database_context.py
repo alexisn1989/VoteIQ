@@ -582,7 +582,8 @@ def _add_campaign_finance_context(blocks: list[str], query: str, terms: list[str
                         COUNT(*) AS contribution_records,
                         ROUND(SUM(amount), 2) AS total_amount,
                         {first_date_expr} AS first_transaction_date,
-                        {latest_date_expr} AS latest_transaction_date
+                        {latest_date_expr} AS latest_transaction_date,
+                        MIN(report_uid) AS example_report_uid
                     FROM va_cf_schedule_a
                     WHERE ({clause})
                       AND amount > 0
@@ -593,7 +594,7 @@ def _add_campaign_finance_context(blocks: list[str], query: str, terms: list[str
                 if rows:
                     found_any = True
                     lines = ["[Database Context - polls.va_cf_schedule_a campaign finance totals]"]
-                    lines.append("Source: Virginia SBE Campaign Finance Schedule A itemized contribution records")
+                    lines.append("source=Virginia SBE Schedule A; public_url=unavailable (no per-record permalinks; example_report_uid is internal SBE GUID for cross-reference)")
                     lines.extend(f"- {_row_to_line(row)}" for row in rows)
                     blocks.append("\n".join(lines))
 
@@ -611,6 +612,7 @@ def _add_campaign_finance_context(blocks: list[str], query: str, terms: list[str
                     "election_cycle",
                     "COUNT(*) AS contribution_records",
                     "ROUND(SUM(amount), 2) AS total_amount",
+                    "MIN(report_uid) AS example_report_uid",
                 ]
                 group_cols = ["donor_name", "election_cycle"]
                 if "employer" in columns:
@@ -631,7 +633,7 @@ def _add_campaign_finance_context(blocks: list[str], query: str, terms: list[str
                 if rows:
                     found_any = True
                     lines = ["[Database Context - polls.va_cf_schedule_a top contributors]"]
-                    lines.append("Source: Virginia SBE Campaign Finance Schedule A itemized contribution records")
+                    lines.append("source=Virginia SBE Schedule A; public_url=unavailable (no per-record permalinks; example_report_uid is internal SBE GUID for cross-reference)")
                     lines.extend(f"- {_row_to_line(row)}" for row in rows)
                     blocks.append("\n".join(lines))
     except Exception as exc:
@@ -835,6 +837,15 @@ def _add_bill_context(blocks: list[str], bills: list[str], session: str, pro: bo
                     "NOTE: Floor vote totals are authoritative. VA House has 100 members; "
                     "Senate has 40 members. Committee totals reflect smaller panels."
                 )
+                try:
+                    url_row = conn.execute(
+                        "SELECT openstates_url FROM bills WHERE bill_id=? AND session=? LIMIT 1",
+                        (bill, session),
+                    ).fetchone()
+                    if url_row and url_row["openstates_url"]:
+                        out.append(f"source=OpenStates; openstates_url={url_row['openstates_url']}")
+                except Exception:
+                    pass
                 blocks.append("\n".join(out))
             if _table_exists(conn, "bill_descriptions"):
                 _query_rows(conn, """
@@ -1543,7 +1554,8 @@ def _add_federal_vote_context(blocks: list[str], query: str, terms: list[str]) -
                     lines.append(f"- congress_votes summary: {_row_to_line(row)}")
                 recent = conn.execute(
                     """
-                    SELECT congress, vote_date, bill, question, member_vote, result
+                    SELECT congress, vote_date, bill, question, member_vote, result,
+                           vote_number, chamber
                     FROM congress_votes
                     WHERE bioguide_id = ?
                     ORDER BY vote_date DESC, vote_number DESC
@@ -1552,7 +1564,16 @@ def _add_federal_vote_context(blocks: list[str], query: str, terms: list[str]) -
                     (bgid,),
                 ).fetchall()
                 for row in recent:
-                    lines.append(f"- congress_votes recent: {_row_to_line(row)}")
+                    line = f"- congress_votes recent: {_row_to_line(row)}"
+                    vnum = row["vote_number"]
+                    ch = (row["chamber"] or "").lower()
+                    vdate = (row["vote_date"] or "")[:4]
+                    if vnum and vdate and "house" in ch:
+                        try:
+                            line += f"; source_url=https://clerk.house.gov/Votes/{vdate}/{int(vnum):04d}"
+                        except (ValueError, TypeError):
+                            pass
+                    lines.append(line)
             else:
                 lines.append("- congress_votes: table_missing")
 
@@ -1831,6 +1852,7 @@ def _add_indy_exp_context(blocks: list[str], query: str, terms: list[str]) -> No
 
                 top = conn.execute(
                     """SELECT committee_name, support_oppose,
+                              MIN(committee_id) AS committee_id,
                               SUM(expenditure_amount) AS total, COUNT(*) AS cnt
                        FROM fec_independent_expenditures
                        WHERE bioguide_id = ?
@@ -1844,9 +1866,14 @@ def _add_indy_exp_context(blocks: list[str], query: str, terms: list[str]) -> No
                     lines.append("  Top outside spenders:")
                     for row in top:
                         direction = "FOR" if row["support_oppose"] == "S" else "AGAINST"
+                        cid = row["committee_id"] or ""
+                        fec_url = (
+                            f" source_url=https://www.fec.gov/data/committee/{cid}/"
+                            if cid else ""
+                        )
                         lines.append(
                             f"    {direction} {short_name}: {row['committee_name']} "
-                            f"— ${row['total']:,.0f} ({row['cnt']} txns)"
+                            f"— ${row['total']:,.0f} ({row['cnt']} txns){fec_url}"
                         )
         else:
             # General IndyExp query — leaderboard
@@ -1876,6 +1903,37 @@ def _add_indy_exp_context(blocks: list[str], query: str, terms: list[str]) -> No
 
 
 # ── PAC-vs-vote correlation ────────────────────────────────────────────────────
+
+_CAUSATION_BANNED = re.compile(
+    r"\b("
+    r"voted because"                                            # "voted because of donations"
+    r"|vote was because|voting because"
+    r"|in exchange for|quid pro quo"
+    r"|bought (?:the |her |his |their )?(?:\w+ )?vote"
+    r"|influenced (?:by (?:pac|money|donor|spending|contribution)|(?:her|his|their|the) vote)"
+    r"|as a result of (?:pac|money|donor|spending|donation)"
+    r"|due to (?:pac|money|donor|spending|donation)"
+    r"|caused by (?:pac|money|donor|spending)"
+    r"|vote(?:d|s)? (?:in exchange|in return) for"
+    r"|paid (?:for|off) (?:by|with|her|his|their|the)"         # "paid off her vote"
+    r"|reward(?:ed|s)? (?:by|with) (?:pac|money|donor)"
+    r"|pressure(?:d|s)? by (?:pac|donor)"
+    r"|because of (?:pac|money|donor|spending|donation|contribution|funding)"  # "because of PAC funding"
+    r")\b",
+    re.I,
+)
+
+
+def _check_banned_causation_phrases(text: str) -> str | None:
+    """Return the first causation-implying phrase found in *text*, or None if clean.
+
+    Used to detect when LLM output may have crossed from neutral juxtaposition
+    into asserting that PAC spending caused, bought, or influenced a vote.
+    Call this on the LLM response before returning it to the user.
+    """
+    m = _CAUSATION_BANNED.search(text or "")
+    return m.group(0) if m else None
+
 
 _PAC_VOTE_PAC_SIGNAL = {
     "pac", "pacs", "fund", "funded", "funds", "money", "outside", "donor",
@@ -1974,8 +2032,13 @@ def _add_pac_vote_correlation_context(
         "congress_votes / federal_votes (member vote record)."
     )
     lines.append(
-        "How to read: compare PAC spending direction (FOR/AGAINST) and ideology "
-        "against the member's YES/NO votes on topic-matching bills to assess alignment."
+        "How to read: present PAC spending (direction, ideology, dollar totals) and "
+        "the member's vote record (YES/NO on specific bills) as parallel factual "
+        "records — a factual timeline only. "
+        "INFERENCE RULE: Do NOT assert, imply, or suggest that PAC spending caused, "
+        "influenced, bought, rewarded, or correlated with any vote. "
+        "Never use causal connectors between money and votes. "
+        "Report only what each record states, side by side, with no causal claim."
     )
 
     try:
