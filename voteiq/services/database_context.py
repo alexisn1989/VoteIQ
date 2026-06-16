@@ -3735,6 +3735,60 @@ def _add_committee_chair_context(blocks: list[str], query: str) -> None:
         conn.close()
 
 
+def _add_legislator_committee_membership_context(blocks: list[str], query: str) -> None:
+    """When a legislator name + 'committee' appears in the query, inject their
+    full committee membership list from va_committee_assignments."""
+    q_lower = (query or "").lower()
+    if "committee" not in q_lower:
+        return
+
+    conn = _connect("polls")
+    if not conn:
+        return
+
+    try:
+        if not _table_exists(conn, "va_committee_assignments"):
+            return
+
+        # Score all distinct member names against the query tokens
+        names = conn.execute(
+            "SELECT DISTINCT member_name FROM va_committee_assignments WHERE member_name IS NOT NULL"
+        ).fetchall()
+        _HONORIFICS = frozenset({"jr.", "jr", "sr.", "sr", "iii", "ii", "iv"})
+        best_name, best_score = None, 0
+        for (name,) in names:
+            tokens = [
+                t for t in name.lower().split()
+                if len(t) >= 3 and not t.endswith(".") and t not in _HONORIFICS
+            ]
+            score = sum(1 for t in tokens if t in q_lower)
+            if score > best_score:
+                best_name, best_score = name, score
+
+        if not best_name or best_score == 0:
+            return
+
+        rows = conn.execute(
+            "SELECT committee, chamber, role "
+            "FROM va_committee_assignments WHERE member_name=? ORDER BY role DESC, committee",
+            (best_name,),
+        ).fetchall()
+        if not rows:
+            return
+
+        lines = [f"[Database Context - committee memberships: {best_name}]"]
+        for r in rows:
+            role_tag = " (Chair)" if r["role"] == "chair" else ""
+            lines.append(f"- {r['committee']} ({r['chamber']}){role_tag}")
+        lines.append("\nSource: VoteIQ SQL (va_committee_assignments, scraped 2026-06-02).")
+        blocks.append("\n".join(lines))
+
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
 _COMMITTEE_FROM_STATUS_RE = re.compile(
     r"left in(?:\s+(?:committee|the))?\s+([A-Za-z ,&/]+?)(?:\.|$)", re.I
 )
@@ -4697,6 +4751,8 @@ def build_database_context(query: str, max_chars: int = 22000, pro: bool = False
     _add_testimony_proxy_context(blocks, q)
     # Committee chair lookup — fires on "who chairs X" or committee name + money context
     _add_committee_chair_context(blocks, q)
+    # Legislator committee memberships — fires on "[name] + committee" queries
+    _add_legislator_committee_membership_context(blocks, q)
     # Gatekeeper — fires when query asks who kills/blocks bills in committee
     _add_gatekeeper_context(blocks, q)
     # VEC financial disclosures — fires on SOEI / conflict-of-interest queries
