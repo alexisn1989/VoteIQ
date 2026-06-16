@@ -368,6 +368,128 @@ def _known_federal_person(query: str) -> dict | None:
     return None
 
 
+# ── City → district mapping for "who represents me in [city]" queries ─────────
+# Keyed by lowercase city name. state_reps = [(chamber, district), ...]
+_CITY_REPRESENTATIVES: dict[str, dict] = {
+    "portsmouth": {
+        "city": "Portsmouth, VA",
+        "note": (
+            "Portsmouth, VA is in Virginia House District 88, "
+            "Senate District 18, and U.S. Congressional District 2 (VA-02)."
+        ),
+        "state_reps": [("Delegate", "88"), ("Senator", "18")],
+        "federal_district": "2",
+    },
+    "virginia beach": {
+        "city": "Virginia Beach, VA",
+        "note": (
+            "Virginia Beach, VA is in U.S. Congressional District 2 (VA-02). "
+            "State House and Senate districts vary by neighborhood within the city."
+        ),
+        "state_reps": [],
+        "federal_district": "2",
+    },
+    "norfolk": {
+        "city": "Norfolk, VA",
+        "note": (
+            "Norfolk, VA is in U.S. Congressional District 2 (VA-02). "
+            "State districts vary by neighborhood."
+        ),
+        "state_reps": [],
+        "federal_district": "2",
+    },
+    "chesapeake": {
+        "city": "Chesapeake, VA",
+        "note": (
+            "Chesapeake, VA is in U.S. Congressional District 2 (VA-02). "
+            "State districts vary by neighborhood."
+        ),
+        "state_reps": [],
+        "federal_district": "2",
+    },
+    "hampton": {
+        "city": "Hampton, VA",
+        "note": (
+            "Hampton, VA is in U.S. Congressional District 2 (VA-02). "
+            "State districts vary by neighborhood."
+        ),
+        "state_reps": [],
+        "federal_district": "2",
+    },
+}
+
+_REPRESENTS_ME_RE = re.compile(
+    r"\b(who\s+represents?\s+me|my\s+rep(?:resentatives?)?|represent(?:ing|s|ed)\s+me"
+    r"|my\s+delegate|my\s+senator|my\s+congress(?:man|woman|member|person)?"
+    r"|who\s+is\s+my\s+rep|who\s+represents?\s+\w+\s*,?\s*va)\b",
+    re.I,
+)
+
+
+def _add_city_district_context(blocks: list[str], query: str) -> None:
+    """Inject legislator records when a known city appears in a 'who represents me' query."""
+    if not _REPRESENTS_ME_RE.search(query):
+        return
+    q_lower = (query or "").lower()
+    city_info = next(
+        (v for k, v in _CITY_REPRESENTATIVES.items() if k in q_lower), None
+    )
+    if not city_info:
+        return
+
+    conn = _connect("polls")
+    if not conn:
+        return
+
+    lines: list[str] = [city_info["note"], ""]
+    try:
+        # State legislators
+        for chamber, district in city_info.get("state_reps", []):
+            row = conn.execute(
+                "SELECT l.name, l.party, l.chamber, l.district, "
+                "       n.narrative_short "
+                "FROM legislators l "
+                "LEFT JOIN legislator_narratives n ON lower(n.name) LIKE '%' || lower(l.name) || '%' "
+                "WHERE l.chamber=? AND l.district=? AND l.active=1 "
+                "LIMIT 1",
+                (chamber, district),
+            ).fetchone()
+            if row:
+                short = (row["narrative_short"] or "").strip()[:300]
+                lines.append(
+                    f"Virginia {row['chamber']}, District {row['district']}: "
+                    f"{row['name']} ({row['party']})"
+                )
+                if short:
+                    lines.append(f"  Profile: {short}")
+
+        # Federal representative
+        fed_district = city_info.get("federal_district")
+        if fed_district:
+            row = conn.execute(
+                "SELECT name, party, district FROM congress_members "
+                "WHERE state='Virginia' AND district=? AND chamber='House of Representatives' "
+                "LIMIT 1",
+                (fed_district,),
+            ).fetchone()
+            if row:
+                lines.append(
+                    f"U.S. Representative, VA-{str(row['district']).zfill(2)}: "
+                    f"{row['name']} ({row['party']})"
+                )
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+    if len(lines) > 2:
+        blocks.append(
+            f"[Database Context - representatives for {city_info['city']}]\n"
+            + "\n".join(lines)
+            + "\n\nSource: VoteIQ SQL database (legislators + congress_members)."
+        )
+
+
 def _add_known_person_scope_context(blocks: list[str], query: str) -> None:
     """Inject a scope hint for any person in KNOWN_FEDERAL_PEOPLE who appears in the query."""
     q_lower = (query or "").lower()
@@ -4566,6 +4688,7 @@ def build_database_context(query: str, max_chars: int = 22000, pro: bool = False
     session = _session_year(q)
     terms = _keywords(q)
     _add_known_person_scope_context(blocks, q)
+    _add_city_district_context(blocks, q)
     # Pre-generated civic profile — injected early so it always fits within max_chars
     _add_legislator_narrative_context(blocks, q)
     # Follow-the-money chain — fires when a bill number + money terms appear
