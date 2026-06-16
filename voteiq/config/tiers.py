@@ -22,20 +22,20 @@ DEFAULT_TIER = "standard"
 
 TIER_FEATURES = {
     "free":       {"model": _DEFAULT_MODEL},
-    "pro":        {"model": _OPUS_MODEL},
-    "newsroom":   {"model": _OPUS_MODEL},
-    "campaign":   {"model": _OPUS_MODEL},
-    "academic":   {"model": _OPUS_MODEL},
-    "enterprise": {"model": _OPUS_MODEL},
+    "pro":        {"model": _DEFAULT_MODEL},   # Sonnet default; Opus via get_model(complex_query=True)
+    "newsroom":   {"model": _DEFAULT_MODEL},
+    "campaign":   {"model": _DEFAULT_MODEL},
+    "academic":   {"model": _DEFAULT_MODEL},
+    "enterprise": {"model": _DEFAULT_MODEL},
 }
 
 # ── Per-tier token budgets ────────────────────────────────────────────────────
 
 TIER_MAX_TOKENS = {
     "free":       1200,   # raised from 800 — bill-detail / spike-alert responses truncated mid-sentence
-    "pro":        1500,
-    "newsroom":   2000,
-    "campaign":   2000,
-    "academic":   2000,
-    "enterprise": 3000,
+    "pro":        2500,   # raised from 1500 — demo beats 2/4/5/6 need ~1800-2400 for complete analytical output
+    "newsroom":   3500,   # raised from 2000 — investigative analyses run long
+    "campaign":   2500,   # raised from 2000
+    "academic":   2500,   # raised from 2000
+    "enterprise": 4000,   # raised from 3000
 }

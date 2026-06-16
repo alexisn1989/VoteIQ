@@ -4860,7 +4860,8 @@ async def chat(req: ChatRequest):
             "over time", "break down", "deep", "explain",
         ))
     )
-    tier_model, max_tokens = get_model(req.tier, simple=_simple_q)
+    _complex_q = not _simple_q and _m._is_complex_query(last_question, database_context)
+    tier_model, max_tokens = get_model(req.tier, complex_query=_complex_q)
 
     transcript_context = ""
     if query_context.get("touches_speech_context"):
@@ -4974,8 +4975,10 @@ When citing a vote, include the bill name and Yea/Nay. When citing donors or ind
         max_tokens = 1500
 
     try:
-        reply = _m._claude_reply(system_prompt, req.messages, max_tokens=max_tokens,
-                                 model=tier_model, cache_ttl=cache_ttl)
+        reply = _m._graceful_truncate(
+            _m._claude_reply(system_prompt, req.messages, max_tokens=max_tokens,
+                             model=tier_model, cache_ttl=cache_ttl)
+        )
         # Add sources footer if sources were used
         sources_footer = _format_sources_footer(sources_used)
         if sources_footer and "Sources:" not in reply:
@@ -5142,6 +5145,8 @@ async def bills_chat(req: BillsChatRequest):
     context = ctx_data["context"]
     exact_lookup_note = ctx_data["exact_lookup_note"]
     use_haiku = ctx_data["use_haiku"]
+    if not use_haiku and (req.tier or "free").lower() == "free":
+        use_haiku = _m._is_simple_free_question(user_query)
     chroma_error = ctx_data["chroma_error"]
 
     if not context and chroma_error:
@@ -5207,14 +5212,17 @@ async def bills_chat(req: BillsChatRequest):
         district_note, chroma_note, model_note, exact_lookup_note, context,
         pro=_premium_analyst_enabled(req),
     )
-    model, _      = get_model(req.tier, use_haiku)
+    _complex_q = not use_haiku and _m._is_complex_query(user_query, context)
+    model, _      = get_model(req.tier, use_haiku, complex_query=_complex_q)
     max_tokens    = 700 if use_haiku else TIER_MAX_TOKENS.get(req.tier, 1800)
 
     session_type = req.session_type or ("research" if len(req.messages) >= 3 else "quick")
     cache_ttl = "1h" if session_type == "research" else "5m"
 
     try:
-        reply = _m._claude_reply(system_prompt, req.messages, max_tokens=max_tokens, model=model, cache_ttl=cache_ttl)
+        reply = _m._graceful_truncate(
+            _m._claude_reply(system_prompt, req.messages, max_tokens=max_tokens, model=model, cache_ttl=cache_ttl)
+        )
         reply = _with_source_line(reply, answer_type, _track_sources(context))
         if _ck:
             _m._set_cached_reply(_ck, reply)
@@ -5278,6 +5286,8 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
     context          = ctx_data["context"]
     exact_lookup_note= ctx_data["exact_lookup_note"]
     use_haiku        = ctx_data["use_haiku"]
+    if not use_haiku and (req.tier or "free").lower() == "free":
+        use_haiku = _m._is_simple_free_question(user_query)
     chroma_error     = ctx_data["chroma_error"]
 
     # ── pro: inject lobbying + committee chair context ────────────────────────

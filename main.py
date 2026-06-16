@@ -1785,6 +1785,27 @@ def _claude_reply(system_prompt, messages, max_tokens, model: str | None = None,
     raise last_error
 
 
+_SENTENCE_END_RE = re.compile(r'[.!?]\s')
+
+
+def _graceful_truncate(reply: str) -> str:
+    """Trim to last complete sentence when the reply appears to end mid-sentence."""
+    if not reply:
+        return reply
+    stripped = reply.rstrip()
+    # Ends cleanly: sentence punct, markdown fence/table/list/emphasis terminators
+    if re.search(r'[.!?)”`|*_~-]\s*$', stripped):
+        return reply
+    # Search the last 1 000 chars — the truncation point is always near the end
+    # regardless of total response length, so this avoids the len//2 cut-too-much problem
+    search_start = max(0, len(stripped) - 1000)
+    matches = list(_SENTENCE_END_RE.finditer(stripped, search_start))
+    if not matches:
+        return reply  # no clean cut point — return as-is
+    cut = matches[-1].end()
+    return stripped[:cut].rstrip() + '\n\n*(Response cut short — ask a follow-up for more.)*'
+
+
 def _simple_bill_lookup_question(user_query: str, mentioned: list[str], cached_bill_context: str) -> bool:
     """Route simple exact bill questions to Haiku when local cached context is enough."""
     if not mentioned or not cached_bill_context:
@@ -1803,6 +1824,74 @@ def _simple_bill_lookup_question(user_query: str, mentioned: list[str], cached_b
         "describe", "tell me about", "status", "latest action",
     )
     return any(term in q for term in simple_terms) or len(q.split()) <= 8
+
+
+def _is_simple_free_question(user_query: str) -> bool:
+    """Downshift short factual free-tier questions to Haiku.
+
+    Excludes multi-source analysis queries that need Sonnet's synthesis depth.
+    """
+    q = (user_query or "").lower().strip()
+    _complex = (
+        "pac", "super pac", "independent expenditure", "outside spending",
+        "outside group", "for or against", "spent money",
+        "coalition", "alignment", "conflict", "similarly",
+        "compare", "cosponsor", "co-sponsor", "sponsor network", "opposes",
+        "campaign finance", "donate", "donation", "donated", "donor", "contribution",
+        "lobbyist", "lobbying",
+    )
+    if any(term in q for term in _complex):
+        return False
+    _simple_starts = ("who ", "what ", "when ", "where ", "how many ", "is ", "does ", "did ")
+    return any(q.startswith(s) for s in _simple_starts) or len(q.split()) <= 7
+
+
+def _is_complex_query(query: str, ctx: str = "") -> bool:
+    """Signal-based check: 2+ signals routes to Opus; fewer stays on Sonnet."""
+    q = (query or "").lower()
+    c = (ctx or "").lower()
+    signals = 0
+
+    # PAC / outside spending mentioned in query
+    if any(w in q for w in (
+        "pac", "super pac", "outside money", "outside spending",
+        "independent expenditure", "outside group", "spent money for",
+        "who funded", "contribut", "donation",
+    )):
+        signals += 1
+
+    # Both finance AND vote data present in context
+    _finance = any(w in c for w in ("donor", "contribution", "raised", "fec", "pac spending", "independent expenditure"))
+    _votes   = any(w in c for w in ("voted yea", "voted nay", "vote record", "yea/nay", "passage", "roll call"))
+    if _finance and _votes:
+        signals += 1
+
+    # Explicit comparison / coalition / voting similarity
+    if any(w in q for w in (
+        "compare", "versus", " vs ", "similarly", "most similar",
+        "coalition", "votes with", "who does", "most like", "align",
+    )):
+        signals += 1
+
+    # Time-span / trend reasoning
+    if any(w in q for w in (
+        "over time", "trend", "across sessions", "history of",
+        "pattern", "changed", "shift", "since ",
+    )):
+        signals += 1
+
+    # Conflict / influence / correlation
+    if any(w in q for w in (
+        "conflict", "alignment", "influence", "why did", "why does",
+        "correlation", "reflects", "reflect those",
+    )):
+        signals += 1
+
+    # Large context → multi-source synthesis
+    if len(c) > 5000:
+        signals += 1
+
+    return signals >= 2
 
 
 _CACHE_TTL_SECONDS = 86400  # 24 hours for ad-hoc chat replies
