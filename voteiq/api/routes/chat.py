@@ -3781,7 +3781,7 @@ def _direct_va_legislator_reply(user_query: str, premium: bool = False) -> str:
 
         recent_votes = conn.execute(
             """
-            SELECT bill_id, vote_date, option, title
+            SELECT DISTINCT bill_id, vote_date, option, title
             FROM va_legislator_recent_votes
             WHERE voter_name = ? AND session = '2026'
             ORDER BY vote_date DESC LIMIT 15
@@ -3855,6 +3855,17 @@ def _direct_va_legislator_reply(user_query: str, premium: bool = False) -> str:
             (f"%{last_name.lower()}%",),
         ).fetchone()
 
+        # Committee assignments — same connection, no extra open/close
+        committees = []
+        if conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='va_committee_assignments'"
+        ).fetchone():
+            committees = conn.execute(
+                "SELECT committee, chamber, role FROM va_committee_assignments "
+                "WHERE member_name = ? ORDER BY role DESC, committee",
+                (legislator_name,),
+            ).fetchall()
+
         conn.close()
     except Exception:
         return ""
@@ -3874,7 +3885,7 @@ def _direct_va_legislator_reply(user_query: str, premium: bool = False) -> str:
         "**Legislative Record Brief**",
         f"Subject: {legislator_name}",
         f"Role: Virginia {chamber}{party_str}, 2026 session",
-        "Scope: Votes, sponsored bills, co-sponsorships, campaign finance",
+        "Scope: Votes, sponsored bills, co-sponsorships, campaign finance, committee assignments",
         "Sources: OpenStates VA, LegiScan VA, Virginia SBE, VoteIQ local SQL",
         "",
         "**Voting Record — 2026 Session**",
@@ -3892,6 +3903,13 @@ def _direct_va_legislator_reply(user_query: str, premium: bool = False) -> str:
                 f"- [{rv['bill_id']}](https://openstates.org/va/bills/2026/{rv['bill_id']}/) "
                 f"**{opt}** — {title_short} ({rv['vote_date']})"
             )
+        lines.append("")
+
+    if committees:
+        lines.append("**Committee Assignments**")
+        for c in committees:
+            role_tag = " (Chair)" if c["role"] == "chair" else ""
+            lines.append(f"- {c['committee']} ({c['chamber']}){role_tag}")
         lines.append("")
 
     if sponsored:
