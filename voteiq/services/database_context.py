@@ -4727,6 +4727,147 @@ def _add_congress_hearings_context(blocks: list[str], query: str, terms: list[st
         pass
 
 
+# ── Vote similarity ────────────────────────────────────────────────────────────
+_VOTE_SIMILARITY_RE = re.compile(
+    r"(?:"
+    r"vote[sd]?\s+(?:most\s+)?similar(?:ly)?(?:\s+(?:to|with))?"
+    r"|similar\s+voting\s+record"
+    r"|most\s+(?:aligned|similar)\s+(?:with|to)"
+    r"|votes?\s+(?:the\s+same|alike)\s+(?:as|with)"
+    r"|voting\s+record\s+similar\s+to"
+    r"|who\s+(?:votes?|voted)\s+(?:most\s+)?(?:with|like)\s"
+    r"|most\s+similar\s+legislat"
+    r"|voting\s+alli(?:es|y)"
+    r")",
+    re.I,
+)
+
+
+def _add_vote_similarity_context(blocks: list[str], query: str) -> None:
+    """Compute legislator vote-agreement rates for similarity queries.
+
+    Joins va_legislator_recent_votes on bill_id+session (not bill_number alone,
+    to avoid cross-session collisions). Uses DISTINCT rows to handle duplicate
+    entries. Only yes/no votes are compared; not-voting/abstain are excluded.
+    Legislators with fewer than MIN_SHARED shared votes are excluded to prevent
+    misleading 100%-on-2-bills results.
+    """
+    if not _VOTE_SIMILARITY_RE.search(query):
+        return
+
+    name_candidates = re.findall(
+        r"\b([A-Z][a-zA-Z]+(?:\.?\s+[A-Z][a-zA-Z]+)+)\b", query
+    )
+    if not name_candidates:
+        return
+
+    MIN_SHARED = 10
+    TOP_N = 15
+
+    try:
+        conn = sqlite3.connect(_POLLS_DB, timeout=10)
+        conn.row_factory = sqlite3.Row
+
+        # Resolve the target legislator name against the DB
+        target_name: str | None = None
+        for candidate in name_candidates:
+            row = conn.execute(
+                "SELECT DISTINCT voter_name FROM va_legislator_recent_votes "
+                "WHERE voter_name = ? AND session = '2026' LIMIT 1",
+                (candidate,),
+            ).fetchone()
+            if not row:
+                last = candidate.strip().split()[-1]
+                if len(last) >= 4:
+                    row = conn.execute(
+                        "SELECT DISTINCT voter_name FROM va_legislator_recent_votes "
+                        "WHERE lower(voter_name) LIKE ? AND session = '2026' LIMIT 1",
+                        (f"%{last.lower()}%",),
+                    ).fetchone()
+            if row:
+                target_name = row["voter_name"]
+                break
+
+        if not target_name:
+            conn.close()
+            return
+
+        rows = conn.execute(
+            """
+            WITH target AS (
+                SELECT DISTINCT bill_id, session, option
+                FROM va_legislator_recent_votes
+                WHERE voter_name = ? AND session = '2026'
+                  AND option IN ('yes', 'no')
+            ),
+            others AS (
+                SELECT DISTINCT voter_name, bill_id, session, option
+                FROM va_legislator_recent_votes
+                WHERE session = '2026'
+                  AND option IN ('yes', 'no')
+                  AND voter_name != ?
+            )
+            SELECT
+                o.voter_name,
+                v.chamber,
+                v.party,
+                COUNT(*)                                                        AS shared_votes,
+                SUM(CASE WHEN t.option = o.option THEN 1 ELSE 0 END)           AS agreed,
+                ROUND(
+                    100.0 * SUM(CASE WHEN t.option = o.option THEN 1 ELSE 0 END)
+                    / COUNT(*), 1
+                )                                                               AS agreement_pct
+            FROM target t
+            JOIN others o ON t.bill_id = o.bill_id AND t.session = o.session
+            LEFT JOIN va_legislator_vote_summary v
+                   ON v.voter_name = o.voter_name AND v.session = '2026'
+            GROUP BY o.voter_name
+            HAVING COUNT(*) >= ?
+            ORDER BY agreement_pct DESC
+            LIMIT ?
+            """,
+            (target_name, target_name, MIN_SHARED, TOP_N),
+        ).fetchall()
+
+        conn.close()
+
+        if not rows:
+            return
+
+        lines = [
+            "[Database Context - vote_similarity]",
+            f"target_legislator={target_name}",
+            "session=2026",
+            "method=bill_vote_agreement_rate — option match on shared bill_id+session",
+            f"minimum_shared_votes={MIN_SHARED}",
+            "source=va_legislator_recent_votes",
+            "note=Only yes/no votes compared. not-voting and abstain excluded. "
+            "DISTINCT applied to deduplicate source rows.",
+            "",
+            f"Legislators with most similar voting records to {target_name} (2026 session):",
+            "| Rank | Legislator | Chamber | Party | Shared Votes | Agreement % |",
+            "|---|---|---|---|---:|---:|",
+        ]
+        for i, row in enumerate(rows, 1):
+            lines.append(
+                f"| {i} | {row['voter_name']} | {row['chamber'] or '—'} "
+                f"| {row['party'] or '—'} | {row['shared_votes']} "
+                f"| {row['agreement_pct']}% |"
+            )
+
+        lines += [
+            "",
+            f"Agreement % = votes where both legislators cast the same option (yes/no) "
+            f"on the same bill in the same 2026 session, divided by total shared votes. "
+            f"Legislators with fewer than {MIN_SHARED} shared votes are excluded to "
+            f"prevent misleading scores from small samples.",
+        ]
+        blocks.append("\n".join(lines))
+
+    except Exception:
+        pass
+
+
 def build_database_context(query: str, max_chars: int = 22000, pro: bool = False) -> str:
     q = query or ""
     blocks: list[str] = []
@@ -4753,6 +4894,8 @@ def build_database_context(query: str, max_chars: int = 22000, pro: bool = False
     _add_committee_chair_context(blocks, q)
     # Legislator committee memberships — fires on "[name] + committee" queries
     _add_legislator_committee_membership_context(blocks, q)
+    # Vote similarity — fires on "votes most similarly", "most aligned with", etc.
+    _add_vote_similarity_context(blocks, q)
     # Gatekeeper — fires when query asks who kills/blocks bills in committee
     _add_gatekeeper_context(blocks, q)
     # VEC financial disclosures — fires on SOEI / conflict-of-interest queries
