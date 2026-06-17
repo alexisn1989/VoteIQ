@@ -23,6 +23,28 @@ SEED_OUT  = BASE_DIR / "data" / "legislators_seed.sql"
 SESSION   = "2026"
 RECENT_VOTES_LIMIT = 200
 
+# Motions that do not represent a legislator's policy position: waivers,
+# committee reports, requests to convene a conference, and reconsiderations.
+# Used to populate is_procedural in va_legislator_recent_votes.
+PROCEDURAL_MOTIONS: frozenset[str] = frozenset({
+    "Suspend the Rules  R",
+    "Waive Reading (on 3rd reading)",
+    "Waive Reading (on 2nd reading)",
+    "Constitutional reading dispensed (on 3rd reading)",
+    "Constitutional reading dispensed  R",
+    "Reconsider R",
+    "Reported from Privileges and Elections",
+    "Reported from Rules",
+    "Reported from General Laws",
+    "Reported from General Laws with substitute",
+    "Reported from General Laws with amendment(s)",
+    "Reported from Finance and Appropriations",
+    "Reported from Finance and Appropriations with amendments",
+    "S Senate requested second conference committee",
+    "Subcommittee recommends reporting with amendment(s)",
+    "Rerefer to Committee  V",
+})
+
 
 def esc(v) -> str:
     if v is None:
@@ -198,15 +220,17 @@ def main():
     lines += [
         "",
         "-- ── va_legislator_recent_votes ──────────────────────────────────────────────",
-        "CREATE TABLE IF NOT EXISTS va_legislator_recent_votes (",
-        "    voter_name TEXT,",
-        "    session    TEXT,",
-        "    bill_id    TEXT,",
-        "    vote_date  TEXT,",
-        "    option     TEXT,",
-        "    chamber    TEXT,",
-        "    motion     TEXT,",
-        "    title      TEXT",
+        "DROP TABLE IF EXISTS va_legislator_recent_votes;",
+        "CREATE TABLE va_legislator_recent_votes (",
+        "    voter_name    TEXT,",
+        "    session       TEXT,",
+        "    bill_id       TEXT,",
+        "    vote_date     TEXT,",
+        "    option        TEXT,",
+        "    chamber       TEXT,",
+        "    motion        TEXT,",
+        "    title         TEXT,",
+        "    is_procedural INTEGER DEFAULT 0",
         ");",
         # Indexes for the legislator-profile voting-similarity self-join and the
         # per-legislator recent-vote lookup. Without these SQLite builds an
@@ -214,16 +238,16 @@ def main():
         # memory-constrained hosts (Render).
         "CREATE INDEX IF NOT EXISTS idx_lrv_voter_session ON va_legislator_recent_votes(voter_name, session);",
         "CREATE INDEX IF NOT EXISTS idx_lrv_bill_session  ON va_legislator_recent_votes(bill_id, session);",
-        f"DELETE FROM va_legislator_recent_votes WHERE session = '{SESSION}';",
         "",
     ]
     for (name, bill_id, vote_date, option, chamber, motion, title) in recent_votes:
         # Truncate title to 120 chars to keep seed manageable
         title_short = (title or "")[:120]
+        is_proc = 1 if motion in PROCEDURAL_MOTIONS else 0
         lines.append(
             f"INSERT INTO va_legislator_recent_votes VALUES("
             f"{esc(name)},{esc(SESSION)},{esc(bill_id)},{esc(vote_date)},"
-            f"{esc(option)},{esc(chamber)},{esc(motion)},{esc(title_short)});"
+            f"{esc(option)},{esc(chamber)},{esc(motion)},{esc(title_short)},{is_proc});"
         )
 
     lines += [
