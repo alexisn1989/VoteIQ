@@ -3744,6 +3744,7 @@ def _direct_va_legislator_reply(user_query: str, premium: bool = False) -> str:
     cosponsor_total = 0
     recent_votes: list = []
     finance = None
+    district     = None
 
     try:
         conn = sqlite3.connect(_POLLS_DB, timeout=30)
@@ -3866,56 +3867,124 @@ def _direct_va_legislator_reply(user_query: str, premium: bool = False) -> str:
                 (legislator_name,),
             ).fetchall()
 
+        # District — va_legislator_vote_summary has no district column; look up from legislators
+        if conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='legislators'"
+        ).fetchone():
+            _dist_row = conn.execute(
+                "SELECT district FROM legislators WHERE lower(name) LIKE ? LIMIT 1",
+                (f"%{legislator_name.split()[-1].lower()}%",),
+            ).fetchone()
+            if _dist_row:
+                district = _dist_row[0]
+
         conn.close()
     except Exception:
         return ""
 
-    # ── Format response ───────────────────────────────────────────────────────────
-    chamber = str(vote_summary["chamber"] or "Legislator")
-    party   = str(vote_summary["party"]   or "")
-    party_str = f" ({party})" if party else ""
-    yes_count = int(vote_summary["yes_count"]   or 0)
-    no_count  = int(vote_summary["no_count"]    or 0)
-    nv_count  = int(vote_summary["not_voting"]  or 0)
-    total     = int(vote_summary["total_votes"] or 0)
-    yes_rate  = round(yes_count / max(total, 1) * 100, 1)
-    no_rate   = round(no_count  / max(total, 1) * 100, 1)
+    # ── Format response — VoteIQ Legislative Record Brief Schema v1.0 ────────────
+    chamber_str  = str(vote_summary["chamber"]    or "Legislator")
+    party_str    = str(vote_summary["party"]      or "")
+    yes_count    = int(vote_summary["yes_count"]  or 0)
+    no_count     = int(vote_summary["no_count"]   or 0)
+    nv_count     = int(vote_summary["not_voting"] or 0)
+    abstain_cnt  = int(vote_summary["abstain"]    or 0)
+    total        = int(vote_summary["total_votes"] or 0)
+    yes_rate     = round(yes_count / max(total, 1) * 100, 1)
 
-    lines = [
-        "**Legislative Record Brief**",
-        f"Subject: {legislator_name}",
-        f"Role: Virginia {chamber}{party_str}, 2026 session",
-        "Scope: Votes, sponsored bills, co-sponsorships, campaign finance, committee assignments",
-        "Sources: OpenStates VA, LegiScan VA, Virginia SBE, VoteIQ local SQL",
+    district_val  = district or "[DATA GAP: not available in current dataset]"
+    finance_cycle = finance["latest_cycle"] if finance else None
+    session_range = (
+        f"2026 session (votes); through {finance_cycle} (finance)"
+        if finance_cycle else "2026 session"
+    )
+
+    lines: list[str] = []
+
+    # ── A. Metadata ───────────────────────────────────────────────────────────────
+    lines += [
+        "## Legislative Record Brief",
         "",
-        "**Voting Record — 2026 Session**",
-        f"- Total votes cast: {total:,}",
-        f"- Yes: {yes_count:,} ({yes_rate}%) | No: {no_count:,} ({no_rate}%) | Not voting: {nv_count:,}",
+        "### A. Metadata",
+        "> **[RAW DATA — LAYER 1]**",
+        "",
+        "| Field | Value |",
+        "|---|---|",
+        f"| Subject | {legislator_name} |",
+        f"| Role | Virginia {chamber_str} |",
+        f"| Chamber | Virginia {chamber_str} |",
+        f"| District | {district_val} |",
+        f"| Party | {party_str} |",
+        f"| Session Range | {session_range} |",
+        "| Report Generated | 2026 |",
+        "| Data Sources | Virginia SBE; OpenStates; VoteIQ local SQL |",
+        f"| Coverage Notes | Vote records: 2026 session. Finance: {f'through {finance_cycle}' if finance_cycle else '[DATA GAP]'}. CoI Score not calculated — see Section G. |",
         "",
     ]
 
+    # ── B. Voting Record Summary ──────────────────────────────────────────────────
+    lines += [
+        "### B. Voting Record — 2026 Session",
+        "> **[RAW DATA — LAYER 1]** Source: OpenStates | Time range: 2026 regular session",
+        "",
+        "| Metric | Value |",
+        "|---|---|",
+        f"| Total votes cast | {total:,} |",
+        f"| YES votes | {yes_count:,} ({yes_rate}%) |",
+        f"| NO votes | {no_count:,} |",
+        f"| Not voting | {nv_count:,} |",
+        f"| Abstain | {abstain_cnt:,} |",
+        "| Coverage | All recorded roll-call votes in OpenStates for 2026 session |",
+        "",
+    ]
+
+    # ── C. Recent Votes ───────────────────────────────────────────────────────────
+    lines += [
+        "### C. Recent Votes",
+        "> **[RAW DATA — LAYER 1]** Source: OpenStates — last 15 recorded roll-call votes",
+        "",
+    ]
     if recent_votes:
-        lines.append(f"**{len(recent_votes)} Most Recent Votes**")
+        lines += ["| Bill | Vote | Description | Date |", "|---|---|---|---|"]
         for rv in recent_votes:
-            opt = (rv["option"] or "?").upper()
-            title_short = (rv["title"] or rv["bill_id"] or "")[:80]
-            lines.append(
-                f"- [{rv['bill_id']}](https://openstates.org/va/bills/2026/{rv['bill_id']}/) "
-                f"**{opt}** — {title_short} ({rv['vote_date']})"
-            )
-        lines.append("")
+            opt         = (rv["option"] or "?").upper()
+            title_short = (rv["title"] or rv["bill_id"] or "")[:75]
+            bill_link   = f"[{rv['bill_id']}](https://openstates.org/va/bills/2026/{rv['bill_id']}/)"
+            lines.append(f"| {bill_link} | **{opt}** | {title_short} | {rv['vote_date']} |")
+    else:
+        lines.append("*[DATA GAP: insufficient roll-call records for 2026 session]*")
+    lines.append("")
 
+    # ── D. Committee Assignments ──────────────────────────────────────────────────
+    lines += [
+        "### D. Committee Assignments",
+        "> **[RAW DATA — LAYER 1]** Source: Virginia General Assembly official records",
+        "",
+    ]
     if committees:
-        lines.append("**Committee Assignments**")
+        lines += ["| Committee | Role | Chamber |", "|---|---|---|"]
         for c in committees:
-            role_tag = " (Chair)" if c["role"] == "chair" else ""
-            lines.append(f"- {c['committee']} ({c['chamber']}){role_tag}")
-        lines.append("")
+            role_label = "Chair" if c["role"] == "chair" else "Member"
+            lines.append(f"| {c['committee']} | {role_label} | {c['chamber']} |")
+    else:
+        lines.append("*[DATA GAP: committee assignments not found for this legislator]*")
+    lines.append("")
 
+    # ── E. Sponsorships ───────────────────────────────────────────────────────────
+    lines += [
+        "### E. Sponsorships",
+        "> **[RAW DATA — LAYER 1]** Source: OpenStates",
+        "> *OpenStates limitation: counts reflect recorded fields only — underreporting is possible.*",
+        "",
+        "| Metric | Value |",
+        "|---|---|",
+        f"| Bills sponsored (2026) | {sponsored_total:,} |",
+        f"| Bills co-sponsored (2026) | {cosponsor_total:,} |",
+        "| Definition | Co-sponsorship = listed as secondary sponsor in OpenStates record |",
+        "",
+    ]
     if sponsored:
-        lines.append(
-            f"**Bills Introduced — 2026 Session ({sponsored_total} total; showing {len(sponsored)})**"
-        )
+        lines.append(f"**Recent sponsored bills ({len(sponsored)} of {sponsored_total} shown):**")
         for b in sponsored:
             status = f" [{b['status_label']}]" if b["status_label"] else ""
             lines.append(
@@ -3924,55 +3993,114 @@ def _direct_va_legislator_reply(user_query: str, premium: bool = False) -> str:
             )
         lines.append("")
 
-    lines.append(f"**Co-Sponsorships — 2026 Session**: {cosponsor_total:,} bills co-sponsored")
-    lines.append("")
-
-    if bill_topic_stats:
-        lines.append("**Bill Success Rate by Topic — 2026 Session** (topics with 2+ bills)")
-        for row in bill_topic_stats:
-            topic, total, passed, vetoed, died, pass_pct = (
-                row["topic"] if hasattr(row, "__getitem__") else row[0],
-                row[1], row[2], row[3], row[4], row[5],
-            )
-            pct = int(pass_pct or 0)
-            flag = " ⚠ none passed" if passed == 0 and total >= 3 else (
-                   " ✓ all passed" if pct == 100 and total >= 3 else "")
-            veto_note = f", {vetoed} vetoed by governor" if vetoed else ""
-            lines.append(
-                f"- {topic}: {pct}% pass rate ({passed}/{total} passed{veto_note}){flag}"
-            )
-        lines.append("")
-
+    # ── F. Campaign Finance ────────────────────────────────────────────────────────
+    lines += ["### F. Campaign Finance", ""]
     if finance:
-        lines.append("**Campaign Finance (Virginia SBE — all cycles in VoteIQ)**")
-        lines.append(
-            f"- Total raised (through {finance['latest_cycle']}): "
-            f"${float(finance['total_raised'] or 0):,.0f}"
-        )
-        lines.append(f"- Top donor sector: {finance['top_sector']} ({finance['top_sector_pct']}%)")
+        lines += [
+            "#### F1a. Incoming Contributions",
+            "> **[RAW DATA — LAYER 1]** Source: Virginia SBE campaign finance filings",
+            "> *Incoming contributions only — outgoing expenditures are a separate dataset and must not be combined.*",
+            "",
+            "| Metric | Value |",
+            "|---|---|",
+            f"| Total raised | ${float(finance['total_raised'] or 0):,.0f} |",
+            f"| Cycle range | through {finance_cycle} |",
+            f"| Top sector | {finance['top_sector']} ({finance['top_sector_pct']}%) |",
+            "| Source | Virginia SBE campaign finance filings |",
+            "",
+        ]
+        if not premium:
+            lines += ["*[DATA GAP: individual donor detail available with Pro/Newsroom access]*", ""]
         if finance["by_sector_json"]:
             try:
-                sectors = _json.loads(finance["by_sector_json"])[:6]
-                for s in sectors:
-                    lines.append(f"  - {s['sector']}: ${float(s['total']):,.0f}")
+                sectors = _json.loads(finance["by_sector_json"])
+                if sectors:
+                    lines += [
+                        "#### F2. Sector Breakdown",
+                        "> **[DERIVED METRIC — LAYER 2]** Computed from SBE filings via VoteIQ donor taxonomy",
+                        "> *Sectors assigned by donor name matching — not independently audited. Approximations.*",
+                        "",
+                        "| Sector | Amount |",
+                        "|---|---:|",
+                    ]
+                    for s in sectors[:8]:
+                        lines.append(f"| {s['sector']} | ${float(s['total']):,.0f} |")
+                    lines.append("")
             except Exception:
                 pass
-        if not premium:
-            lines.append("_Full donor list available with Pro/Newsroom access._")
+    else:
+        lines += [
+            "#### F1a. Incoming Contributions",
+            "*[DATA GAP: campaign finance record not found in current dataset]*",
+            "",
+        ]
+
+    # ── G. Derived Analytics ──────────────────────────────────────────────────────
+    lines += ["### G. Derived Analytics", "> **[DERIVED METRIC — LAYER 2]**", ""]
+
+    if bill_topic_stats:
+        lines += [
+            "#### G1. Bill Success Rate by Topic — 2026 Session",
+            "> *Topics with 2+ bills. Computed from OpenStates status fields.*",
+            "",
+            "| Topic | Bills | Pass Rate | Notes |",
+            "|---|---:|---:|---|",
+        ]
+        for _row in bill_topic_stats:
+            _topic  = _row["topic"] if hasattr(_row, "__getitem__") else _row[0]
+            _tot    = _row[1]; _passed = _row[2]; _vetoed = _row[3]
+            _pct    = int(_row[5] or 0)
+            _flag   = "none passed" if _passed == 0 and _tot >= 3 else (
+                      "all passed"  if _pct == 100 and _tot >= 3 else "")
+            _veto_n = f"{_vetoed} vetoed" if _vetoed else ""
+            _note   = ", ".join(filter(None, [_flag, _veto_n])) or "—"
+            lines.append(f"| {_topic} | {_tot} | {_pct}% | {_note} |")
         lines.append("")
 
-    lines.extend([
-        "**Data Limits**",
-        "- Vote records from OpenStates VA; bill status from LegiScan VA.",
-        "- Finance from Virginia SBE via VoteIQ local import; VPAP totals may differ.",
-        "- This brief does not infer motive, influence, or causation from votes or donations.",
+    lines += [
+        "#### G2. Donor-Vote Alignment",
+        "*[DATA GAP: alignment rate requires full analyst query — not computed in this view]*",
+        "",
+        "#### G3. CoI Score",
+        "> **[NOT CALCULATED]**",
+        "> Reason: CoI Score requires sector-specific bill-vote linkage — not available in this view.",
+        "> Confidence: Low — data coverage limitation, not a finding.",
+        "> Action: Use the full analyst query for CoI Score computation.",
+        "",
+    ]
+
+    # ── I. Data Integrity Notes ───────────────────────────────────────────────────
+    _gaps: list[str] = []
+    if not district:
+        _gaps.append("District (Section A): not in `va_legislator_vote_summary` — looked up from `legislators`")
+    if not committees:
+        _gaps.append("Committee assignments (Section D): not found in `va_committee_assignments` for this name")
+    if not finance:
+        _gaps.append("Campaign finance (Section F): not found in `campaign_finance_summary`")
+
+    lines += [
+        "### I. Data Integrity Notes",
+        "",
+        "**Missing or incomplete fields:**",
+    ]
+    for _g in (_gaps or ["None for this record"]):
+        lines.append(f"- {_g}")
+    lines += [
+        "- Section G2 (donor-vote alignment): requires full analyst query",
+        "- Section H (interpretive signals): not computed in this view — requires multi-cycle analysis",
+        "",
+        "**Known source constraints:**",
+        "- OpenStates co-sponsorship counts are minimums; underreporting is possible",
+        "- Finance sectors classified via VoteIQ donor taxonomy (approximation, not independently audited)",
+        "- This brief reports public-record data only. No motive, influence, or causation is inferred from votes or donations.",
         "",
         "**Related Questions**",
         f"- [What bills did {legislator_name} introduce?]"
         f"(/ask?q=Bills+introduced+by+{legislator_name.replace(' ', '+')})",
         f"- [How did {legislator_name} vote on education bills?]"
         f"(/ask?q={legislator_name.replace(' ', '+')}+voted+education)",
-    ])
+    ]
+
     return "\n".join(lines)
 
 
@@ -4382,6 +4510,26 @@ def _bills_system_prompt(
         f"always include it in the '## Outside Spending' section alongside lobbying data — "
         f"this shows which Super PACs ran ads for or against the member.\n"
         if pro else ""
+        )
+        + (
+        "\n\nLEGISLATIVE BRIEF SCHEMA — ENFORCEMENT RULES:\n"
+        "When the context block contains a '## Legislative Record Brief' (sections A–I), apply these rules:\n"
+        "1. PRESERVE STRUCTURE: Extend the structured sections — never collapse, reorder, or rewrite them.\n"
+        "2. LAYER LABELS: Never remove [RAW DATA — LAYER 1], [DERIVED METRIC — LAYER 2], or "
+        "[INTERPRETIVE SIGNAL — LAYER 3 — LOW TRUST] labels. Add them to any new content you generate.\n"
+        "3. NO CAUSAL LANGUAGE: Prohibited — 'coincides with', 'suggests influence', 'linked to', "
+        "'driven by', 'indicates', 'shows alignment with policy'. "
+        "Permitted — 'temporally overlaps', 'co-occurs in dataset', 'observed within same time window'.\n"
+        "4. FINANCE SEPARATION: Incoming contributions and outgoing expenditures/transfers must stay in "
+        "separate subsections. Never label a committee disbursement as a donor or donation.\n"
+        "5. STATISTICAL WARNINGS: Any alignment rate with n < 30 MUST include: "
+        "'[STATISTICAL WARNING] Rate computed from n=[X] votes — below 30-vote threshold; not a meaningful pattern.'\n"
+        "6. COI SCORE NULL: Never write 'CoI Score: None'. Use: "
+        "'[NOT CALCULATED] Reason: [specific gap]. Confidence: Low — data coverage limitation, not a finding.'\n"
+        "7. DATA GAPS: Use '[DATA GAP: description]' for missing fields, "
+        "'[CONTEXT GAP: description]' for missing normalization context. No required field left blank.\n"
+        "8. NO INTENT: Never state or imply a donation caused, motivated, or influenced a vote. "
+        "These are public-record patterns — correlation is not causation.\n"
         )
         + _freshness_block
         + f"\n\nEXCERPTS:\n{context}"
