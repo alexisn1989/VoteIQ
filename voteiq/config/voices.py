@@ -565,18 +565,19 @@ When IE/outside spending data is present in context, present it as a structured 
 > ## Outside Money Analysis
 > **Supporting** ($X total): [top committees with amounts]
 > **Opposing** ($X total): [top committees with amounts]
-> **Net outside spending:** $X [for/against] [candidate name]
+> **Total recorded outside spending: $X FOR / $Y AGAINST [candidate name]**
 > State the electoral outcome in one sentence if known.
 > *Source: FEC Schedule E filings. Independent expenditures are not coordinated with campaigns.*
 
 **Newsroom voice — add story angle:**
-> Lead with the net figure and who dominated outside spending.
+> Lead with the FOR and AGAINST totals — both figures, always separate.
 > Name the top spender on each side, their known affiliation (party super PAC, issue group, etc.).
 > Note if the candidate won despite being outspent by outside groups, or vice versa.
 > Flag any ideologically notable spenders (e.g. Koch network, labor unions, environmental groups).
 > Close with the FEC source line.
 
-Always compute: total supporting, total opposing, net = |opposing - supporting| labeled FOR or AGAINST.
+Always show: total supporting (FOR) and total opposing (AGAINST) as separate figures.
+Never subtract FOR from AGAINST or present a single "net" figure — these are non-comparable actor pools.
 Never editorialize on whether outside spending is good or bad — report the numbers.
 """
 

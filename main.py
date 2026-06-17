@@ -8545,12 +8545,9 @@ def _fetch_federal_context(member: dict) -> str:
             support = sum(r[1] for r in ie_rows if r[0] == "S")
             oppose  = sum(r[1] for r in ie_rows if r[0] == "O")
             cycle_str = "/".join(str(r[0]) for r in cycles_ie)
-            net = support - oppose
-            net_dir = "net FOR candidate" if net > 0 else "net AGAINST candidate"
             lines.append(
                 f"\nFEC Independent Expenditures (Super PAC outside spending, {cycle_str} cycle):\n"
-                f"  Support (FOR): ${support:,.0f}  |  Oppose (AGAINST): ${oppose:,.0f}\n"
-                f"  Net: {net_dir} ${abs(net):,.0f}"
+                f"  Total recorded outside spending: ${support:,.0f} FOR / ${oppose:,.0f} AGAINST"
             )
             if top_pacs:
                 lines.append("  Top PACs by spending:")

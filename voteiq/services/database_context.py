@@ -1657,12 +1657,18 @@ def _add_federal_vote_context(blocks: list[str], query: str, terms: list[str]) -
 
     lines = ["[Database Context - polls federal vote lookup]"]
     lines.append("Source: Congress.gov / House Clerk roll-call tables when rows are present")
+    lines.append(
+        "chamber_label_rule=Every vote table must carry a chamber header: "
+        "'Chamber: U.S. House of Representatives (119th Congress roll calls)' — "
+        "never mix House and Senate votes in the same table"
+    )
 
     try:
         for target in targets[:3]:
             bgid = target["bioguide_id"]
             lines.append(
                 f"target_name={target['name']}; bioguide_id={bgid}"
+                + (f"; chamber={target['chamber']}" if target.get("chamber") else "")
                 + (f"; note={target['office_note']}" if target.get("office_note") else "")
             )
 
@@ -2024,13 +2030,95 @@ def _add_indy_exp_context(blocks: list[str], query: str, terms: list[str]) -> No
                    ORDER BY (support_total + oppose_total) DESC LIMIT 10"""
             ).fetchall()
             for row in rows:
-                net = row["support_total"] + row["oppose_total"]
+                total_outside = row["support_total"] + row["oppose_total"]
                 lines.append(
-                    f"  {row['candidate_name']}: support=${row['support_total']:,.0f}  "
-                    f"oppose=${row['oppose_total']:,.0f}  total outside=${net:,.0f}"
+                    f"  {row['candidate_name']}: FOR=${row['support_total']:,.0f}  "
+                    f"AGAINST=${row['oppose_total']:,.0f}  total_recorded_outside=${total_outside:,.0f}"
                 )
 
         blocks.append("\n".join(lines))
+
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
+# ── FEC individual contributions — employer rollup ───────────────────────────
+
+_FEC_EMPLOYER_TRIGGERS = re.compile(
+    r"\b(top\s+(?:donors?|contributors?|employers?)|who\s+(?:funds?|gave|donated)|"
+    r"employer.tagged|individual\s+contributions?|fec\s+donors?|"
+    r"contributions?\s+(?:from|by)\s+employer)\b",
+    re.I,
+)
+
+
+def _add_fec_employer_context(blocks: list[str], query: str, terms: list[str]) -> None:
+    """Inject FEC individual contributions aggregated by employer for federal member queries."""
+    if not _FEC_EMPLOYER_TRIGGERS.search(query):
+        return
+
+    conn = _connect("polls")
+    if not conn:
+        return
+    if not _table_exists(conn, "fec_individual_contributions"):
+        conn.close()
+        return
+
+    try:
+        members = _resolve_federal_member(conn, terms)
+        if not members:
+            return
+
+        for member in members[:2]:
+            bgid = member["bioguide_id"]
+            name = member["name"]
+
+            rows = conn.execute(
+                """
+                SELECT
+                    MIN(contributor_employer) AS employer,
+                    MAX(COALESCE(employer_sector, 'Unclassified')) AS sector,
+                    COUNT(*) AS contribution_count,
+                    ROUND(SUM(amount), 0) AS total_amount,
+                    MAX(cycle) AS latest_cycle
+                FROM fec_individual_contributions
+                WHERE bioguide_id = ?
+                  AND amount > 0
+                  AND contributor_employer IS NOT NULL
+                  AND TRIM(UPPER(contributor_employer)) NOT IN
+                      ('', 'N/A', 'NONE', 'SELF', 'RETIRED', 'NOT EMPLOYED',
+                       'SELF-EMPLOYED', 'HOMEMAKER', 'STUDENT')
+                GROUP BY LOWER(TRIM(contributor_employer))
+                ORDER BY total_amount DESC
+                LIMIT 15
+                """,
+                (bgid,),
+            ).fetchall()
+
+            if not rows:
+                continue
+
+            lines = [
+                f"[Database Context - fec_individual_contributions employer rollup]",
+                f"target={name}; bioguide_id={bgid}",
+                "Source: FEC Schedule A individual contributions (fec.gov)",
+                "note=Multiple employer-tagged entries may aggregate to the same parent entity. "
+                "Employer strings are self-reported and not normalized — slight name variations "
+                "(e.g. punctuation, abbreviations) produce separate rows. Treat totals as approximate.",
+                "aggregation=GROUP BY lower(trim(contributor_employer)); amount=SUM",
+                "",
+                "| Rank | Employer | Sector | Contributors | Total ($) | Latest Cycle |",
+                "|---|---|---|---:|---:|---:|",
+            ]
+            for i, row in enumerate(rows, 1):
+                lines.append(
+                    f"| {i} | {row['employer']} | {row['sector']} "
+                    f"| {row['contribution_count']} | ${row['total_amount']:,.0f} "
+                    f"| {row['latest_cycle']} |"
+                )
+            blocks.append("\n".join(lines))
 
     except Exception:
         pass
@@ -4911,6 +4999,7 @@ def build_database_context(query: str, max_chars: int = 22000, pro: bool = False
     _add_federal_vote_context(blocks, q, terms)
     _add_floor_statements_context(blocks, q, terms)
     _add_indy_exp_context(blocks, q, terms)
+    _add_fec_employer_context(blocks, q, terms)
     _add_pac_vote_correlation_context(blocks, q, terms)
     _add_spike_alerts_context(blocks, q)
     # Structured access to analytically rich tables the generic scan serves poorly
