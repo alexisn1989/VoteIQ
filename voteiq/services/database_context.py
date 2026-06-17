@@ -4834,11 +4834,16 @@ _VOTE_SIMILARITY_RE = re.compile(
 def _add_vote_similarity_context(blocks: list[str], query: str) -> None:
     """Compute legislator vote-agreement rates for similarity queries.
 
-    Joins va_legislator_recent_votes on bill_id+session (not bill_number alone,
-    to avoid cross-session collisions). Uses DISTINCT rows to handle duplicate
-    entries. Only yes/no votes are compared; not-voting/abstain are excluded.
-    Legislators with fewer than MIN_SHARED shared votes are excluded to prevent
-    misleading 100%-on-2-bills results.
+    Joins va_legislator_recent_votes on bill_id+session across all available
+    sessions (2025+2026) so cross-session variation surfaces intra-party
+    divergences masked by end-of-session caucus discipline.
+
+    Output splits into:
+      - Same-party allies (top 5): for intra-caucus comparison
+      - Cross-party bipartisan allies (top 10): higher signal for coalition work
+
+    When all top same-party scores are ≥95%, an explanatory note is added
+    warning that same-caucus lockstep voting inflates these scores.
     """
     if not _VOTE_SIMILARITY_RE.search(query):
         return
@@ -4850,18 +4855,19 @@ def _add_vote_similarity_context(blocks: list[str], query: str) -> None:
         return
 
     MIN_SHARED = 10
-    TOP_N = 15
+    TOP_SAME   = 5
+    TOP_CROSS  = 10
 
     try:
         conn = sqlite3.connect(_POLLS_DB, timeout=10)
         conn.row_factory = sqlite3.Row
 
-        # Resolve the target legislator name against the DB
+        # Resolve the target legislator name against the DB (all sessions)
         target_name: str | None = None
         for candidate in name_candidates:
             row = conn.execute(
                 "SELECT DISTINCT voter_name FROM va_legislator_recent_votes "
-                "WHERE voter_name = ? AND session = '2026' LIMIT 1",
+                "WHERE voter_name = ? LIMIT 1",
                 (candidate,),
             ).fetchone()
             if not row:
@@ -4869,7 +4875,7 @@ def _add_vote_similarity_context(blocks: list[str], query: str) -> None:
                 if len(last) >= 4:
                     row = conn.execute(
                         "SELECT DISTINCT voter_name FROM va_legislator_recent_votes "
-                        "WHERE lower(voter_name) LIKE ? AND session = '2026' LIMIT 1",
+                        "WHERE lower(voter_name) LIKE ? LIMIT 1",
                         (f"%{last.lower()}%",),
                     ).fetchone()
             if row:
@@ -4880,25 +4886,33 @@ def _add_vote_similarity_context(blocks: list[str], query: str) -> None:
             conn.close()
             return
 
+        # Look up target legislator's party/chamber (prefer 2026, fall back to any session)
+        meta_row = conn.execute(
+            "SELECT party, chamber FROM va_legislator_vote_summary "
+            "WHERE voter_name = ? ORDER BY session DESC LIMIT 1",
+            (target_name,),
+        ).fetchone()
+        target_party   = (meta_row["party"]   if meta_row else "") or ""
+        target_chamber = (meta_row["chamber"] if meta_row else "") or ""
+
         rows = conn.execute(
             """
             WITH target AS (
                 SELECT DISTINCT bill_id, session, option
                 FROM va_legislator_recent_votes
-                WHERE voter_name = ? AND session = '2026'
+                WHERE voter_name = ?
                   AND option IN ('yes', 'no')
             ),
             others AS (
                 SELECT DISTINCT voter_name, bill_id, session, option
                 FROM va_legislator_recent_votes
-                WHERE session = '2026'
-                  AND option IN ('yes', 'no')
+                WHERE option IN ('yes', 'no')
                   AND voter_name != ?
             )
             SELECT
                 o.voter_name,
-                v.chamber,
-                v.party,
+                COALESCE(v.chamber, '') AS chamber,
+                COALESCE(v.party,   '') AS party,
                 COUNT(*)                                                        AS shared_votes,
                 SUM(CASE WHEN t.option = o.option THEN 1 ELSE 0 END)           AS agreed,
                 ROUND(
@@ -4912,9 +4926,8 @@ def _add_vote_similarity_context(blocks: list[str], query: str) -> None:
             GROUP BY o.voter_name
             HAVING COUNT(*) >= ?
             ORDER BY agreement_pct DESC
-            LIMIT ?
             """,
-            (target_name, target_name, MIN_SHARED, TOP_N),
+            (target_name, target_name, MIN_SHARED),
         ).fetchall()
 
         conn.close()
@@ -4922,31 +4935,76 @@ def _add_vote_similarity_context(blocks: list[str], query: str) -> None:
         if not rows:
             return
 
+        # Require a known (non-empty) party on both sides to avoid misclassifying
+        # legislators whose party field is missing in the summary table.
+        same_party  = [r for r in rows if target_party and r["party"] == target_party][:TOP_SAME]
+        cross_party = [r for r in rows if r["party"] and r["party"] != target_party][:TOP_CROSS]
+
         lines = [
             "[Database Context - vote_similarity]",
             f"target_legislator={target_name}",
-            "session=2026",
+            f"target_party={target_party or 'unknown'}",
+            f"target_chamber={target_chamber or 'unknown'}",
+            "sessions=2025-2026",
             "method=bill_vote_agreement_rate — option match on shared bill_id+session",
             f"minimum_shared_votes={MIN_SHARED}",
             "source=va_legislator_recent_votes",
             "note=Only yes/no votes compared. not-voting and abstain excluded. "
             "DISTINCT applied to deduplicate source rows.",
             "",
-            f"Legislators with most similar voting records to {target_name} (2026 session):",
-            "| Rank | Legislator | Chamber | Party | Shared Votes | Agreement % |",
-            "|---|---|---|---|---:|---:|",
         ]
-        for i, row in enumerate(rows, 1):
-            lines.append(
-                f"| {i} | {row['voter_name']} | {row['chamber'] or '—'} "
-                f"| {row['party'] or '—'} | {row['shared_votes']} "
-                f"| {row['agreement_pct']}% |"
-            )
+
+        # ── Same-party section ────────────────────────────────────────────────
+        if same_party:
+            all_high = all(r["agreement_pct"] >= 95.0 for r in same_party)
+            lines += [
+                f"## Same-party allies ({target_party or 'unknown'}, top {TOP_SAME})",
+                f"Legislators with most similar voting records to {target_name} "
+                f"within {target_party or 'their'} caucus (2025-2026 sessions):",
+                "| Rank | Legislator | Chamber | Shared Votes | Agreement % |",
+                "|---|---|---|---:|---:|",
+            ]
+            for i, row in enumerate(same_party, 1):
+                lines.append(
+                    f"| {i} | {row['voter_name']} | {row['chamber'] or '—'} "
+                    f"| {row['shared_votes']} | {row['agreement_pct']}% |"
+                )
+            if all_high:
+                lines += [
+                    "",
+                    "NOTE: All top same-caucus scores are ≥95%. Same-caucus, same-chamber "
+                    "legislators typically vote together on 90–100% of floor votes due to "
+                    "party discipline. Cross-party allies below are more informative for "
+                    "bipartisan coalition signals.",
+                ]
+        else:
+            lines.append(f"(No same-party allies found with ≥{MIN_SHARED} shared votes.)")
+
+        lines.append("")
+
+        # ── Cross-party section ───────────────────────────────────────────────
+        if cross_party:
+            lines += [
+                f"## Cross-party bipartisan allies (top {TOP_CROSS})",
+                f"Legislators from other parties with most similar voting records "
+                f"to {target_name} (2025-2026 sessions):",
+                "| Rank | Legislator | Chamber | Party | Shared Votes | Agreement % |",
+                "|---|---|---|---|---:|---:|",
+            ]
+            for i, row in enumerate(cross_party, 1):
+                lines.append(
+                    f"| {i} | {row['voter_name']} | {row['chamber'] or '—'} "
+                    f"| {row['party'] or '—'} | {row['shared_votes']} "
+                    f"| {row['agreement_pct']}% |"
+                )
+        else:
+            lines.append(f"(No cross-party allies found with ≥{MIN_SHARED} shared votes.)")
 
         lines += [
             "",
             f"Agreement % = votes where both legislators cast the same option (yes/no) "
-            f"on the same bill in the same 2026 session, divided by total shared votes. "
+            f"on the same bill in the same session, divided by total shared votes "
+            f"across 2025-2026 sessions. "
             f"Legislators with fewer than {MIN_SHARED} shared votes are excluded to "
             f"prevent misleading scores from small samples.",
         ]

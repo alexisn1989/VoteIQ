@@ -20,8 +20,10 @@ BASE_DIR  = Path(__file__).resolve().parent
 OS_DB     = BASE_DIR / "openstates_va.db"
 POLLS_DB  = BASE_DIR / "polls.db"
 SEED_OUT  = BASE_DIR / "data" / "legislators_seed.sql"
-SESSION   = "2026"
-RECENT_VOTES_LIMIT = 200
+SESSION        = "2026"
+PRIOR_SESSION  = "2025"   # supplemental session for cross-session voting variation
+RECENT_VOTES_LIMIT       = 200   # votes pulled from SESSION
+PRIOR_VOTES_LIMIT        = 100   # additional votes pulled from PRIOR_SESSION
 
 # Motions that do not represent a legislator's policy position: waivers,
 # committee reports, requests to convene a conference, and reconsiderations.
@@ -126,28 +128,34 @@ def main():
     print(f"  {len(vote_summary_rows)} legislators with vote data")
 
     # ── 3. Recent votes per legislator (with bill titles) ────────────────────────
-    print(f"Fetching {RECENT_VOTES_LIMIT} most recent votes per legislator...")
+    # Pull from SESSION and PRIOR_SESSION so the similarity query has cross-session
+    # variation, which surfaces intra-party divergences that end-of-session bloc
+    # voting would otherwise mask.
+    print(f"Fetching votes per legislator ({RECENT_VOTES_LIMIT} from {SESSION}, "
+          f"{PRIOR_VOTES_LIMIT} from {PRIOR_SESSION})...")
     recent_votes: list[tuple] = []
     unique_names = [r["voter_name"] for r in vote_summary_rows]
     for i, name in enumerate(unique_names):
         if i % 20 == 0:
             print(f"  {i}/{len(unique_names)}...")
-        rows = os_conn.execute(f"""
-            SELECT v.voter_name, v.bill_id, v.vote_date, v.option,
-                   v.chamber, v.motion,
-                   COALESCE(b.title, v.bill_id) AS title
-            FROM votes v
-            LEFT JOIN bills b ON v.bill_id = b.bill_id AND v.session = b.session
-            WHERE v.session = '{SESSION}'
-              AND v.voter_name = ?
-            ORDER BY v.vote_date DESC
-            LIMIT {RECENT_VOTES_LIMIT}
-        """, (name,)).fetchall()
-        for r in rows:
-            recent_votes.append((
-                r["voter_name"], r["bill_id"], r["vote_date"],
-                r["option"], r["chamber"], r["motion"], r["title"],
-            ))
+        for sess, lim in [(SESSION, RECENT_VOTES_LIMIT), (PRIOR_SESSION, PRIOR_VOTES_LIMIT)]:
+            rows = os_conn.execute(f"""
+                SELECT v.voter_name, v.bill_id, v.vote_date, v.option,
+                       v.chamber, v.motion,
+                       COALESCE(b.title, v.bill_id) AS title
+                FROM votes v
+                LEFT JOIN bills b ON v.bill_id = b.bill_id AND v.session = b.session
+                WHERE v.session = '{sess}'
+                  AND v.voter_name = ?
+                ORDER BY v.vote_date DESC
+                LIMIT {lim}
+            """, (name,)).fetchall()
+            for r in rows:
+                recent_votes.append((
+                    r["voter_name"], r["bill_id"], r["vote_date"],
+                    r["option"], r["chamber"], r["motion"], r["title"],
+                    sess,
+                ))
     print(f"  {len(recent_votes)} recent vote rows total")
 
     # ── 4. Sponsored bills (primary, order=1) ────────────────────────────────────
@@ -240,13 +248,12 @@ def main():
         "CREATE INDEX IF NOT EXISTS idx_lrv_bill_session  ON va_legislator_recent_votes(bill_id, session);",
         "",
     ]
-    for (name, bill_id, vote_date, option, chamber, motion, title) in recent_votes:
-        # Truncate title to 120 chars to keep seed manageable
+    for (name, bill_id, vote_date, option, chamber, motion, title, sess) in recent_votes:
         title_short = (title or "")[:120]
         is_proc = 1 if motion in PROCEDURAL_MOTIONS else 0
         lines.append(
             f"INSERT INTO va_legislator_recent_votes VALUES("
-            f"{esc(name)},{esc(SESSION)},{esc(bill_id)},{esc(vote_date)},"
+            f"{esc(name)},{esc(sess)},{esc(bill_id)},{esc(vote_date)},"
             f"{esc(option)},{esc(chamber)},{esc(motion)},{esc(title_short)},{is_proc});"
         )
 
