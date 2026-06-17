@@ -21,7 +21,7 @@ OS_DB     = BASE_DIR / "openstates_va.db"
 POLLS_DB  = BASE_DIR / "polls.db"
 SEED_OUT  = BASE_DIR / "data" / "legislators_seed.sql"
 SESSION   = "2026"
-RECENT_VOTES_LIMIT = 30
+RECENT_VOTES_LIMIT = 200
 
 
 def esc(v) -> str:
