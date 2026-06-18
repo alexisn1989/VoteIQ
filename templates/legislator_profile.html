@@ -85,6 +85,12 @@
   .legend-text { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; color: var(--navy); letter-spacing: 0.06em; }
   .legend-pct { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; color: var(--muted); margin-left: 2px; }
 
+  /* ── Session switcher ── */
+  .session-switcher { display:flex; gap:6px; margin-top:12px; align-items:center; }
+  .sess-pill { font-family:'Barlow Condensed',sans-serif; font-size:0.65rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; padding:4px 13px; border:1.5px solid var(--mid); background:white; color:var(--muted); cursor:pointer; border-radius:2px; transition:color 0.15s,border-color 0.15s,background 0.15s; }
+  .sess-pill.active { background:var(--navy); color:white; border-color:var(--navy); }
+  .sess-pill:hover:not(.active) { border-color:var(--navy); color:var(--navy); }
+
   /* ── Tabs ── */
   .tabs-wrap { margin-bottom: 0; }
   .tab-list { display: flex; gap: 0; border-bottom: 2px solid var(--mid); margin-bottom: 0; }
@@ -215,7 +221,7 @@
     <div class="insights-panel">
       <div class="insights-header">Legislative Agenda <em id="lf-subtitle"></em></div>
       <div id="topic-bars"></div>
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;color:var(--muted);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase">Bills introduced &amp; co-sponsored · 2026 session</div>
+      <div id="caption-agenda" style="font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;color:var(--muted);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase">Bills introduced &amp; co-sponsored · 2026 session</div>
     </div>
     <div class="insights-panel">
       <div class="insights-header">Donor Sectors <em id="fin-subtitle"></em></div>
@@ -229,7 +235,7 @@
     <div class="insights-header">Governor Alignment <em id="gov-align-subtitle"></em></div>
     <div id="gov-align-bars"></div>
     <div id="gov-opp-votes"></div>
-    <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;color:var(--muted);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase">2026 session · bills the governor signed or vetoed</div>
+    <div id="caption-gov" style="font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;color:var(--muted);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase">2026 session · bills the governor signed or vetoed</div>
   </div>
 
   <!-- Legislative Effectiveness by Topic -->
@@ -243,7 +249,7 @@
   <div id="allies-panel" class="eff-panel" style="display:none">
     <div class="insights-header">Voting Coalitions <em id="allies-subtitle"></em></div>
     <div id="allies-content"></div>
-    <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;color:var(--muted);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase">2026 session · roll call agreement across all shared votes</div>
+    <div id="caption-allies" style="font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;color:var(--muted);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase">2026 session · roll call agreement across all shared votes</div>
   </div>
 
   <!-- Financial Conflicts Panel -->
@@ -396,24 +402,41 @@
     return 'nv';
   }
 
+  // ── Session context ──────────────────────────────────────────────────────────
+  const curSession      = D.current_session || '2026';
+  const availSessions   = D.available_sessions || [curSession];
+  const sessionSwitcher = availSessions.length > 1
+    ? `<div class="session-switcher">${
+        availSessions.map(s =>
+          `<button class="sess-pill${s === curSession ? ' active' : ''}"
+                   onclick="window.location.href=window.location.pathname+'?session='+encodeURIComponent('${s}')">${s}</button>`
+        ).join('')
+      }</div>`
+    : '';
+
+  // Update session-labelled captions
+  const _sc = el => el && (el.textContent = el.textContent.replace(/\b2026\b/g, curSession));
+  ['caption-agenda','caption-gov','caption-allies'].forEach(id => _sc(document.getElementById(id)));
+
   // ── Profile hero ────────────────────────────────────────────────────────────
   if (D.voter_name) {
     // Update page title
     document.title = esc(D.voter_name) + ' — VoteIQ';
 
     const pc = partyClass(D.party);
-    const chatQuery = encodeURIComponent('Tell me about ' + D.voter_name + ' and their voting record in the 2026 Virginia General Assembly session.');
+    const chatQuery = encodeURIComponent('Tell me about ' + D.voter_name + ' and their voting record in the ' + curSession + ' Virginia General Assembly session.');
     document.getElementById('profile-hero').innerHTML = `
       <div class="profile-hero-stripe ${pc}"></div>
       <div class="profile-hero-body">
         <div class="profile-name-block">
-          <div class="profile-eyebrow">Virginia General Assembly · 2026 Session</div>
+          <div class="profile-eyebrow">Virginia General Assembly · ${esc(curSession)} Session</div>
           <div class="profile-name">${esc(D.voter_name)}</div>
           <div class="profile-badges">
             <span class="badge ${pc}">${esc(D.party || 'Unknown Party')}</span>
             <span class="badge chamber">${chamberLabel(D.chamber)}</span>
-            <span class="badge session">2026 Session</span>
+            <span class="badge session">${esc(curSession)} Session</span>
           </div>
+          ${sessionSwitcher}
         </div>
         <a href="/?q=${chatQuery}" class="chat-cta">Ask VoteIQ</a>
       </div>`;
@@ -468,7 +491,7 @@
     const vp = (nvCount  / total * 100).toFixed(1);
     const ap = (absCount / total * 100).toFixed(1);
     bCard.innerHTML = `
-      <div class="breakdown-label">Vote Breakdown — 2026 Session (${total.toLocaleString()} total votes)</div>
+      <div class="breakdown-label">Vote Breakdown — ${esc(curSession)} Session (${total.toLocaleString()} total votes)</div>
       <div class="breakdown-bar">
         <div class="breakdown-bar-seg yes" style="width:${yp}%"></div>
         <div class="breakdown-bar-seg no"  style="width:${np}%"></div>

@@ -243,16 +243,16 @@ def _legislators_list(conn) -> list[dict]:
     return out
 
 
-def _fetch_profile(conn, name: str) -> dict:
+def _fetch_profile(conn, name: str, session: str = "2026") -> dict:
     """Return full legislator profile or raise 404."""
     row = conn.execute("""
         SELECT voter_name, chamber, party,
                yes_count, no_count, not_voting, abstain, total_votes,
                ROUND(CAST(yes_count AS REAL) / MAX(total_votes, 1) * 100, 1) AS yes_rate
         FROM va_legislator_vote_summary
-        WHERE session = '2026' AND lower(voter_name) = lower(?)
+        WHERE session = ? AND lower(voter_name) = lower(?)
         LIMIT 1
-    """, (name,)).fetchone()
+    """, (session, name)).fetchone()
 
     if not row:
         # Resolve by whole-name key, not LIKE %last% — a surname lookup like
@@ -262,8 +262,8 @@ def _fetch_profile(conn, name: str) -> dict:
                    yes_count, no_count, not_voting, abstain, total_votes,
                    ROUND(CAST(yes_count AS REAL) / MAX(total_votes, 1) * 100, 1) AS yes_rate
             FROM va_legislator_vote_summary
-            WHERE session = '2026'
-        """).fetchall()
+            WHERE session = ?
+        """, (session,)).fetchall()
         # Surname-only input ("Scott") matches every Scott via the degenerate
         # key rule, so accept only when all matches are the same person.
         matches = [r for r in cands if _same_person(r["voter_name"], name)]
@@ -275,6 +275,16 @@ def _fetch_profile(conn, name: str) -> dict:
 
     resolved = row["voter_name"]
     profile = dict(row)
+    profile["current_session"] = session
+
+    # All sessions this legislator has data for — used by UI session switcher
+    profile["available_sessions"] = [
+        r[0] for r in conn.execute(
+            "SELECT DISTINCT session FROM va_legislator_vote_summary "
+            "WHERE lower(voter_name) = lower(?) ORDER BY session DESC",
+            (resolved,),
+        ).fetchall()
+    ]
 
     # vote_summary uses formal names (e.g. "Aaron R. Rouse") but bill tables
     # use short names ("Aaron Rouse") — strip middle initial for bill lookups
@@ -283,23 +293,23 @@ def _fetch_profile(conn, name: str) -> dict:
     profile["recent_votes"] = [dict(r) for r in conn.execute("""
         SELECT bill_id, vote_date, option, chamber, motion, title
         FROM va_legislator_recent_votes
-        WHERE session = '2026' AND voter_name = ?
+        WHERE session = ? AND voter_name = ?
         ORDER BY vote_date DESC LIMIT 30
-    """, (resolved,)).fetchall()]
+    """, (session, resolved)).fetchall()]
 
     profile["sponsored_bills"] = [dict(r) for r in conn.execute("""
         SELECT bill_id, bill_number, title, status_label, subject, status_date
         FROM va_legislator_sponsored_bills
-        WHERE session = '2026' AND lower(legislator_name) = lower(?)
+        WHERE session = ? AND lower(legislator_name) = lower(?)
         ORDER BY status_date DESC
-    """, (bill_name,)).fetchall()]
+    """, (session, bill_name)).fetchall()]
 
     profile["cosponsored_bills"] = [dict(r) for r in conn.execute("""
         SELECT bill_id, bill_number, title, status_label, subject, sponsor_order
         FROM va_legislator_cosponsor_bills
-        WHERE session = '2026' AND lower(legislator_name) = lower(?)
+        WHERE session = ? AND lower(legislator_name) = lower(?)
         ORDER BY sponsor_order LIMIT 50
-    """, (bill_name,)).fetchall()]
+    """, (session, bill_name)).fetchall()]
 
     # ── Bill topic breakdown — combined introduced + cosponsored ─────────────
     # (text before first ';' in title; deduped by bill_id within each table)
@@ -309,14 +319,14 @@ def _fetch_profile(conn, name: str) -> dict:
             SELECT TRIM(SUBSTR(title, 1, INSTR(title || ';', ';') - 1)) AS topic,
                    COUNT(DISTINCT bill_id) AS cnt
             FROM va_legislator_sponsored_bills
-            WHERE session = '2026' AND lower(legislator_name) = lower(?)
+            WHERE session = ? AND lower(legislator_name) = lower(?)
               AND title != '' AND title IS NOT NULL
             GROUP BY topic
             UNION ALL
             SELECT TRIM(SUBSTR(title, 1, INSTR(title || ';', ';') - 1)) AS topic,
                    COUNT(DISTINCT bill_id) AS cnt
             FROM va_legislator_cosponsor_bills
-            WHERE session = '2026' AND lower(legislator_name) = lower(?)
+            WHERE session = ? AND lower(legislator_name) = lower(?)
               AND title != '' AND title IS NOT NULL
             GROUP BY topic
         )
@@ -324,7 +334,7 @@ def _fetch_profile(conn, name: str) -> dict:
         GROUP BY topic
         ORDER BY count DESC
         LIMIT 12
-    """, (bill_name, bill_name)).fetchall()]
+    """, (session, bill_name, session, bill_name)).fetchall()]
 
     # ── Bill pass rate by topic (all sessions, sponsored bills only) ─────────
     _NOISE = (
@@ -648,14 +658,14 @@ def _fetch_profile(conn, name: str) -> dict:
                JOIN va_legislator_recent_votes other
                    ON a.bill_id=other.bill_id AND a.session=other.session
                JOIN va_legislator_vote_summary vs
-                   ON vs.voter_name=other.voter_name AND vs.session='2026'
-               WHERE a.voter_name = ? AND a.session='2026'
+                   ON vs.voter_name=other.voter_name AND vs.session=?
+               WHERE a.voter_name = ? AND a.session=?
                  AND a.option IN ('yes','no')
                  AND other.option IN ('yes','no')
                  AND other.voter_name != a.voter_name
                GROUP BY other.voter_name
                HAVING total >= 15""",
-            (resolved,),
+            (session, resolved, session),
         ).fetchall()
         my_party = profile.get("party", "")
         same = sorted(
@@ -1097,12 +1107,12 @@ def api_legislators(
 
 
 @router.get("/api/legislators/{name}")
-def api_legislator_profile(name: str):
+def api_legislator_profile(name: str, session: str = Query(default="2026")):
     """Return full profile for one legislator: votes, bills, co-sponsorships."""
     name = unquote(name).strip()
     conn = _polls_conn()
     try:
-        return _fetch_profile(conn, name)
+        return _fetch_profile(conn, name, session)
     finally:
         conn.close()
 
@@ -1123,12 +1133,12 @@ def legislators_page():
 
 
 @router.get("/legislators/{name}", response_class=HTMLResponse)
-def legislator_profile_page(name: str):
+def legislator_profile_page(name: str, session: str = Query(default="2026")):
     """Individual legislator profile: vote record, bills, co-sponsorships."""
     name = unquote(name).strip()
     conn = _polls_conn()
     try:
-        profile = _fetch_profile(conn, name)
+        profile = _fetch_profile(conn, name, session)
         return _inject("legislator_profile.html", "_PROFILE_DATA", profile)
     except HTTPException:
         raise
