@@ -87,6 +87,36 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# Apply CF name index mappings (idempotent — safe to re-run)
+echo ""
+echo "Applying CF name index mappings..."
+python3 << 'PYEOF'
+import sqlite3, sys
+
+conn = sqlite3.connect('polls.db')
+try:
+    sql = open('scripts/fix_cf_name_mappings.sql').read()
+    conn.executescript(sql)
+    mapped = conn.execute('''
+        SELECT COUNT(*) FROM legislators l
+        JOIN va_name_index n ON n.canonical_name = l.name
+        WHERE n.cf_table_name IS NOT NULL AND l.active = 1
+    ''').fetchone()[0]
+    total = conn.execute('SELECT COUNT(*) FROM legislators WHERE active = 1').fetchone()[0]
+    print(f"  CF name mappings: {mapped}/{total} legislators covered")
+    print("[OK] CF name index mappings applied")
+except Exception as e:
+    print(f"[FAIL] CF name mapping failed: {e}", file=sys.stderr)
+    sys.exit(1)
+finally:
+    conn.close()
+PYEOF
+
+if [ $? -ne 0 ]; then
+    echo "✗ CF name mapping failed"
+    exit 1
+fi
+
 # Move to persistent disk
 cp polls.db "$DISK/polls.db"
 echo "✓ New data cached to persistent disk"

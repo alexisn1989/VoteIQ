@@ -63,7 +63,31 @@ finally:
 PYEOF
 
 echo ""
-echo "[4/4] Checking Virginia state officials..."
+echo "[4/5] Applying CF name index mappings..."
+python3 << 'PYEOF'
+import sqlite3, sys
+
+conn = sqlite3.connect('polls.db')
+try:
+    sql = open('scripts/fix_cf_name_mappings.sql').read()
+    conn.executescript(sql)
+    mapped = conn.execute('''
+        SELECT COUNT(*) FROM legislators l
+        JOIN va_name_index n ON n.canonical_name = l.name
+        WHERE n.cf_table_name IS NOT NULL AND l.active = 1
+    ''').fetchone()[0]
+    total = conn.execute('SELECT COUNT(*) FROM legislators WHERE active = 1').fetchone()[0]
+    print(f"  CF name mappings: {mapped}/{total} legislators covered")
+    print("[OK] CF name index mappings applied")
+except Exception as e:
+    print(f"[FAIL] CF name mapping failed: {e}", file=sys.stderr)
+    sys.exit(1)
+finally:
+    conn.close()
+PYEOF
+
+echo ""
+echo "[5/5] Checking Virginia state officials..."
 python3 << 'PYEOF'
 import sqlite3
 
