@@ -1038,13 +1038,30 @@ def _add_keyword_context(blocks: list[str], query: str, terms: list[str], sessio
                 LIMIT 8
             """, params, "polls.va_finance_people keyword", blocks, limit=8)
             clause, params = _like_clause(["candidate_name", "sector"], finance_terms[:4])
-            _query_rows(conn, f"""
-                SELECT candidate_name, sector, total_amount, donor_count, cycle
-                FROM candidate_sector_totals
-                WHERE {clause}
-                ORDER BY total_amount DESC
-                LIMIT 8
-            """, params, "polls.candidate_sector_totals keyword", blocks, limit=8)
+            try:
+                cst_rows = conn.execute(f"""
+                    SELECT candidate_name, sector, total_amount, donor_count, cycle
+                    FROM candidate_sector_totals
+                    WHERE {clause}
+                    ORDER BY total_amount DESC
+                    LIMIT 8
+                """, tuple(params)).fetchmany(8)
+                if cst_rows:
+                    lines = [
+                        "[Database Context - polls.candidate_sector_totals]",
+                        "SCOPE: 2024 cycle SBE keyword-classified subset ONLY.",
+                        "These amounts come from Virginia SBE occupation/employer keyword matching "
+                        "for a single cycle and cover only contributions where an employer/occupation "
+                        "keyword matched a sector. They are NOT the full FEC total and will be far "
+                        "smaller than FEC-filed industry totals from fec_industry_totals.",
+                        "Caption: Top Sector Totals (2024 Cycle Subset — Keyword-Classified)",
+                        "When presenting these numbers alongside fec_industry_totals, always state "
+                        "that this is a partial subset and explain why the totals differ.",
+                    ]
+                    lines.extend(f"- {_row_to_line(row)}" for row in cst_rows)
+                    blocks.append("\n".join(lines))
+            except Exception:
+                pass
         conn.close()
 
     if is_finance and not any(term in q_lower for term in ("bill", "hb", "sb", "legislation", "veto", "signed")):
@@ -1187,14 +1204,30 @@ def _add_pac_context(blocks: list[str], query: str, terms: list[str]) -> None:
         """, params, "polls.fec_independent_expenditures keyword", blocks, limit=12)
 
         clause, params = _like_any_clause(["member_name", "industry", "top_donors"], pac_terms[:5])
-        _query_rows(conn, f"""
-            SELECT member_name, cycle, industry, total_amount,
-                   contributor_count, top_donors
-            FROM fec_industry_totals
-            WHERE {clause}
-            ORDER BY cycle DESC, total_amount DESC
-            LIMIT 12
-        """, params, "polls.fec_industry_totals PAC keyword", blocks, limit=12)
+        try:
+            fit_rows = conn.execute(f"""
+                SELECT member_name, cycle, industry, total_amount,
+                       contributor_count, top_donors
+                FROM fec_industry_totals
+                WHERE {clause}
+                ORDER BY cycle DESC, total_amount DESC
+                LIMIT 12
+            """, tuple(params)).fetchmany(12)
+            if fit_rows:
+                lines = [
+                    "[Database Context - polls.fec_industry_totals]",
+                    "SCOPE: Full FEC-filed industry/sector totals across all cycles.",
+                    "Includes Retired/Individual, Other/Unknown, and all classified sectors. "
+                    "This is the AUTHORITATIVE FEC total. Summing all rows for a single cycle "
+                    "gives the full multi-sector federal fundraising total.",
+                    "WARNING: Do NOT directly compare these totals to candidate_sector_totals — "
+                    "that table is a 2024 cycle SBE keyword-classified subset covering only a "
+                    "fraction of contributions. Always clarify the scope difference to the reader.",
+                ]
+                lines.extend(f"- {_row_to_line(row)}" for row in fit_rows)
+                blocks.append("\n".join(lines))
+        except Exception:
+            pass
     else:
         _query_rows(conn, """
             SELECT committee_id, committee_name, short_name, ideology, alignment,
