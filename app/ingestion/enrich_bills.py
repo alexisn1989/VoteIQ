@@ -143,31 +143,36 @@ def enrich_from_lis(polls: sqlite3.Connection) -> None:
     lis_conn = sqlite3.connect(str(LIS_DB))
     lis_conn.row_factory = sqlite3.Row
 
-    # Infer session year from Introduction_date range in virginia_legislature.db.
-    # Current DB contains 2026 session (intro dates 11/2025-4/2026).
-    # Bills introduced in Nov-Dec of prior year belong to the following session.
-    # Use MAX year in Last_governor_action_date or Last_house_action_date as anchor.
-    year_row = lis_conn.execute(
-        "SELECT MAX(CAST(SUBSTR(Last_governor_action_date, -4) AS INTEGER)) y FROM bills "
-        "WHERE Last_governor_action_date != ''"
-    ).fetchone()
-    lis_session = str(year_row["y"]) if year_row and year_row["y"] else "2026"
-    print(f"  LIS inferred session: {lis_session}")
+    # Check whether virginia_legislature.db has multi-session data (session column).
+    lis_cols = {r[1] for r in lis_conn.execute("PRAGMA table_info(bills)")}
+    has_session_col = "session" in lis_cols
+
+    if has_session_col:
+        query = (
+            "SELECT Bill_id, session, Patron_name, Passed_house, Passed_senate, "
+            "       Chapter_id, Last_governor_action, Last_governor_action_date "
+            "FROM bills WHERE session IS NOT NULL"
+        )
+    else:
+        # Legacy single-session DB — treat all rows as 2026
+        query = (
+            "SELECT Bill_id, '2026' AS session, Patron_name, Passed_house, Passed_senate, "
+            "       Chapter_id, Last_governor_action, Last_governor_action_date "
+            "FROM bills"
+        )
 
     updated = skipped = 0
+    session_counts: dict[str, int] = {}
 
-    for r in lis_conn.execute(
-        "SELECT Bill_id, Patron_name, Passed_house, Passed_senate, "
-        "       Chapter_id, Last_governor_action, Last_governor_action_date "
-        "FROM bills"
-    ):
+    for r in lis_conn.execute(query):
         bill_number = (r["Bill_id"] or "").strip()
-        if not bill_number:
+        session     = (r["session"] or "").strip()
+        if not bill_number or not session:
             continue
 
         existing = polls.execute(
             "SELECT id FROM va_bills WHERE bill_number = ? AND session = ?",
-            (bill_number, lis_session),
+            (bill_number, session),
         ).fetchone()
 
         if not existing:
@@ -194,11 +199,15 @@ def enrich_from_lis(polls: sqlite3.Connection) -> None:
             ),
         )
         updated += 1
+        session_counts[session] = session_counts.get(session, 0) + 1
 
     polls.commit()
     lis_conn.close()
 
-    print(f"  LIS ({lis_session}): {updated} rows updated, {skipped} bill_ids not in va_bills")
+    sessions_covered = sorted(session_counts)
+    print(f"  LIS: {updated} rows updated, {skipped} bill_ids not in va_bills")
+    for sess in sessions_covered:
+        print(f"    {sess}: {session_counts[sess]} updated")
 
 
 # ── Coverage report ────────────────────────────────────────────────────────────
