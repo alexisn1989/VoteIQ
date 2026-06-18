@@ -2100,14 +2100,36 @@ def _add_fec_employer_context(blocks: list[str], query: str, terms: list[str]) -
             if not rows:
                 continue
 
+            # Grand total: all positive-amount individual contributions for this
+            # member, regardless of employer filtering, so the sector table has
+            # an unambiguous denominator.
+            total_row = conn.execute(
+                "SELECT ROUND(SUM(amount), 0) AS grand_total, COUNT(*) AS n "
+                "FROM fec_individual_contributions WHERE bioguide_id = ? AND amount > 0",
+                (bgid,),
+            ).fetchone()
+            grand_total = total_row["grand_total"] if total_row else None
+            grand_n     = total_row["n"]           if total_row else None
+
             lines = [
                 f"[Database Context - fec_individual_contributions employer rollup]",
                 f"target={name}; bioguide_id={bgid}",
                 "Source: FEC Schedule A individual contributions (fec.gov)",
+                "Sector classification is derived from VoteIQ taxonomy applied to FEC employer "
+                "fields and bill subject metadata. This is not official federal categorization.",
                 "note=Multiple employer-tagged entries may aggregate to the same parent entity. "
                 "Employer strings are self-reported and not normalized — slight name variations "
                 "(e.g. punctuation, abbreviations) produce separate rows. Treat totals as approximate.",
                 "aggregation=GROUP BY lower(trim(contributor_employer)); amount=SUM",
+            ]
+            if grand_total is not None:
+                lines.append(
+                    f"Total individual contributions: ${grand_total:,.0f} ({grand_n:,} records) — "
+                    "includes all itemized contributions across classified sectors, "
+                    "Retired/Individual, and Other/Unknown categories before sector mapping. "
+                    "Table below shows top 15 classified employers only and will not sum to this total."
+                )
+            lines += [
                 "",
                 "| Rank | Employer | Sector | Contributors | Total ($) | Latest Cycle |",
                 "|---|---|---|---:|---:|---:|",
@@ -4656,20 +4678,28 @@ def _add_donor_vote_alignment_context(blocks: list[str], query: str, terms: list
         conn.close()
         if not rows:
             return
+        def _conf(n) -> str:
+            if n is None or n < 10:  return "LOW"
+            if n <= 30:              return "MEDIUM"
+            return "HIGH"
+
         lines = [
             "[Database Context - donor_vote_alignment]",
             "How often a legislator votes YES on bills touching their largest INDUSTRY "
             "donor sector vs. their YES rate on all other bills. alignment_delta = "
             "sector_rate - other_rate (positive = votes more favorably on bills "
-            "affecting their biggest industry funders). Small point gaps on few votes "
-            "are not significant. Correlation, not proof of causation:",
+            "affecting their biggest industry funders). Correlation, not proof of causation.",
+            "Sector classification is derived from VoteIQ taxonomy applied to FEC employer "
+            "fields and bill subject metadata. This is not official federal categorization.",
         ]
         for r in rows:
             name, party, chamber, sector, amt, syr, oyr, delta, sc, oc = r[:10]
-            amt_s = f"${amt:,.0f}" if amt is not None else "n/a"
-            syr_s = f"{syr:.0f}%" if syr is not None else "n/a"
-            oyr_s = f"{oyr:.0f}%" if oyr is not None else "n/a"
+            amt_s   = f"${amt:,.0f}" if amt is not None else "n/a"
+            syr_s   = f"{syr:.0f}%" if syr is not None else "n/a"
+            oyr_s   = f"{oyr:.0f}%" if oyr is not None else "n/a"
             delta_s = f"{delta:+.1f}" if delta is not None else "n/a"
+            sc_conf = _conf(sc)
+            oc_conf = _conf(oc)
             extra = ""
             if rich:
                 share, nonind, nonind_amt = r[10], r[11], r[12]
@@ -4680,10 +4710,19 @@ def _add_donor_vote_alignment_context(blocks: list[str], query: str, terms: list
                         f" Their single largest source is {nonind} "
                         f"(${(nonind_amt or 0):,.0f}, non-industry party/leadership money)."
                     )
+            # Determine whether the delta note should flag low confidence
+            min_conf = sc_conf if (sc or 0) <= (oc or 0) else oc_conf
+            if min_conf == "LOW":
+                delta_note = f" — treat as directional signal only, not statistically meaningful given small {sector} sample."
+            elif min_conf == "MEDIUM":
+                delta_note = " — treat as directional signal; sample sizes are moderate."
+            else:
+                delta_note = "."
             lines.append(
-                f"• {name} ({party}, {chamber}) — top industry donor sector: {sector} "
-                f"({amt_s}). YES on {sector} bills: {syr_s} ({sc} votes) vs. {oyr_s} on "
-                f"others ({oc} votes). Alignment delta: {delta_s} pts.{extra}"
+                f"• {name} ({party}, {chamber}) — top industry donor sector: {sector} ({amt_s}).{extra}\n"
+                f"  YES rate on {sector}-tagged bills: {syr_s} (n={sc}) — Confidence: {sc_conf}\n"
+                f"  YES rate on all other bills: {oyr_s} (n={oc}) — Confidence: {oc_conf}\n"
+                f"  Alignment delta: {delta_s} pp{delta_note}"
             )
         blocks.append("\n".join(lines))
     except Exception:

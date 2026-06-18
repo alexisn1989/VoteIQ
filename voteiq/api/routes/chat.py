@@ -5278,7 +5278,7 @@ Answer questions about these results clearly and concisely (2-4 sentences). Be f
         reply = _m._claude_reply(
             system_prompt,
             req.messages,
-            max_tokens=TIER_MAX_TOKENS.get(req.tier, 400),
+            max_tokens=TIER_MAX_TOKENS.get(req.tier, TIER_MAX_TOKENS["free"]),
             cache_ttl=cache_ttl,
         )
         return ChatResponse(reply=reply)

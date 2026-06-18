@@ -536,12 +536,12 @@ Every output must include:
 # ── Per-tier token budgets ────────────────────────────────────────────────────
 
 TIER_MAX_TOKENS = {
-    "free":       1200,   # raised from 800 — bill-detail / spike-alert responses truncated mid-sentence
-    "pro":        1500,
-    "newsroom":   2000,
-    "campaign":   2000,
-    "academic":   2000,
-    "enterprise": 3000,
+    "free":       2500,   # raised from 1200 — footer + data coverage block truncated mid-sentence
+    "pro":        3500,
+    "newsroom":   4000,
+    "campaign":   4000,
+    "academic":   4000,
+    "enterprise": 5000,
 }
 
 # ── Voice prompt registry ─────────────────────────────────────────────────────
