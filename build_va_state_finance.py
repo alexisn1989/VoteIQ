@@ -73,12 +73,15 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
     ("Ideological",    ["campaign fund", "campaign committee", "for governor",
                         "for senate", "for delegate", "for house", "for congress",
                         "for president", "political organization", "political action",
-                        "pac ", " pac", "political committee",
+                        "political education", "political fund", "political committee",
+                        "pac ", " pac", "p.a.c", "p.b.a pac",
                         "democrat", "republican", "libertarian", "green party",
                         "action fund", "victory fund", "caucus fund",
                         "leadership fund", "senate fund", "house fund",
                         "victory committee", "caucus committee",
-                        "leadership committee", "inaugural committee"]),
+                        "leadership committee", "inaugural committee",
+                        "clean virginia", "democracy engine", "fundraising platform",
+                        "association fund", "employee association"]),
     # ── Healthcare sub-sectors ────────────────────────────────────────────────
     ("Health Insurance",   ["health insur", "health plan", "healthplan",
                             "managed care", " hmo", "medicare advantage",
@@ -145,6 +148,21 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                                 "builder", "architect", "land", "housing",
                                 "appraiser", "apartment", "reit", "multifamily",
                                 "commercial real"]),
+    # ── Energy early-exits ────────────────────────────────────────────────────
+    # Must come before Financial Services so "solar trading", "energy capital",
+    # etc. don't get mis-classified by generic finance keywords.
+    ("Renewables",  ["solar", "wind energy", "wind farm", "wind turbine",
+                     "renewable", "clean energy", "clean power", "green energy",
+                     "photovoltaic", "geothermal", "biomass", "hydroelectric",
+                     "hydrogen energy", "clean tech", "american clean power",
+                     "sun tribe"]),
+    ("Utilities",   ["dominion energy", "dominion virginia", "dominion resources",
+                     "appalachian power", "columbia gas", "washington gas",
+                     "virginia natural gas", "duke energy", "nrg energy",
+                     "southern company", "firstenergy", "xcel energy",
+                     "electric utility", "electric company", "electric & gas",
+                     "power company", "power & light", "gas distribut",
+                     "gas company", "gas & electric", "nuclear"]),
     # ── Finance sub-sectors (Insurance first so health-specific insurers are
     # already caught above; Banking/Investment split before generic catch-all) ──
     ("Insurance",           ["insur", "reinsur", "underwriting", "allstate",
@@ -160,7 +178,7 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
     ("Banking",             ["bank", "credit union", "savings institution", "thrift",
                              "federal reserve", "fdic"]),
     ("Financial Services",  ["financial", "investment", "accountant", "cpa", "auditor",
-                             "lender", "capital", "wealth", "broker", "fund",
+                             "lender", "capital", "wealth", "broker",
                              "trading", "financi"]),
     # ── AI / Crypto early-exits (before Software & IT / Financial Services) ─────
     ("Artificial Intelligence", ["artificial intelligence", "openai", "anthropic inc",
