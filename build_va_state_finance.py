@@ -180,10 +180,12 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                              "unum", "lincoln national", "lincoln financial",
                              "ameritas", "erie ins", "guardian life"]),
     ("Investment & Securities", ["hedge fund", "private equity", "asset management",
-                             "investment management", "wealth management",
+                             "asset mgmt", "investment management", "wealth management",
                              "venture capital", "investment bank", "investment advisor",
                              "investment firm", "investment group", "brokerage",
-                             "fund management", "portfolio management", "securities"]),
+                             "fund management", "portfolio management", "securities",
+                             "paloma partners", "bluestream", "founders fund",
+                             "level one partners", "capfi partners"]),
     ("Banking",             ["bank", "credit union", "savings institution", "thrift",
                              "federal reserve", "fdic"]),
     ("Financial Services",  ["financial", "investment", "accountant", "cpa", "auditor",
@@ -292,7 +294,7 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
     ("Defense",        ["defense", "military", "veteran", "aerospace", "weapon",
                         "contractor dod", "army", "navy", "marine", "air force"]),
     # ── Gambling / Casinos early-exit ─────────────────────────────────────────
-    ("Gambling/Casinos", ["casino", "gambling", "lottery", "sportsbook",
+    ("Gambling/Casinos", ["casino", "gambling", "gaming", "lottery", "sportsbook",
                           "sports betting", "draftkings", "fanduel",
                           "caesars", "hard rock hotel", "hard rock casino",
                           "penn national", "betmgm", "harrah", "wynn resort",
@@ -312,9 +314,19 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
 
 
 def classify_sector(occupation: str, employer: str, company: str = "") -> str:
-    # VPAP uses "Political" as the occupation field for political orgs/committees
-    if occupation.strip().lower() == "political":
+    occ_lower = occupation.strip().lower()
+    # VPAP uses these occupation values for political/committee entities
+    if occ_lower in ("political", "candidate committee", "political campaign", "campaign"):
         return "Ideological"
+    # VPAP uses "Labor Union" / "Labor" as occupation for union-affiliated donors
+    if occ_lower in ("labor union", "labor"):
+        return "Service & Retail Workers"
+    # "Gaming" as occupation = casino/gambling industry worker
+    if occ_lower == "gaming":
+        return "Gambling/Casinos"
+    # "Investor" as occupation = financial services
+    if occ_lower in ("investor", "investments"):
+        return "Financial Services"
     combined = f"{occupation} {employer} {company}".lower()
     for sector, keywords in SECTOR_KEYWORDS[:-1]:    # skip catch-all
         if any(k in combined for k in keywords):
