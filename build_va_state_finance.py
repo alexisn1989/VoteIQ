@@ -70,9 +70,10 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
     # ── Ideological early-exit ────────────────────────────────────────────────
     # Must come before Financial Services so "campaign fund", "pac", etc.
     # are not mis-classified by the generic "fund" keyword.
-    ("Ideological",    ["campaign fund", "campaign committee", "for governor",
-                        "for senate", "for delegate", "for house", "for congress",
-                        "for president", "political organization", "political action",
+    ("Ideological",    ["campaign fund", "campaign committee", "campaign account",
+                        "for governor", "for senate", "for delegate", "for house",
+                        "for congress", "for president",
+                        "political organization", "political action",
                         "political education", "political fund", "political committee",
                         "pac ", " pac", "p.a.c", "p.b.a pac",
                         "democrat", "republican", "libertarian", "green party",
@@ -81,7 +82,15 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                         "victory committee", "caucus committee",
                         "leadership committee", "inaugural committee",
                         "clean virginia", "democracy engine", "fundraising platform",
-                        "association fund", "employee association"]),
+                        "association fund", "employee association",
+                        "dga action", "dga ", " dga", "rga ", " rga",
+                        "dccc", "dscc", "nrcc", "nrsc", "dlcc", "rlc ",
+                        "governors association", "legislative campaign committee",
+                        "common good virginia", "common good va",
+                        "everytown", "gun safety", "gun violence",
+                        "people for the american way", "planned parenthood action",
+                        "naral", "nra political",
+                        "advocacy", "civic action", "civic fund"]),
     # ── Healthcare sub-sectors ────────────────────────────────────────────────
     ("Health Insurance",   ["health insur", "health plan", "healthplan",
                             "managed care", " hmo", "medicare advantage",
@@ -132,8 +141,8 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                         "corporate law", "mergers and acquisitions",
                         "intellectual property attorney", "patent attorney",
                         "securities attorney", "tax attorney"]),
-    ("Legal",          ["attorney", "lawyer", "law firm", "counsel", "solicitor",
-                        "paralegal", "esquire", "barrister", "litigation"]),
+    ("Legal",          ["attorney", "lawyer", "law firm", "law office", "counsel",
+                        "solicitor", "paralegal", "esquire", "barrister", "litigation"]),
     # ── Real Estate sub-sectors ───────────────────────────────────────────────
     ("Realtors",              ["realtor", "realty", "realtors assoc",
                                "century 21", "keller williams", "long & foster",
@@ -303,6 +312,9 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
 
 
 def classify_sector(occupation: str, employer: str, company: str = "") -> str:
+    # VPAP uses "Political" as the occupation field for political orgs/committees
+    if occupation.strip().lower() == "political":
+        return "Ideological"
     combined = f"{occupation} {employer} {company}".lower()
     for sector, keywords in SECTOR_KEYWORDS[:-1]:    # skip catch-all
         if any(k in combined for k in keywords):
