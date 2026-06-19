@@ -67,6 +67,18 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                                   "american federation of teachers", "aft cope",
                                   "teachers union", "education union",
                                   "faculty union"]),
+    # ── Ideological early-exit ────────────────────────────────────────────────
+    # Must come before Financial Services so "campaign fund", "pac", etc.
+    # are not mis-classified by the generic "fund" keyword.
+    ("Ideological",    ["campaign fund", "campaign committee", "for governor",
+                        "for senate", "for delegate", "for house", "for congress",
+                        "for president", "political organization", "political action",
+                        "pac ", " pac", "political committee",
+                        "democrat", "republican", "libertarian", "green party",
+                        "action fund", "victory fund", "caucus fund",
+                        "leadership fund", "senate fund", "house fund",
+                        "victory committee", "caucus committee",
+                        "leadership committee", "inaugural committee"]),
     # ── Healthcare sub-sectors ────────────────────────────────────────────────
     ("Health Insurance",   ["health insur", "health plan", "healthplan",
                             "managed care", " hmo", "medicare advantage",
@@ -268,9 +280,6 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                         "foundry", "mill"]),
     ("Retail",         ["retail", "store", "shop ", "merchant", "dealer",
                         "wholesale"]),
-    ("Ideological",    ["pac", "political", "committee", "democrat", "republican",
-                        "libertarian", "green party", "action fund", "victory",
-                        "caucus", "leadership", "senate fund", "house fund"]),
     ("Individual/Other", []),  # catch-all — must be last
 ]
 
