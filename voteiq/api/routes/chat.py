@@ -21,7 +21,7 @@ from orchestration import (
     build_bills_system_prompt_refactored,
     is_present,
 )
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from voteiq.api.dependencies import require_admin_token
 from voteiq.api.claude import cached_system_prompt, get_claude_client, get_model
@@ -33,6 +33,7 @@ from voteiq.config.voices import (
 )
 from voteiq.services.database_context import build_admin_database_context, build_database_context
 from voteiq.services.data_meta import freshness_lookup as _freshness_lookup
+from voteiq.services.truth import get_truth_debug, log_truth_event
 
 router = APIRouter(tags=["chat"])
 
@@ -92,6 +93,35 @@ Admin DB policy:
 VoteIQ summarizes public records and does not infer motive, intent,
 corruption, influence, causation, or policy effectiveness.
 """
+
+
+def _truth_chat_response(
+    *,
+    query: str,
+    reply: str,
+    sql_queries=None,
+    sql_results=None,
+    rag_docs=None,
+) -> ChatResponse:
+    try:
+        log_truth_event(
+            query=query,
+            sql_queries=sql_queries or [],
+            sql_results=sql_results or [],
+            rag_docs=rag_docs or [],
+            final_answer=reply,
+        )
+    except Exception:
+        pass
+    return ChatResponse(reply=reply)
+
+
+@router.get("/truth/debug/{log_id}")
+def truth_debug(log_id: int):
+    data = get_truth_debug(log_id)
+    if data is None:
+        raise HTTPException(status_code=404, detail="truth log not found")
+    return data
 
 
 # ── Models ────────────────────────────────────────────────────────────────────
@@ -864,6 +894,13 @@ class BillsChatRequest(BaseModel):
     tier:  str = "free"
     voice: str = "free"
     session_type: str = "quick"
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_str(cls, data):
+        if isinstance(data, str):
+            return {"messages": [{"role": "user", "content": data}]}
+        return data
 
     @field_validator("hod_district", "sd_district", mode="before")
     @classmethod
@@ -4627,6 +4664,36 @@ def _direct_va_house_fec_candidate_reply(user_query: str) -> str:
     Returns markdown with financials, donor issue alignment, and PAC ideology tags.
     """
     q = user_query.lower()
+
+    # Aggregation-intent guard — two tiers:
+    #
+    # Tier A (unambiguous PAC phrases): always exit.  These phrases have zero
+    # overlap with candidate-spending queries and block before any DB work.
+    #
+    # Tier B (dual-signal): generic spending verbs ("spent the most", "spent",
+    # "spending") exit ONLY when a PAC/committee word also co-occurs.  A bare
+    # spending verb without a PAC token must NOT block a candidate-spending
+    # query like "Kiggans spent the most — who funds her?" — that was the mirror
+    # bug introduced by treating "spent the most" as a standalone trigger.
+    #
+    # PAC signal uses word-token matching (not substring) to avoid "impact"
+    # containing "pac" as a substring.
+    _UNAMBIGUOUS_PAC = (
+        "which pac", "which pacs", "what pac", "what pacs",
+        "pacs spent", "pac spent", "pacs spend",
+        "super pac", "dark money", "independent expenditure", "outside spending",
+    )
+    _q_words = set(re.sub(r"[^a-z\s]", "", q).split())
+    _has_pac = bool(_q_words & {"pac", "pacs", "committee"}) or any(
+        p in q for p in ("super pac", "dark money", "independent expenditure", "outside spending")
+    )
+    _has_spend = (
+        bool(_q_words & {"spent", "spend", "spending"})
+        or any(p in q for p in ("spent the most", "top spender", "biggest spender"))
+    )
+    if any(p in q for p in _UNAMBIGUOUS_PAC) or (_has_spend and _has_pac):
+        return ""
+
     FINANCE_KW = {
         "donor", "fund", "funded", "fundrais", "contribut", "sector",
         "industri", "support", "issues", "issue", "money", "pac",
@@ -4642,15 +4709,21 @@ def _direct_va_house_fec_candidate_reply(user_query: str) -> str:
         conn = sqlite3.connect(_POLLS_DB, timeout=10)
         conn.row_factory = sqlite3.Row
 
-        # Name matching against fec_va_house_candidates
+        # Name matching against fec_va_house_candidates.
+        # STOP words must include geographic and aggregation terms so that state
+        # names ("virginia"), race-type words ("congressional", "races"), and
+        # spending verbs ("spent") are never mistaken for candidate name tokens.
         STOP = {
             "what", "does", "do", "support", "who", "funds", "funded", "is", "are",
             "tell", "me", "about", "the", "a", "an", "in", "for", "of", "their",
-            "his", "her", "donor", "sector", "industry", "money", "pac", "profile",
-            "issue", "issues", "ideology", "fund", "raise", "raised", "campaign",
-            "finance", "candidate", "congressman", "representative", "how", "much",
-            "and", "or", "with", "from", "by", "on", "at", "to", "has", "backed",
-            "backs", "backs", "behind",
+            "his", "her", "donor", "sector", "industry", "money", "pac", "pacs",
+            "profile", "issue", "issues", "ideology", "fund", "raise", "raised",
+            "campaign", "finance", "candidate", "congressman", "representative",
+            "how", "much", "and", "or", "with", "from", "by", "on", "at", "to",
+            "has", "backed", "backs", "behind",
+            # geographic / race-type / aggregation terms — must not become name tokens
+            "virginia", "congressional", "races", "race", "district", "state",
+            "spent", "spend", "spending", "most", "which", "top", "biggest",
         }
         name_tokens = {w for w in re.sub(r"[^a-z\s]", "", q).split() if w not in STOP and len(w) > 2}
         if not name_tokens:
@@ -4791,9 +4864,11 @@ def _direct_va_house_fec_candidate_reply(user_query: str) -> str:
 async def chat(req: ChatRequest):
     import main as _m
 
+    last_question = req.messages[-1].content if req.messages else ""
+
     ctx = _m.DISTRICT_CONTEXT.get(req.district)
     if not ctx:
-        return ChatResponse(reply="Unknown district.")
+        return _truth_chat_response(query=last_question, reply="Unknown district.")
 
     if _m._results:
         r = _m._results
@@ -4848,11 +4923,15 @@ async def chat(req: ChatRequest):
             f"Region: {sd_info['region']}"
         )
 
-    last_question  = req.messages[-1].content if req.messages else ""
-
     scope_limit_reply = _scope_limit_polling_reply(last_question)
     if scope_limit_reply:
-        return ChatResponse(reply=scope_limit_reply)
+        return _truth_chat_response(
+            query=last_question,
+            reply=scope_limit_reply,
+            sql_queries=[],
+            sql_results=[],
+            rag_docs=[],
+        )
 
     # Detect query scope to guide source selection
     from voteiq.helpers import get_scope_aware_analyst
@@ -4861,10 +4940,10 @@ async def chat(req: ChatRequest):
 
     direct_identity_reply = _direct_identity_crosswalk_reply(last_question)
     if direct_identity_reply:
-        return ChatResponse(reply=direct_identity_reply)
+        return _truth_chat_response(query=last_question, reply=direct_identity_reply)
     direct_source_reply = _direct_voteiq_source_hierarchy_reply(last_question)
     if direct_source_reply:
-        return ChatResponse(reply=direct_source_reply)
+        return _truth_chat_response(query=last_question, reply=direct_source_reply)
     direct_governor_reply = (
         _direct_donor_alignment_reply(last_question)
         or _direct_va_legislator_reply(last_question, premium=_premium_analyst_enabled(req))
@@ -4876,7 +4955,12 @@ async def chat(req: ChatRequest):
         or (_direct_governor_correlation_reply(last_question) if _premium_analyst_enabled(req) else None)
     )
     if direct_governor_reply:
-        return ChatResponse(reply=direct_governor_reply)
+        return _truth_chat_response(
+            query=last_question,
+            reply=direct_governor_reply,
+            sql_queries=["direct_sql_reply"],
+            sql_results=direct_governor_reply,
+        )
 
     pol_names:      list[str] = []
     bioguide_ids:   list[str] = []
@@ -5143,6 +5227,29 @@ When citing a vote, include the bill name and Yea/Nay. When citing donors or ind
         news_context or "",
         transcript_context or "",
     ])
+    sql_context_payload = {
+        "database_context": database_context,
+        "vote_context": vote_context,
+        "finance_context": finance_context,
+        "spanberger_finance_context": spanberger_finance_context,
+        "state_finance_context": state_finance_context,
+        "cached_finance_context": cached_finance_context,
+        "pac_context": pac_context,
+        "analyst_context": analyst_context,
+        "member_analyst_context": member_analyst_context,
+        "gatekeeper_context": gatekeeper_context,
+        "donor_trend_context": donor_trend_context,
+        "ie_context": ie_context,
+        "foreign_ie_context": foreign_ie_context,
+        "governor_context": governor_context,
+        "governor_eo_context": governor_eo_context,
+        "state_member_context": state_member_context,
+        "transcript_context": transcript_context,
+    }
+    rag_docs_payload = {
+        "news_context": news_context,
+        "full_profile_context": full_profile_context,
+    }
 
     # Track sources used in building context
     sources_used = _track_sources(combined_context)
@@ -5163,9 +5270,41 @@ When citing a vote, include the bill name and Yea/Nay. When citing donors or ind
         sources_footer = _format_sources_footer(sources_used)
         if sources_footer and "Sources:" not in reply:
             reply = reply.rstrip() + sources_footer
-        return ChatResponse(reply=reply)
+        return _truth_chat_response(
+            query=last_question,
+            reply=reply,
+            sql_queries=[
+                "build_database_context",
+                "_fetch_vote_context",
+                "_fetch_finance_context",
+                "_fetch_spanberger_finance_context",
+                "_fetch_state_campaign_finance_context",
+                "_fetch_pac_context",
+                "_fetch_governor_action_context",
+                "_fetch_governor_eo_context",
+                "_fetch_va_state_member_context",
+            ],
+            sql_results=sql_context_payload,
+            rag_docs=rag_docs_payload,
+        )
     except Exception as e:
-        return ChatResponse(reply=_m._friendly_claude_error(e))
+        return _truth_chat_response(
+            query=last_question,
+            reply=_m._friendly_claude_error(e),
+            sql_queries=[
+                "build_database_context",
+                "_fetch_vote_context",
+                "_fetch_finance_context",
+                "_fetch_spanberger_finance_context",
+                "_fetch_state_campaign_finance_context",
+                "_fetch_pac_context",
+                "_fetch_governor_action_context",
+                "_fetch_governor_eo_context",
+                "_fetch_va_state_member_context",
+            ],
+            sql_results=sql_context_payload,
+            rag_docs=rag_docs_payload,
+        )
 
 
 # ── /api/election-chat ────────────────────────────────────────────────────────
