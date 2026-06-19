@@ -350,10 +350,22 @@ def process_meeting(meeting_id: int, date_str: str, conn: sqlite3.Connection,
         return
     print(f"    extracted {len(minutes_text):,} chars of minutes text")
 
+    # Extract authoritative date from the first line of the minutes
+    # (e.g. "March 25, 2025") — more reliable than the HTML calendar parse
+    first_line = minutes_text.strip().split("\n")[0].strip()
+    date_from_pdf = re.search(
+        r'(January|February|March|April|May|June|July|August|September|October|November|December)'
+        r'\s+\d{1,2},\s*\d{4}',
+        first_line, re.I
+    )
+    if date_from_pdf:
+        date_str = date_from_pdf.group(0).upper()
+
     if dry_run:
+        print(f"    date: {date_str}")
         print("    [dry-run] would send to Gemini")
-        print("    --- minutes preview (first 500 chars) ---")
-        print(minutes_text[:500])
+        print("    --- minutes preview (first 300 chars) ---")
+        print(minutes_text[:300])
         return
 
     votes = extract_votes_gemini(minutes_text, date_str, api_key)
