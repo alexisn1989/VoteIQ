@@ -189,6 +189,35 @@
   .topic-row.clickable { cursor:pointer; }
   .topic-row.clickable:hover .topic-label { color:var(--red); }
 
+  /* ── Embedded chat widget ── */
+  #viq-float-btn { position:fixed; bottom:24px; right:24px; z-index:800; background:var(--navy); color:white; border:none; cursor:pointer; font-family:'Barlow Condensed',sans-serif; font-size:0.78rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; padding:11px 18px 11px 14px; display:flex; align-items:center; gap:8px; box-shadow:0 4px 20px rgba(13,27,42,0.35); transition:background 0.18s; }
+  #viq-float-btn:hover { background:#1a3050; }
+  #viq-chat-panel { position:fixed; bottom:76px; right:24px; z-index:801; width:370px; max-height:500px; background:var(--light); border:2px solid var(--navy); display:flex; flex-direction:column; box-shadow:0 8px 32px rgba(13,27,42,0.25); transform:translateY(16px); opacity:0; pointer-events:none; transition:transform 0.22s ease,opacity 0.22s ease; }
+  #viq-chat-panel.open { transform:translateY(0); opacity:1; pointer-events:all; }
+  #viq-chat-head { background:var(--navy); color:white; padding:13px 16px; display:flex; align-items:flex-start; justify-content:space-between; flex-shrink:0; }
+  #viq-chat-head-name { font-family:'Barlow Condensed',sans-serif; font-size:0.78rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; }
+  #viq-chat-head-sub { font-size:0.6rem; opacity:0.6; margin-top:3px; font-family:'Barlow Condensed',sans-serif; letter-spacing:0.06em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:260px; }
+  #viq-chat-close { background:none; border:none; color:white; font-size:1.1rem; cursor:pointer; opacity:0.7; padding:0 2px; line-height:1; flex-shrink:0; }
+  #viq-chat-close:hover { opacity:1; }
+  #viq-chat-msgs { flex:1; overflow-y:auto; padding:12px 14px; min-height:120px; }
+  .viq-msg { margin-bottom:10px; display:flex; flex-direction:column; }
+  .viq-msg.user { align-items:flex-end; }
+  .viq-msg.bot  { align-items:flex-start; }
+  .viq-bubble { max-width:90%; padding:8px 12px; font-size:0.79rem; line-height:1.5; }
+  .viq-bubble.user { background:var(--navy); color:white; }
+  .viq-bubble.bot  { background:white; border:1px solid var(--mid); color:var(--navy); }
+  .viq-typing { display:flex; gap:5px; padding:10px 14px; align-items:center; }
+  .viq-dot { width:7px; height:7px; border-radius:50%; background:var(--muted); animation:viq-bounce 1.2s infinite; }
+  .viq-dot:nth-child(2) { animation-delay:0.2s; }
+  .viq-dot:nth-child(3) { animation-delay:0.4s; }
+  @keyframes viq-bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+  #viq-chat-input-row { display:flex; border-top:1px solid var(--mid); flex-shrink:0; }
+  #viq-chat-input { flex:1; border:none; background:white; padding:10px 13px; font-family:'Barlow',sans-serif; font-size:0.81rem; color:var(--navy); outline:none; }
+  #viq-chat-input::placeholder { color:var(--muted); }
+  #viq-chat-send { background:var(--navy); color:white; border:none; cursor:pointer; font-family:'Barlow Condensed',sans-serif; font-size:0.72rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:0 16px; transition:background 0.15s; flex-shrink:0; }
+  #viq-chat-send:hover:not(:disabled) { background:#1a3050; }
+  #viq-chat-send:disabled { opacity:0.45; cursor:default; }
+
   /* ── Loading ── */
   .spinner { display: inline-block; width: 30px; height: 30px; border: 3px solid var(--mid); border-top-color: var(--navy); border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -1242,6 +1271,23 @@ function _initDonorChart() {
 </script>
 <script async src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" onload="_initDonorChart()"></script>
 
+<!-- Floating VoteIQ chat -->
+<button id="viq-float-btn" onclick="toggleViqChat()">&#x1F4AC; Ask VoteIQ</button>
+<div id="viq-chat-panel" role="dialog" aria-modal="true" aria-label="VoteIQ Chat">
+  <div id="viq-chat-head">
+    <div style="min-width:0">
+      <div id="viq-chat-head-name">Ask VoteIQ</div>
+      <div id="viq-chat-head-sub"></div>
+    </div>
+    <button id="viq-chat-close" onclick="toggleViqChat()" aria-label="Close chat">&#x2715;</button>
+  </div>
+  <div id="viq-chat-msgs"></div>
+  <div id="viq-chat-input-row">
+    <input id="viq-chat-input" type="text" placeholder="Ask about this legislator…" autocomplete="off"/>
+    <button id="viq-chat-send">Send</button>
+  </div>
+</div>
+
 <!-- Sector detail drawer -->
 <div class="sector-drawer-overlay" id="sector-drawer-overlay" onclick="closeSectorDrawer()"></div>
 <div class="sector-drawer" id="sector-drawer" role="dialog" aria-modal="true">
@@ -1397,6 +1443,136 @@ function _initDonorChart() {
 
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeSectorDrawer();
+  });
+})();
+</script>
+<script>
+(function(){
+  const D       = window._PROFILE_DATA || {};
+  const legName = D.voter_name || '';
+  const msgs    = [];
+  let streaming = false;
+
+  document.getElementById('viq-chat-head-sub').textContent = legName;
+
+  function _esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function _renderMd(text){
+    return _esc(text)
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g,'<em>$1</em>')
+      .replace(/`(.+?)`/g,'<code style="background:#f0ede6;padding:1px 4px;font-size:0.85em">$1</code>')
+      .replace(/\n/g,'<br>');
+  }
+
+  function _addBubble(role, html, raw){
+    const box = document.getElementById('viq-chat-msgs');
+    const wrap = document.createElement('div');
+    wrap.className = 'viq-msg ' + role;
+    const bub = document.createElement('div');
+    bub.className = 'viq-bubble ' + role;
+    bub.innerHTML = html;
+    wrap.appendChild(bub);
+    box.appendChild(wrap);
+    box.scrollTop = box.scrollHeight;
+    return bub;
+  }
+
+  function _showTyping(){
+    const box = document.getElementById('viq-chat-msgs');
+    const el  = document.createElement('div');
+    el.className = 'viq-typing'; el.id = 'viq-typing';
+    el.innerHTML = '<div class="viq-dot"></div><div class="viq-dot"></div><div class="viq-dot"></div>';
+    box.appendChild(el); box.scrollTop = box.scrollHeight;
+  }
+  function _removeTyping(){ const el=document.getElementById('viq-typing'); if(el) el.remove(); }
+
+  function _sendMsg(text){
+    if(streaming || !text.trim()) return;
+    streaming = true;
+    const input = document.getElementById('viq-chat-input');
+    const send  = document.getElementById('viq-chat-send');
+    const box   = document.getElementById('viq-chat-msgs');
+    input.value = ''; send.disabled = true;
+    msgs.push({ role:'user', content:text });
+    _addBubble('user', _esc(text));
+    _showTyping();
+    let fullReply = '', botBub = null;
+    fetch('/api/bills-chat-stream', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ messages:msgs, district:'', voice:'free', tier:'free' })
+    })
+    .then(function(r){
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const reader = r.body.getReader(), dec = new TextDecoder();
+      let buf = '';
+      function pump(){
+        return reader.read().then(function(chunk){
+          if(chunk.done){ _finalize(); return; }
+          buf += dec.decode(chunk.value,{stream:true});
+          const lines = buf.split('\n'); buf = lines.pop();
+          for(const line of lines){
+            if(!line.startsWith('data: ')) continue;
+            const p = line.slice(6).trim();
+            if(p==='[DONE]'){ _finalize(); return; }
+            try{
+              const obj = JSON.parse(p);
+              if(obj.error){ _removeTyping(); _addBubble('bot',_esc(obj.error)); _finalize(obj.error); return; }
+              if(obj.token !== undefined){
+                _removeTyping();
+                fullReply += obj.token;
+                if(!botBub){
+                  botBub = _addBubble('bot','');
+                }
+                botBub.innerHTML = _renderMd(fullReply);
+                box.scrollTop = box.scrollHeight;
+              }
+            }catch(e){}
+          }
+          return pump();
+        });
+      }
+      return pump();
+    })
+    .catch(function(){ _removeTyping(); _addBubble('bot','Something went wrong — please try again.'); })
+    .finally(function(){ streaming=false; send.disabled=false; input.focus(); });
+
+    function _finalize(errReply){
+      _removeTyping();
+      const reply = errReply || fullReply;
+      if(reply) msgs.push({ role:'assistant', content:reply });
+    }
+  }
+
+  window.toggleViqChat = function(){
+    const panel = document.getElementById('viq-chat-panel');
+    const open  = panel.classList.toggle('open');
+    if(open) document.getElementById('viq-chat-input').focus();
+  };
+
+  window.openViqChat = function(query){
+    document.getElementById('viq-chat-panel').classList.add('open');
+    _sendMsg(query);
+  };
+
+  // Intercept all bill-id anchor clicks → open embedded chat instead of navigating
+  document.addEventListener('click', function(e){
+    const link = e.target.closest('a.bill-id');
+    if(!link || !link.href) return;
+    try{
+      const q = new URL(link.href, location.origin).searchParams.get('q');
+      if(!q) return;
+      e.preventDefault();
+      window.openViqChat(q);
+    }catch(err){}
+  });
+
+  document.getElementById('viq-chat-send').addEventListener('click', function(){
+    _sendMsg(document.getElementById('viq-chat-input').value.trim());
+  });
+  document.getElementById('viq-chat-input').addEventListener('keydown', function(e){
+    if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); _sendMsg(this.value.trim()); }
   });
 })();
 </script>
