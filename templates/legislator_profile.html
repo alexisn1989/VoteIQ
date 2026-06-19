@@ -664,7 +664,7 @@
       document.getElementById('lf-subtitle').textContent = `${totalBills} total`;
       document.getElementById('topic-bars').innerHTML = topics.map(t => {
         const pct = Math.round(t.count / maxCount * 100);
-        return `<div class="topic-row">
+        return `<div class="topic-row clickable" onclick="openTopicDrawer('${esc(t.topic)}')" title="Click to see bills">
           <div class="topic-label" title="${esc(t.topic)}">${esc(t.topic)}</div>
           <div class="topic-track"><div class="topic-fill" style="width:${pct}%"></div></div>
           <div class="topic-count">${t.count}</div>
@@ -1327,6 +1327,66 @@ function _initDonorChart() {
       .catch(function() {
         body.innerHTML = '<div class="sector-drawer-empty">Could not load contributor data.</div>';
       });
+  };
+
+  window.openTopicDrawer = function(topic) {
+    const overlay = document.getElementById('sector-drawer-overlay');
+    const drawer  = document.getElementById('sector-drawer');
+    const title   = document.getElementById('sector-drawer-title');
+    const sub     = document.getElementById('sector-drawer-sub');
+    const body    = document.getElementById('sector-drawer-body');
+
+    const D = window._PROFILE_DATA || {};
+    const sponsored   = D.sponsored_bills   || [];
+    const cosponsored = D.cosponsored_bills  || [];
+    const sponsoredIds = new Set(sponsored.map(function(b){ return b.bill_number || b.bill_id || ''; }));
+
+    const seen = new Set();
+    const matching = [];
+    sponsored.concat(cosponsored).forEach(function(b) {
+      const btopic = (b.title || '').split(';')[0].trim();
+      const bid    = b.bill_number || b.bill_id || '';
+      if (btopic === topic && bid && !seen.has(bid)) {
+        seen.add(bid);
+        matching.push(b);
+      }
+    });
+
+    title.textContent = topic;
+    sub.textContent   = matching.length + ' bill' + (matching.length !== 1 ? 's' : '');
+    overlay.classList.add('open');
+    drawer.classList.add('open');
+    document.body.style.overflow = 'hidden';
+
+    if (!matching.length) {
+      body.innerHTML = '<div class="sector-drawer-empty">No bills found for this topic.</div>';
+      return;
+    }
+
+    body.innerHTML = matching.map(function(b, i) {
+      const bid    = b.bill_number || b.bill_id || '';
+      const btitle = b.title || '';
+      const status = b.status_label || '';
+      const date   = (b.status_date || '').substring(0, 10);
+      const isSponsored = sponsoredIds.has(bid);
+      const typeLabel = isSponsored ? 'Sponsored' : 'Co-sponsored';
+      const typeColor = isSponsored ? 'var(--red)' : '#b45309';
+      const chatQ  = encodeURIComponent('Tell me about ' + bid + ': ' + btitle);
+      return '<div class="sector-contrib-row">' +
+        '<div class="sector-contrib-rank">' + (i + 1) + '</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
+            '<a href="/?q=' + chatQ + '" class="bill-id" style="text-decoration:none;font-size:0.78rem" title="Ask VoteIQ about this bill">' + _esc(bid) + '</a>' +
+            '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:0.62rem;color:' + typeColor + ';font-weight:700">' + typeLabel + '</span>' +
+          '</div>' +
+          '<div class="sector-contrib-occ">' + _esc(btitle) + '</div>' +
+        '</div>' +
+        '<div style="text-align:right;flex-shrink:0">' +
+          (status ? '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:0.65rem;color:var(--muted)">' + _esc(status) + '</div>' : '') +
+          (date   ? '<div class="sector-contrib-gifts">' + _esc(date) + '</div>' : '') +
+        '</div>' +
+      '</div>';
+    }).join('');
   };
 
   window.closeSectorDrawer = function() {
