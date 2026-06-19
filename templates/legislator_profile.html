@@ -165,6 +165,30 @@
   .donor-table td { padding: 8px 10px; }
   .no-finance { text-align: center; padding: 40px 20px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
 
+  /* ── Sector detail drawer ── */
+  .sector-drawer-overlay { position:fixed; inset:0; background:rgba(13,27,42,0.45); z-index:900; display:none; }
+  .sector-drawer-overlay.open { display:block; }
+  .sector-drawer { position:fixed; top:0; right:-440px; width:min(440px,100vw); height:100vh; background:var(--light); border-left:2px solid var(--navy); z-index:901; transition:right 0.28s ease; overflow-y:auto; display:flex; flex-direction:column; }
+  .sector-drawer.open { right:0; }
+  .sector-drawer-head { background:var(--navy); color:white; padding:20px 22px 16px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-shrink:0; }
+  .sector-drawer-title { font-family:'Playfair Display',serif; font-size:1.15rem; font-weight:700; line-height:1.2; }
+  .sector-drawer-sub { font-family:'Barlow Condensed',sans-serif; font-size:0.65rem; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.6); margin-top:5px; }
+  .sector-drawer-close { background:none; border:none; color:white; font-size:1.3rem; cursor:pointer; opacity:0.7; padding:0 4px; line-height:1; flex-shrink:0; }
+  .sector-drawer-close:hover { opacity:1; }
+  .sector-drawer-body { padding:16px 20px; flex:1; }
+  .sector-contrib-row { display:flex; align-items:flex-start; gap:10px; padding:9px 0; border-bottom:1px solid var(--mid); }
+  .sector-contrib-row:last-child { border-bottom:none; }
+  .sector-contrib-rank { font-family:'Barlow Condensed',sans-serif; font-size:0.68rem; color:var(--muted); flex-shrink:0; width:18px; text-align:right; padding-top:2px; }
+  .sector-contrib-name { font-size:0.82rem; color:var(--navy); font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sector-contrib-occ { font-size:0.65rem; color:var(--muted); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sector-contrib-amt { font-family:'Barlow Condensed',sans-serif; font-size:0.88rem; font-weight:700; color:var(--red); white-space:nowrap; }
+  .sector-contrib-gifts { font-size:0.6rem; color:var(--muted); text-align:right; margin-top:2px; }
+  .sector-drawer-empty { color:var(--muted); font-size:0.82rem; font-style:italic; padding:24px 0; text-align:center; }
+  .sector-row { cursor:pointer; }
+  .sector-row:hover .sector-label { color:var(--red); }
+  .topic-row.clickable { cursor:pointer; }
+  .topic-row.clickable:hover .topic-label { color:var(--red); }
+
   /* ── Loading ── */
   .spinner { display: inline-block; width: 30px; height: 30px; border: 3px solid var(--mid); border-top-color: var(--navy); border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -660,7 +684,7 @@
           const color = SECTOR_COLORS[s.sector] || '#7a7468';
           const vapct = s.va_pct != null ? s.va_pct : null;
           const vaTitle = vapct != null ? `${vapct}% from Virginia donors · ${100-vapct}% out-of-state` : '';
-          return `<div class="topic-row">
+          return `<div class="topic-row clickable" onclick="openSectorDrawer('${esc(s.sector)}')" title="Click to see top contributors">
             <div class="topic-label" title="${esc(s.sector)}">${esc(s.sector)}</div>
             <div class="topic-track" title="${vaTitle}"><div class="topic-fill" style="width:${pct}%;background:${sectorGradient(color,vapct)}"></div></div>
             <div class="topic-count" style="flex:0 0 52px">${fmtMoney(s.total)}</div>
@@ -757,7 +781,7 @@
             ` <span style="font-size:0.62rem;font-weight:700;color:${r.party.startsWith('R')?'#b91c1c':'#1d4ed8'}">[${r.party.charAt(0)}]</span>` : '';
           return `<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px">
             <div style="width:34px;font-size:0.75rem;font-weight:700;color:${pColor};text-align:right;flex-shrink:0">${r.pct.toFixed(0)}%</div>
-            <div style="font-size:0.78rem;color:var(--navy);line-height:1.2">${esc(r.voter_name)}${partySuffix}</div>
+            <div style="font-size:0.78rem;line-height:1.2"><a href="/legislators/${encodeURIComponent(r.voter_name)}" style="color:var(--navy);text-decoration:none;border-bottom:1px dotted var(--mid)" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--navy)'">${esc(r.voter_name)}</a>${partySuffix}</div>
           </div>`;
         }).join('');
         return `<div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin:8px 0 5px">${label}</div>${rows}`;
@@ -930,7 +954,7 @@
       const color = SECTOR_COLORS[s.sector] || '#7a7468';
       const vapct = s.va_pct != null ? s.va_pct : null;
       const vaTitle = vapct != null ? `${vapct}% from Virginia donors · ${100-vapct}% out-of-state` : '';
-      return `<div class="sector-row">
+      return `<div class="sector-row" onclick="openSectorDrawer('${esc(s.sector)}')" title="Click to see top contributors">
         <div class="sector-label" title="${esc(s.sector)}">${esc(s.sector)}</div>
         <div class="sector-track" title="${vaTitle}"><div class="sector-fill" style="width:${pct}%;background:${sectorGradient(color,vapct)}"></div></div>
         <div class="sector-amount">${fmtMoney(s.total)}</div>
@@ -1213,5 +1237,104 @@ function _initDonorChart() {
 }
 </script>
 <script async src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" onload="_initDonorChart()"></script>
+
+<!-- Sector detail drawer -->
+<div class="sector-drawer-overlay" id="sector-drawer-overlay" onclick="closeSectorDrawer()"></div>
+<div class="sector-drawer" id="sector-drawer" role="dialog" aria-modal="true">
+  <div class="sector-drawer-head">
+    <div>
+      <div class="sector-drawer-title" id="sector-drawer-title"></div>
+      <div class="sector-drawer-sub" id="sector-drawer-sub"></div>
+    </div>
+    <button class="sector-drawer-close" onclick="closeSectorDrawer()" aria-label="Close">&#x2715;</button>
+  </div>
+  <div class="sector-drawer-body" id="sector-drawer-body">
+    <div class="sector-drawer-empty">Loading&hellip;</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const _legName = (window._PROFILE_DATA || {}).name || '';
+
+  function _fmt(v) {
+    if (!v) return '$0';
+    if (v >= 1e6) return '$' + (v / 1e6).toFixed(2) + 'M';
+    if (v >= 1e3) return '$' + (v / 1e3).toFixed(0) + 'K';
+    return '$' + Math.round(v);
+  }
+
+  function _esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  window.openSectorDrawer = function(sector) {
+    const overlay = document.getElementById('sector-drawer-overlay');
+    const drawer  = document.getElementById('sector-drawer');
+    const title   = document.getElementById('sector-drawer-title');
+    const sub     = document.getElementById('sector-drawer-sub');
+    const body    = document.getElementById('sector-drawer-body');
+
+    title.textContent = sector;
+    sub.textContent   = 'Loading…';
+    body.innerHTML    = '<div class="sector-drawer-empty">Loading…</div>';
+    overlay.classList.add('open');
+    drawer.classList.add('open');
+    document.body.style.overflow = 'hidden';
+
+    const url = '/api/legislators/' + encodeURIComponent(_legName) +
+                '/sector-detail/'   + encodeURIComponent(sector);
+    fetch(url)
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        const contribs = data.contributors || [];
+        const stotal   = data.sector_total || 0;
+        sub.textContent = _fmt(stotal) + ' total · ' + contribs.length + ' contributor' + (contribs.length !== 1 ? 's' : '');
+        if (!contribs.length) {
+          body.innerHTML = '<div class="sector-drawer-empty">No contributor data available for this sector.</div>';
+          return;
+        }
+        body.innerHTML = contribs.map(function(c, i) {
+          const stateBadge = c.state
+            ? '<span style="background:var(--mid);padding:1px 6px;border-radius:2px;font-size:0.58rem;font-family:\'Barlow Condensed\',sans-serif;margin-left:5px;flex-shrink:0">' + _esc(c.state) + '</span>'
+            : '';
+          const occ = c.occupation
+            ? '<div class="sector-contrib-occ">' + _esc(c.occupation) + '</div>'
+            : '';
+          const gifts = c.records > 1
+            ? '<div class="sector-contrib-gifts">' + c.records + ' contributions</div>'
+            : '';
+          return '<div class="sector-contrib-row">' +
+            '<div class="sector-contrib-rank">' + (i + 1) + '</div>' +
+            '<div style="flex:1;min-width:0">' +
+              '<div style="display:flex;align-items:center">' +
+                '<span class="sector-contrib-name" title="' + _esc(c.name) + '">' + _esc(c.name) + '</span>' +
+                stateBadge +
+              '</div>' +
+              occ +
+            '</div>' +
+            '<div style="text-align:right;flex-shrink:0">' +
+              '<div class="sector-contrib-amt">' + _fmt(c.total) + '</div>' +
+              gifts +
+            '</div>' +
+          '</div>';
+        }).join('');
+      })
+      .catch(function() {
+        body.innerHTML = '<div class="sector-drawer-empty">Could not load contributor data.</div>';
+      });
+  };
+
+  window.closeSectorDrawer = function() {
+    document.getElementById('sector-drawer-overlay').classList.remove('open');
+    document.getElementById('sector-drawer').classList.remove('open');
+    document.body.style.overflow = '';
+  };
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeSectorDrawer();
+  });
+})();
+</script>
 </body>
 </html>

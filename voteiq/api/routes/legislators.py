@@ -1117,6 +1117,66 @@ def api_legislator_profile(name: str, session: str = Query(default="2026")):
         conn.close()
 
 
+@router.get("/api/legislators/{name}/sector-detail/{sector}")
+def api_sector_contributors(name: str, sector: str):
+    """Top contributors in a specific donor sector for one legislator."""
+    from build_va_state_finance import classify_sector
+
+    name   = unquote(name).strip()
+    sector = unquote(sector).strip()
+    conn   = _polls_conn()
+    try:
+        cand_key = _name_key(name)
+        if not cand_key:
+            return {"sector": sector, "contributors": [], "sector_total": 0}
+
+        variants = [r["candidate_name"] for r in conn.execute(
+            "SELECT candidate_name FROM cf_candidate_keys WHERE cand_key = ?",
+            (cand_key,)
+        ).fetchall()]
+
+        if not variants:
+            return {"sector": sector, "contributors": [], "sector_total": 0}
+
+        placeholders = ",".join("?" * len(variants))
+        rows = conn.execute(f"""
+            SELECT lower(last_or_company)                  AS grp_key,
+                   MAX(last_or_company)                    AS name,
+                   MAX(occupation)                         AS occupation,
+                   MAX(COALESCE(NULLIF(employer,''), ''))  AS employer,
+                   MAX(state_code)                         AS state,
+                   SUM(amount)                             AS total,
+                   COUNT(*)                                AS records
+            FROM va_cf_schedule_a
+            WHERE candidate_name IN ({placeholders})
+            GROUP BY lower(last_or_company)
+            ORDER BY total DESC
+        """, variants).fetchall()
+
+        contributors = []
+        sector_total = 0.0
+        for r in rows:
+            s = classify_sector(r["occupation"] or "", r["employer"] or "", r["name"] or "")
+            if s != sector:
+                continue
+            sector_total += r["total"] or 0
+            contributors.append({
+                "name":       r["name"],
+                "occupation": r["occupation"] or "",
+                "state":      r["state"] or "",
+                "total":      round(r["total"] or 0, 2),
+                "records":    r["records"],
+            })
+
+        return {
+            "sector":       sector,
+            "contributors": contributors[:25],
+            "sector_total": round(sector_total, 2),
+        }
+    finally:
+        conn.close()
+
+
 # ── HTML pages ────────────────────────────────────────────────────────────────
 
 @router.get("/legislators", response_class=HTMLResponse)

@@ -242,3 +242,23 @@ UPDATE va_finance_people
         finance_url    = 'https://www.vpap.org/committees/449342/campbell-for-delegate-ellen/',
         source_url     = 'https://www.vpap.org/legislators/331784-ellen-mclaughlin/'
     WHERE id = 527 AND committee_name IS NULL;
+
+-- ── 2026 freshman delegates (added 2026-06-19) ────────────────────────────────
+UPDATE va_name_index SET cf_table_name = 'Garrett Zitello McGuire'
+    WHERE canonical_name = 'Garrett McGuire'   AND cf_table_name IS NULL;
+UPDATE va_name_index SET cf_table_name = 'John Chilton McAuliff'
+    WHERE canonical_name = 'John McAuliff'      AND cf_table_name IS NULL;
+UPDATE va_name_index SET cf_table_name = 'Mrs. Karen Robins Carnegie'
+    WHERE canonical_name = 'Kacey Carnegie'     AND cf_table_name IS NULL;
+UPDATE va_name_index SET cf_table_name = 'Ms. Kimberly Pope Adams'
+    WHERE canonical_name = 'Kimberly Adams'     AND cf_table_name IS NULL;
+UPDATE va_name_index SET cf_table_name = 'Mr Richard Kirk McPike'
+    WHERE canonical_name = 'Kirk McPike'        AND cf_table_name IS NULL;
+UPDATE va_name_index SET cf_table_name = 'Leslie Chambers Mehta'
+    WHERE canonical_name = 'Leslie Mehta'       AND cf_table_name IS NULL;
+UPDATE va_name_index SET cf_table_name = 'Lillian  Franklin'
+    WHERE canonical_name = 'Lily Franklin'      AND cf_table_name IS NULL;
+UPDATE va_name_index SET cf_table_name = 'Dr. Mark Collins Downey'
+    WHERE canonical_name = 'Mark Downey'        AND cf_table_name IS NULL;
+UPDATE va_name_index SET cf_table_name = 'Mr. Mark D. Obenshain'
+    WHERE canonical_name = 'Mark Obenshain'     AND cf_table_name IS NULL;
