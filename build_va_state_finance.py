@@ -23,9 +23,11 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import os
 import re
 import sqlite3
+import sys
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -684,3 +686,24 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     run(since_cycle=args.since, dry_run=args.dry_run)
+
+    if not args.dry_run:
+        from ingest_health_check import HealthCheckRunner
+        print("\nRunning post-ingest health check …")
+        report = HealthCheckRunner().run()
+        if not report["passed"]:
+            print(
+                json.dumps({
+                    "event": "ingest_health_fail",
+                    "hard_failures": report["hard_failures"],
+                    "warnings": report["warnings"],
+                }),
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        if report["warnings"]:
+            print(
+                json.dumps({"event": "ingest_health_warnings", "warnings": report["warnings"]}),
+                file=sys.stderr,
+            )
+        print("Health check passed.")

@@ -3766,6 +3766,45 @@ def _direct_va_legislator_reply(user_query: str, premium: bool = False) -> str:
     if not _leg_kws:
         return ""
 
+    # ── Intent classification ─────────────────────────────────────────────────
+    # Targeted queries get a concise focused answer; profile/overview queries
+    # get the full Legislative Record Brief.
+    _PROFILE_TRIGGERS = (
+        "tell me about", "give me", "overview", "summary",
+        "their record", "full record", "who is", "what can you tell",
+        "profile", "brief", "legislative record",
+    )
+    _SECTOR_TRIGGERS = (
+        "industries", "industry", "sector", "sectors",
+        "contribut", "donated to", "funded by", "backed by",
+        "money to", "money from", "who gave", "who fund", "who paid",
+        "campaign finance", "fundraising", "how much did", "how much money",
+        "top donor", "largest donor", "biggest donor",
+        "where does", "where did",
+    )
+    _VOTE_SUMMARY_TRIGGERS = (
+        "voting record", "vote record", "how often", "how many times",
+        "yes rate", "no rate", "how frequently",
+    )
+    _COMMITTEE_TRIGGERS = (
+        "what committee", "which committee", "serve on", "serves on",
+        "what committees", "which committees", "committee assignment",
+    )
+    _BILLS_TRIGGERS = (
+        "what bills", "which bills", "bills did", "bills has",
+        "what legislation", "sponsored bills", "legislation did",
+        "what did they introduce", "what did they sponsor",
+    )
+
+    _is_profile  = any(t in q for t in _PROFILE_TRIGGERS)
+    _is_sector   = any(t in q for t in _SECTOR_TRIGGERS)
+    _is_vote_q   = any(t in q for t in _VOTE_SUMMARY_TRIGGERS)
+    _is_comm_q   = any(t in q for t in _COMMITTEE_TRIGGERS)
+    _is_bills_q  = any(t in q for t in _BILLS_TRIGGERS)
+    # A query is "targeted" when it asks about one specific facet and does NOT
+    # request a full profile/overview.
+    _is_targeted = (_is_sector or _is_vote_q or _is_comm_q or _is_bills_q) and not _is_profile
+
     if not os.path.exists(_POLLS_DB):
         return ""
 
@@ -3917,6 +3956,81 @@ def _direct_va_legislator_reply(user_query: str, premium: bool = False) -> str:
 
         conn.close()
     except Exception:
+        return ""
+
+    # ── Targeted responses (suppress full brief) ──────────────────────────────
+    if _is_targeted:
+        chamber_label = str(vote_summary["chamber"] or "Legislator") if vote_summary else "Legislator"
+        title_str = f"{chamber_label} {legislator_name}"
+
+        # Finance / sector breakdown
+        if _is_sector:
+            if not finance:
+                return ""
+            total_raised = float(finance["total_raised"] or 0)
+            cycle = finance["latest_cycle"] or "recent cycle"
+            lines: list[str] = [f"The top industries contributing to {title_str}:", ""]
+            if finance["by_sector_json"]:
+                try:
+                    sectors = _json.loads(finance["by_sector_json"])
+                    if sectors:
+                        for i, s in enumerate(sectors[:8], 1):
+                            amount = float(s["total"])
+                            pct_str = f" ({round(amount / max(total_raised, 1) * 100, 1)}%)" if total_raised else ""
+                            lines.append(f"{i}. {s['sector']} — ${amount:,.0f}{pct_str}")
+                    else:
+                        lines.append(f"Top sector: {finance['top_sector']} ({finance['top_sector_pct']}%)")
+                except Exception:
+                    lines.append(f"Top sector: {finance['top_sector']} ({finance['top_sector_pct']}%)")
+            else:
+                lines.append(f"Top sector: {finance['top_sector']} ({finance['top_sector_pct']}%)")
+            lines += ["", f"Total raised through {cycle}: ${total_raised:,.0f}", "",
+                      "*Source: Virginia SBE campaign finance filings.*"]
+            return "\n".join(lines)
+
+        # Voting record summary
+        if _is_vote_q and vote_summary:
+            yes_count   = int(vote_summary["yes_count"]  or 0)
+            no_count    = int(vote_summary["no_count"]   or 0)
+            nv_count    = int(vote_summary["not_voting"] or 0)
+            total       = int(vote_summary["total_votes"] or 0)
+            yes_rate    = round(yes_count / max(total, 1) * 100, 1)
+            lines = [
+                f"{title_str} cast **{total:,} votes** in the 2026 session:",
+                "",
+                f"- YES: {yes_count:,} ({yes_rate}%)",
+                f"- NO: {no_count:,}",
+                f"- Not voting / abstain: {nv_count + int(vote_summary['abstain'] or 0):,}",
+                "",
+                "*Source: OpenStates roll-call records, 2026 regular session.*",
+            ]
+            return "\n".join(lines)
+
+        # Committee assignments
+        if _is_comm_q:
+            if not committees:
+                return f"No committee assignments found for {title_str} in the current dataset."
+            lines = [f"{title_str} serves on the following committees:", ""]
+            for c in committees:
+                role_label = "Chair" if c["role"] == "chair" else "Member"
+                lines.append(f"- {c['committee']} ({role_label})")
+            lines += ["", "*Source: Virginia General Assembly official records.*"]
+            return "\n".join(lines)
+
+        # Sponsored bills
+        if _is_bills_q:
+            lines = [f"{title_str} sponsored **{sponsored_total:,} bills** in the 2026 session.", ""]
+            if sponsored:
+                for b in sponsored:
+                    status = f" [{b['status_label']}]" if b["status_label"] else ""
+                    lines.append(
+                        f"- [{b['bill_number']}](https://openstates.org/va/bills/2026/{b['bill_number']}/) "
+                        f"— {(b['title'] or '')[:80]}{status}"
+                    )
+            lines += ["", "*Source: OpenStates, 2026 session.*"]
+            return "\n".join(lines)
+
+        # Fallback: targeted intent but no matching sub-type — pass through to AI
         return ""
 
     # ── Format response — VoteIQ Legislative Record Brief Schema v1.0 ────────────

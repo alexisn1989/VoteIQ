@@ -546,8 +546,9 @@
   } else {
     vtbody.innerHTML = votes.map(v => {
       const vc = voteClass(v.option);
+      const billQ = encodeURIComponent('Tell me about ' + (v.bill_id||'') + ': ' + (v.title||''));
       return `<tr>
-        <td><span class="bill-id">${esc(v.bill_id || '—')}</span></td>
+        <td><a href="/?q=${billQ}" class="bill-id" style="text-decoration:none" title="Ask VoteIQ about this bill">${esc(v.bill_id || '—')}</a></td>
         <td>
           <div class="bill-title">${esc(v.title || v.bill_id || '—')}</div>
           ${v.motion ? `<div class="bill-meta">${esc(v.motion)}</div>` : ''}
@@ -565,8 +566,9 @@
   } else {
     btbody.innerHTML = bills.map(b => {
       const sc = statusClass(b.status_label);
+      const billQ2 = encodeURIComponent('Tell me about ' + (b.bill_number || b.bill_id || '') + ': ' + (b.title || ''));
       return `<tr>
-        <td><span class="bill-id">${esc(b.bill_number || b.bill_id || '—')}</span></td>
+        <td><a href="/?q=${billQ2}" class="bill-id" style="text-decoration:none" title="Ask VoteIQ about this bill">${esc(b.bill_number || b.bill_id || '—')}</a></td>
         <td><div class="bill-title">${esc(b.title || '—')}</div></td>
         <td class="date-cell">${esc(b.subject || '—')}</td>
         <td><span class="status-chip ${sc}">${esc(b.status_label || '—')}</span></td>
@@ -582,8 +584,9 @@
   } else {
     ctbody.innerHTML = cosponsor.map(b => {
       const sc = statusClass(b.status_label);
+      const billQ3 = encodeURIComponent('Tell me about ' + (b.bill_number || b.bill_id || '') + ': ' + (b.title || ''));
       return `<tr>
-        <td><span class="bill-id">${esc(b.bill_number || b.bill_id || '—')}</span></td>
+        <td><a href="/?q=${billQ3}" class="bill-id" style="text-decoration:none" title="Ask VoteIQ about this bill">${esc(b.bill_number || b.bill_id || '—')}</a></td>
         <td><div class="bill-title">${esc(b.title || '—')}</div></td>
         <td class="date-cell">${esc(b.subject || '—')}</td>
         <td><span class="status-chip ${sc}">${esc(b.status_label || '—')}</span></td>
@@ -726,8 +729,9 @@
         const story = v.action === 'signed'
           ? `voted NO on a bill Spanberger signed`
           : `voted YES on a bill Spanberger vetoed`;
+        const govBillQ = encodeURIComponent('Tell me about ' + (v.bill_number||'') + ': ' + (v.title||v.gov_title||''));
         return `<div style="padding:5px 0;border-top:1px solid var(--mid);font-size:0.75rem">
-          <span class="bill-id">${esc(v.bill_number)}</span>
+          <a href="/?q=${govBillQ}" class="bill-id" style="text-decoration:none" title="Ask VoteIQ about this bill">${esc(v.bill_number)}</a>
           <span style="color:var(--muted);margin:0 6px">·</span>
           <span style="color:#b91c1c;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.06em">${story}</span>
           <div style="color:var(--navy);margin-top:2px">${esc((v.title||v.gov_title||'').substring(0,90))}</div>
