@@ -102,6 +102,12 @@ _ALIASES: dict[str, list[str]] = {
     # JJ Singh won a special election Jan 2024; SBE data starts 2024 under "Jas Singh".
     # Moderate confidence — timing of data matches his election entry exactly.
     'JJ Singh':                ['Jas  Singh'],
+    # Ellen McLaughlin (Delegate 36) files under her previous name Ellen Hamilton Campbell.
+    # Confirmed via VPAP: committee "Campbell for Delegate - Ellen" (ID 449342).
+    'Ellen H. McLaughlin':     ['Ellen Hamilton Campbell'],
+    # Marty Martinez (Delegate 29) files under his legal first name Fernando.
+    # Consistent across 2022-2026 cycles.
+    'Marty Martinez':          ['Fernando John Martinez', 'Fernando  Martinez'],
 }
 
 
