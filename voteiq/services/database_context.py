@@ -4582,7 +4582,7 @@ def _add_spike_alerts_context(blocks: list[str], query: str) -> None:
                        total_amount, ratio_vs_mean, pct_change_prior, context_bills
                 FROM spike_alerts
                 WHERE canonical_name = ? AND seen = 0
-                ORDER BY ratio_vs_mean DESC LIMIT 1
+                ORDER BY ratio_vs_mean DESC, watchlist_id ASC LIMIT 1
                 """,
                 (matched_name,),
             ).fetchall()
@@ -5086,6 +5086,166 @@ def _add_vote_similarity_context(blocks: list[str], query: str) -> None:
         pass
 
 
+_NORFOLK_COUNCIL_TRIGGER = re.compile(
+    r"\b("
+    r"norfolk\s+(city\s+)?council"
+    r"|city\s+council\s+vote"
+    r"|norfolk\s+vote"
+    r"|council\s+member\s+(alexander|clanton|doyle|johnson|mcgee|paige|smigiel|thomas)"
+    r"|norfolk\s+(mayor|councilmember|councilman|councilwoman)"
+    r"|norfolk\s+(passed|voted|approved|denied|tabled)"
+    r")\b",
+    re.I,
+)
+_NORFOLK_MEMBER_NAMES = {
+    "alexander", "clanton", "doyle", "johnson", "mcgee",
+    "paige", "smigiel", "thomas",
+}
+
+
+def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]) -> None:
+    """Inject Norfolk City Council vote records.
+
+    Fires when the query mentions Norfolk city council, a council member by
+    last name with vote intent, or Norfolk local government actions.
+    """
+    q_lower = (query or "").lower()
+    triggered = bool(_NORFOLK_COUNCIL_TRIGGER.search(query or ""))
+
+    # Also fire when a council member name appears with vote/council intent
+    if not triggered:
+        member_hit = any(n in q_lower for n in _NORFOLK_MEMBER_NAMES)
+        vote_intent = any(
+            w in q_lower
+            for w in ("vote", "voted", "votes", "voting", "council", "norfolk")
+        )
+        triggered = member_hit and vote_intent
+
+    if not triggered:
+        return
+
+    try:
+        conn = _connect("polls")
+        if conn is None:
+            return
+        if not _table_exists(conn, "norfolk_council_votes"):
+            conn.close()
+            return
+
+        lines: list[str] = ["## Norfolk City Council Vote Records"]
+
+        # ── Per-member vote summary ───────────────────────────────────────────
+        # Normalize variant name forms across meetings (e.g. "Smigiel" vs "Smigiel Jr.")
+        member_rows = conn.execute("""
+            SELECT
+                CASE
+                    WHEN member_name LIKE 'Smigiel%' THEN 'Smigiel Jr.'
+                    WHEN member_name LIKE 'Thomas%'  THEN 'Thomas Jr.'
+                    ELSE member_name
+                END AS norm_name,
+                COUNT(*) AS total,
+                SUM(CASE WHEN vote = 'yes'     THEN 1 ELSE 0 END) AS yes_v,
+                SUM(CASE WHEN vote = 'no'      THEN 1 ELSE 0 END) AS no_v,
+                SUM(CASE WHEN vote = 'abstain' THEN 1 ELSE 0 END) AS abstain_v,
+                SUM(CASE WHEN vote = 'absent'  THEN 1 ELSE 0 END) AS absent_v
+            FROM norfolk_council_member_votes
+            GROUP BY norm_name
+            ORDER BY no_v DESC, norm_name
+        """).fetchall()
+
+        if member_rows:
+            lines += ["", "### Council Member Vote Summary"]
+            lines.append(
+                f"{'Member':<20} {'Total':>5} {'Yes':>5} {'No':>5} "
+                f"{'Abstain':>8} {'Absent':>7}"
+            )
+            lines.append("-" * 58)
+            for r in member_rows:
+                lines.append(
+                    f"{r[0]:<20} {r[1]:>5} {r[2]:>5} {r[3]:>5} {r[4]:>8} {r[5]:>7}"
+                )
+
+        # ── Most contested votes (non-unanimous) ─────────────────────────────
+        contested = conn.execute("""
+            SELECT meeting_date, agenda_item, title, vote_count, result, moved_by
+            FROM norfolk_council_votes
+            WHERE vote_count NOT IN ('8-0','7-0','6-0','5-0','4-0')
+              AND vote_count != ''
+            ORDER BY meeting_date DESC
+            LIMIT 15
+        """).fetchall()
+
+        if contested:
+            lines += ["", "### Most Contested Votes (non-unanimous)"]
+            for r in contested:
+                lines.append(
+                    f"{r[0]} | {r[1]} | {r[3]} {r[4]} | {r[2][:80]}"
+                )
+
+        # ── Recent votes matching query terms ─────────────────────────────────
+        _NORFOLK_STOP_WORDS = {
+            "norfolk", "city", "council", "vote", "votes", "voted", "voting",
+            "how", "does", "what", "when", "who", "did", "member", "members",
+        }
+        topic_terms = [
+            t for t in terms
+            if t.lower() not in _NORFOLK_MEMBER_NAMES
+            and t.lower() not in _NORFOLK_STOP_WORDS
+            and len(t) > 3
+        ]
+        if topic_terms:
+            like_clauses = " OR ".join(
+                "LOWER(title) LIKE ?" for _ in topic_terms
+            )
+            params = [f"%{t.lower()}%" for t in topic_terms]
+            topic_rows = conn.execute(f"""
+                SELECT meeting_date, agenda_item, title, vote_count, result, votes_json
+                FROM norfolk_council_votes
+                WHERE ({like_clauses})
+                ORDER BY meeting_date DESC
+                LIMIT 10
+            """, params).fetchall()
+
+            if topic_rows:
+                lines += ["", f"### Votes matching query ({', '.join(topic_terms[:3])})"]
+                for r in topic_rows:
+                    member_votes = json.loads(r[5] or "{}")
+                    vote_str = ", ".join(
+                        f"{m}: {v}" for m, v in sorted(member_votes.items())
+                    )
+                    lines.append(
+                        f"{r[0]} | {r[1]} | {r[3]} {r[4]} | {r[2][:70]}"
+                    )
+                    if vote_str:
+                        lines.append(f"  Votes: {vote_str}")
+
+        # ── Member-specific voting history ────────────────────────────────────
+        named_members = [n for n in _NORFOLK_MEMBER_NAMES if n in q_lower]
+        if named_members:
+            for member in named_members[:2]:
+                member_votes_rows = conn.execute("""
+                    SELECT mv.meeting_date, mv.agenda_item, mv.title, mv.vote, mv.result
+                    FROM norfolk_council_member_votes mv
+                    WHERE LOWER(mv.member_name) LIKE ?
+                    ORDER BY mv.meeting_date DESC
+                    LIMIT 20
+                """, (f"%{member}%",)).fetchall()
+
+                if member_votes_rows:
+                    lines += ["", f"### {member.title()} — Recent Votes"]
+                    for r in member_votes_rows:
+                        lines.append(
+                            f"  {r[0]} | {r[1]} | {r[3].upper():>7} | {r[4]} | {r[2][:65]}"
+                        )
+
+        conn.close()
+        if len(lines) > 3:
+            blocks.append("\n".join(lines))
+
+    except Exception:
+        pass
+
+
 def build_database_context(query: str, max_chars: int = 22000, pro: bool = False) -> str:
     q = query or ""
     blocks: list[str] = []
@@ -5134,6 +5294,7 @@ def build_database_context(query: str, max_chars: int = 22000, pro: bool = False
     _add_spike_alerts_context(blocks, q)
     # Structured access to analytically rich tables the generic scan serves poorly
     _add_donor_vote_alignment_context(blocks, q, terms)
+    _add_norfolk_council_context(blocks, q, terms)
     _add_vpap_race_context(blocks, q)
     _add_congress_hearings_context(blocks, q, terms)
     if _is_campaign_finance_query(q):
