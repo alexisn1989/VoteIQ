@@ -5405,21 +5405,25 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                 )
 
         # ── Most contested votes (non-unanimous) ─────────────────────────────
+        has_enrichment = _table_exists(conn, "norfolk_vote_enrichment")
         contested = conn.execute("""
-            SELECT meeting_date, agenda_item, title, vote_count, result, moved_by
-            FROM norfolk_council_votes
-            WHERE vote_count NOT IN ('8-0','7-0','6-0','5-0','4-0')
-              AND vote_count != ''
-            ORDER BY meeting_date DESC
+            SELECT v.meeting_date, v.agenda_item, v.title, v.vote_count, v.result,
+                   e.plain_english, e.topic
+            FROM norfolk_council_votes v
+            LEFT JOIN norfolk_vote_enrichment e ON v.title = e.title
+            WHERE v.vote_count NOT IN ('8-0','7-0','6-0','5-0','4-0')
+              AND v.vote_count != ''
+            ORDER BY v.meeting_date DESC
             LIMIT 15
         """).fetchall()
 
         if contested:
             lines += ["", "### Most Contested Votes (non-unanimous)"]
             for r in contested:
-                lines.append(
-                    f"{r[0]} | {r[1]} | {r[3]} {r[4]} | {r[2][:80]}"
-                )
+                desc = r[5] or r[2][:80]
+                topic = f" [{r[6]}]" if r[6] else ""
+                lines.append(f"{r[0]} | {r[1]} | {r[3]} {r[4]}{topic}")
+                lines.append(f"  {desc}")
 
         # ── Recent votes matching query terms ─────────────────────────────────
         _NORFOLK_STOP_WORDS = {
@@ -5434,14 +5438,17 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
         ]
         if topic_terms:
             like_clauses = " OR ".join(
-                "LOWER(title) LIKE ?" for _ in topic_terms
+                "LOWER(v.title) LIKE ?" for _ in topic_terms
             )
             params = [f"%{t.lower()}%" for t in topic_terms]
             topic_rows = conn.execute(f"""
-                SELECT meeting_date, agenda_item, title, vote_count, result, votes_json
-                FROM norfolk_council_votes
+                SELECT v.meeting_date, v.agenda_item, v.title, v.vote_count,
+                       v.result, v.votes_json, e.plain_english, e.topic,
+                       e.state_tags, e.federal_tags
+                FROM norfolk_council_votes v
+                LEFT JOIN norfolk_vote_enrichment e ON v.title = e.title
                 WHERE ({like_clauses})
-                ORDER BY meeting_date DESC
+                ORDER BY v.meeting_date DESC
                 LIMIT 10
             """, params).fetchall()
 
@@ -5452,9 +5459,17 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                     vote_str = ", ".join(
                         f"{m}: {v}" for m, v in sorted(member_votes.items())
                     )
-                    lines.append(
-                        f"{r[0]} | {r[1]} | {r[3]} {r[4]} | {r[2][:70]}"
-                    )
+                    topic_tag = f" [{r[7]}]" if r[7] else ""
+                    desc = r[6] or r[2][:80]
+                    lines.append(f"{r[0]} | {r[1]} | {r[3]} {r[4]}{topic_tag}")
+                    lines.append(f"  {desc}")
+                    # Show state/federal cross-references when enriched
+                    state_tags = json.loads(r[8] or "[]")
+                    fed_tags   = json.loads(r[9] or "[]")
+                    if state_tags:
+                        lines.append(f"  State law context: {', '.join(state_tags)}")
+                    if fed_tags:
+                        lines.append(f"  Federal context: {', '.join(fed_tags)}")
                     if vote_str:
                         lines.append(f"  Votes: {vote_str}")
 
