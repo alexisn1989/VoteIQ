@@ -10,11 +10,12 @@ Usage:
     python embed_norfolk_votes.py --reset     # delete existing Norfolk docs first
 """
 import argparse
+import json
 import os
+import re
 import sqlite3
 import sys
 import time
-import json
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -94,7 +95,9 @@ def build_chunks(conn: sqlite3.Connection) -> list[dict]:
 
         plain = plain_english or title or ""
         topic_str = topic or "other"
-        year = (meeting_date or "")[:4] or "unknown"
+        # meeting_date is stored as "APRIL 23, 2024" — extract 4-digit year
+        _yr = re.search(r'\b(20\d{2})\b', meeting_date or "")
+        year = _yr.group(1) if _yr else "unknown"
 
         state_tags = []
         federal_tags = []

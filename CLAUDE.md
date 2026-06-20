@@ -43,6 +43,16 @@ If touched accidentally:
 
 ## ROUTING RULES (IMPORTANT)
 
+### Individual vote lookup rule
+**Single-legislator + single-bill queries must use a name-filtered SQL query — never the full roll-call blob.**
+
+When the user asks "how did [legislator] vote on [bill]" or any variant:
+- Use `WHERE lower(voter_name) LIKE lower('%name%') AND lower(bill_number) LIKE lower('%HB84%')`
+- This is implemented in `_add_targeted_vote_lookup()` in `database_context.py`
+- Full roll-call retrieval (all voters for a bill) is only appropriate when the question is about the full vote distribution (e.g. "how did the House vote on HB84?")
+- Rationale: roll-calls are alphabetical; a 666-row blob ordered A→Z truncates before 'H' names, causing false "vote not found" answers
+
+### Code change routing
 Before modifying anything in:
 - `virginia.query`
 - vote retrieval pipeline

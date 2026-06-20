@@ -1270,6 +1270,119 @@ def _person_terms(terms: list[str]) -> list[str]:
     return [term for term in terms if term not in generic]
 
 
+def _add_targeted_vote_lookup(
+    blocks: list[str], query: str, bills: list[str], terms: list[str], session: str
+) -> None:
+    """Targeted single-legislator × single-bill vote lookup.
+
+    Fires when at least one bill number AND at least one person name appear
+    together in the query. Uses WHERE voter_name LIKE + bill LIKE rather than
+    pulling the full roll-call blob.  Prevents alphabetical truncation (e.g.
+    a 666-row roll-call ordered A→Z that cuts off before 'H' names).
+    """
+    if not bills:
+        return
+    people = _person_terms(terms)
+    if not people:
+        return
+    q_lower = (query or "").lower()
+    has_vote_signal = any(
+        kw in q_lower
+        for kw in ("vote", "voted", "voting", "how did", "position", "support", "oppose")
+    )
+    if not has_vote_signal:
+        return
+
+    found_any = False
+
+    # ── polls.va_legislator_recent_votes JOIN va_bills ─────────────────────────
+    conn = _connect("polls")
+    if conn:
+        try:
+            if _table_exists(conn, "va_legislator_recent_votes") and _table_exists(conn, "va_bills"):
+                for bill in bills[:3]:
+                    bill_pat = f"%{bill.upper()}%"
+                    for person in people[:2]:
+                        person_pat = f"%{person}%"
+                        rows = conn.execute("""
+                            SELECT v.voter_name, vb.bill_number, vb.session,
+                                   vb.title, v.vote_date, v.option AS vote, v.motion
+                            FROM va_legislator_recent_votes v
+                            JOIN va_bills vb ON vb.id = v.bill_id
+                            WHERE lower(vb.bill_number) LIKE lower(?)
+                              AND lower(v.voter_name)   LIKE lower(?)
+                            ORDER BY v.vote_date DESC
+                            LIMIT 4
+                        """, (bill_pat, person_pat)).fetchall()
+                        if rows:
+                            found_any = True
+                            lines = [
+                                f"[Database Context - targeted vote: {bill} × {person}]",
+                                "Source: va_legislator_recent_votes JOIN va_bills (name-filtered, not full roll-call)",
+                            ]
+                            for r in rows:
+                                lines.append(
+                                    f"voter={r['voter_name']} | bill={r['bill_number']} ({r['session']}) "
+                                    f"| vote={r['vote']} | date={r['vote_date']} "
+                                    f"| motion={r['motion'] or 'n/a'} | title={r['title'] or 'n/a'}"
+                                )
+                            blocks.append("\n".join(lines))
+        except Exception:
+            pass
+        finally:
+            conn.close()
+
+    # ── openstates.votes ───────────────────────────────────────────────────────
+    conn = _connect("openstates")
+    if conn:
+        try:
+            if _table_exists(conn, "votes"):
+                for bill in bills[:3]:
+                    bill_pat = f"%{bill.upper()}%"
+                    for person in people[:2]:
+                        person_pat = f"%{person}%"
+                        rows = conn.execute("""
+                            SELECT voter_name, bill_id, session, vote_date,
+                                   chamber, motion, result, option, party, district
+                            FROM votes
+                            WHERE id IN (
+                                SELECT MAX(id) FROM votes
+                                WHERE lower(bill_id)    LIKE lower(?)
+                                  AND lower(voter_name) LIKE lower(?)
+                                GROUP BY voter_name, bill_id, session, motion
+                            )
+                            ORDER BY vote_date DESC
+                            LIMIT 4
+                        """, (bill_pat, person_pat)).fetchall()
+                        if rows:
+                            found_any = True
+                            lines = [
+                                f"[Database Context - targeted vote (openstates): {bill} × {person}]",
+                                "Source: openstates.votes (name-filtered, not full roll-call)",
+                            ]
+                            for r in rows:
+                                lines.append(
+                                    f"voter={r['voter_name']} | bill={r['bill_id']} ({r['session']}) "
+                                    f"| vote={r['option']} | result={r['result']} "
+                                    f"| date={r['vote_date']} | chamber={r['chamber']} "
+                                    f"| motion={r['motion'] or 'n/a'}"
+                                )
+                            blocks.append("\n".join(lines))
+        except Exception:
+            pass
+        finally:
+            conn.close()
+
+    if found_any:
+        blocks.append(
+            "[Database Context - vote lookup routing]\n"
+            "targeted_lookup=true\n"
+            "instruction=The targeted vote blocks above give the exact vote for this "
+            "legislator+bill combination. Use them directly — do NOT say the vote is "
+            "unknown or scan a full roll-call list."
+        )
+
+
 def _add_person_vote_context(blocks: list[str], query: str, terms: list[str], session: str) -> None:
     q_lower = (query or "").lower()
     if _known_federal_person(query) and _is_explicit_federal_vote_query(query):
@@ -3176,6 +3289,53 @@ _ANALYSIS_TRIGGER = re.compile(
     re.I,
 )
 
+_DOM_RECIPIENT_TRIGGER = re.compile(
+    r'(?:'
+    r'(?:top|most|largest|biggest|highest)\s+(?:recipient|receiver)s?'
+    r'|who\s+(?:received|got|took|accepted)\s+(?:the\s+)?most'
+    r'|dominion\s+(?:funding|money|donation|contribution|pac\s+money|energy\s+funding)'
+    r'|received\s+(?:the\s+)?most\s+(?:from\s+)?dominion'
+    r'|dominion\s+recipient'
+    r'|how\s+much\s+dominion'
+    r')',
+    re.I,
+)
+
+_DOM_PAC_LIKE_PATTERNS = (
+    "%Dominion Energy%",
+    "%Dominion PAC%",
+    "%Dominion Political Action%",
+    "%Dominion Leadership Trust%",
+    "%Dominion Resources%",
+    "%Dominion Power%",
+)
+
+_DOM_PAC_EXCL_RE = re.compile(
+    r'atlantic\s+dominion|new\s+dominion|old\s+dominion(?!\s+electric)',
+    re.I,
+)
+
+_DOM_EMPLOYER_RE = re.compile(
+    r'\bdominion\s+(energy|resources?|power|virginia|services?)\b'
+    r'|\bvirginia\s+power\b'
+    r'|\bdominion\s+virginia\s+power\b',
+    re.I,
+)
+_DOM_EMPLOYER_EXCL_RE = re.compile(
+    r'\b(hospital|university|college|medical|financial|bank|insurance)\b'
+    r'|atlantic\s+dominion|new\s+dominion|old\s+dominion(?!\s+electric)',
+    re.I,
+)
+
+
+def _is_dominion_employer(employer: str) -> bool:
+    if not employer:
+        return False
+    if _DOM_EMPLOYER_EXCL_RE.search(employer):
+        return False
+    return bool(_DOM_EMPLOYER_RE.search(employer))
+
+
 _FINANCE_METHODOLOGY_VERSION = "VoteIQ Finance Analysis v2.0"
 
 
@@ -4865,6 +5025,143 @@ def _add_spike_alerts_context(blocks: list[str], query: str) -> None:
         pass
 
 
+def _add_dominion_recipient_ranking_context(blocks: list[str], query: str) -> None:
+    """SQL-first ranked list of who received the most Dominion Energy money.
+
+    Combines PAC contributions (is_individual=0, last_or_company pattern)
+    and employer-tagged individual contributions (is_individual=1).
+    Fires on queries asking about top recipients / Dominion funding / rankings.
+    """
+    if "dominion" not in (query or "").lower():
+        return
+    if not _DOM_RECIPIENT_TRIGGER.search(query or ""):
+        return
+
+    conn = _connect("polls")
+    if conn is None:
+        return
+
+    try:
+        like_clause = " OR ".join(
+            "last_or_company LIKE ?" for _ in _DOM_PAC_LIKE_PATTERNS
+        )
+        pac_rows = conn.execute(
+            f"""
+            SELECT candidate_name, last_or_company, SUM(amount) as total
+            FROM va_cf_schedule_a
+            WHERE election_cycle = '2025'
+              AND is_individual = 0
+              AND ({like_clause})
+            GROUP BY candidate_name, last_or_company
+            """,
+            _DOM_PAC_LIKE_PATTERNS,
+        ).fetchall()
+
+        emp_rows = conn.execute(
+            """
+            SELECT candidate_name, employer, SUM(amount) as total
+            FROM va_cf_schedule_a
+            WHERE election_cycle = '2025'
+              AND is_individual = 1
+              AND (employer LIKE '%ominion%' OR employer LIKE '%irginia Power%')
+            GROUP BY candidate_name, employer
+            """,
+        ).fetchall()
+
+        totals: dict[str, float] = {}
+        pac_detail: dict[str, float] = {}
+        ind_detail: dict[str, float] = {}
+
+        for r in pac_rows:
+            entity = r["last_or_company"] or ""
+            if _DOM_PAC_EXCL_RE.search(entity):
+                continue
+            name = r["candidate_name"] or "Unknown"
+            amt = float(r["total"] or 0)
+            totals[name] = totals.get(name, 0) + amt
+            pac_detail[name] = pac_detail.get(name, 0) + amt
+
+        for r in emp_rows:
+            if not _is_dominion_employer(r["employer"] or ""):
+                continue
+            name = r["candidate_name"] or "Unknown"
+            amt = float(r["total"] or 0)
+            totals[name] = totals.get(name, 0) + amt
+            ind_detail[name] = ind_detail.get(name, 0) + amt
+
+        if not totals:
+            return
+
+        candidates = list(totals.keys())
+        placeholders = ",".join("?" * len(candidates))
+        total_raised: dict[str, float] = {}
+        for r in conn.execute(
+            f"""
+            SELECT candidate_name, SUM(amount) as total
+            FROM va_cf_schedule_a
+            WHERE election_cycle = '2025'
+              AND candidate_name IN ({placeholders})
+            GROUP BY candidate_name
+            """,
+            candidates,
+        ).fetchall():
+            total_raised[r["candidate_name"]] = float(r["total"] or 0)
+
+        ranked = sorted(totals.items(), key=lambda x: -x[1])
+        grand_total = sum(totals.values())
+
+        out: list[str] = [
+            "[Database Context - Dominion Recipient Ranking"
+            " | Window: VA 2025 election_cycle"
+            " | Source: SBE Schedule A"
+            " | Method: SQL direct — not RAG]",
+            "Donor definition: Dominion Energy PAC (is_individual=0, last_or_company"
+            " matching Dominion utility entities) + employer-tagged individuals"
+            " (is_individual=1). Not a sector rollup.",
+            f"Total Dominion contributions (2025): ${grand_total:,.0f}"
+            f" across {len(totals)} recipients",
+            "",
+            f"{'Rank':<5} {'Legislator':<42} {'Dominion $':>12} {'PAC $':>12}"
+            f" {'Indiv $':>10} {'Total Raised':>13} {'Dom%':>6}",
+            f"{'─'*5} {'─'*42} {'─'*12} {'─'*12} {'─'*10} {'─'*13} {'─'*6}",
+        ]
+        for rank, (name, dom_total) in enumerate(ranked[:30], 1):
+            pac_amt = pac_detail.get(name, 0)
+            ind_amt = ind_detail.get(name, 0)
+            raised = total_raised.get(name, 0)
+            if raised > 0:
+                share_pct = dom_total / raised * 100
+                if share_pct > 15:
+                    tier = "[major]"
+                elif share_pct >= 5:
+                    tier = "[significant]"
+                elif share_pct >= 1:
+                    tier = "[modest]"
+                else:
+                    tier = "[minimal]"
+                share_str = f"{share_pct:.1f}% {tier}"
+            else:
+                share_str = "N/A"
+            out.append(
+                f"{rank:<5} {name[:42]:<42} ${dom_total:>11,.0f}"
+                f" ${pac_amt:>11,.0f} ${ind_amt:>9,.0f}"
+                f" ${raised:>12,.0f} {share_str}"
+            )
+        if len(ranked) > 30:
+            out.append(f"  … and {len(ranked) - 30} more recipients")
+        out.append("")
+        out.append(
+            "Note: Dominion Share = Dominion $ ÷ Total Raised (all sources, 2025)."
+            " Use median-primary statistics when comparing YES-voter vs NO-voter funding."
+            " Do not assert causation."
+        )
+        blocks.append("\n".join(out))
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
 # ── Donor-vote alignment, electoral races, congressional hearings ─────────────
 # Dedicated structured builders for analytically rich tables that the generic
 # all-table keyword scan serves poorly: JSON-packed metrics, numeric rankings,
@@ -5624,6 +5921,7 @@ def build_database_context(query: str, max_chars: int = 22000, pro: bool = False
     else:
         _add_governor_action_context(blocks, q, terms, session)
         _add_campaign_finance_context(blocks, q, terms)
+    _add_targeted_vote_lookup(blocks, q, bills, terms, session)
     _add_person_vote_context(blocks, q, terms, session)
     _add_state_vote_donor_context(blocks, q, terms, session)
     _add_keyword_context(blocks, q, terms, session)
@@ -5641,6 +5939,7 @@ def build_database_context(query: str, max_chars: int = 22000, pro: bool = False
     # can return their donor-industry breakdown.
     if _ANALYSIS_TRIGGER.search(q) or _is_campaign_finance_query(q):
         _add_donor_analysis_context(blocks, q)
+    _add_dominion_recipient_ranking_context(blocks, q)
 
     # ── Known data-gap signals ─────────────────────────────────────────────────
     # Emit explicit out_of_scope blocks for categories the DB layer cannot satisfy,
