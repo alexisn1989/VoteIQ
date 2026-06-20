@@ -1369,7 +1369,7 @@ def _build_bills_context(
                 if doc not in seen_docs:
                     seen_docs.add(doc)
                     src = meta.get("source", "")
-                    src_tag = " | FEDERAL" if src == "federal" else (" | Virginia" if src else "")
+                    src_tag = " | FEDERAL" if src == "federal" else (" | Norfolk Local" if src == "norfolk_council_vote" else (" | Virginia" if src else ""))
                     label = (
                         f"[{meta.get('chunk_type','?')} — "
                         f"{meta.get('bill_id','?')} {meta.get('session','?')}{src_tag}]"
@@ -1392,7 +1392,7 @@ def _build_bills_context(
                 if doc not in seen_docs:
                     seen_docs.add(doc)
                     src = meta.get("source", "")
-                    src_tag = " | FEDERAL" if src == "federal" else (" | Virginia" if src else "")
+                    src_tag = " | FEDERAL" if src == "federal" else (" | Norfolk Local" if src == "norfolk_council_vote" else (" | Virginia" if src else ""))
                     label = (
                         f"[{meta.get('chunk_type','?')} — "
                         f"{meta.get('bill_id','?')} {meta.get('session','?')}{src_tag}]"
@@ -1411,7 +1411,7 @@ def _build_bills_context(
             if doc not in seen_docs:
                 seen_docs.add(doc)
                 src = meta.get("source", "")
-                src_tag = " | FEDERAL" if src == "federal" else (" | Virginia" if src else "")
+                src_tag = " | FEDERAL" if src == "federal" else (" | Norfolk Local" if src == "norfolk_council_vote" else (" | Virginia" if src else ""))
                 label = (
                     f"[{meta.get('chunk_type','?')} — "
                     f"{meta.get('bill_id','?')} {meta.get('session','?')}{src_tag}]"
@@ -4696,6 +4696,71 @@ def _bills_system_prompt(
         "8. NO INTENT: Never state or imply a donation caused, motivated, or influenced a vote. "
         "These are public-record patterns — correlation is not causation.\n"
         )
+        + (
+        "\n\nVIRGINIA STATE BILL FORMAT — when the user asks about a specific Virginia General Assembly bill "
+        "(HB, SB, HJ, SJ followed by a number, e.g. 'HB67', 'SB 123', 'what is HB9'), respond using this exact structure. "
+        "Omit any section entirely when data is not available — do NOT render placeholder text like "
+        "'records do not provide this information.' State missing data at most once, briefly, at the top.\n\n"
+        "# [Bill Number] ([Session Year]) — [Bill Title]\n\n"
+        "## Quick Takeaway\n"
+        "2–3 sentences. What does the bill do and what is its current status? "
+        "Write as if explaining to a neighbor, not a policy analyst.\n\n"
+        "---\n\n"
+        "## What the Bill Does\n"
+        "Plain-language explanation covering: what changes under this bill, what program/requirement/funding/policy "
+        "is created, modified, or removed, and the practical effect for ordinary people.\n\n"
+        "## Who Is Affected\n"
+        "List only groups directly implicated by the bill text. Keep it concrete — workers in a specific industry, "
+        "homeowners in flood zones, students at public universities — not vague categories like 'Virginia residents.'\n\n"
+        "## Key Provisions\n"
+        "3–8 bullets. Each bullet = one specific provision from the bill text. Be concise. No editorializing.\n\n"
+        "## Funding and Fiscal Impact\n"
+        "If fiscal data is available: note any new funds created, appropriation amounts, or fiscal impact summary. "
+        "If unavailable: omit this section entirely.\n\n"
+        "## Sponsors\n"
+        "List primary sponsor first, then co-sponsors. Use names from retrieved records only.\n\n"
+        "## Legislative History\n"
+        "Use a markdown table. Include all major milestones in chronological order: "
+        "committee referrals and votes, floor votes (both chambers), conference committee activity (if any), governor action.\n\n"
+        "| Date | Stage | Vote | Result |\n"
+        "|------|-------|------|--------|\n\n"
+        "## Final Vote Breakdown\n"
+        "Show the decisive passage vote. If roll-call data is available, include a party breakdown table:\n\n"
+        "| Party | YES | NO | Other |\n"
+        "|-------|-----|----|-------|\n"
+        "| Democratic | | | |\n"
+        "| Republican | | | |\n\n"
+        "Do not characterize or label party behavior. Present counts only.\n\n"
+        "## Local Angle\n"
+        "Only include if district, locality, or regional context is present in the retrieved data "
+        "(affected facilities, regional industries, local agency impacts, district-level projects). "
+        "If unavailable: omit this section entirely.\n\n"
+        "## Procedural Notes\n"
+        "Include only if the bill's path involved something that might confuse a general reader: "
+        "substitute versions, conference committees, reconsideration votes, near-unanimous chamber NO votes on a substitute "
+        "(explain neutrally: 'this was the chamber voting on the amended substitute version — not the original bill concept'), "
+        "or failed chamber votes that were later resolved. One paragraph maximum. If the path was straightforward: omit.\n\n"
+        "## Sources\n"
+        "List every official source used. Be specific — include URLs where available.\n\n"
+        "---\n\n"
+        "Always end a state bill answer with:\n\n"
+        "**Want to dig deeper?** You can ask how a specific legislator voted on [Bill Number], "
+        "or explore related bills from the [Year] session.\n\n"
+        "Related topics:\n"
+        "- [How did my representatives vote on [Bill Number]?](/ask?q=How%20did%20my%20representatives%20vote%20on%20[Bill%20Number]%20[Year]%3F)\n"
+        "- [topic2 based on the bill subject](/ask?q=URL_ENCODED_FOLLOW_UP)\n"
+        "- [topic3 based on the bill subject](/ask?q=URL_ENCODED_FOLLOW_UP)\n\n"
+        "URL-encode the q= values. Use real topics derived from the retrieved bill data — "
+        "bill subject area, related policy area, or the governor's signing record.\n\n"
+        "CRITICAL RULES for this format:\n"
+        "1. Use retrieved records as the sole source of truth. Never fill gaps from training data.\n"
+        "2. Every factual claim must be traceable to a retrieved record.\n"
+        "3. Never infer motive, intent, influence, corruption, or causation.\n"
+        "4. For any near-unanimous NO vote on a Senate/House substitute (e.g. 2–96), "
+        "always add a neutral note: 'This was the chamber voting on the [Senate/House]-amended substitute version "
+        "— not a vote on the original bill concept. VoteIQ does not infer what motivated that vote.'\n"
+        "5. Do not duplicate the source footer — it is appended automatically.\n"
+        )
         + _freshness_block
         + f"\n\nEXCERPTS:\n{context}"
     )
@@ -5645,9 +5710,19 @@ async def bills_chat(req: BillsChatRequest):
         district_note, chroma_note, model_note, exact_lookup_note, context,
         pro=_premium_analyst_enabled(req),
     )
-    _complex_q = not use_haiku and _m._is_complex_query(user_query, context)
-    model, _      = get_model(req.tier, use_haiku, complex_query=_complex_q)
-    max_tokens    = 700 if use_haiku else TIER_MAX_TOKENS.get(req.tier, 1800)
+    if not use_haiku and _premium_analyst_enabled(req):
+        from voteiq.routing.complexity_gate import get_model_for_query
+        _source_count = len(set(re.findall(
+            r"\[Database Context - \w+\]|\[Governor Action|\[Finance|\[PAC|\[Lobbying",
+            context or "",
+        )))
+        _leg_count = len(re.findall(r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+", user_query or ""))
+        _routing = get_model_for_query(user_query, _source_count, _leg_count)
+        model = _routing.model
+    else:
+        _complex_q = not use_haiku and _m._is_complex_query(user_query, context)
+        model, _ = get_model(req.tier, use_haiku, complex_query=_complex_q)
+    max_tokens = 700 if use_haiku else TIER_MAX_TOKENS.get(req.tier, 1800)
 
     session_type = req.session_type or ("research" if len(req.messages) >= 3 else "quick")
     cache_ttl = "1h" if session_type == "research" else "5m"
