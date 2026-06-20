@@ -298,7 +298,7 @@ def _fetch_profile(conn, name: str, session: str = "2026") -> dict:
     """, (session, resolved)).fetchall()]
 
     profile["sponsored_bills"] = [dict(r) for r in conn.execute("""
-        SELECT bill_id, bill_number, title, status_label, subject, status_date
+        SELECT DISTINCT bill_id, bill_number, title, status_label, subject, status_date
         FROM va_legislator_sponsored_bills
         WHERE session = ? AND lower(legislator_name) = lower(?)
         ORDER BY status_date DESC
@@ -532,7 +532,8 @@ def _fetch_profile(conn, name: str, session: str = "2026") -> dict:
     _fin_select = ", ".join(
         c if c in _fin_cols_present else f"NULL AS {c}"
         for c in ["total_raised", "top_sector", "top_sector_pct", "latest_cycle",
-                  "by_sector_json", "top_donors_json", "overall_va_pct", "alignment_json"]
+                  "by_sector_json", "top_donors_json", "overall_va_pct", "alignment_json",
+                  "district", "cycles_json"]
     )
     try:
         fin_row = conn.execute(f"""
@@ -562,22 +563,117 @@ def _fetch_profile(conn, name: str, session: str = "2026") -> dict:
             except Exception:
                 pass
 
+    # ── Known utility/energy PAC sector override ─────────────────────────────
+    # Dominion Energy PAC and similar entries are mis-classified as "Ideological"
+    # in cached data because the SECTOR_KEYWORDS " pac" substring fires before
+    # the Utilities entry. Correct at display time without a full cache rebuild.
+    _UTILITY_PAC_RE = re.compile(
+        r'dominion\s+(energy|power|virginia|resources|political)'
+        r'|appalachian\s+power|american\s+electric\s+power|\baep\b',
+        re.I,
+    )
+
+    def _fix_pac_sectors(
+        donors: list[dict], sectors: list[dict]
+    ) -> tuple[list[dict], list[dict]]:
+        move: dict[str, float] = {}
+        fixed = []
+        for d in donors:
+            name = d.get("contributor_name") or d.get("name") or ""
+            if _UTILITY_PAC_RE.search(name) and d.get("sector") not in (
+                "Utilities", "Renewables", "Fossil Fuels"
+            ):
+                move[d.get("sector", "Ideological")] = (
+                    move.get(d.get("sector", "Ideological"), 0) + float(d.get("total") or 0)
+                )
+                d = {**d, "sector": "Utilities"}
+            fixed.append(d)
+        if not move:
+            return fixed, sectors
+        utils_add = sum(move.values())
+        new_sectors: list[dict] = []
+        found_utils = False
+        for s in sectors:
+            sname = s.get("sector", "")
+            deduct = move.get(sname, 0)
+            new_total = float(s.get("total") or 0) - deduct
+            if sname == "Utilities":
+                found_utils = True
+                new_sectors.append({**s, "total": round(new_total + utils_add, 2)})
+            elif new_total > 0:
+                new_sectors.append({**s, "total": round(new_total, 2)})
+        if not found_utils and utils_add:
+            new_sectors.append({"sector": "Utilities", "total": round(utils_add, 2),
+                                 "donor_count": 0, "avg_donation": 0})
+        new_sectors.sort(key=lambda s: s.get("total", 0), reverse=True)
+        return fixed, new_sectors
+
     if fin_row:
+        # Bug 1: district from campaign_finance_summary (authoritative, session-refreshed)
+        cfs_district = (fin_row["district"] if "district" in fin_row.keys() else None) or ""
+        if cfs_district and not profile.get("district"):
+            profile["district"] = cfs_district
+
+        raw_donors  = json.loads(fin_row["top_donors_json"] or "[]")[:10]
+        raw_sectors = json.loads(fin_row["by_sector_json"] or "[]")
+        # Bug 3: reclassify known utility PAC donors mis-filed as Ideological
+        fixed_donors, fixed_sectors = _fix_pac_sectors(raw_donors, raw_sectors)
+
+        cycles = json.loads(fin_row["cycles_json"] or "[]") if "cycles_json" in fin_row.keys() else []
+        cycle_range = (
+            f"{cycles[-1]}–{cycles[0]}" if len(cycles) >= 2
+            else (cycles[0] if cycles else (fin_row["latest_cycle"] or ""))
+        )
+
+        # Bug 2: label total_raised with explicit time window
         profile["finance_meta"] = {
-            "total_raised":   fin_row["total_raised"],
-            "top_sector":     fin_row["top_sector"],
-            "top_sector_pct": fin_row["top_sector_pct"],
-            "latest_cycle":   fin_row["latest_cycle"],
-            "overall_va_pct": fin_row["overall_va_pct"],
+            "total_raised":             fin_row["total_raised"],
+            "total_raised_label":       f"Multi-cycle total ({cycle_range})",
+            "top_sector":               fixed_sectors[0]["sector"] if fixed_sectors else fin_row["top_sector"],
+            "top_sector_pct":           fin_row["top_sector_pct"],
+            "latest_cycle":             fin_row["latest_cycle"],
+            "overall_va_pct":           fin_row["overall_va_pct"],
+            "finance_window":           cycle_range,
+            "cycles":                   cycles,
+            # Bug 6: methodology version on every derived finance section
+            "methodology_version":      "VoteIQ Finance Analysis v2.0",
+            "source":                   "Virginia SBE Schedule A filings",
+            "method":                   "SQL aggregate",
         }
-        profile["finance_sectors"] = json.loads(fin_row["by_sector_json"] or "[]")
-        profile["top_donors"]      = json.loads(fin_row["top_donors_json"] or "[]")[:10]
+        profile["finance_sectors"] = fixed_sectors
+        profile["top_donors"]      = fixed_donors
         profile["donor_alignment"] = json.loads(fin_row["alignment_json"] or "[]")
+
+        # Bug 5: basic statistical quality score
+        n_sectors = len([s for s in fixed_sectors if s.get("sector") != "Individual/Other"])
+        attributed = sum(
+            s.get("total", 0) for s in fixed_sectors
+            if s.get("sector") not in ("Individual/Other", "")
+        )
+        total = fin_row["total_raised"] or 1
+        attr_pct = attributed / total * 100
+        n_cycles = len(cycles)
+        if attr_pct >= 70 and n_cycles >= 4 and n_sectors >= 5:
+            score, score_reason = "A", "High attribution, multi-cycle data, broad sector coverage"
+        elif attr_pct >= 50 and n_cycles >= 2 and n_sectors >= 3:
+            score, score_reason = "B", "Good attribution and coverage"
+        elif attr_pct >= 30 or n_cycles >= 2:
+            score, score_reason = "C", "Partial attribution or limited cycle data"
+        else:
+            score, score_reason = "D", "Low attribution or single-cycle data only"
+        profile["finance_quality"] = {
+            "score":                score,
+            "reason":               score_reason,
+            "attribution_pct":      round(attr_pct, 1),
+            "cycles_available":     n_cycles,
+            "methodology_version":  "VoteIQ Finance Analysis v2.0",
+        }
     else:
         profile["finance_meta"]    = None
         profile["finance_sectors"] = []
         profile["top_donors"]      = []
         profile["donor_alignment"] = []
+        profile["finance_quality"] = None
 
     # ── Donor tiers: corporate/PAC vs individual size buckets ───────────────
     def _donor_tiers(cand_names) -> list:
@@ -639,11 +735,29 @@ def _fetch_profile(conn, name: str, session: str = "2026") -> dict:
     resolved_lower = resolved.strip().lower()
     donor_rec = _DONOR_ANALYSIS_LOOKUP.get(resolved_lower)
     if not donor_rec and resolved_lower.split():
+        # Last-name fallback: only accept if exactly ONE record shares the surname,
+        # to prevent e.g. "Don Scott" → last="scott" → matching "Scott A. Surovell"
+        # (district 34) instead of Don Scott (district 88).
         last_lower = resolved_lower.split()[-1].rstrip(".,")
-        donor_rec = next(
-            (v for k, v in _DONOR_ANALYSIS_LOOKUP.items() if k.split()[-1] == last_lower),
-            None,
-        )
+        matches = [v for k, v in _DONOR_ANALYSIS_LOOKUP.items()
+                   if k.split()[-1] == last_lower]
+        if len(matches) == 1:
+            donor_rec = matches[0]
+
+    # Bug 4: dedup bills within each industry_votes entry (cache builder can
+    # produce duplicate bill references when a bill appears in multiple sessions).
+    if donor_rec and donor_rec.get("industry_votes"):
+        for industry, iv in donor_rec["industry_votes"].items():
+            bills = iv.get("bills") or []
+            seen_bills: set[str] = set()
+            deduped: list[dict] = []
+            for b in bills:
+                key = b.get("bill_id", "") + b.get("option", "")
+                if key not in seen_bills:
+                    seen_bills.add(key)
+                    deduped.append(b)
+            iv["bills"] = deduped
+
     profile["donor_analysis"] = donor_rec  # None if no match
 
     # ── Voting similarity matrix (allies & opponents) ────────────────────────

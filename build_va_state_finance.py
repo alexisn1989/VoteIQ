@@ -247,7 +247,9 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
     # ── Agriculture sub-sectors ──────────────────────────────────────────────
     ("Tobacco",             ["tobacco", "altria", "philip morris", "pmi ",
                              "universal leaf", "cigar", "cigarette",
-                             "us smokeless", "american snuff"]),
+                             "us smokeless", "american snuff",
+                             "reynolds american", "rai services", "lorillard",
+                             "british american tobacco", "bat usa"]),
     ("Wine & Spirits",      ["wine", "winery", "vineyard", "distiller",
                              "craft brew", "brewery", "mead", "cider",
                              "wine wholesaler", "wine assoc"]),
@@ -316,7 +318,29 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
 ]
 
 
+# Utility and energy PAC names that would otherwise be mis-classified as
+# "Ideological" because the generic " pac" / "pac " keyword in SECTOR_KEYWORDS
+# catches them before the Utilities entry is reached.
+_UTILITY_PAC_OVERRIDES = re.compile(
+    r'dominion\s+(energy|power|virginia|resources|enery|engery|political)'
+    r'|appalachian\s+power'
+    r'|columbia\s+gas'
+    r'|washington\s+gas'
+    r'|american\s+electric\s+power'
+    r'|\baep\b(\s+pac|\s+political)?'
+    r'|old\s+dominion\s+power',
+    re.IGNORECASE,
+)
+
+
 def classify_sector(occupation: str, employer: str, company: str = "") -> str:
+    # Named utility/energy PAC override — must precede ALL keyword scans because
+    # the Ideological " pac" / "pac " substring match otherwise captures
+    # "Dominion Energy PAC", "AEP PAC", "Appalachian Power PAC", etc. before
+    # the Utilities entry is reached.
+    if company and _UTILITY_PAC_OVERRIDES.search(company.strip()):
+        return "Utilities"
+
     occ_lower = occupation.strip().lower()
     # VPAP uses these occupation values for political/committee entities
     if occ_lower in ("political", "candidate committee", "political campaign", "campaign"):
@@ -330,6 +354,15 @@ def classify_sector(occupation: str, employer: str, company: str = "") -> str:
     # "Investor" as occupation = financial services
     if occ_lower in ("investor", "investments"):
         return "Financial Services"
+    # For corporate donors, match company name alone first.
+    # Prevents a generic occupation (e.g. "PAC", "Financial Services")
+    # from overriding a known corporate identity (e.g. "Altria" → Tobacco).
+    if company:
+        co = company.strip().lower()
+        for sector, keywords in SECTOR_KEYWORDS[:-1]:
+            if any(k in co for k in keywords):
+                return sector
+
     combined = f"{occupation} {employer} {company}".lower()
     for sector, keywords in SECTOR_KEYWORDS[:-1]:    # skip catch-all
         if any(k in combined for k in keywords):
