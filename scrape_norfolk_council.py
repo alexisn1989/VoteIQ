@@ -239,6 +239,16 @@ def extract_votes_gemini(minutes_text: str, meeting_date: str, api_key: str) -> 
 
 # ── SQLite schema ─────────────────────────────────────────────────────────────
 
+def _categorize(agenda_item: str) -> str:
+    """Classify an agenda item into substantive / consent / procedural."""
+    a = (agenda_item or "").strip().upper()
+    if re.match(r'^(PH|R)-?\d', a):
+        return "substantive"
+    if re.match(r'^C-?\d', a):
+        return "consent"
+    return "procedural"
+
+
 def ensure_tables(conn: sqlite3.Connection) -> None:
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS norfolk_council_votes (
@@ -252,11 +262,13 @@ def ensure_tables(conn: sqlite3.Connection) -> None:
             seconded_by     TEXT,
             result          TEXT,
             vote_count      TEXT,
-            votes_json      TEXT,       -- JSON object {member: vote}
+            votes_json      TEXT,
+            category        TEXT,       -- substantive / consent / procedural
             scraped_at      TEXT DEFAULT (datetime('now'))
         );
         CREATE INDEX IF NOT EXISTS idx_ncv_meeting  ON norfolk_council_votes(meeting_id);
         CREATE INDEX IF NOT EXISTS idx_ncv_date     ON norfolk_council_votes(meeting_date);
+        CREATE INDEX IF NOT EXISTS idx_ncv_category ON norfolk_council_votes(category);
 
         CREATE TABLE IF NOT EXISTS norfolk_council_member_votes (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -267,11 +279,18 @@ def ensure_tables(conn: sqlite3.Connection) -> None:
             vote            TEXT,       -- yes / no / abstain / absent
             agenda_item     TEXT,
             title           TEXT,
-            result          TEXT
+            result          TEXT,
+            category        TEXT
         );
-        CREATE INDEX IF NOT EXISTS idx_ncmv_member  ON norfolk_council_member_votes(member_name);
-        CREATE INDEX IF NOT EXISTS idx_ncmv_meeting ON norfolk_council_member_votes(meeting_id);
+        CREATE INDEX IF NOT EXISTS idx_ncmv_member   ON norfolk_council_member_votes(member_name);
+        CREATE INDEX IF NOT EXISTS idx_ncmv_meeting  ON norfolk_council_member_votes(meeting_id);
+        CREATE INDEX IF NOT EXISTS idx_ncmv_category ON norfolk_council_member_votes(category);
     """)
+    # Add category column to existing tables if missing (migration safety)
+    for tbl in ("norfolk_council_votes", "norfolk_council_member_votes"):
+        cols = {r[1] for r in conn.execute(f"PRAGMA table_info({tbl})")}
+        if "category" not in cols:
+            conn.execute(f"ALTER TABLE {tbl} ADD COLUMN category TEXT")
     conn.commit()
 
 
@@ -288,22 +307,19 @@ def store_votes(conn: sqlite3.Connection, meeting_id: int, meeting_date: str,
     count = 0
     for v in votes:
         member_votes = v.get("votes") or {}
+        agenda_item = v.get("agenda_item", "")
+        cat = _categorize(agenda_item)
         cur = conn.execute(
             """INSERT INTO norfolk_council_votes
                (meeting_id, meeting_date, agenda_item, title, motion,
-                moved_by, seconded_by, result, vote_count, votes_json)
-               VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                moved_by, seconded_by, result, vote_count, votes_json, category)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
             (
-                meeting_id,
-                meeting_date,
-                v.get("agenda_item", ""),
-                v.get("title", ""),
-                v.get("motion", ""),
-                v.get("moved_by", ""),
-                v.get("seconded_by", ""),
-                v.get("result", ""),
-                v.get("vote_count", ""),
-                json.dumps(member_votes),
+                meeting_id, meeting_date, agenda_item,
+                v.get("title", ""), v.get("motion", ""),
+                v.get("moved_by", ""), v.get("seconded_by", ""),
+                v.get("result", ""), v.get("vote_count", ""),
+                json.dumps(member_votes), cat,
             )
         )
         vote_id = cur.lastrowid
@@ -311,10 +327,10 @@ def store_votes(conn: sqlite3.Connection, meeting_id: int, meeting_date: str,
             conn.execute(
                 """INSERT INTO norfolk_council_member_votes
                    (vote_id, meeting_id, meeting_date, member_name, vote,
-                    agenda_item, title, result)
-                   VALUES (?,?,?,?,?,?,?,?)""",
+                    agenda_item, title, result, category)
+                   VALUES (?,?,?,?,?,?,?,?,?)""",
                 (vote_id, meeting_id, meeting_date, member, vote,
-                 v.get("agenda_item", ""), v.get("title", ""), v.get("result", ""))
+                 agenda_item, v.get("title", ""), v.get("result", ""), cat)
             )
         count += 1
     conn.commit()

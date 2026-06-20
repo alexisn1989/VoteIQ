@@ -3176,6 +3176,136 @@ _ANALYSIS_TRIGGER = re.compile(
     re.I,
 )
 
+_FINANCE_METHODOLOGY_VERSION = "VoteIQ Finance Analysis v2.0"
+
+
+def _dom_share_tier(pct: float | None) -> str:
+    if pct is None:
+        return "unknown"
+    if pct < 1:
+        return "minimal (<1%)"
+    if pct < 5:
+        return "modest (1–5%)"
+    if pct < 15:
+        return "significant (5–15%)"
+    return "major funding source (>15%)"
+
+
+_GRADE_ORDER = {"A": 0, "B": 1, "C": 2, "D": 3}
+
+
+def _degrade(current: str, to: str) -> str:
+    """Return the worse of two grades (D is worst)."""
+    return to if _GRADE_ORDER.get(to, 0) > _GRADE_ORDER.get(current, 0) else current
+
+
+def _quality_score(
+    yes_n: int,
+    no_n: int,
+    median_available: bool,
+    ratio_medians,
+    concentration_warning: bool,
+    mean_skew_warning: bool,
+) -> tuple[str, list[str]]:
+    """Return (grade, reasons) — A=strong, B=moderate, C=limited, D=directional only."""
+    grade = "A"
+    reasons: list[str] = []
+    min_n = min(yes_n, no_n)
+
+    if min_n < 10:
+        grade = _degrade(grade, "D")
+        reasons.append(f"very small sample (min n={min_n})")
+    elif min_n < 30:
+        grade = _degrade(grade, "C")
+        side = "NO" if no_n < yes_n else "YES"
+        reasons.append(f"small {side}-vote sample (n={min_n})")
+
+    if not median_available:
+        grade = _degrade(grade, "C")
+        reasons.append("median unavailable")
+
+    r = ratio_medians or 0
+    if r > 10:
+        grade = _degrade(grade, "D")
+        reasons.append(f"very high ratio ({r:.1f}×)")
+    elif r > 5:
+        grade = _degrade(grade, "C")
+        reasons.append(f"high ratio ({r:.1f}×)")
+
+    if concentration_warning:
+        grade = _degrade(grade, "C")
+        reasons.append("top-5 YES recipients >50% of group total")
+
+    if mean_skew_warning:
+        grade = _degrade(grade, "C")
+        reasons.append("mean >3× median — outlier skew")
+
+    if not reasons:
+        reasons.append("strong sample sizes, median available, no outlier concentration")
+
+    return grade, reasons
+
+
+_CIVIC_RULES_BLOCK = """\
+[Civic Analysis Rendering Rules — MANDATORY]
+Methodology: {version}
+Apply these rules to ALL donor, vote, and finance outputs:
+
+TIME WINDOWS: Every metric must be labeled with one of:
+  session_cycle (e.g. VA 2025-2026) | election_cycle (2/4-yr) | multi_cycle_total (cumulative)
+  Never mix time windows in one table or ranking. If user requests a mixed-cycle view, split
+  into separate labeled sections with a ⚠ banner: "Mixed time windows — figures are NOT directly
+  comparable." Do not block the output; render it with the banner.
+
+VOTE-DONATION COMPARISONS: Median is the PRIMARY statistic. Mean is supplemental.
+  Always render:
+    YES group: n | median Dominion $ | mean Dominion $ (supplemental)
+    NO group:  n | median Dominion $ | mean Dominion $ (supplemental)
+    Ratio of medians: X× (PRIMARY)
+    Ratio of means: Y× (supplemental — label explicitly as "Ratio of means")
+    Time window: [explicit]
+    Statistical Confidence: [A/B/C/D with reason]
+    Outlier/Distribution warning: show when triggered
+    Bill context: one-line summary
+  D-grade outputs must still render — append: "For background research only. Do not publish
+  without independent verification."
+
+FUNDING CONCENTRATION: For every legislator profile show:
+  Dominion Contributions: $X | Total Raised: $Y | Dominion Share: Z%
+  Tiers: <1% minimal · 1-5% modest · 5-15% significant · >15% major funding source
+
+DONOR ATTRIBUTION: "Dominion Energy funding" = PAC contributions + employer-tagged individuals
+  (label individual amounts as "reported affiliation, unverified"). Never use utilities sector
+  rollups as a Dominion proxy.
+
+TOP RECIPIENTS: Enforce same cycle + same donor definition + same chamber within any ranking.
+  Mixed requests → split into: Current Session Leaders / Multi-Cycle Leaders / Lifetime Totals.
+
+PROVENANCE: Every metric must show Source | Method | Window inline.
+
+PRE-RENDER VALIDATION: Before rendering, confirm:
+  ✓ Same cycle across all figures?
+  ✓ Same donor definition?
+  ✓ Median available?
+  ✓ Sample sizes shown where n<30 or ratio>5×?
+  ✓ Funding concentration calculated?
+  ✓ Provenance displayed?
+  ✓ Confidence score generated?
+  If any check fails → prepend a ⚠ WARNING banner naming the specific gap.
+  A flagged output is always better than a blank or silently incorrect one.
+""".format(version=_FINANCE_METHODOLOGY_VERSION)
+
+
+def _add_civic_rendering_rules(blocks: list[str], query: str) -> None:
+    """Inject civic analysis rendering rules when donor/vote/finance context is active."""
+    if (
+        _ANALYSIS_TRIGGER.search(query or "")
+        or _DONOR_TREND_TRIGGER.search(query or "")
+        or _is_campaign_finance_query(query)
+        or "dominion" in (query or "").lower()
+    ):
+        blocks.append(_CIVIC_RULES_BLOCK)
+
 
 def _add_donor_analysis_context(blocks: list[str], query: str) -> None:
     """Inject pre-computed donor-influence analysis into the chat context.
@@ -3206,10 +3336,33 @@ def _add_donor_analysis_context(blocks: list[str], query: str) -> None:
 
     if matched_leg:
         r = matched_leg
-        lines.append(f"\n-- {r['name']} — Donor-Industry Profile --")
+        lines.append(
+            f"\n-- {r['name']} — Donor-Industry Profile"
+            " | Window: VA 2025-2026 session_cycle"
+            " | Source: Virginia SBE | Method: SQL aggregate --"
+        )
         lines.append(f"Top donor industry : {r.get('top_donor_industry', 'N/A')}")
         lines.append(f"Funds from top industry : ${r.get('top_donor_amount', 0):,.0f}")
-        lines.append(f"Concentration : {r.get('concentration', 'N/A')}% of classified donor $")
+        lines.append(f"Concentration (classified donors) : {r.get('concentration', 'N/A')}% of classified donor $")
+
+        # Dominion-specific funding concentration (if legislator appears in Dominion data)
+        leg_name_lower = (r.get("name") or "").lower()
+        dom_leg = next(
+            (d for d in dom.get("legislators", [])
+             if (d.get("name") or "").lower() == leg_name_lower),
+            None,
+        )
+        if dom_leg:
+            dom_amt   = dom_leg.get("dom_total", 0)
+            total_amt = dom_leg.get("total_raised", 0)
+            dom_pct   = dom_leg.get("dom_share_pct")
+            tier      = _dom_share_tier(dom_pct)
+            lines.append(
+                f"Dominion Contributions: ${dom_amt:,.0f}"
+                + (f" | Total Raised (Schedule A): ${total_amt:,.0f}" if total_amt else "")
+                + (f" | Dominion Share: {dom_pct:.1f}% — {tier}" if dom_pct is not None else "")
+            )
+
         lines.append(f"Vote alignment in top industry : {r.get('top_alignment', 'N/A')}%")
         lines.append(f"CoI Score (0-100) : {r.get('coi_score', 'N/A')}")
         lines.append(
@@ -3227,7 +3380,11 @@ def _add_donor_analysis_context(blocks: list[str], query: str) -> None:
         key=lambda x: -x["coi_score"],
     )[:10]
     if top_coi:
-        lines.append("\n-- Top 10 Legislators by Conflict-of-Interest Score --")
+        lines.append(
+            "\n-- Top 10 Legislators by Conflict-of-Interest Score"
+            " | Window: VA 2025-2026 session_cycle"
+            " | Source: VoteIQ (derived) | Method: SQL aggregate --"
+        )
         lines.append("CoI Score = (% YES votes in top donor industry) × (log-scaled donor $)")
         for r in top_coi:
             lines.append(
@@ -3239,30 +3396,110 @@ def _add_donor_analysis_context(blocks: list[str], query: str) -> None:
     # ── Dominion headline ──
     dom_stats = dom.get("stats", {})
     if dom_stats:
-        lines.append("\n-- Dominion Energy Influence --")
-        lines.append(f"Total Dominion utility donations : ${dom_stats.get('total_dominion_dollars',0):,.0f}")
         lines.append(
-            f"Legislators with Dominion funding : "
-            f"{dom_stats.get('legislators_funded',0)} of {dom_stats.get('legislators_analyzed',0)}"
+            "\n-- Dominion Energy Influence"
+            " | Window: VA 2025-2026 session_cycle"
+            " | Source: Virginia SBE | Method: SQL aggregate --"
         )
         lines.append(
-            f"Top Dominion recipient : {dom_stats.get('top_recipient','')} "
+            "Donor attribution: PAC contributions + individuals where employer is explicitly"
+            " reported in SBE Schedule A (individual amounts labeled"
+            " 'reported affiliation, unverified'). Utilities sector rollups are NOT used"
+            " as a Dominion proxy."
+        )
+        lines.append(
+            f"Total Dominion donations (session_cycle 2025-2026):"
+            f" ${dom_stats.get('total_dominion_dollars',0):,.0f}"
+        )
+        lines.append(
+            f"Legislators with Dominion funding:"
+            f" {dom_stats.get('legislators_funded',0)} of {dom_stats.get('legislators_analyzed',0)}"
+        )
+        lines.append(
+            f"Top Dominion recipient: {dom_stats.get('top_recipient','')} "
             f"(${dom_stats.get('top_recipient_amount',0):,.0f})"
         )
+        # Prefer the bill with the highest ratio of medians; fall back to ratio of means
+        per_bill_list = dom.get("per_bill", [])
         top_bill = max(
-            (b for b in dom.get("per_bill", []) if b.get("ratio")),
-            key=lambda x: x["ratio"],
+            (b for b in per_bill_list if b.get("ratio_medians") or b.get("ratio")),
+            key=lambda x: x.get("ratio_medians") or x.get("ratio") or 0,
             default=None,
         )
         if top_bill:
-            lines.append(
-                f"Largest YES/NO Dominion funding gap : {top_bill['bill_id']} — "
-                f"YES voters received {top_bill['ratio']}x more Dominion $ than NO voters"
+            yes_n         = top_bill.get("yes_count", 0)
+            no_n          = top_bill.get("no_count", 0)
+            yes_median    = top_bill.get("median_yes_dom")
+            no_median     = top_bill.get("median_no_dom")
+            yes_mean      = top_bill.get("avg_yes_dom")
+            no_mean       = top_bill.get("avg_no_dom")
+            ratio_med     = top_bill.get("ratio_medians")
+            ratio_means   = top_bill.get("ratio")
+            conc_warn     = top_bill.get("concentration_warning", False)
+            skew_warn     = top_bill.get("mean_skew_warning", False)
+            top5_yes      = top_bill.get("top5_share_yes_pct")
+            bill_ctx      = top_bill.get("description") or top_bill.get("title") or ""
+            median_avail  = yes_median is not None and no_median is not None
+            primary_ratio = ratio_med if ratio_med is not None else ratio_means
+
+            grade, grade_reasons = _quality_score(
+                yes_n, no_n, median_avail,
+                ratio_med, conc_warn, skew_warn,
             )
+
+            gap_lines = [
+                f"Largest YES/NO Dominion funding gap | Bill: {top_bill['bill_id']}"
+                f" | Time window: VA 2025-2026 session_cycle",
+            ]
+            if bill_ctx:
+                gap_lines.append(f"  Bill context: {bill_ctx[:120]}")
+            gap_lines.append(
+                f"  YES group : n={yes_n}"
+                + (f" | median Dominion $={yes_median:,.0f}" if yes_median is not None else " | median: n/a")
+                + (f" | mean Dominion $={yes_mean:,.0f} (supplemental)" if yes_mean is not None else "")
+            )
+            gap_lines.append(
+                f"  NO group  : n={no_n}"
+                + (f" | median Dominion $={no_median:,.0f}" if no_median is not None else " | median: n/a")
+                + (f" | mean Dominion $={no_mean:,.0f} (supplemental)" if no_mean is not None else "")
+            )
+            if ratio_med is not None:
+                gap_lines.append(f"  Ratio of medians: {ratio_med:.1f}× (PRIMARY)")
+            if ratio_means is not None:
+                gap_lines.append(f"  Ratio of means: {ratio_means:.1f}× (supplemental)")
+            gap_lines.append(
+                f"  Statistical Confidence: {grade} — {'; '.join(grade_reasons)}"
+            )
+            if grade == "D":
+                gap_lines.append(
+                    "  ⚠ D-grade: For background research only."
+                    " Do not publish without independent verification."
+                )
+            if conc_warn or skew_warn:
+                gap_lines.append("  ⚠ Distribution Warning:")
+                if conc_warn:
+                    top5_s = f" ({top5_yes:.0f}% of YES-group total)" if top5_yes else ""
+                    gap_lines.append(
+                        f"    Funding is highly concentrated among top recipients{top5_s}."
+                        " Median values better represent the typical legislator."
+                    )
+                if skew_warn:
+                    gap_lines.append(
+                        "    Mean >3× median — outlier skew detected."
+                        " Cite median, not mean, as primary statistic."
+                    )
+            gap_lines.append(
+                f"  Methodology: {_FINANCE_METHODOLOGY_VERSION}"
+            )
+            lines.extend(gap_lines)
 
     # ── Sponsored-bill outcome rates ──
     if iss:
-        lines.append("\n-- Sponsored-Bill Pass Rate by Donor Industry --")
+        lines.append(
+            "\n-- Sponsored-Bill Pass Rate by Donor Industry"
+            " | Window: VA 2025-2026 session_cycle"
+            " | Source: VoteIQ (derived) | Method: SQL aggregate --"
+        )
         lines.append("Gap = high-funded legislator pass rate minus low-funded legislator pass rate")
         for r in iss:
             gap = r.get("high_vs_low_gap")
@@ -4717,7 +4954,9 @@ def _add_donor_vote_alignment_context(blocks: list[str], query: str, terms: list
             return "HIGH"
 
         lines = [
-            "[Database Context - donor_vote_alignment]",
+            "[Database Context - donor_vote_alignment"
+            " | Source: Virginia SBE (donor) + LegiScan VA (votes)"
+            " | Method: SQL aggregate | Window: VA 2025-2026 session_cycle]",
             "How often a legislator votes YES on bills touching their largest INDUSTRY "
             "donor sector vs. their YES rate on all other bills. alignment_delta = "
             "sector_rate - other_rate (positive = votes more favorably on bills "
@@ -5238,6 +5477,73 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                             f"  {r[0]} | {r[1]} | {r[3].upper():>7} | {r[4]} | {r[2][:65]}"
                         )
 
+        # ── Donor × vote cross-reference ─────────────────────────────────────
+        # Map council member last names to their SBE campaign finance records.
+        # Shows top donor employer categories alongside their dissent pattern.
+        _SBE_NAME_MAP = {
+            "alexander": "Alexander", "clanton": "Clanton",
+            "doyle": "Doyle",        "johnson": "Johnson",
+            "mcgee": "McGee",        "paige": "Paige",
+            "smigiel": "Smigiel",    "thomas": "Thomas",
+            "royster": "Royster",    "mcclellan": "McClellan",
+        }
+        donor_finance_trigger = (
+            any(w in q_lower for w in ("donor", "fund", "money", "contribut", "financ",
+                                       "who pays", "paid by", "backed by", "receiv"))
+            or named_members
+        )
+        if donor_finance_trigger and _table_exists(conn, "sbe_local_contributions"):
+            target_members = named_members if named_members else list(_SBE_NAME_MAP.keys())
+            donor_lines: list[str] = []
+            for m in target_members[:4]:
+                sbe_name = _SBE_NAME_MAP.get(m)
+                if not sbe_name:
+                    continue
+                # Top employer categories (proxy for donor sector)
+                top_donors = conn.execute("""
+                    SELECT
+                        CASE WHEN employer = '' OR employer IS NULL THEN occupation
+                             ELSE employer END AS source,
+                        COUNT(*) as cnt,
+                        ROUND(SUM(amount), 0) as total
+                    FROM sbe_local_contributions
+                    WHERE locality = 'Norfolk'
+                      AND candidate_name LIKE ?
+                      AND amount > 0
+                    GROUP BY source
+                    ORDER BY total DESC
+                    LIMIT 6
+                """, (f"%{sbe_name}%",)).fetchall()
+
+                # Their no-votes on substantive items
+                no_votes = conn.execute("""
+                    SELECT mv.title, mv.meeting_date
+                    FROM norfolk_council_member_votes mv
+                    JOIN norfolk_council_votes v ON mv.vote_id = v.id
+                    WHERE LOWER(mv.member_name) LIKE ?
+                      AND mv.vote = 'no'
+                      AND v.category = 'substantive'
+                    ORDER BY mv.meeting_date DESC
+                    LIMIT 8
+                """, (f"%{m}%",)).fetchall()
+
+                if top_donors or no_votes:
+                    donor_lines.append(f"\n#### {m.title()} — Donors & Dissent")
+                    if top_donors:
+                        total_raised = sum(r[2] for r in top_donors)
+                        donor_lines.append(
+                            f"Top donors (${total_raised:,.0f} top-6 of total):"
+                        )
+                        for r in top_donors:
+                            donor_lines.append(f"  ${r[2]:>8,.0f}  {r[0][:50]}")
+                    if no_votes:
+                        donor_lines.append("Dissenting (No) votes on substantive items:")
+                        for r in no_votes:
+                            donor_lines.append(f"  {r[1]} — {r[0][:70]}")
+
+            if donor_lines:
+                lines += ["", "### Campaign Finance × Voting Pattern"] + donor_lines
+
         conn.close()
         if len(lines) > 3:
             blocks.append("\n".join(lines))
@@ -5310,6 +5616,10 @@ def build_database_context(query: str, max_chars: int = 22000, pro: bool = False
     # Multi-cycle donor trend / investment-return signal — run FIRST so it
     # is never truncated by the generic SQL dump that comes later
     _add_donor_trend_context(blocks, q)
+
+    # Civic analysis rendering rules — injected before donor/finance context so
+    # the LLM sees the formatting contract before the data it must render.
+    _add_civic_rendering_rules(blocks, q)
 
     # Donor-influence analysis for CoI / Dominion / industry sponsor queries
     # Also triggered by any campaign-finance query so named-legislator lookups
