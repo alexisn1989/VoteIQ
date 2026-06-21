@@ -385,6 +385,10 @@
     document.getElementById('viqChatPanel').style.display = 'none';
     try {
       const response = await fetch('/api/lookup?address=' + encodeURIComponent(address));
+      if (!response.ok) {
+        const body = await response.text().catch(() => '');
+        throw new Error('lookup HTTP ' + response.status + (body ? ': ' + body.slice(0, 300) : ''));
+      }
       const data = await response.json();
       if (data.district && data.district.error) {
         document.getElementById('result').innerHTML = '<p style="color:red;">Address not found. Try: 123 Main St, Richmond, VA 23219</p>';
@@ -552,8 +556,10 @@
         executive: vaStatewide.filter(r => r.title === 'Governor').map(r => ({ title: 'Gov.', name: r.name, party: r.party, district: 'Virginia' }))
       };
       initViqChat(districtCode, d.locality, del ? del.district_number : null, sen ? sen.district_number : null, repNames, repData);
-      // Load funding profiles for state reps immediately after address lookup
-      loadRepProfiles(repNames);
+      // Load funding profiles for state reps immediately after address lookup.
+      // Routed through window because loadRepProfiles is defined inside a later IIFE;
+      // guarded so a missing ref can never abort the whole results render.
+      if (window.loadRepProfiles) window.loadRepProfiles(repNames);
       if (window.viqSaveDistrictContext) {
         window.viqSaveDistrictContext({
           districtCode: districtCode,
@@ -616,7 +622,12 @@
       mapEl.removeAttribute('srcdoc');
       mapEl.src = `/district-map?layer=congressional&lat=${userLat}&lng=${userLng}`;
     } catch (error) {
-      document.getElementById('result').innerHTML = '<p style="color:red;">Error loading results.</p>';
+      console.error('[VoteIQ] lookup failed:', error);
+      const detail = String((error && error.message) ? error.message : error)
+        .replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+      document.getElementById('result').innerHTML =
+        '<p style="color:red;">Error loading results.</p>' +
+        '<p style="color:#7a7468;font-size:0.78rem;margin-top:6px;">' + detail + '</p>';
     }
   }
 
@@ -679,6 +690,8 @@
     };
 
     /* ── Rep Funding Profiles panel ───────────────────────────────────────── */
+    // Exposed on window so top-level lookup() (defined outside this IIFE) can call it.
+    window.loadRepProfiles = loadRepProfiles;
     async function loadRepProfiles(repNames) {
       if (!repNames || !repNames.length) return;
       // Only include state assembly members (not senators Warner/Kaine or governor)
