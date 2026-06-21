@@ -227,7 +227,9 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                              "t-mobile", "sprint", "charter comm", "spectrum comm",
                              "centurylink", "lumen tech", "frontier comm", "directv",
                              "dish network", "cincinnati bell"]),
-    ("Software & IT",       ["software", "information technology", " it ",
+    ("Software & IT",       ["software", "information technology",
+                             "it services", "it consulting", "it solutions",
+                             "it support", "it company", "it firm",
                              "computer", "digital", "cloud", "saas", "cybersecurity",
                              "programmer", "google", "microsoft", "amazon web",
                              "apple inc", "meta platform", "salesforce",
@@ -251,10 +253,13 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                              "southern company", "firstenergy", "xcel energy",
                              "nuclear plant", "nuclear station", "nuclear power",
                              "nuclear energy", "nuclear"]),
+    # NOTE: bare "electric" removed — it swept up electrical contractors and the
+    # IBEW union into Fossil Fuels. Contractors now fall to "contractor"
+    # (Commercial Real Estate); IBEW to "electrical workers" (Building unions).
     ("Fossil Fuels",        ["oil", "gas", "petroleum", "coal", "refin", "pipeline",
                              "drill", "frack", "coal mining", "coal mine", "coalfield",
                              "upstream", "crownquest", "crown quest", "holtzman corp",
-                             "energy", "electric"]),
+                             "energy"]),
     # ── Agriculture sub-sectors ──────────────────────────────────────────────
     ("Tobacco",             ["tobacco", "altria", "philip morris", "pmi ",
                              "universal leaf", "cigar", "cigarette",
@@ -346,6 +351,45 @@ _UTILITY_PAC_OVERRIDES = re.compile(
 )
 
 
+# Short single-token keywords that must match on a WORD BOUNDARY, not as a raw
+# substring, otherwise they collide with unrelated words and surnames:
+#   "mill"  in "Miller"          → Manufacturing (wrong)
+#   "land"  in "Cumberland"      → Commercial Real Estate (wrong; it's a coal co)
+#   "coal"  in "coalition"       → Fossil Fuels (wrong; advocacy orgs)
+#   "gas"   in "Biagas"/"Dragas" → Fossil Fuels (wrong; surnames)
+#   "oil"   in "boilermakers"    → Fossil Fuels (wrong; union)
+#   "rail"  in "trail"/"Railey"  → Transportation (wrong)
+#   "corn " in "popcorn"/"acorn" → Agribusiness (wrong)
+#   "plant" in "plantation"      → Manufacturing (wrong)
+# The dict key is the exact keyword string as it appears in SECTOR_KEYWORDS; the
+# value is a compiled pattern that allows common legitimate suffixes (mills,
+# milling, railroad, coalfield, …) but requires a left word boundary.
+_BOUNDARY_KEYWORDS = {
+    "mill":  re.compile(r"\bmill(s|ing|work|stone|wright)?\b", re.I),
+    "land":  re.compile(r"\bland\b", re.I),
+    "coal":  re.compile(r"\bcoal(s|field|fields)?\b", re.I),
+    "gas":   re.compile(r"\bgas(es|oline)?\b", re.I),
+    "oil":   re.compile(r"\boil(s|field|fields)?\b", re.I),
+    "rail":  re.compile(r"\brail(road|roads|way|ways|car|cars)?\b", re.I),
+    "corn ": re.compile(r"\bcorn\b", re.I),
+    "plant": re.compile(r"\bplant(s|ing)?\b", re.I),
+    "horse": re.compile(r"\bhorse(s|back)?\b", re.I),
+    "beef":  re.compile(r"\bbeef\b", re.I),
+    "seed":  re.compile(r"\bseed(s|ling|lings)?\b", re.I),
+    "wine":  re.compile(r"\bwine(s|ry|ries)?\b", re.I),
+}
+
+
+def _kw_match(keyword: str, text: str) -> bool:
+    """True if keyword matches text. Boundary-listed keywords use a word-boundary
+    regex (so 'mill' won't match 'Miller'); all others use substring matching to
+    preserve intentional stems like 'insur', 'pharmaceutic', 'agricultur'."""
+    pat = _BOUNDARY_KEYWORDS.get(keyword)
+    if pat is not None:
+        return pat.search(text) is not None
+    return keyword in text
+
+
 def classify_sector(occupation: str, employer: str, company: str = "") -> str:
     # Named utility/energy PAC override — must precede ALL keyword scans because
     # the Ideological " pac" / "pac " substring match otherwise captures
@@ -373,12 +417,12 @@ def classify_sector(occupation: str, employer: str, company: str = "") -> str:
     if company:
         co = company.strip().lower()
         for sector, keywords in SECTOR_KEYWORDS[:-1]:
-            if any(k in co for k in keywords):
+            if any(_kw_match(k, co) for k in keywords):
                 return sector
 
     combined = f"{occupation} {employer} {company}".lower()
     for sector, keywords in SECTOR_KEYWORDS[:-1]:    # skip catch-all
-        if any(k in combined for k in keywords):
+        if any(_kw_match(k, combined) for k in keywords):
             return sector
     return "Individual/Other"
 
