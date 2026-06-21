@@ -31,7 +31,11 @@ from voteiq.config.voices import (
     VOICE_PROMPTS,
     get_system_prompt,
 )
-from voteiq.services.database_context import build_admin_database_context, build_database_context
+from voteiq.services.database_context import (
+    build_admin_database_context,
+    build_database_context,
+    check_sponsorship_claims,
+)
 from voteiq.services.data_meta import freshness_lookup as _freshness_lookup
 from voteiq.services.truth import get_truth_debug, log_truth_event
 
@@ -154,8 +158,10 @@ def _source_line(
             "Sources used: Polling source records / news feed / Gemini extraction.\n"
             f"Data limits: {limit}"
         )
-    if sources_used:
-        source_text = " · ".join(sorted(sources_used))
+    # Use `is not None` so an explicitly-empty set() (state-only query, no federal
+    # sources touched) still produces a dynamic footer without FEC / Congress.gov.
+    if sources_used is not None:
+        source_text = " · ".join(sorted(sources_used)) if sources_used else "Virginia LIS"
         prefix = f"*Answer type: {answer_type}. Sources:" if answer_type else "*Sources:"
         return (
             "\n\n---\n"
@@ -176,6 +182,7 @@ def _with_source_line(
 ) -> str:
     """Append the standard source footer unless the model already included one."""
     reply = _sanitize_voting_record_language(reply)
+    reply = check_sponsorship_claims(reply)
     if "Sources:" in (reply or ""):
         return reply.rstrip()
     return reply.rstrip() + _source_line(answer_type, sources_used, data_limits)
@@ -417,7 +424,7 @@ def _sanitize_voting_record_language(reply: str) -> str:
         and "VoteIQ does not infer why" not in text
     ):
         text += (
-            "\n\nVoteIQ does not infer why Sen. Rouse voted NO. These records only show vote outcomes, "
+            "\n\nVoteIQ does not infer why this legislator voted NO. These records only show vote outcomes, "
             "party-majority comparison, bill category, and whether the bill passed."
         )
     return text
@@ -433,9 +440,20 @@ def _track_sources(context: str) -> set[str]:
     context_lower = context.lower()
 
     # SQL/database sources
-    if "virginia lis" in context_lower or "lis.virginia.gov" in context_lower:
+    if (
+        "virginia lis" in context_lower
+        or "lis.virginia.gov" in context_lower
+        or "va_legislator_recent_votes" in context_lower
+        or "[database context - va_" in context_lower
+        or "[database context - targeted vote" in context_lower
+        or "[database context - state legislator" in context_lower
+        or "source: va_legislator_recent_votes" in context_lower
+    ):
         sources.add("Virginia LIS")
-    if "[governor action" in context_lower:
+    if (
+        "[governor action" in context_lower
+        or "[database context - polls.governor_actions" in context_lower
+    ):
         sources.add("Governor of Virginia")
     if "fec" in context_lower and "fec data" in context_lower:
         sources.add("FEC")
@@ -4533,7 +4551,7 @@ def _bills_system_prompt(
         f"Only fill cells from retrieved excerpts. If a field is absent, write \"Not shown in current dataset.\" Keep federal yes-rate metrics separate from state party-alignment metrics.\n"
         f"\n\nVOTE INTERPRETATION — apply these rules when reading vote records:\n"
         f"- When showing votes tied to a bill, statement, donor pattern, or other context, label the section \"Related Vote Record\" and include this note: \"These votes are public-record actions. VoteIQ does not infer motive or reasoning from votes alone.\"\n"
-        f"- If a legislator votes NO on a House-amended version, do not infer opposition to the original bill concept. Say: \"Correction note: [Name] voted NO on the House-amended version of [Bill ID]. VoteIQ does not infer whether that reflected opposition to the original bill, the amendments, or another reason.\"\n"
+        f"- ONLY IF the retrieved context contains an explicit vote record where a legislator voted NO on a motion labeled 'Concur House Substitute', 'Concur House Amendment', or similar, label it: \"[Name] voted NO on [motion] for [Bill ID] — this is a concurrence/amendment vote, not a vote against the original bill passage.\" Do NOT generate a NO-vote claim for any legislator unless their vote record appears in the retrieved context. If no vote record is present, say: \"I don't have vote data for [Name] on this bill.\"\n"
         f"- If a legislator votes YES in committee but NO on floor, they may have had ideological concerns or constituent pressure. Do not assume — say \"voted NO on floor passage after supporting it in committee; dataset does not explain the change.\"\n"
         f"- Always show the SEQUENCE of votes when available, not just the final result. A bill can have 4-8 votes — the pattern matters.\n"
         f"- Flag when a NO vote is on a substitute or amendment vs. the original bill. These are different positions.\n"
@@ -4543,7 +4561,8 @@ def _bills_system_prompt(
         f"Senate votes include far more procedural, cloture, and motion votes where minority-party senators routinely vote Nay — "
         f"this structurally depresses Senate yes rates relative to House yes rates. "
         f"Always note: \"Senate yes rates are not directly comparable to House yes rates due to the higher volume of procedural and cloture votes in the Senate.\"\n"
-        f"- For voting-pattern sections, include this no-inference note: \"VoteIQ does not infer why Sen. Rouse voted NO. These records only show vote outcomes, party-majority comparison, bill category, and whether the bill passed.\" Use the relevant title/name if the question is about someone else.\n"
+        f"- For voting-pattern sections, include this no-inference note using the legislator's actual name from the context: \"VoteIQ does not infer why [Name] voted NO (or not voting). These records only show vote outcomes, party-majority comparison, bill category, and whether the bill passed.\"\n"
+        f"- COMPANION BILLS: If two bill numbers in the context have identical titles and signing dates (one HB, one SB), they are the same law in companion-bill form. Treat them as a single legislative position — do not count the legislator's stance twice.\n"
         f"\n\nHALLUCINATION PREVENTION — follow these rules strictly:\n"
         f"1. Never say a legislator \"prioritized\", \"championed\", \"focused on\", or \"made X a priority\" unless the excerpt explicitly states it. Sponsoring a bill does not imply it was a priority.\n"
         f"2. Never infer a legislator's role beyond what the data shows. If they are listed as sponsor, say \"sponsored\". If their exact role is unclear, say \"co-sponsored or listed as patron — exact role unclear.\"\n"
@@ -4595,7 +4614,7 @@ def _bills_system_prompt(
         f"**Recorded NO votes where the bill passed ([N] total):**\n"
         f"[CONFIRMED — OpenStates]:\n"
         f"- [Policy area]: [markdown bill links from excerpt] — [one-line description]\n"
-        f"Note: VoteIQ does not infer why Sen. Rouse voted NO. These records only show vote outcomes, party-majority comparison, bill category, and whether the bill passed. Use the relevant title/name if the question is about someone else.\n\n"
+        f"Note: VoteIQ does not infer why [Name] voted NO. These records only show vote outcomes, party-majority comparison, bill category, and whether the bill passed.\n\n"
         f"**Vote Breakdown by Issue Area** (if present in excerpt):\n"
         f"- [topic]: [N] votes — [Y] YES, [N] NO | party alignment: [X]%\n"
         f"  - Breaks from party: [copy the NO-against-party-YES-majority bill links from excerpt]\n\n"

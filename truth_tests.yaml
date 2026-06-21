@@ -1,0 +1,176 @@
+# truth_tests.yaml — VoteIQ ground-truth regression test cases
+# Run with: python truth_test_suite.py --yaml truth_tests.yaml
+
+tests:
+  # ── Legislator vote lookups ────────────────────────────────────────────────
+
+  - query: "How did Aaron Rouse vote on HB1 in the 2025 session?"
+    expected_entity: "Aaron Rouse"
+    expected_sql_table: "va_legislator_recent_votes"
+    expected_answer_contains:
+      - "Rouse"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.3
+
+  - query: "What is Jennifer McClellan's voting record on education bills?"
+    expected_entity: "McClellan"
+    expected_sql_table: "congress_votes"
+    expected_answer_contains:
+      - "McClellan"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.3
+
+  - query: "What bills did Governor Youngkin veto in 2023?"
+    expected_entity: "Youngkin"
+    expected_sql_table: "governor_actions"
+    expected_answer_contains:
+      - "veto"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.3
+
+  # ── Donor resolution — WinRed/ActBlue passthrough awareness ───────────────
+
+  - query: "Who are the top donors to Jennifer Kiggans?"
+    expected_entity: "Kiggans"
+    expected_sql_table: "fec_individual_contributions"
+    expected_answer_contains:
+      - "Kiggans"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.3
+
+  - query: "How much did ActBlue collect for Virginia Democratic candidates?"
+    expected_entity: "ActBlue"
+    expected_sql_table: "va_cf_schedule_a"
+    expected_answer_contains:
+      - "ActBlue"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.4
+
+  # ── PAC correlation queries ────────────────────────────────────────────────
+
+  - query: "Which PACs spent the most on Virginia congressional races in 2024?"
+    expected_entity: ""
+    expected_sql_table: "fec_independent_expenditures"
+    expected_answer_contains:
+      - "PAC"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.3
+
+  - query: "How much campaign money did Abigail Spanberger raise from energy sector donors?"
+    expected_entity: "Spanberger"
+    expected_sql_table: "va_cf_schedule_a"
+    expected_answer_contains:
+      - "Spanberger"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.3
+
+  # ── Known abstain cases — data outside VoteIQ scope ───────────────────────
+
+  - query: "How did the Virginia Beach school board vote on the 2025 budget?"
+    expected_entity: ""
+    expected_sql_table: ""
+    expected_answer_contains:
+      - "not"
+    expected_abstain: true
+    expected_hallucination_risk_max: 0.2
+
+  - query: "What do current polls show about Virginia voters' views on the state budget?"
+    expected_entity: ""
+    expected_sql_table: ""
+    expected_answer_contains:
+      - "not"
+    expected_abstain: true
+    expected_hallucination_risk_max: 0.2
+
+  # ── Entity disambiguation — common name collision ──────────────────────────
+
+  - query: "Which lobbyists are registered to represent energy companies in Virginia?"
+    expected_entity: ""
+    expected_sql_table: "lobbyist_registry"
+    expected_answer_contains:
+      - "lobbyist"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.4
+
+  # ── Routing regression: case 6 original + mirror ───────────────────────────
+  # Case 6 original: PAC aggregation query must NOT return a candidate profile.
+  # Guards against _direct_va_house_fec_candidate_reply false-matching "Virginia"
+  # in "LUCERO, MELANIE VIRGINIA" when "Virginia" is used geographically.
+  # hallucination_risk_max: 1.0 — disables the length-ratio heuristic (miscalibrated
+  # for single-keyword expected_answer_contains); routing correctness is asserted via
+  # answer_alignment on "PAC" and abstain_correct.
+  - query: "Which PACs spent the most on Virginia congressional races in 2024?"
+    expected_entity: ""
+    expected_sql_table: "fec_independent_expenditures"
+    expected_answer_contains:
+      - "PAC"
+    expected_abstain: false
+    expected_hallucination_risk_max: 1.0
+
+  # Case 6 mirror: candidate-spending query containing "spent the most" must NOT
+  # be blocked by the aggregation guard (no PAC/committee co-signal present).
+  # The old broad guard would have returned "" before name-matching, so Kiggans
+  # profile would have been missed. New dual-signal guard lets it through.
+  - query: "Jennifer Kiggans spent the most of any Virginia Republican in 2024 — what industries fund her campaign?"
+    expected_entity: "Kiggans"
+    expected_sql_table: "fec_va_house_candidates"
+    expected_answer_contains:
+      - "Kiggans"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.9
+
+  # ── Energy-bill credibility regression suite ────────────────────────────────
+
+  # CHAMBER GUARD: HB590 passed the House 61-34 as a House floor vote. Rouse is a
+  # senator. He has a Senate concurrence vote (YES on conference report, 2026-03-13).
+  # A compliant answer must NOT attribute a House-only roll-call NO to Rouse.
+  # "conference" must appear because the real vote is on the conference committee report.
+  - query: "How did Aaron Rouse vote on HB590 in 2026?"
+    expected_entity: "Aaron Rouse"
+    expected_sql_table: "va_legislator_recent_votes"
+    expected_answer_contains:
+      - "Rouse"
+      - "HB590"
+      - "conference"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.3
+
+  # CONCURRENCE LABELING: Rouse voted NO on "Concur House Substitute R" for SB249
+  # on 2026-03-12, sending it to conference — not opposing the bill itself.
+  # The answer must surface the motion/stage so a NO is not read as bill opposition.
+  - query: "How did Aaron Rouse vote on SB249 in the 2026 session?"
+    expected_entity: "Aaron Rouse"
+    expected_sql_table: "va_legislator_recent_votes"
+    expected_answer_contains:
+      - "Rouse"
+      - "SB249"
+      - "concur"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.3
+
+  # COMPANION BILL DEDUP: SB382 and HB590 are companion bills (identical title
+  # "Smart Solar Permitting Platform", both signed 2026-04-13). Rouse voted YES on
+  # the conference report for both. A compliant answer must not claim two separate
+  # NO positions; it should report a single YES stance and note companion relationship.
+  - query: "How did Aaron Rouse vote on SB382 and HB590 in 2026?"
+    expected_entity: "Aaron Rouse"
+    expected_sql_table: "va_legislator_recent_votes"
+    expected_answer_contains:
+      - "Rouse"
+      - "SB382"
+      - "HB590"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.3
+
+  # SOURCE FOOTER GATE: a Virginia-state-only energy query must not cite FEC or
+  # Congress.gov. The answer must reference Virginia sources and must not abstain
+  # (signed energy bills exist in va_bills + governor_actions for 2026).
+  - query: "What energy bills passed in the Virginia General Assembly in 2026?"
+    expected_entity: ""
+    expected_sql_table: "va_bills"
+    expected_answer_contains:
+      - "Virginia"
+      - "2026"
+      - "signed"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.4

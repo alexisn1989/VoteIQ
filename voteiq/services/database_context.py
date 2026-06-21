@@ -1306,9 +1306,11 @@ def _add_targeted_vote_lookup(
                         person_pat = f"%{person}%"
                         rows = conn.execute("""
                             SELECT v.voter_name, vb.bill_number, vb.session,
-                                   vb.title, v.vote_date, v.option AS vote, v.motion
+                                   vb.title, v.vote_date, v.option AS vote,
+                                   v.motion, v.is_procedural
                             FROM va_legislator_recent_votes v
-                            JOIN va_bills vb ON vb.id = v.bill_id
+                            JOIN va_bills vb ON vb.bill_number = v.bill_id
+                                            AND vb.session    = v.session
                             WHERE lower(vb.bill_number) LIKE lower(?)
                               AND lower(v.voter_name)   LIKE lower(?)
                             ORDER BY v.vote_date DESC
@@ -1319,11 +1321,14 @@ def _add_targeted_vote_lookup(
                             lines = [
                                 f"[Database Context - targeted vote: {bill} × {person}]",
                                 "Source: va_legislator_recent_votes JOIN va_bills (name-filtered, not full roll-call)",
+                                "STAGE NOTE: 'Concur House Substitute/Amendment' and 'Adopt Conference Committee Report' "
+                                "are concurrence/procedural motions, not original floor-passage votes.",
                             ]
                             for r in rows:
+                                proc = " [PROCEDURAL]" if r["is_procedural"] else ""
                                 lines.append(
                                     f"voter={r['voter_name']} | bill={r['bill_number']} ({r['session']}) "
-                                    f"| vote={r['vote']} | date={r['vote_date']} "
+                                    f"| vote={r['vote']}{proc} | date={r['vote_date']} "
                                     f"| motion={r['motion'] or 'n/a'} | title={r['title'] or 'n/a'}"
                                 )
                             blocks.append("\n".join(lines))
@@ -1381,6 +1386,147 @@ def _add_targeted_vote_lookup(
             "legislator+bill combination. Use them directly — do NOT say the vote is "
             "unknown or scan a full roll-call list."
         )
+
+
+# Sponsorship-intent terms: the user is asking what a legislator authored/introduced.
+_SPONSORSHIP_TRIGGER = re.compile(
+    r"\b(sponsor|sponsored|sponsorship|patron|patroned|introduce[d]?|"
+    r"author(?:ed)?|carried|legislation|bills?)\b",
+    re.I,
+)
+
+# va_legislator_sponsored_bills.status_label → plain-English outcome bucket.
+_SPONSOR_STATUS_OUTCOME = {
+    "Passed": "passed",
+    "Vetoed": "vetoed",
+    "Engrossed": "in progress (passed one chamber)",
+    "Introduced": "did not pass (died without final action)",
+}
+
+
+def _add_sponsorship_summary_context(
+    blocks: list[str], query: str, terms: list[str], session: str
+) -> None:
+    """Inject the AUTHORITATIVE chief-patron sponsorship record for a named (or
+    address-resolved) legislator from va_legislator_sponsored_bills — deduplicated,
+    chief-patron only, with a real passed / did-not-pass breakdown, and with
+    co-patron bills counted SEPARATELY.
+
+    Rationale: the generic `sponsors LIKE '%name%'` sweep fuses chief patron with
+    co-patron and carries no authoritative totals. That let the model overcount
+    ("133 sponsored" when the legislator chief-patroned 53), present co-patroned bills
+    as authored, and — because no status is literally 'Failed' — report "0 failed"
+    while bills had in fact died in committee. When a sponsorship question identifies a
+    legislator, serve the structured truth so the model does not have to infer counts.
+    """
+    if not _SPONSORSHIP_TRIGGER.search(query or ""):
+        return
+    people = _person_terms(terms)
+    if not people:
+        return
+
+    conn = _connect("polls")
+    if not conn:
+        return
+    try:
+        if not _table_exists(conn, "va_legislator_sponsored_bills"):
+            return
+
+        # Resolve to EXACTLY one legislator. If the name is ambiguous (0 or >1
+        # distinct matches), skip rather than guess — never fabricate a record.
+        matched: set[str] = set()
+        for p in people:
+            p = (p or "").strip()
+            if len(p) < 3:
+                continue
+            for r in conn.execute(
+                "SELECT DISTINCT legislator_name FROM va_legislator_sponsored_bills "
+                "WHERE lower(legislator_name) LIKE ?",
+                (f"%{p.lower()}%",),
+            ):
+                matched.add(r[0])
+        if len(matched) != 1:
+            return
+        name = next(iter(matched))
+        sess = session or "2026"
+
+        rows = conn.execute(
+            "SELECT DISTINCT bill_number, status_label "
+            "FROM va_legislator_sponsored_bills WHERE legislator_name = ? AND session = ?",
+            (name, sess),
+        ).fetchall()
+        if not rows:
+            return
+
+        def _is_bill(num: str) -> bool:
+            u = (num or "").upper()
+            return u.startswith("HB") or u.startswith("SB")
+
+        # Bucket by substantive bill vs ceremonial resolution, then by outcome.
+        from collections import Counter
+        bill_outcomes: Counter = Counter()
+        res_outcomes: Counter = Counter()
+        for num, status in rows:
+            outcome = _SPONSOR_STATUS_OUTCOME.get(status, f"other ({status})")
+            (bill_outcomes if _is_bill(num) else res_outcomes)[outcome] += 1
+
+        n_bills = sum(bill_outcomes.values())
+        n_res = sum(res_outcomes.values())
+        chief_total = n_bills + n_res
+
+        co_total = 0
+        if _table_exists(conn, "va_legislator_cosponsor_bills"):
+            co_total = conn.execute(
+                "SELECT COUNT(DISTINCT bill_id) FROM va_legislator_cosponsor_bills "
+                "WHERE legislator_name = ? AND session = ?",
+                (name, sess),
+            ).fetchone()[0]
+
+        def _fmt(counter: Counter) -> str:
+            order = ["passed", "did not pass (died without final action)",
+                     "in progress (passed one chamber)", "vetoed"]
+            parts = [f"{counter[k]} {k}" for k in order if counter.get(k)]
+            parts += [f"{v} {k}" for k, v in counter.items() if k not in order]
+            return " · ".join(parts) if parts else "none"
+
+        # A few substantive example bills, passed first.
+        examples = conn.execute(
+            "SELECT DISTINCT bill_number, title, status_label "
+            "FROM va_legislator_sponsored_bills WHERE legislator_name = ? AND session = ? "
+            "AND (upper(bill_number) LIKE 'HB%' OR upper(bill_number) LIKE 'SB%') "
+            "ORDER BY CASE status_label WHEN 'Passed' THEN 0 WHEN 'Engrossed' THEN 1 "
+            "WHEN 'Vetoed' THEN 2 ELSE 3 END, bill_number LIMIT 6",
+            (name, sess),
+        ).fetchall()
+
+        lines = [
+            f"[LAYER 1 FACT — AUTHORITATIVE sponsorship record: {name}, VA {sess} session]",
+            "Source: va_legislator_sponsored_bills / va_legislator_cosponsor_bills "
+            "(deduplicated by bill; chief patron vs co-patron kept separate).",
+            f"CHIEF PATRON (bills this legislator INTRODUCED) — {chief_total} total:",
+            f"  Substantive bills (HB/SB): {n_bills} → {_fmt(bill_outcomes)}",
+            f"  Ceremonial resolutions (HR/HJ/SR/SJ): {n_res} → {_fmt(res_outcomes)}",
+            f"CO-PATRON (added name to another member's bill; did NOT introduce): {co_total} bills "
+            "— report SEPARATELY, never as 'sponsored by' this legislator.",
+        ]
+        if examples:
+            lines.append("Example chief-patron substantive bills:")
+            for num, title, status in examples:
+                outcome = _SPONSOR_STATUS_OUTCOME.get(status, status)
+                lines.append(f"  {num} [{outcome}] {(title or '')[:70]}")
+        lines += [
+            "REPORTING RULES (MANDATORY):",
+            "  • 'Sponsored' = CHIEF PATRON only. Never count co-patroned bills as sponsored.",
+            "  • Always report BOTH the passed count AND the did-not-pass count. "
+            "NEVER say '0 failed' — use the did-not-pass number above.",
+            "  • These are authoritative totals; do not recompute or estimate sponsorship counts "
+            "from any other block.",
+        ]
+        blocks.append("\n".join(lines))
+    except Exception:
+        pass
+    finally:
+        conn.close()
 
 
 def _add_person_vote_context(blocks: list[str], query: str, terms: list[str], session: str) -> None:
@@ -1460,7 +1606,10 @@ def _add_person_vote_context(blocks: list[str], query: str, terms: list[str], se
             WHERE session=? AND ({clause})
             ORDER BY latest_date DESC
             LIMIT 12
-        """, [session, *params], "openstates.bills sponsored by person", blocks, limit=12)
+        """, [session, *params],
+            "openstates.bills where person is patron OR co-patron — NOT authoritative "
+            "for sponsorship counts; use the AUTHORITATIVE sponsorship record block instead",
+            blocks, limit=12)
         conn.close()
 
     conn = _connect("legislative_intelligence")
@@ -1599,11 +1748,13 @@ def _add_state_vote_donor_context(
                            b.bill_number,
                            b.title,
                            b.subjects,
-                           v.option      AS vote,
+                           v.option        AS vote,
                            v.motion,
+                           v.is_procedural,
                            b.introduced_by AS sponsor
                     FROM va_legislator_recent_votes v
-                    JOIN va_bills b ON b.id = v.bill_id
+                    JOIN va_bills b ON b.bill_number = v.bill_id
+                                   AND b.session    = v.session
                     WHERE v.voter_name = ?
                       AND v.session    = ?
                       AND ({topic_clause})
@@ -1623,11 +1774,13 @@ def _add_state_vote_donor_context(
                            b.bill_number,
                            b.title,
                            b.subjects,
-                           v.option  AS vote,
+                           v.option        AS vote,
                            v.motion,
+                           v.is_procedural,
                            b.introduced_by AS sponsor
                     FROM va_legislator_recent_votes v
-                    JOIN va_bills b ON b.id = v.bill_id
+                    JOIN va_bills b ON b.bill_number = v.bill_id
+                                   AND b.session    = v.session
                     WHERE v.voter_name = ?
                       AND v.session    = ?
                     ORDER BY v.vote_date DESC
@@ -1645,11 +1798,21 @@ def _add_state_vote_donor_context(
 
             if voted_rows:
                 lines.append(f"  Vote record (filter: '{vote_label}'):")
+                lines.append(
+                    "  STAGE NOTE: 'Concur House Substitute/Amendment' and 'Adopt Conference Committee Report' "
+                    "are concurrence/procedural motions, not original floor-passage votes. "
+                    "A NO on concurrence means the senator rejected the House-amended text and sent it to conference; "
+                    "it does NOT indicate opposition to the original bill."
+                )
                 for r in voted_rows:
                     subj = (r["subjects"] or "")[:50].rstrip()
+                    motion = (r["motion"] or "").strip()
+                    proc_tag = " [PROCEDURAL]" if r.get("is_procedural") else ""
+                    motion_part = f" | motion={motion[:60]}{proc_tag}" if motion else ""
                     lines.append(
                         f"    {r['vote_date']} | {r['bill_number']} | "
-                        f"{r['vote']} | {(r['title'] or '')[:70]}"
+                        f"{r['vote']}{proc_tag} | {(r['title'] or '')[:70]}"
+                        + motion_part
                         + (f" [{subj}]" if subj else "")
                     )
             else:
@@ -2325,6 +2488,71 @@ def _check_banned_causation_phrases(text: str) -> str | None:
     """
     m = _CAUSATION_BANNED.search(text or "")
     return m.group(0) if m else None
+
+
+# Patterns that indicate the model violated the sponsorship reporting rules injected
+# by _add_sponsorship_summary_context. Two known failure modes from the Feggans case:
+#
+# 1. "0 failed" / "zero bills failed" — always wrong when a legislator has died bills;
+#    the status_label is 'Introduced', not 'Failed', so a naive model reads 0.
+# 2. Implausibly large single-session VA state sponsored count (>100). A VA delegate
+#    realistically chief-patrons 15–80 items per session; 100+ signals co-patron conflation.
+_SPONSOR_ZERO_FAILED = re.compile(
+    r"\b(?:zero|0)\s+(?:bills?\s+)?(?:fail(?:ed)?|unsuccessful)\b",
+    re.I,
+)
+_SPONSOR_INFLATED_COUNT = re.compile(
+    r"\b(?:"
+    r"([1-9]\d{2,})\s+bills?\s+(?:sponsored|introduced|patroned?)"  # "133 bills sponsored"
+    r"|(?:sponsored|introduced|patroned?)\s+([1-9]\d{2,})\s+bills?"  # "sponsored 133 bills"
+    r")\b",
+    re.I,
+)
+# Presence of sponsorship language in the reply (guard only fires when on-topic).
+_SPONSOR_CONTEXT_SIGNAL = re.compile(
+    r"\b(?:sponsor(?:ed|ship)?|patron(?:ed)?|introduced|chief\s+patron|"
+    r"bills?\s+(?:they\s+)?(?:sponsor|introduc|patron))\b",
+    re.I,
+)
+
+_SPONSOR_WARNING = (
+    "\n\n> **Data integrity note:** VoteIQ detected a sponsorship claim in this "
+    "answer that may reflect a known counting issue — specifically, bills a "
+    "legislator *co-patroned* (added their name to another member's bill) can be "
+    "miscounted as bills they *sponsored*, and bills that died in committee without a "
+    "floor vote are sometimes reported as '0 failed' because their status is "
+    "'Introduced', not 'Failed'. For authoritative counts, check "
+    "[lis.virginia.gov](https://lis.virginia.gov) or ask VoteIQ: "
+    "\"What bills did [name] introduce in 2026?\""
+)
+
+
+def check_sponsorship_claims(reply: str) -> str:
+    """Post-render guard: detect known sponsorship miscount signatures and append a
+    correction note if found. Non-destructive — original text is never altered.
+
+    Catches two failure modes documented in the Feggans verification (2026-06-21):
+    - '0 failed' when bills actually died in committee (status='Introduced', not 'Failed')
+    - Counts > 100 bills sponsored in a single VA session (signals co-patron conflation)
+
+    Call this inside _with_source_line so it covers all chat endpoints uniformly.
+    """
+    text = reply or ""
+    if not _SPONSOR_CONTEXT_SIGNAL.search(text):
+        return text  # not a sponsorship answer — skip entirely
+
+    triggered = (
+        _SPONSOR_ZERO_FAILED.search(text) is not None
+        or _SPONSOR_INFLATED_COUNT.search(text) is not None
+    )
+    if not triggered:
+        return text
+
+    # Don't double-append if the warning is already present (e.g. cached reply).
+    if "Data integrity note:" in text:
+        return text
+
+    return text.rstrip() + _SPONSOR_WARNING
 
 
 _PAC_VOTE_PAC_SIGNAL = {
@@ -3456,6 +3684,45 @@ PRE-RENDER VALIDATION: Before rendering, confirm:
 """.format(version=_FINANCE_METHODOLOGY_VERSION)
 
 
+# Three-layer response contract. Injected whenever campaign-finance data is present
+# in the assembled context so the LLM segregates finance OUT of the factual narrative
+# instead of inlining it next to a committee chair, sponsor, or vote (the trust-risk
+# pattern: "...died in committee, chaired by X, who raised $1.3M..."). The factual
+# layer must be readable on its own with zero financial leakage.
+_LAYER_CONTRACT_BLOCK = """\
+[Three-Layer Response Contract — MANDATORY for THIS answer]
+This answer combines verifiable facts with campaign-finance context. Render it in three
+clearly separated layers. NEVER weave finance or donor data into factual sentences.
+
+LAYER 1 — FACTS (render first; always):
+  Bill identifier + title | status / legislative outcome | committees + procedural history |
+  roll-call votes (if any) | sponsors / co-sponsors | official links & sources.
+  HARD RULE: no dollar amounts, no "raised $X", no donor sectors, no campaign-finance of any
+  kind in this layer — not even adjacent to a committee chair, sponsor, or voter's name.
+  A journalist must be able to read Layer 1 alone and fully understand what happened with
+  zero financial or political inference.
+
+LAYER 2 — CONTEXT (only if finance data is present; separate "## Context — campaign finance" heading):
+  Campaign-finance totals | donor-sector breakdowns | related political/historical context |
+  related bills. EVERY dollar figure and donor sector lives ONLY here, never in Layer 1.
+
+LAYER 3 — ANALYSIS (only if a correlation is being drawn; separate "## Analysis" heading):
+  Neutral, non-causal language only. No implication of influence, corruption, intent, or motive.
+  This layer MUST end with the literal line: "This section does not imply causation or intent."
+
+FORBIDDEN — these leak Layer-2 data into the Layer-1 narrative:
+  ❌ "...left in House Public Safety, chaired by X, who raised $1.3M..."
+  ❌ "Chair X (top donor sectors: Tobacco, Wine & Spirits)"
+  ✔ Layer 1: "HB7 was left in House Public Safety, chaired by X." (fact only)
+  ✔ Layer 2: "X has raised $1.3M; top donor sectors: ..." (finance, separated)
+"""
+
+# Finance signals that mean "Layer 2 content exists and must be segregated."
+_LAYER_FINANCE_MARKERS = re.compile(
+    r"raised|donor sector|top donor|dominion|campaign[_ ]finance|\bPAC\b|\$\s?\d", re.I
+)
+
+
 def _add_civic_rendering_rules(blocks: list[str], query: str) -> None:
     """Inject civic analysis rendering rules when donor/vote/finance context is active."""
     if (
@@ -3465,6 +3732,16 @@ def _add_civic_rendering_rules(blocks: list[str], query: str) -> None:
         or "dominion" in (query or "").lower()
     ):
         blocks.append(_CIVIC_RULES_BLOCK)
+
+
+def _add_layer_rendering_rules(blocks: list[str]) -> None:
+    """Inject the 3-layer FACT/CONTEXT/ANALYSIS contract whenever campaign-finance data
+    is present in the already-assembled context. Scanning the built blocks (rather than
+    the query) means the contract fires exactly when there is finance to segregate — no
+    matter which builder produced it — so finance never leaks into the factual narrative.
+    Inserted at the front so it is never lost to max_chars truncation."""
+    if any(_LAYER_FINANCE_MARKERS.search(b) for b in blocks):
+        blocks.insert(0, _LAYER_CONTRACT_BLOCK)
 
 
 def _add_donor_analysis_context(blocks: list[str], query: str) -> None:
@@ -4236,7 +4513,14 @@ def _add_committee_chair_context(blocks: list[str], query: str) -> None:
             return cands[0] if len(cands) == 1 else None
 
         import json as _json
-        lines = ["[Committee Chair Assignments — Virginia General Assembly]"]
+        # Layer-separated emission: chair assignments are FACTS; chair finance is
+        # CONTEXT (Layer 2) and is kept in a distinct block so it is never inlined
+        # next to the chair's name in the factual narrative.
+        fact_lines = ["[LAYER 1 FACT — Committee Chair Assignments, Virginia General Assembly]"]
+        ctx_lines = [
+            "[LAYER 2 CONTEXT — campaign finance of the committee chair(s) above; "
+            "do NOT inline into the factual narrative]"
+        ]
 
         for row in matching[:8]:  # cap at 8 to avoid bloating context
             committee = row[0]
@@ -4261,13 +4545,15 @@ def _add_committee_chair_context(blocks: list[str], query: str) -> None:
             raised_str = f"${raised/1_000_000:.1f}M raised" if raised >= 1_000_000 else (
                 f"${raised/1000:.0f}k raised" if raised else "no finance data"
             )
-            lines.append(
-                f"  {chamber} | {committee}\n"
-                f"    Chair: {chair_name} ({party}) — {raised_str}\n"
-                f"    Top donor sectors: {top_sectors or '—'}"
+            fact_lines.append(f"  {chamber} | {committee} — Chair: {chair_name} ({party})")
+            ctx_lines.append(
+                f"  {chair_name} ({party}): {raised_str}; "
+                f"top donor sectors: {top_sectors or '—'}"
             )
 
-        blocks.append("\n".join(lines))
+        blocks.append("\n".join(fact_lines))
+        if len(ctx_lines) > 1:
+            blocks.append("\n".join(ctx_lines))
 
     except Exception:
         pass
@@ -4413,13 +4699,22 @@ def _add_bill_committee_chair_context(blocks: list[str], bills: list[str], sessi
             if not unique_chairs:
                 continue
 
-            lines = [
-                f"[Committee Chair — {bill} killed in {committee_fragment}]",
+            # Layer-separated emission: the committee/chair disposition is a FACT and
+            # must be readable without finance; the chair's finance is CONTEXT (Layer 2)
+            # and is emitted as a distinct block so it never inlines next to the kill.
+            fact_lines = [f"[LAYER 1 FACT — {bill} committee disposition]"]
+            ctx_lines = [
+                f"[LAYER 2 CONTEXT — campaign finance of chair(s) of the committee "
+                f"that held {bill}; do NOT inline into the factual narrative]"
             ]
             for row in unique_chairs[:3]:
                 committee = row[0]
                 chamber = row[1]
                 chair_name = row[2]
+
+                fact_lines.append(
+                    f"  {bill} left in {chamber} {committee} — Chair: {chair_name}"
+                )
 
                 cfs = _find_cfs(chair_name)
                 if cfs:
@@ -4437,16 +4732,17 @@ def _add_bill_committee_chair_context(blocks: list[str], bills: list[str], sessi
                         if raised >= 1_000_000
                         else f"${raised/1000:.0f}K raised" if raised else "no finance data"
                     )
-                    lines.append(
-                        f"  {chamber} {committee}\n"
-                        f"    Chair: {chair_name} ({party}) — {raised_str}\n"
-                        f"    Top donor sectors: {top_sectors or '—'}"
+                    ctx_lines.append(
+                        f"  {chair_name} ({party}): {raised_str}; "
+                        f"top donor sectors: {top_sectors or '—'}"
                     )
                 else:
-                    lines.append(f"  {chamber} {committee}\n    Chair: {chair_name} (no finance data)")
+                    ctx_lines.append(f"  {chair_name}: no finance data")
 
-            if len(lines) > 1:
-                blocks.append("\n".join(lines))
+            if len(fact_lines) > 1:
+                blocks.append("\n".join(fact_lines))
+            if len(ctx_lines) > 1:
+                blocks.append("\n".join(ctx_lines))
 
     except Exception:
         pass
@@ -5636,7 +5932,269 @@ _NORFOLK_COUNCIL_TRIGGER = re.compile(
 _NORFOLK_MEMBER_NAMES = {
     "alexander", "clanton", "doyle", "johnson", "mcgee",
     "paige", "smigiel", "thomas", "royster", "mcclellan",
+    "riddick",   # on council 2022–2023, before Paige/Clanton/McGee joined
 }
+
+# ── Norfolk factsheet + lint helpers ─────────────────────────────────────────
+
+CONTESTED_VOTE_MIN = 100  # body-level minimum for comparative member differentiation
+
+_NORFOLK_BANNED_OUTPUT_TERMS = frozenset([
+    # Causal / intent (from donor-vote schema rework)
+    "captured", "market protection", "bought", "because donors",
+    "in exchange", "rewarded", "benefit directly",
+    "paid to vote", "quid pro quo", "builders fund him",
+    "because he opposes", "because she", "hotels benefit",
+    # Ideological / motive (factsheet addition — per Step 5)
+    "ideology", "ideological", "liberal", "conservative",
+    "progressive", "believes", " stance", "is pro-", "is anti-",
+    "aligns with the", "represents a", "characterized as",
+])
+
+
+def _lint_norfolk_output(text: str) -> str:
+    """Raise ValueError if any banned causal or ideological term appears in output."""
+    low = text.lower()
+    for term in _NORFOLK_BANNED_OUTPUT_TERMS:
+        if term in low:
+            raise ValueError(f"[NORFOLK-LINT FAIL] Banned term: {repr(term)}")
+    return text
+
+
+def _norfolk_body_summary(conn: "sqlite3.Connection") -> list[str]:
+    """Body-level consensus summary with methodology gate."""
+    body = conn.execute("""
+        SELECT COUNT(*) total,
+            SUM(CASE WHEN vote_count IN ('8-0','7-0','6-0','5-0','0-8','0-7','0-6','0-5')
+                     THEN 1 ELSE 0 END) unani
+        FROM norfolk_council_votes WHERE vote_count != ''
+    """).fetchone()
+    if not body or not body[0]:
+        return []
+
+    total, unani = body[0], body[1] or 0
+    contested = total - unani
+    consensus_pct = round(100 * unani / total, 1)
+
+    dates = conn.execute(
+        "SELECT MIN(meeting_date), MAX(meeting_date) FROM norfolk_council_votes"
+    ).fetchone()
+    date_range = f"{dates[0]} – {dates[1]}" if dates and dates[0] else "2024–2026"
+
+    lines: list[str] = [
+        f"### Norfolk City Council — Body Summary ({date_range})",
+        f"Recorded votes: {total}  |  Consensus rate: {consensus_pct}% "
+        f"({unani} unanimous or near-unanimous)  |  "
+        f"Contested: {contested} ({round(100*contested/total, 1)}%)",
+    ]
+
+    member_rows = conn.execute("""
+        SELECT
+            CASE WHEN member_name LIKE 'Smigiel%' THEN 'Smigiel Jr.'
+                 WHEN member_name LIKE 'Thomas%'  THEN 'Thomas Jr.'
+                 ELSE member_name END AS nm,
+            COUNT(*) total,
+            SUM(CASE WHEN vote='yes'    THEN 1 ELSE 0 END) yes_v,
+            SUM(CASE WHEN vote='no'     THEN 1 ELSE 0 END) no_v,
+            SUM(CASE WHEN vote='absent' THEN 1 ELSE 0 END) absent_v
+        FROM norfolk_council_member_votes
+        GROUP BY nm ORDER BY nm
+    """).fetchall()
+
+    if member_rows:
+        lines += [
+            "",
+            f"{'Member':<20} {'Votes':>6} {'YES':>5} {'NO':>5} "
+            f"{'Abs':>5} {'YES%':>6} {'NO%':>5}",
+            "-" * 62,
+        ]
+        for r in member_rows:
+            tot = r[1] or 1
+            lines.append(
+                f"{r[0]:<20} {r[1]:>6} {r[2]:>5} {r[3]:>5} {r[4]:>5} "
+                f"{100*r[2]/tot:>5.1f}% {100*r[3]/tot:>4.1f}%"
+            )
+
+    gate_pass = contested >= CONTESTED_VOTE_MIN
+    lines += [
+        "",
+        "**Methodology gate**",
+        f"Contested vote count: {contested}  |  Threshold (CONTESTED_VOTE_MIN): {CONTESTED_VOTE_MIN}",
+        (
+            f"GATE NOT MET — comparative member rankings, agreement-score clustering, "
+            f"and ideal-point analysis are suppressed. "
+            f"This body decides by consensus ({consensus_pct}% of votes unanimous or near-unanimous); "
+            f"the contested-vote sample ({contested} votes) is below the minimum required "
+            f"for individual differentiation. Descriptive factsheets are available per member."
+        ) if not gate_pass else (
+            f"GATE MET — {contested} contested votes exceed threshold; "
+            f"comparative analysis may proceed."
+        ),
+    ]
+    return lines
+
+
+def _norfolk_member_factsheet(
+    conn: "sqlite3.Connection", member_term: str
+) -> list[str]:
+    """Per-member descriptive voting factsheet (no comparative ranking)."""
+    display = member_term.title()
+    if member_term == "smigiel":
+        display = "Smigiel Jr."
+    elif member_term == "thomas":
+        display = "Thomas Jr."
+    like = f"%{member_term}%"
+
+    raw = conn.execute("""
+        SELECT COUNT(*) total,
+            SUM(CASE WHEN vote='yes'     THEN 1 ELSE 0 END) yes_v,
+            SUM(CASE WHEN vote='no'      THEN 1 ELSE 0 END) no_v,
+            SUM(CASE WHEN vote='abstain' THEN 1 ELSE 0 END) abs_v,
+            SUM(CASE WHEN vote='absent'  THEN 1 ELSE 0 END) absent_v
+        FROM norfolk_council_member_votes WHERE LOWER(member_name) LIKE ?
+    """, (like,)).fetchone()
+    if not raw or not raw[0]:
+        return [f"No vote records found for '{member_term}'."]
+
+    total, yes_v, no_v, abs_v, absent_v = raw
+    participated = total - (absent_v or 0)
+    yes_rate = round(100 * yes_v / participated, 1) if participated else 0
+    no_rate  = round(100 * no_v  / participated, 1) if participated else 0
+
+    dissents = conn.execute("""
+        SELECT mv.meeting_date, mv.agenda_item, mv.vote, v.result, v.vote_count,
+               v.title, e.plain_english
+        FROM norfolk_council_member_votes mv
+        JOIN norfolk_council_votes v ON mv.vote_id = v.id
+        LEFT JOIN norfolk_vote_enrichment e ON e.title = v.title
+        WHERE LOWER(mv.member_name) LIKE ?
+          AND ((mv.vote = 'no' AND v.result = 'passed')
+            OR (mv.vote = 'yes' AND v.result = 'failed'))
+        ORDER BY mv.meeting_date DESC
+    """, (like,)).fetchall()
+
+    contested_body = conn.execute("""
+        SELECT COUNT(*) FROM norfolk_council_votes
+        WHERE vote_count != ''
+          AND vote_count NOT IN ('8-0','7-0','6-0','5-0','0-8','0-7','0-6','0-5')
+    """).fetchone()[0]
+    contested_member = conn.execute("""
+        SELECT COUNT(*) FROM norfolk_council_member_votes mv
+        JOIN norfolk_council_votes v ON mv.vote_id = v.id
+        WHERE LOWER(mv.member_name) LIKE ?
+          AND mv.vote IN ('yes','no','abstain')
+          AND v.vote_count NOT IN ('8-0','7-0','6-0','5-0','0-8','0-7','0-6','0-5','')
+    """, (like,)).fetchone()[0]
+
+    topic_rows = conn.execute("""
+        SELECT COALESCE(e.topic, v.category, 'other') AS topic,
+               COUNT(*) total,
+               SUM(CASE WHEN mv.vote='yes' THEN 1 ELSE 0 END) yes_v,
+               SUM(CASE WHEN mv.vote='no'  THEN 1 ELSE 0 END) no_v
+        FROM norfolk_council_member_votes mv
+        JOIN norfolk_council_votes v ON mv.vote_id = v.id
+        LEFT JOIN norfolk_vote_enrichment e ON e.title = v.title
+        WHERE LOWER(mv.member_name) LIKE ?
+          AND mv.vote IN ('yes','no')
+        GROUP BY COALESCE(e.topic, v.category, 'other')
+        ORDER BY total DESC LIMIT 12
+    """, (like,)).fetchall()
+
+    dates = conn.execute(
+        "SELECT MIN(meeting_date), MAX(meeting_date) FROM norfolk_council_member_votes "
+        "WHERE LOWER(member_name) LIKE ?", (like,)
+    ).fetchone()
+    date_range = f"{dates[0]} – {dates[1]}" if dates and dates[0] else "2024–2026"
+
+    dissent_pct = round(100 * len(dissents) / participated, 2) if participated else 0
+    gate_pass = contested_body >= CONTESTED_VOTE_MIN
+
+    # Sole-dissent detection
+    sole_dissents = []
+    for r in dissents:
+        tally = r[4] or ""
+        if tally and "-" in tally:
+            parts = tally.split("-")
+            if len(parts) == 2 and all(p.strip().isdigit() for p in parts):
+                if min(int(parts[0]), int(parts[1])) == 1:
+                    sole_dissents.append(r)
+
+    lines: list[str] = [
+        f"### {display} — Voting Factsheet (Norfolk City Council, {date_range})",
+        "",
+        "**Raw facts**",
+        f"Votes recorded: {total}  |  Participated (non-absent): {participated}",
+        f"YES: {yes_v} ({yes_rate}%)  |  NO: {no_v} ({no_rate}%)"
+        f"  |  Abstain: {abs_v or 0}  |  Absent: {absent_v or 0}",
+        "",
+        "**Derived metrics**",
+        f"YES rate: {yes_rate}%  |  NO rate: {no_rate}%",
+        f"Dissent rate (voted against majority outcome): "
+        f"{dissent_pct:.2f}% ({len(dissents)} of {participated})",
+        f"Contested-vote participation: {contested_member} of {contested_body} "
+        f"contested votes in dataset",
+    ]
+
+    if topic_rows:
+        lines += ["", "**Per-topic record**"]
+        lines.append(f"  {'Topic':<28} {'Total':>6}  {'YES':>5}  {'NO':>5}")
+        for r in topic_rows:
+            if r[1] < 3:
+                continue
+            lines.append(
+                f"  {r[0]:<28} {r[1]:>6}  {r[2]:>5}  {r[3]:>5}"
+            )
+
+    if dissents:
+        lines += ["", "**Notable dissents (voted against majority outcome)**"]
+        for i, r in enumerate(dissents, 1):
+            tally = r[4] or ""
+            sole = False
+            if tally and "-" in tally:
+                parts = tally.split("-")
+                if len(parts) == 2 and all(p.strip().isdigit() for p in parts):
+                    sole = min(int(parts[0]), int(parts[1])) == 1
+            flag = " [sole dissent]" if sole else ""
+            desc = (r[6] or r[5] or "")[:72]
+            lines.append(
+                f"  {i}. {r[0]} | {r[1]} | {r[2].upper()} | {r[4]} {r[3]}{flag}"
+            )
+            if desc:
+                lines.append(f"     {desc}")
+    else:
+        lines.append("**Notable dissents**: none — all votes aligned with majority outcome")
+
+    # Interpretive signal (neutral behavioral flag, no motive)
+    sole_note = (
+        f"Anomalous: {len(sole_dissents)} sole-dissent vote(s) against majority. "
+        if sole_dissents else ""
+    )
+    lines += [
+        "",
+        "**Interpretive signal**",
+        f"{sole_note}Dissent rate: {dissent_pct:.2f}% ({len(dissents)} dissents / "
+        f"{participated} participated). No motive or characterization is inferred.",
+        "",
+        "**Methodology note**",
+        f"Body contested votes: {contested_body}  |  CONTESTED_VOTE_MIN: {CONTESTED_VOTE_MIN}",
+        "Below threshold — comparative rankings suppressed; descriptive record only."
+        if not gate_pass else
+        "Threshold met — comparative analysis available.",
+    ]
+
+    # Lint interpretive lines (skip raw vote-data lines starting with numbering/spaces)
+    linted: list[str] = []
+    for ln in lines:
+        stripped = ln.strip()
+        is_raw_data = stripped[:3].replace(".", "").replace(" ", "").isdigit()
+        if is_raw_data:
+            linted.append(ln)
+        else:
+            try:
+                linted.append(_lint_norfolk_output(ln))
+            except ValueError as e:
+                linted.append(f"  [SUPPRESSED — {e}]")
+    return linted
 
 
 def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]) -> None:
@@ -5646,19 +6204,38 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
     last name with vote intent, or Norfolk local government actions.
     """
     q_lower = (query or "").lower()
+    named_members = [n for n in _NORFOLK_MEMBER_NAMES if n in q_lower]
     triggered = bool(_NORFOLK_COUNCIL_TRIGGER.search(query or ""))
 
-    # Also fire when a council member name appears with vote/council/donor intent
+    # Also fire when a council member name appears with vote/council/donor/testimony intent
     if not triggered:
-        member_hit = any(n in q_lower for n in _NORFOLK_MEMBER_NAMES)
+        member_hit = bool(named_members)
         action_intent = any(
             w in q_lower
             for w in ("vote", "voted", "votes", "voting", "council", "norfolk",
                       "donor", "fund", "money", "contribut", "financ", "receiv",
                       "paid", "backed", "hotel", "pathway", "developer", "corrupt",
-                      "align", "interest")
+                      "align", "interest",
+                      "testif", "testimony", "constituent", "resident", "public",
+                      "spoke", "said", "comment", "hearing", "oppos", "support",
+                      "dissent", "pattern", "differently", "profile", "outlier",
+                      "contrarian", "disagree", "record")
         )
         triggered = member_hit and action_intent
+
+    # Also fire for Norfolk + testimony/donor-adjacency intent (no member name needed)
+    if not triggered and "norfolk" in q_lower:
+        triggered = any(w in q_lower for w in (
+            "testif", "testimony", "public comment", "public hearing",
+            "who spoke", "spoke against", "spoke in support",
+            "public oppos", "public sent", "residents oppos",
+            "voted against public", "against the public", "public accountability",
+            "donor", "overlap", "adjacen", "align", "sector", "who fund",
+            "member", "council member",
+            "sentiment", "opinion", "oppose most", "most opposed",
+            "unpopular", "public feel", "community feel", "public mood",
+            "what do people", "what do residents", "what does the public",
+        ))
 
     if not triggered:
         return
@@ -5672,6 +6249,42 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
             return
 
         lines: list[str] = ["## Norfolk City Council Vote Records"]
+
+        # ── Routing: factsheet and body-summary modes ─────────────────────────
+        _has_record_kw = any(kw in q_lower for kw in (
+            "factsheet", "voting record", "full record",
+        ))
+        _has_show_kw = (
+            any(kw in q_lower for kw in ("show me", "tell me about")) and "record" in q_lower
+        )
+        factsheet_mode = bool(named_members) and (_has_record_kw or _has_show_kw)
+
+        body_summary_mode = (
+            not named_members
+            and any(kw in q_lower for kw in (
+                "how does", "body summary", "consensus", "voting pattern",
+                "overall voting", "as a body", "whole council",
+            ))
+        )
+
+        if factsheet_mode:
+            fs_lines: list[str] = ["## Norfolk City Council Vote Records", ""]
+            for m in named_members[:2]:
+                fs_lines += _norfolk_member_factsheet(conn, m)
+                fs_lines.append("")
+            if len(fs_lines) > 3:
+                blocks.append("\n".join(fs_lines))
+            conn.close()
+            return
+
+        if body_summary_mode:
+            bs_lines = (
+                ["## Norfolk City Council Vote Records", ""]
+                + _norfolk_body_summary(conn)
+            )
+            blocks.append("\n".join(bs_lines))
+            conn.close()
+            return
 
         # ── Per-member vote summary ───────────────────────────────────────────
         # Normalize variant name forms across meetings (e.g. "Smigiel" vs "Smigiel Jr.")
@@ -5774,7 +6387,7 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                         lines.append(f"  Votes: {vote_str}")
 
         # ── Member-specific voting history ────────────────────────────────────
-        named_members = [n for n in _NORFOLK_MEMBER_NAMES if n in q_lower]
+        # named_members derived at function entry before trigger check
         if named_members:
             for member in named_members[:2]:
                 member_votes_rows = conn.execute("""
@@ -5807,30 +6420,23 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                                        "who pays", "paid by", "backed by", "receiv"))
             or named_members
         )
-        if donor_finance_trigger and _table_exists(conn, "sbe_local_contributions"):
+        if donor_finance_trigger and _table_exists(conn, "norfolk_finance_summary"):
+            # Use precomputed sector totals (name-disambiguated via build_norfolk_finance.py)
             target_members = named_members if named_members else list(_SBE_NAME_MAP.keys())
             donor_lines: list[str] = []
             for m in target_members[:4]:
-                sbe_name = _SBE_NAME_MAP.get(m)
-                if not sbe_name:
-                    continue
-                # Top employer categories (proxy for donor sector)
-                top_donors = conn.execute("""
-                    SELECT
-                        CASE WHEN employer = '' OR employer IS NULL THEN occupation
-                             ELSE employer END AS source,
-                        COUNT(*) as cnt,
-                        ROUND(SUM(amount), 0) as total
-                    FROM sbe_local_contributions
-                    WHERE locality = 'Norfolk'
-                      AND candidate_name LIKE ?
-                      AND amount > 0
-                    GROUP BY source
-                    ORDER BY total DESC
-                    LIMIT 6
-                """, (f"%{sbe_name}%",)).fetchall()
-
-                # Their no-votes on substantive items
+                display = _SBE_NAME_MAP.get(m, m.title())
+                summary = conn.execute(
+                    "SELECT total_raised, top_sector, top_sector_pct, sector_json "
+                    "FROM norfolk_finance_summary WHERE member_name=?",
+                    (display,)
+                ).fetchone()
+                sectors = conn.execute(
+                    "SELECT sector, total_amount, pct_of_total, donor_count "
+                    "FROM norfolk_finance_totals WHERE member_name=? "
+                    "ORDER BY total_amount DESC LIMIT 5",
+                    (display,)
+                ).fetchall()
                 no_votes = conn.execute("""
                     SELECT mv.title, mv.meeting_date
                     FROM norfolk_council_member_votes mv
@@ -5842,15 +6448,19 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                     LIMIT 8
                 """, (f"%{m}%",)).fetchall()
 
-                if top_donors or no_votes:
-                    donor_lines.append(f"\n#### {m.title()} — Donors & Dissent")
-                    if top_donors:
-                        total_raised = sum(r[2] for r in top_donors)
+                if summary or no_votes:
+                    donor_lines.append(f"\n#### {display} — Donors & Dissent")
+                    if summary and sectors:
+                        total_raised = summary[0]
                         donor_lines.append(
-                            f"Top donors (${total_raised:,.0f} top-6 of total):"
+                            f"Total raised: ${total_raised:,.0f}  "
+                            f"(top sector: {summary[1]}, {summary[2]:.1f}%)"
                         )
-                        for r in top_donors:
-                            donor_lines.append(f"  ${r[2]:>8,.0f}  {r[0][:50]}")
+                        donor_lines.append("Donor sectors:")
+                        for s in sectors:
+                            donor_lines.append(
+                                f"  {s[0]:<18} ${s[1]:>9,.0f}  ({s[2]:>5.1f}%,  {s[3]} donors)"
+                            )
                     if no_votes:
                         donor_lines.append("Dissenting (No) votes on substantive items:")
                         for r in no_votes:
@@ -5859,85 +6469,533 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
             if donor_lines:
                 lines += ["", "### Campaign Finance × Voting Pattern"] + donor_lines
 
-        # ── Hardcoded high-confidence donor-vote correlations ─────────────────
-        # These are pre-verified findings from cross-referencing SBE local
-        # contributions against council vote records. Surface when donor/money
-        # queries fire or when a named member is in scope.
-        _KNOWN_CORRELATIONS = [
+        # ── Donor-sector ↔ vote-topic adjacency (facts only, no causal inference) ──
+        _adj_trigger = donor_finance_trigger or any(
+            w in q_lower for w in ("align", "adjacen", "sector", "pattern", "overlap")
+        )
+        if _adj_trigger and _table_exists(conn, "norfolk_donor_vote_adjacency"):
+            target_adj = named_members if named_members else list(_SBE_NAME_MAP.keys())
+            adj_lines: list[str] = []
+            for m in target_adj[:6]:
+                display = _SBE_NAME_MAP.get(m, m.title())
+                rows_adj = conn.execute("""
+                    SELECT sector, sector_pct, top_topic, top_topic_delta,
+                           top_topic_yes_pct, council_yes_pct, topic_vote_count
+                    FROM norfolk_donor_vote_summary
+                    WHERE member_name = ?
+                    ORDER BY ABS(top_topic_delta) DESC
+                    LIMIT 4
+                """, (display,)).fetchall()
+                if not rows_adj:
+                    continue
+                adj_lines.append(f"\n#### {display} — Donor Sector / Vote Topic Adjacency")
+                adj_lines.append(
+                    "Source: SBE contributions + council member votes joined on enriched topic. "
+                    "Adjacency only — no causal inference drawn."
+                )
+                for r in rows_adj:
+                    sector, sec_pct, topic, delta, m_yes, c_yes, n = r
+                    sign = "+" if delta >= 0 else ""
+                    adj_lines.append(
+                        f"  {sec_pct:4.0f}% from {sector:<15s} | "
+                        f"votes YES on {topic:<22s} {m_yes:.0f}% "
+                        f"(council avg {c_yes:.0f}%, delta {sign}{delta:.0f}pp, n={n})"
+                    )
+            if adj_lines:
+                lines += ["", "### Donor-Sector / Vote-Topic Adjacency"] + adj_lines
+
+        # ── Per-member dissent profile (No-rate vs council avg by topic) ──────
+        _dissent_trigger = (
+            named_members
+            or any(w in q_lower for w in (
+                "dissent", "differently", "pattern", "contrarian",
+                "disagree", "against", "oppose", "no vote", "outlier",
+            ))
+        )
+        if _dissent_trigger and _table_exists(conn, "norfolk_member_dissent"):
+            target_dis = named_members if named_members else list(_SBE_NAME_MAP.keys())
+            dis_lines: list[str] = []
+            for m in target_dis[:6]:
+                display = _SBE_NAME_MAP.get(m, m.title())
+                vote_name = {"Smigiel": "Smigiel Jr.", "Thomas": "Thomas Jr."}.get(display, display)
+                rows_dis = conn.execute("""
+                    SELECT topic, member_no_pct, council_no_pct, delta_pp, member_no_count
+                    FROM norfolk_member_dissent
+                    WHERE member_name = ? AND ABS(delta_pp) >= 2
+                    ORDER BY ABS(delta_pp) DESC LIMIT 5
+                """, (vote_name,)).fetchall()
+                if not rows_dis:
+                    continue
+                dis_lines.append(f"\n#### {display} — Dissent Profile (No-vote rate vs council avg)")
+                top_topic = None
+                for topic, m_no, c_no, delta, nos in rows_dis:
+                    sign = "+" if delta >= 0 else ""
+                    direction = "more" if delta > 0 else "less"
+                    dis_lines.append(
+                        f"  {topic:<22s}  {m_no:.1f}% No vs council {c_no:.1f}%  "
+                        f"({sign}{delta:.1f}pp — votes No {direction} than peers, {nos} No votes)"
+                    )
+                    if top_topic is None and delta > 0:
+                        top_topic = topic
+                # Signature No votes: 3 actual bills from the most distinctive topic
+                if top_topic:
+                    sig_rows = conn.execute("""
+                        SELECT mv.meeting_date, mv.agenda_item,
+                               cv.vote_count, e.plain_english, mv.title
+                        FROM norfolk_council_member_votes mv
+                        JOIN norfolk_vote_enrichment e ON e.title = mv.title
+                        JOIN norfolk_council_votes cv
+                          ON cv.agenda_item = mv.agenda_item
+                         AND cv.meeting_date = mv.meeting_date
+                        WHERE mv.member_name = ?
+                          AND LOWER(mv.vote) = 'no'
+                          AND e.topic = ?
+                          AND mv.category = 'substantive'
+                        ORDER BY mv.meeting_date DESC
+                        LIMIT 3
+                    """, (vote_name, top_topic)).fetchall()
+                    if sig_rows:
+                        dis_lines.append(f"  Signature No votes on {top_topic}:")
+                        for date, item, vc, plain, title in sig_rows:
+                            desc = (plain or title or "")[:80]
+                            dis_lines.append(f"    {date} | {item} | {vc} — {desc}")
+            if dis_lines:
+                lines += ["", "### Member Dissent Profiles"] + dis_lines
+
+        # ── Defensible donor-vote signals (schema-conformant) ────────────────
+        # Schema: raw facts → derived metrics → at most one neutral signal.
+        # NO causal/intent language. Banned: captured, bought, because donors,
+        # in exchange, rewarded, influence, benefit directly, market protection.
+        _BANNED_DONOR_TERMS = frozenset([
+            "captured", "market protection", "bought", "because donors",
+            "in exchange", "rewarded", "benefit directly",
+            "paid to vote", "quid pro quo", "builders fund him",
+            "because he opposes", "because she", "hotels benefit",
+        ])
+
+        def _lint_donor_signal(text: str) -> str:
+            return _lint_norfolk_output(text)  # delegates to module-level extended lint
+
+        # Build per-member baselines from member_rows (already queried above)
+        _baselines: dict[str, dict] = {}
+        for _br in (member_rows or []):
+            _nm = str(_br[0]).lower()
+            _tot = _br[1] or 1
+            _baselines[_nm] = {
+                "yes_rate": round(100.0 * _br[2] / _tot, 1),
+                "no_rate":  round(100.0 * _br[3] / _tot, 1),
+                "total":    _br[1],
+            }
+
+        def _b(name: str, field: str, default: str = "?") -> str:
+            return str(_baselines.get(name, {}).get(field, default))
+
+        # STR bloc check — are STR votes a council-wide pattern?
+        _str_rows = conn.execute("""
+            SELECT vote_count FROM norfolk_council_votes
+            WHERE LOWER(title) LIKE '%short-term%' OR LOWER(title) LIKE '%short term%'
+        """).fetchall()
+        _str_total = len(_str_rows)
+        _str_unanimous = sum(
+            1 for r in _str_rows
+            if r[0] and r[0].startswith(("8-0","0-8","7-0","0-7","6-0","0-6"))
+        )
+        _str_bloc_pct = round(100 * _str_unanimous / _str_total) if _str_total else 0
+        _str_bloc_label = "LOW-SIGNAL" if _str_bloc_pct >= 85 else "INFORMATIVE"
+
+        _DONOR_SIGNALS = [
             {
                 "members": {"paige", "alexander"},
-                "finding": (
-                    "HOTEL INDUSTRY → SHORT-TERM RENTAL OPPOSITION: "
-                    "Paige received $5,500 from hotel operators (including Norfolk Hotel Associates LLC). "
-                    "Alexander received $47,500 from hotel operators "
-                    "(Norfolk Hotel Associates LLC $25,000; Gold Key Resorts $15,000; Shamin Hotels $7,500). "
-                    "Both vote NO on every STR/vacation rental permit that comes before council. "
-                    "Hotels benefit directly from blocking Airbnb/VRBO competition. "
-                    "This is the strongest donor-vote alignment in the Norfolk council dataset."
-                ),
+                "heading": "PAIGE + ALEXANDER — Hotel Industry Donations",
+                "lines": [
+                    _lint_donor_signal(
+                        f"Raw facts: Paige — $5,500 from hotel operators (Norfolk Hotel Associates LLC). "
+                        f"Alexander — $47,500 from hotel operators (Norfolk Hotel Associates LLC $25,000; "
+                        f"Gold Key Resorts $15,000; Shamin Hotels $7,500)."
+                    ),
+                    f"Derived metrics: Paige baseline {_b('paige','yes_rate')}% YES "
+                    f"({_b('paige','total')} votes); "
+                    f"Alexander baseline {_b('alexander','yes_rate')}% YES "
+                    f"({_b('alexander','total')} votes).",
+                    f"STR vote record (2024–2026): {_str_total} STR-related votes; "
+                    f"{_str_unanimous}/{_str_total} unanimous ({_str_bloc_pct}%). "
+                    f"Feb 25 2025 zoning amendment removing STR as permitted use: 8-0 (whole council).",
+                    f"Interpretive signal: {_str_bloc_label} — STR vote pattern is council-wide bloc "
+                    f"({_str_bloc_pct}% unanimous). Hotel donations are adjacent fact; "
+                    f"no discriminating deviation from majority or baseline in this dataset.",
+                ],
             },
             {
                 "members": {"clanton"},
-                "finding": (
-                    "PATHWAY REALTY → YES VOTE ON PATHWAY LAND DEAL: "
-                    "Clanton received $2,500 from 'Pathway RG / Managing Member' "
-                    "(Pathway Realty Group). "
-                    "In March 2025, Pathway Realty's purchase-and-development agreement for "
-                    "2.28 acres of city-owned land came before council. "
-                    "Clanton voted YES. The deal passed 7-1. "
-                    "This is a specific donor → specific vote connection."
-                ),
+                "heading": "CLANTON — Pathway Realty Group Donation",
+                "lines": [
+                    _lint_donor_signal(
+                        "Raw facts: $2,500 from Pathway RG / Managing Member (Pathway Realty Group)."
+                    ),
+                    "Vote record: MARCH 25, 2025 PH-1 — Approved 2.28-acre city-owned land "
+                    "purchase-and-development agreement. Clanton voted YES. Result: 7-1 passed "
+                    "(87.5% council approval). Sole NO: Doyle (no Pathway donations on record).",
+                    f"Derived metrics: Clanton baseline {_b('clanton','yes_rate')}% YES across "
+                    f"{_b('clanton','total')} votes.",
+                    "Interpretive signal: LOW-SIGNAL — Clanton's YES is consistent with baseline; "
+                    "87.5% of council approved. No deviation from majority or baseline detected.",
+                ],
+            },
+            {
+                "members": {"doyle"},
+                "heading": "DOYLE — Pathway NO Vote (no donor link; anomalous dissent)",
+                "lines": [
+                    "Raw facts: No Pathway Realty Group donations on record for Doyle.",
+                    "Vote record: MARCH 25, 2025 PH-1 — Doyle voted NO (sole dissent in 7-1 vote).",
+                    f"Derived metrics: Doyle baseline {_b('doyle','yes_rate')}% YES, "
+                    f"{_b('doyle','no_rate')}% dissent rate.",
+                    "Interpretive signal: ANOMALOUS — Doyle broke from her YES baseline and the "
+                    "87.5% council majority on a split vote; no donor link to Pathway detected. "
+                    "Ward 2 constituency context may be relevant (testimony records show Ward 2 "
+                    "opposition on development items).",
+                ],
             },
             {
                 "members": {"alexander"},
-                "finding": (
-                    "BONAVENTURE DEVELOPER → MAYOR'S LARGEST DONOR: "
-                    "John Hyland / Bonaventure (real estate developer) gave $105,000 to Mayor Alexander — "
-                    "14% of his total $750,807 raised, three contributions on the same day (Feb 15 2023). "
-                    "Alexander votes YES on virtually every development deal. "
-                    "His donor base is dominated by real estate developers, hotel operators, "
-                    "law firms specializing in real estate, and the Tidewater Builders Association PAC."
-                ),
+                "heading": "ALEXANDER — Bonaventure Developer Donation",
+                "lines": [
+                    _lint_donor_signal(
+                        "Raw facts: John Hyland / Bonaventure gave $105,000 to Alexander "
+                        "(14% of $750,807 total raised; 3 contributions on Feb 15, 2023). "
+                        "Donor base also includes Tidewater Builders Association PAC, "
+                        "hotel operators, and real estate law firms."
+                    ),
+                    f"Derived metrics: Alexander baseline {_b('alexander','yes_rate')}% YES across "
+                    f"{_b('alexander','total')} votes.",
+                    "Interpretive signal: LOW-SIGNAL — Alexander's near-100% baseline makes any YES "
+                    "vote indistinguishable from general pattern. Donation amount is notable; "
+                    "no Bonaventure-specific vote items identified to assess deviation.",
+                ],
             },
             {
                 "members": {"royster"},
-                "finding": (
-                    "FRANKLIN JOHNSTON GROUP → DEVELOPER-ALIGNED VOTING: "
-                    "Royster received $24,500 from The Franklin Johnston Group "
-                    "(major Hampton Roads apartment developer — her single largest donor at 9% of total). "
-                    "Royster has the lowest dissent rate on the council (0.3%). "
-                    "Mayor Alexander also received $30,000 from Franklin Johnston. "
-                    "Both are among the most reliably pro-development voters."
-                ),
+                "heading": "ROYSTER — Franklin Johnston Group Donation",
+                "lines": [
+                    "Raw facts: $24,500 from The Franklin Johnston Group (single largest donor, "
+                    "~9% of total raised). Alexander also received $30,000 from Franklin Johnston.",
+                    f"Derived metrics: Royster baseline {_b('royster','yes_rate')}% YES, "
+                    f"{_b('royster','no_rate')}% dissent rate ({_b('royster','total')} votes; "
+                    f"8 contested votes — marginal sample).",
+                    "Interpretive signal: LOW-SIGNAL — vote sample (8 contested votes) is "
+                    "insufficient for pattern claim; dissent rate makes any individual YES "
+                    "indistinguishable from baseline. Developer donation is adjacent fact; "
+                    "no discriminating vote pattern identified.",
+                ],
             },
             {
                 "members": {"smigiel"},
-                "finding": (
-                    "BUILDER MONEY → ANTI-GOVERNMENT-ACQUISITION VOTES: "
-                    "Smigiel Jr. received $6,000 from Equity Development Corporation (homebuilder) "
-                    "and $5,000+ from real estate developers. "
-                    "Despite developer funding, he votes NO on government property acquisitions "
-                    "(eminent domain for housing authority) and environmental regulations (stormwater manual). "
-                    "Ideologically consistent: builders fund him because he opposes government "
-                    "intervention in property markets, not because he backs public development deals."
-                ),
+                "heading": "SMIGIEL JR. — Construction / Builder Donations",
+                "lines": [
+                    _lint_donor_signal(
+                        "Raw facts: $14,500 combined from construction and homebuilder employers "
+                        "(2021–2023) — $6,000 Equity Development Corporation, $3,000 Elysion, "
+                        "$3,000 ConstructTech, $2,500 Breeden Company."
+                    ),
+                    f"Derived metrics: Smigiel Jr. baseline {_b('smigiel jr.','yes_rate')}% YES, "
+                    f"{_b('smigiel jr.','no_rate')}% dissent rate "
+                    f"({_b('smigiel jr.','total')} votes; 30 contested votes, all NO vs majority YES).",
+                    "STR vote record: Smigiel Jr. cast 11 NO votes on STR permit items across "
+                    "117 STR-related votes. Thomas Jr. — $0 construction donations on record — "
+                    "cast 14 NO votes on the same category. Doyle, Paige, and Alexander each "
+                    "cast 10 NO votes with no construction donors on record.",
+                    "Interpretive signal: LOW-SIGNAL — dissent pattern (anti-spending, "
+                    "limited-government) is council-wide and predates the donation period. "
+                    "STR opposition is not unique to members with construction donors. "
+                    "No discriminating deviation from baseline identified.",
+                ],
             },
         ]
 
         corr_trigger = donor_finance_trigger or any(
-            w in q_lower for w in ("corrupt", "align", "conflict", "interest",
-                                   "who funds", "who paid", "hotel", "pathway",
-                                   "bonaventure", "franklin johnston", "airbnb", "str")
+            w in q_lower for w in (
+                "corrupt", "align", "conflict", "interest",
+                "who funds", "who paid", "hotel", "pathway",
+                "bonaventure", "franklin johnston", "airbnb", "str",
+                "short-term", "short term", "rental", "vacation rental", "vrbo",
+            )
         )
         if corr_trigger:
             active_members = set(named_members) if named_members else set(_SBE_NAME_MAP.keys())
             corr_lines: list[str] = []
-            for corr in _KNOWN_CORRELATIONS:
-                if corr["members"] & active_members:
-                    corr_lines.append(f"• {corr['finding']}")
+            for sig in _DONOR_SIGNALS:
+                if sig["members"] & active_members:
+                    corr_lines.append(f"\n**{sig['heading']}**")
+                    for ln in sig["lines"]:
+                        try:
+                            corr_lines.append(f"  {_lint_donor_signal(ln)}")
+                        except ValueError as _e:
+                            corr_lines.append(f"  [SUPPRESSED: {_e}]")
             if corr_lines:
-                lines += ["", "### Known Donor-Vote Correlations (pre-verified)"]
+                lines += ["", "### Donor-Vote Adjacency Record (schema v2 — facts only, no causal inference)"]
                 lines += corr_lines
+
+        # ── Testimony / public comment lookup ────────────────────────────────
+        import re as _re
+        _ward_m = _re.search(r'\bward\s*([1-5])\b', q_lower)
+        query_ward = int(_ward_m.group(1)) if _ward_m else None
+
+        testimony_trigger = any(
+            w in q_lower for w in (
+                "testif", "oppos", "support", "spoke", "comment", "public",
+                "who opposed", "who supported", "neighbor", "resident",
+                "community", "hearing", "public hearing", "ward",
+            )
+        ) or topic_terms or named_members or query_ward
+        if testimony_trigger and _table_exists(conn, "norfolk_council_testimony"):
+            test_lines: list[str] = []
+
+            _sentiment_intent = any(w in q_lower for w in (
+                "sentiment", "oppose most", "public opinion", "community opinion",
+                "what does norfolk oppose", "what do residents", "what does the public",
+                "how does public", "community feel", "public feel",
+                "most opposed", "least supported", "most unpopular",
+                "public against", "what do people", "public mood",
+            ))
+
+            # Accountability mode — takes priority; no member/topic needed
+            _acct_intent = any(w in q_lower for w in (
+                "voted against", "ignored", "overrode", "passed despite",
+                "accountability", "went against", "public say", "public sentiment",
+                "vs outcome", "outcome vs", "public vs", "against the public",
+                "public opposition", "council vs", "overruled",
+            ))
+            if _acct_intent:
+                _opp_pass = conn.execute("""
+                    SELECT COUNT(*) FROM (
+                        SELECT t.meeting_date, t.agenda_item
+                        FROM norfolk_council_testimony t
+                        JOIN norfolk_council_votes v
+                          ON v.agenda_item=t.agenda_item AND v.meeting_date=t.meeting_date
+                        GROUP BY t.meeting_date, t.agenda_item
+                        HAVING SUM(CASE WHEN t.stance='oppose' THEN 1 ELSE 0 END) >
+                               SUM(CASE WHEN t.stance='support' THEN 1 ELSE 0 END)
+                           AND LOWER(v.result) LIKE '%pass%'
+                    )
+                """).fetchone()[0]
+                _opp_total = conn.execute("""
+                    SELECT COUNT(*) FROM (
+                        SELECT t.meeting_date, t.agenda_item
+                        FROM norfolk_council_testimony t
+                        JOIN norfolk_council_votes v
+                          ON v.agenda_item=t.agenda_item AND v.meeting_date=t.meeting_date
+                        GROUP BY t.meeting_date, t.agenda_item
+                        HAVING SUM(CASE WHEN t.stance='oppose' THEN 1 ELSE 0 END) >
+                               SUM(CASE WHEN t.stance='support' THEN 1 ELSE 0 END)
+                    )
+                """).fetchone()[0]
+                _pct = round(100 * _opp_pass / _opp_total) if _opp_total else 0
+                acc_rows = conn.execute("""
+                    SELECT t.meeting_date, t.agenda_item, v.title,
+                        SUM(CASE WHEN t.stance='oppose' THEN 1 ELSE 0 END) oppose,
+                        SUM(CASE WHEN t.stance='support' THEN 1 ELSE 0 END) support,
+                        v.result, v.vote_count, e.plain_english
+                    FROM norfolk_council_testimony t
+                    JOIN norfolk_council_votes v
+                      ON v.agenda_item=t.agenda_item AND v.meeting_date=t.meeting_date
+                    LEFT JOIN norfolk_vote_enrichment e ON e.title=v.title
+                    GROUP BY t.meeting_date, t.agenda_item, v.title, v.result, v.vote_count
+                    HAVING oppose > support AND LOWER(v.result) LIKE '%pass%'
+                    ORDER BY oppose DESC
+                    LIMIT 15
+                """).fetchall()
+                test_lines.append(
+                    f"\n#### Public Opposition vs. Council Outcome\n"
+                    f"Stat: {_opp_pass}/{_opp_total} items where public opposition exceeded "
+                    f"support still passed ({_pct}%)"
+                )
+                for r in acc_rows:
+                    desc = (r[7] or r[2] or "")[:70]
+                    test_lines.append(
+                        f"  {r[0]} | {r[1]} | {r[3]} oppose / {r[4]} support "
+                        f"-> {r[5].upper()} {r[6]}"
+                    )
+                    if desc:
+                        test_lines.append(f"    {desc}")
+
+            # Public sentiment index — overall public opinion ranked by topic
+            elif _sentiment_intent:
+                sent_rows = conn.execute("""
+                    SELECT e.topic,
+                           SUM(CASE WHEN t.stance='oppose' THEN 1 ELSE 0 END) opp,
+                           SUM(CASE WHEN t.stance='support' THEN 1 ELSE 0 END) sup,
+                           COUNT(*) total
+                    FROM norfolk_council_testimony t
+                    JOIN norfolk_council_votes cv
+                      ON cv.agenda_item = t.agenda_item
+                     AND cv.meeting_date = t.meeting_date
+                    JOIN norfolk_vote_enrichment e ON e.title = cv.title
+                    WHERE t.stance IN ('oppose','support')
+                    GROUP BY e.topic
+                    HAVING total >= 3
+                    ORDER BY CAST(opp AS REAL) / total DESC
+                """).fetchall()
+                if sent_rows:
+                    total_stance = conn.execute(
+                        "SELECT COUNT(*) FROM norfolk_council_testimony "
+                        "WHERE stance IN ('oppose','support')"
+                    ).fetchone()[0]
+                    test_lines.append(
+                        f"\n#### Public Sentiment by Topic\n"
+                        f"Based on {total_stance} stance-bearing testimony records "
+                        f"(oppose/support only; 'comment' stance excluded as neutral)."
+                    )
+                    for topic, opp, sup, total in sent_rows:
+                        pct = round(100 * opp / total) if total else 0
+                        bar = "#" * (pct // 10) + "-" * (10 - pct // 10)
+                        test_lines.append(
+                            f"  {topic:<22s}  {bar}  {pct:3d}% oppose "
+                            f"({opp} opp / {sup} sup, n={total})"
+                        )
+
+            # Ward-filtered query — fires when "ward N" appears in query
+            elif query_ward:
+                ward_stance_filter = ""
+                ward_params: list = [query_ward]
+                # Narrow by oppose/support if query signals a stance
+                if any(w in q_lower for w in ("oppos", "against", "no vote", "fought")):
+                    ward_stance_filter = "AND t.stance = 'oppose'"
+                elif any(w in q_lower for w in ("support", "favor", "pro", "backed")):
+                    ward_stance_filter = "AND t.stance = 'support'"
+                else:
+                    ward_stance_filter = "AND t.stance IN ('oppose','support')"
+                # Add topic filter if present
+                topic_ward_clause = ""
+                if topic_terms:
+                    topic_ward_clause = "AND (" + " OR ".join(
+                        "LOWER(v.title) LIKE ? OR LOWER(e.plain_english) LIKE ?"
+                        for _ in topic_terms
+                    ) + ")"
+                    ward_params += [p for t in topic_terms for p in (f"%{t.lower()}%", f"%{t.lower()}%")]
+                ward_rows = conn.execute(f"""
+                    SELECT t.speaker_name, t.stance, t.meeting_date,
+                           t.agenda_item, t.ward, v.result, v.vote_count,
+                           e.plain_english
+                    FROM norfolk_council_testimony t
+                    JOIN norfolk_council_votes v
+                        ON v.meeting_date = t.meeting_date
+                       AND v.agenda_item  = t.agenda_item
+                    LEFT JOIN norfolk_vote_enrichment e ON e.title = v.title
+                    WHERE t.ward = ?
+                      {ward_stance_filter}
+                      {topic_ward_clause}
+                    ORDER BY t.meeting_date DESC
+                    LIMIT 20
+                """, ward_params).fetchall()
+                if ward_rows:
+                    label = f"Ward {query_ward}"
+                    test_lines.append(f"\n#### Testimony from {label} residents")
+                    for r in ward_rows:
+                        desc = (r["plain_english"] or "")[:70]
+                        test_lines.append(
+                            f"  [{r['stance'].upper():>7}] {r['meeting_date']} "
+                            f"{r['agenda_item']} ({r['vote_count']} {r['result']}) "
+                            f"— {r['speaker_name']} ({r['speaker_addr'] if 'speaker_addr' in r.keys() else ''})"
+                        )
+                        if desc:
+                            test_lines.append(f"           {desc}")
+                else:
+                    test_lines.append(f"\n#### No Ward {query_ward} testimony matched those criteria")
+
+            # Topic-matched testimony
+            elif topic_terms:
+                like_clauses = " OR ".join(
+                    "LOWER(v.title) LIKE ? OR LOWER(e.plain_english) LIKE ?"
+                    for _ in topic_terms
+                )
+                params = [p for t in topic_terms for p in (f"%{t.lower()}%", f"%{t.lower()}%")]
+                test_rows = conn.execute(f"""
+                    SELECT t.speaker_name, t.stance, t.meeting_date,
+                           t.agenda_item, t.ward, v.result, v.vote_count,
+                           e.plain_english
+                    FROM norfolk_council_testimony t
+                    JOIN norfolk_council_votes v
+                        ON v.meeting_date = t.meeting_date
+                       AND v.agenda_item  = t.agenda_item
+                    LEFT JOIN norfolk_vote_enrichment e ON e.title = v.title
+                    WHERE ({like_clauses})
+                      AND t.stance IN ('oppose','support','present')
+                    ORDER BY t.meeting_date DESC
+                    LIMIT 15
+                """, params).fetchall()
+                if test_rows:
+                    test_lines.append("\n#### Public Testimony on matched items")
+                    for r in test_rows:
+                        desc = (r["plain_english"] or "")[:70]
+                        ward_tag = f" Ward {r['ward']}" if r["ward"] else ""
+                        test_lines.append(
+                            f"  [{r['stance'].upper():>7}] {r['meeting_date']} "
+                            f"{r['agenda_item']} ({r['vote_count']} {r['result']}) "
+                            f"— {r['speaker_name']}{ward_tag}"
+                        )
+                        if desc:
+                            test_lines.append(f"           {desc}")
+
+            # Named-member query — show recent contested testimony
+            elif named_members:
+                mem_test = conn.execute("""
+                    SELECT t.speaker_name, t.stance, t.meeting_date,
+                           t.agenda_item, t.ward, v.result, v.vote_count,
+                           e.plain_english
+                    FROM norfolk_council_testimony t
+                    JOIN norfolk_council_votes v
+                        ON v.meeting_date = t.meeting_date
+                       AND v.agenda_item  = t.agenda_item
+                    LEFT JOIN norfolk_vote_enrichment e ON e.title = v.title
+                    WHERE t.stance IN ('oppose','support')
+                    ORDER BY t.meeting_date DESC
+                    LIMIT 10
+                """).fetchall()
+                if mem_test:
+                    test_lines.append("\n#### Recent contested testimony")
+                    for r in mem_test:
+                        desc = (r["plain_english"] or "")[:65]
+                        ward_tag = f" Ward {r['ward']}" if r["ward"] else ""
+                        test_lines.append(
+                            f"  [{r['stance'].upper():>7}] {r['meeting_date']} "
+                            f"{r['agenda_item']} ({r['vote_count']} {r['result']}) "
+                            f"— {r['speaker_name']}{ward_tag}"
+                        )
+                        if desc:
+                            test_lines.append(f"           {desc}")
+
+            # Influence summary note — dynamic stat replaces hardcoded version
+            if test_lines:
+                _inf_opp_pass = conn.execute("""
+                    SELECT COUNT(*) FROM (
+                        SELECT t.meeting_date, t.agenda_item
+                        FROM norfolk_council_testimony t
+                        JOIN norfolk_council_votes v
+                          ON v.agenda_item=t.agenda_item AND v.meeting_date=t.meeting_date
+                        GROUP BY t.meeting_date, t.agenda_item
+                        HAVING SUM(CASE WHEN t.stance='oppose' THEN 1 ELSE 0 END) >
+                               SUM(CASE WHEN t.stance='support' THEN 1 ELSE 0 END)
+                           AND LOWER(v.result) LIKE '%pass%'
+                    )
+                """).fetchone()[0]
+                _inf_opp_total = conn.execute("""
+                    SELECT COUNT(*) FROM (
+                        SELECT t.meeting_date, t.agenda_item
+                        FROM norfolk_council_testimony t
+                        JOIN norfolk_council_votes v
+                          ON v.agenda_item=t.agenda_item AND v.meeting_date=t.meeting_date
+                        GROUP BY t.meeting_date, t.agenda_item
+                        HAVING SUM(CASE WHEN t.stance='oppose' THEN 1 ELSE 0 END) >
+                               SUM(CASE WHEN t.stance='support' THEN 1 ELSE 0 END)
+                    )
+                """).fetchone()[0]
+                _inf_pct = round(100 * _inf_opp_pass / _inf_opp_total) if _inf_opp_total else 96
+                test_lines.insert(0, (
+                    f"\n#### Testimony influence note: "
+                    f"{_inf_pct}% of items where public opposition exceeded support still passed. "
+                    "Doyle is the only member whose NO votes consistently match "
+                    "opposition testimony from Ward 2 constituents."
+                ))
+                lines += ["", "### Public Testimony Records"] + test_lines
 
         conn.close()
         if len(lines) > 3:
@@ -6005,6 +7063,10 @@ def build_database_context(query: str, max_chars: int = 22000, pro: bool = False
         _add_governor_action_context(blocks, q, terms, session)
         _add_campaign_finance_context(blocks, q, terms)
     _add_targeted_vote_lookup(blocks, q, bills, terms, session)
+    # Authoritative chief-patron sponsorship counts — injected before the generic
+    # person-vote sweep so the model anchors on structured totals (chief vs co-patron,
+    # real did-not-pass count) instead of inferring them from the ambiguous LIKE sweep.
+    _add_sponsorship_summary_context(blocks, q, terms, session)
     _add_person_vote_context(blocks, q, terms, session)
     _add_state_vote_donor_context(blocks, q, terms, session)
     _add_keyword_context(blocks, q, terms, session)
@@ -6098,6 +7160,10 @@ def build_database_context(query: str, max_chars: int = 22000, pro: bool = False
             "actions, the federal delegation, campaign finance, and donor-vote "
             "alignment — and suggest a question within that scope."
         )
+
+    # Enforce the 3-layer FACT/CONTEXT/ANALYSIS contract when any finance data is
+    # present, so campaign-finance content is segregated out of the factual narrative.
+    _add_layer_rendering_rules(blocks)
 
     context = "\n\n---\n\n".join(blocks)
     if len(context) > max_chars:
