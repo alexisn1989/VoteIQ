@@ -67,6 +67,17 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                                   "american federation of teachers", "aft cope",
                                   "teachers union", "education union",
                                   "faculty union"]),
+    # ── Wine & Spirits industry early-exit ───────────────────────────────────
+    # Must come before Ideological so industry PACs (e.g. "Virginia Wine
+    # Wholesalers PAC", "Virginia Beer Wholesalers Association PAC") are not
+    # swept into Ideological by the generic "pac " keyword.
+    ("Wine & Spirits", ["wine wholesal", "wine distribut", "wine assoc",
+                        "beer wholesal", "beer distribut", "beer assoc",
+                        "spirits wholesal", "spirits distribut",
+                        "beverage assoc", "beverage wholesal", "beverage distribut",
+                        "malt beverage", "licensed beverage",
+                        "alcohol wholesal", "alcohol distribut",
+                        "distilled spirits council", "beer institute"]),
     # ── Ideological early-exit ────────────────────────────────────────────────
     # Must come before Financial Services so "campaign fund", "pac", etc.
     # are not mis-classified by the generic "fund" keyword.
@@ -251,8 +262,10 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                              "reynolds american", "rai services", "lorillard",
                              "british american tobacco", "bat usa"]),
     ("Wine & Spirits",      ["wine", "winery", "vineyard", "distiller",
-                             "craft brew", "brewery", "mead", "cider",
-                             "wine wholesaler", "wine assoc"]),
+                             "craft brew", "brewery", "meadery", "cider",
+                             "wine wholesaler", "wine assoc",
+                             "spirits", "liquor", "whiskey", "bourbon",
+                             "beer wholesal", "beer distribut", "malt beverage"]),
     ("Livestock & Poultry", ["livestock", "cattle", "poultry", "dairy",
                              "hog", "swine", "beef", "equine", "horse",
                              "mountaire", "perdue", "smithfield food",
