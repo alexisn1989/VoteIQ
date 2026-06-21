@@ -6242,6 +6242,10 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
             "voting pattern", "most independent", "vote alike",
             "swing vote", "agree with", "alignment",
             "ward", "overrul", "overrod", "ignored", "which community",
+            "split vote", "split the council", "votes split", "council split",
+            "close vote", "contested", "most divided", "divided vote",
+            "fault line", "controversial", "divided council",
+            "most contentious", "tight vote", "most disputed",
         ))
 
     if not triggered:
@@ -6324,26 +6328,6 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                     f"{r[0]:<20} {r[1]:>5} {r[2]:>5} {r[3]:>5} {r[4]:>8} {r[5]:>7}"
                 )
 
-        # ── Most contested votes (non-unanimous) ─────────────────────────────
-        has_enrichment = _table_exists(conn, "norfolk_vote_enrichment")
-        contested = conn.execute("""
-            SELECT v.meeting_date, v.agenda_item, v.title, v.vote_count, v.result,
-                   e.plain_english, e.topic
-            FROM norfolk_council_votes v
-            LEFT JOIN norfolk_vote_enrichment e ON v.title = e.title
-            WHERE v.vote_count NOT IN ('8-0','7-0','6-0','5-0','4-0')
-              AND v.vote_count != ''
-            ORDER BY v.meeting_date DESC
-            LIMIT 15
-        """).fetchall()
-
-        if contested:
-            lines += ["", "### Most Contested Votes (non-unanimous)"]
-            for r in contested:
-                desc = r[5] or r[2][:80]
-                topic = f" [{r[6]}]" if r[6] else ""
-                lines.append(f"{r[0]} | {r[1]} | {r[3]} {r[4]}{topic}")
-                lines.append(f"  {desc}")
 
         # ── Recent votes matching query terms ─────────────────────────────────
         _NORFOLK_STOP_WORDS = {
@@ -6624,6 +6608,69 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                         lines.append("  Most divergent pairs:")
                         for a, b, pct, n in diverge:
                             lines.append(f"    {a} + {b}: {pct:.1f}% agreement ({n} votes)")
+
+        # ── Split-vote / contested-issue index ───────────────────────────────
+        _split_trigger = any(w in q_lower for w in (
+            "split vote", "split the council", "votes split", "council split",
+            "close vote", "contested", "most divided", "divided vote",
+            "fault line", "controversial", "5-3", "4-4", "6-2", "3-5", "2-6",
+            "divided council", "most contentious", "tight vote",
+            "most disputed", "biggest disagreement",
+        ))
+        if _split_trigger and _table_exists(conn, "norfolk_council_votes"):
+            # Detect optional topic filter
+            _SPLIT_TOPIC_MAP = [
+                ("budget",               ["budget", "fiscal", "spending", "tax"]),
+                ("short-term-rental",    ["short-term", "short term", "str", "airbnb", "vrbo", "rental"]),
+                ("rezoning",             ["rezoning", "zoning", "rezone"]),
+                ("housing",              ["housing", "affordable"]),
+                ("public-safety",        ["public safety", "police", "fire"]),
+                ("economic-development", ["economic development", "econ dev"]),
+                ("schools",              ["school", "education"]),
+                ("infrastructure",       ["infrastructure", "road", "water"]),
+                ("environment",          ["environment", "environmental"]),
+            ]
+            _split_topic: str | None = None
+            for _st, _skws in _SPLIT_TOPIC_MAP:
+                if any(kw in q_lower for kw in _skws):
+                    _split_topic = _st
+                    break
+
+            topic_clause = "AND e.topic = ?" if _split_topic else ""
+            params_split: list = [_split_topic] if _split_topic else []
+            split_rows = conn.execute(f"""
+                SELECT cv.meeting_date, cv.agenda_item, cv.vote_count,
+                       cv.result, e.plain_english, e.topic,
+                       MIN(
+                           CAST(SUBSTR(cv.vote_count, 1,
+                               INSTR(cv.vote_count,'-')-1) AS INTEGER),
+                           CAST(SUBSTR(cv.vote_count,
+                               INSTR(cv.vote_count,'-')+1) AS INTEGER)
+                       ) minority
+                FROM norfolk_council_votes cv
+                LEFT JOIN norfolk_vote_enrichment e ON e.title = cv.title
+                WHERE cv.category IN ('substantive','consent')
+                  AND INSTR(cv.vote_count,'-') > 0
+                  AND MIN(
+                      CAST(SUBSTR(cv.vote_count, 1,
+                          INSTR(cv.vote_count,'-')-1) AS INTEGER),
+                      CAST(SUBSTR(cv.vote_count,
+                          INSTR(cv.vote_count,'-')+1) AS INTEGER)
+                  ) >= 2
+                  {topic_clause}
+                ORDER BY minority DESC, cv.meeting_date DESC
+                LIMIT 15
+            """, params_split).fetchall()
+            if split_rows:
+                label = f" on {_split_topic.replace('-',' ').title()}" if _split_topic else ""
+                lines.append(f"\n#### Most Contested Council Votes{label}")
+                lines.append("  (minority dissent >= 2; ordered by closeness)")
+                for date, item, vc, result, plain, topic, minority in split_rows:
+                    desc = (plain or "")[:70]
+                    topic_tag = f" [{topic}]" if topic and not _split_topic else ""
+                    lines.append(f"  {date} | {item} | {vc} {result.upper()}{topic_tag}")
+                    if desc:
+                        lines.append(f"    {desc}")
 
         # ── Defensible donor-vote signals (schema-conformant) ────────────────
         # Schema: raw facts → derived metrics → at most one neutral signal.
