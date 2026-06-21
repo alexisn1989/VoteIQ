@@ -6237,6 +6237,11 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
             "what do people", "what do residents", "what does the public",
             "resistance", "pushback", "public resist", "public push",
             "norfolk oppos",
+            "bloc", "coalition", "vote with", "votes with",
+            "vote together", "votes together", "who votes with",
+            "voting pattern", "most independent", "vote alike",
+            "swing vote", "agree with", "alignment",
+            "ward", "overrul", "overrod", "ignored", "which community",
         ))
 
     if not triggered:
@@ -6512,6 +6517,9 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
             or any(w in q_lower for w in (
                 "dissent", "differently", "pattern", "contrarian",
                 "disagree", "against", "oppose", "no vote", "outlier",
+                "bloc", "coalition", "votes with", "votes together",
+                "who votes with", "aligned with", "voting pattern",
+                "most independent", "who disagrees", "lone vote",
             ))
         )
         if _dissent_trigger and _table_exists(conn, "norfolk_member_dissent"):
@@ -6563,6 +6571,59 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                             dis_lines.append(f"    {date} | {item} | {vc} — {desc}")
             if dis_lines:
                 lines += ["", "### Member Dissent Profiles"] + dis_lines
+
+        # ── Voting blocs (pairwise agreement; independent of dissent table) ───
+        _bloc_trigger = any(w in q_lower for w in (
+            "bloc", "coalition", "vote with", "votes with",
+            "vote together", "votes together", "who votes with",
+            "aligned with", "alignment", "agree with", "agreement",
+            "voting pattern", "most independent", "who disagrees",
+            "swing vote", "lone vote", "vote alike", "vote the same",
+        ))
+        if _bloc_trigger and _table_exists(conn, "norfolk_voting_blocs"):
+            if named_members:
+                for m in named_members[:2]:
+                    display = _SBE_NAME_MAP.get(m, m.title())
+                    vote_name = {"Smigiel": "Smigiel Jr.", "Thomas": "Thomas Jr."}.get(display, display)
+                    allies = conn.execute("""
+                        SELECT member_b, agreement_pct, shared_votes
+                        FROM norfolk_voting_blocs WHERE member_a = ?
+                        ORDER BY agreement_pct DESC LIMIT 4
+                    """, (vote_name,)).fetchall()
+                    contrarians = conn.execute("""
+                        SELECT member_b, agreement_pct, shared_votes
+                        FROM norfolk_voting_blocs WHERE member_a = ?
+                        ORDER BY agreement_pct ASC LIMIT 3
+                    """, (vote_name,)).fetchall()
+                    if allies:
+                        lines.append(f"\n#### {display} — Voting Alignment (substantive votes)")
+                        lines.append("  Closest allies:")
+                        for b, pct, n in allies:
+                            lines.append(f"    {b:<22s}  {pct:.1f}% agreement ({n} shared votes)")
+                        if contrarians:
+                            lines.append("  Most frequent disagreements:")
+                            for b, pct, n in contrarians:
+                                lines.append(f"    {b:<22s}  {pct:.1f}% agreement ({n} shared votes)")
+            else:
+                tight = conn.execute("""
+                    SELECT member_a, member_b, agreement_pct, shared_votes
+                    FROM norfolk_voting_blocs WHERE member_a < member_b
+                    ORDER BY agreement_pct DESC LIMIT 5
+                """).fetchall()
+                diverge = conn.execute("""
+                    SELECT member_a, member_b, agreement_pct, shared_votes
+                    FROM norfolk_voting_blocs WHERE member_a < member_b
+                    ORDER BY agreement_pct ASC LIMIT 5
+                """).fetchall()
+                if tight:
+                    lines.append("\n#### Norfolk Council — Voting Bloc Analysis (substantive votes)")
+                    lines.append("  Tightest pairs (most aligned):")
+                    for a, b, pct, n in tight:
+                        lines.append(f"    {a} + {b}: {pct:.1f}% agreement ({n} votes)")
+                    if diverge:
+                        lines.append("  Most divergent pairs:")
+                        for a, b, pct, n in diverge:
+                            lines.append(f"    {a} + {b}: {pct:.1f}% agreement ({n} votes)")
 
         # ── Defensible donor-vote signals (schema-conformant) ────────────────
         # Schema: raw facts → derived metrics → at most one neutral signal.
@@ -7032,6 +7093,51 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                         )
                         if desc:
                             test_lines.append(f"           {desc}")
+
+            # Ward vs. council outcome — which wards get overruled most
+            _ward_outcome_trigger = (
+                ("ward" in q_lower and any(w in q_lower for w in (
+                    "overrul", "overrod", "ignored", "ignore",
+                    "outcome", "listened", "least listen",
+                )))
+                or any(w in q_lower for w in (
+                    "which ward", "which community", "community ignored",
+                    "most overruled", "ignored the most",
+                ))
+            )
+            if _ward_outcome_trigger and _table_exists(conn, "norfolk_council_testimony"):
+                ward_out = conn.execute("""
+                    SELECT ward,
+                           COUNT(*) items_with_opp,
+                           SUM(passed) passed_despite,
+                           SUM(oppose_n) total_opp
+                    FROM (
+                        SELECT t.ward, t.meeting_date, t.agenda_item,
+                               MAX(CASE WHEN LOWER(v.result) LIKE '%pass%' THEN 1 ELSE 0 END) passed,
+                               COUNT(*) oppose_n
+                        FROM norfolk_council_testimony t
+                        JOIN norfolk_council_votes v
+                          ON v.agenda_item = t.agenda_item
+                         AND v.meeting_date = t.meeting_date
+                        WHERE t.ward IS NOT NULL AND t.stance = 'oppose'
+                        GROUP BY t.ward, t.meeting_date, t.agenda_item
+                    )
+                    GROUP BY ward
+                    HAVING items_with_opp >= 2
+                    ORDER BY CAST(passed_despite AS REAL) / items_with_opp DESC
+                """).fetchall()
+                if ward_out:
+                    test_lines.append(
+                        "\n#### Ward vs. Council Outcome\n"
+                        "(Items where ward residents testified in opposition — % that still passed)"
+                    )
+                    for ward, contested, passed, opp_n in ward_out:
+                        pct = round(100 * passed / contested) if contested else 0
+                        bar = "#" * (pct // 10) + "-" * (10 - pct // 10)
+                        test_lines.append(
+                            f"  Ward {ward:<4}  {bar}  {pct:3d}% overruled "
+                            f"({passed}/{contested} items passed | {opp_n} oppose testimonies)"
+                        )
 
             # Influence summary note — dynamic stat replaces hardcoded version
             if test_lines:
