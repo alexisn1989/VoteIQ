@@ -6235,6 +6235,8 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
             "sentiment", "opinion", "oppose most", "most opposed",
             "unpopular", "public feel", "community feel", "public mood",
             "what do people", "what do residents", "what does the public",
+            "resistance", "pushback", "public resist", "public push",
+            "norfolk oppos",
         ))
 
     if not triggered:
@@ -6755,6 +6757,9 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                 "how does public", "community feel", "public feel",
                 "most opposed", "least supported", "most unpopular",
                 "public against", "what do people", "public mood",
+                "resistance", "pushback", "public resist", "public push",
+                "most oppos", "public oppos", "residents oppos", "norfolk oppos",
+                "most public", "had the most",
             ))
 
             # Accountability mode — takes priority; no member/topic needed
@@ -6762,7 +6767,7 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                 "voted against", "ignored", "overrode", "passed despite",
                 "accountability", "went against", "public say", "public sentiment",
                 "vs outcome", "outcome vs", "public vs", "against the public",
-                "public opposition", "council vs", "overruled",
+                "council vs", "overruled",
             ))
             if _acct_intent:
                 _opp_pass = conn.execute("""
@@ -6817,40 +6822,105 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                     if desc:
                         test_lines.append(f"    {desc}")
 
-            # Public sentiment index — overall public opinion ranked by topic
+            # Public sentiment index — topic drill-down or overall rollup
             elif _sentiment_intent:
-                sent_rows = conn.execute("""
-                    SELECT e.topic,
-                           SUM(CASE WHEN t.stance='oppose' THEN 1 ELSE 0 END) opp,
-                           SUM(CASE WHEN t.stance='support' THEN 1 ELSE 0 END) sup,
-                           COUNT(*) total
-                    FROM norfolk_council_testimony t
-                    JOIN norfolk_council_votes cv
-                      ON cv.agenda_item = t.agenda_item
-                     AND cv.meeting_date = t.meeting_date
-                    JOIN norfolk_vote_enrichment e ON e.title = cv.title
-                    WHERE t.stance IN ('oppose','support')
-                    GROUP BY e.topic
-                    HAVING total >= 3
-                    ORDER BY CAST(opp AS REAL) / total DESC
-                """).fetchall()
-                if sent_rows:
-                    total_stance = conn.execute(
-                        "SELECT COUNT(*) FROM norfolk_council_testimony "
-                        "WHERE stance IN ('oppose','support')"
-                    ).fetchone()[0]
-                    test_lines.append(
-                        f"\n#### Public Sentiment by Topic\n"
-                        f"Based on {total_stance} stance-bearing testimony records "
-                        f"(oppose/support only; 'comment' stance excluded as neutral)."
-                    )
-                    for topic, opp, sup, total in sent_rows:
-                        pct = round(100 * opp / total) if total else 0
-                        bar = "#" * (pct // 10) + "-" * (10 - pct // 10)
+                # Detect if query targets a specific topic
+                _TOPIC_KEYWORDS: list[tuple[str, list[str]]] = [
+                    ("budget",               ["budget", "fiscal", "spending", "tax", "fy20"]),
+                    ("schools",              ["school", "education", "student", "teacher", "classroom"]),
+                    ("short-term-rental",    ["short-term", "short term", "airbnb", "vrbo",
+                                              "vacation rental", "rental permit", " str "]),
+                    ("housing",              ["housing", "affordable housing", "affordable home"]),
+                    ("public-safety",        ["public safety", "police", "fire department",
+                                              "crime", "911", "emergency service"]),
+                    ("personnel",            ["personnel", "staff", "salary", "employee",
+                                              "hiring", "firing", "layoff"]),
+                    ("infrastructure",       ["infrastructure", "road", "water", "sewer",
+                                              "stormwater", "sidewalk", "bridge"]),
+                    ("rezoning",             ["rezoning", "zoning", "rezone", "land use"]),
+                    ("economic-development", ["economic development", "econ dev", "developer",
+                                              "development project", "redevelopment"]),
+                    ("environment",          ["environment", "environmental", "climate",
+                                              "flood", "green", "sustainability"]),
+                ]
+                _drill_topic: str | None = None
+                for _t, _kws in _TOPIC_KEYWORDS:
+                    if any(kw in q_lower for kw in _kws):
+                        _drill_topic = _t
+                        break
+
+                if _drill_topic:
+                    topic_label = _drill_topic.replace("-", " ").title()
+                    drill_rows = conn.execute("""
+                        SELECT e.plain_english, cv.agenda_item, cv.meeting_date,
+                               SUM(CASE WHEN t.stance='oppose' THEN 1 ELSE 0 END) opp,
+                               SUM(CASE WHEN t.stance='support' THEN 1 ELSE 0 END) sup,
+                               COUNT(*) total, cv.result
+                        FROM norfolk_council_testimony t
+                        JOIN norfolk_council_votes cv
+                          ON cv.agenda_item = t.agenda_item
+                         AND cv.meeting_date = t.meeting_date
+                        JOIN norfolk_vote_enrichment e ON e.title = cv.title
+                        WHERE t.stance IN ('oppose','support')
+                          AND e.topic = ?
+                        GROUP BY cv.agenda_item, cv.meeting_date
+                        HAVING total >= 2
+                        ORDER BY opp DESC
+                        LIMIT 12
+                    """, (_drill_topic,)).fetchall()
+                    if drill_rows:
                         test_lines.append(
-                            f"  {topic:<22s}  {bar}  {pct:3d}% oppose "
-                            f"({opp} opp / {sup} sup, n={total})"
+                            f"\n#### {topic_label} Items — Public Opposition Ranking\n"
+                            "(oppose/support testimony only; 'comment' stance excluded)"
                         )
+                        for plain, item, date, opp, sup, total, result in drill_rows:
+                            pct = round(100 * opp / total) if total else 0
+                            test_lines.append(
+                                f"  {date} | {item} | {opp} opp / {sup} sup "
+                                f"({pct}% oppose) -> {(result or '').upper()}"
+                            )
+                            if plain:
+                                test_lines.append(f"    {plain[:75]}")
+                    else:
+                        test_lines.append(
+                            f"\n#### {topic_label} Items — Public Opposition Ranking\n"
+                            f"No {topic_label.lower()} testimony records with "
+                            "opposition/support stances found."
+                        )
+                else:
+                    # No specific topic — show rollup across all categories
+                    sent_rows = conn.execute("""
+                        SELECT e.topic,
+                               SUM(CASE WHEN t.stance='oppose' THEN 1 ELSE 0 END) opp,
+                               SUM(CASE WHEN t.stance='support' THEN 1 ELSE 0 END) sup,
+                               COUNT(*) total
+                        FROM norfolk_council_testimony t
+                        JOIN norfolk_council_votes cv
+                          ON cv.agenda_item = t.agenda_item
+                         AND cv.meeting_date = t.meeting_date
+                        JOIN norfolk_vote_enrichment e ON e.title = cv.title
+                        WHERE t.stance IN ('oppose','support')
+                        GROUP BY e.topic
+                        HAVING total >= 3
+                        ORDER BY CAST(opp AS REAL) / total DESC
+                    """).fetchall()
+                    if sent_rows:
+                        total_stance = conn.execute(
+                            "SELECT COUNT(*) FROM norfolk_council_testimony "
+                            "WHERE stance IN ('oppose','support')"
+                        ).fetchone()[0]
+                        test_lines.append(
+                            f"\n#### Public Sentiment by Topic\n"
+                            f"Based on {total_stance} stance-bearing testimony records "
+                            f"(oppose/support only; 'comment' stance excluded as neutral)."
+                        )
+                        for topic, opp, sup, total in sent_rows:
+                            pct = round(100 * opp / total) if total else 0
+                            bar = "#" * (pct // 10) + "-" * (10 - pct // 10)
+                            test_lines.append(
+                                f"  {topic:<22s}  {bar}  {pct:3d}% oppose "
+                                f"({opp} opp / {sup} sup, n={total})"
+                            )
 
             # Ward-filtered query — fires when "ward N" appears in query
             elif query_ward:
