@@ -71,13 +71,21 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
     # Must come before Ideological so industry PACs (e.g. "Virginia Wine
     # Wholesalers PAC", "Virginia Beer Wholesalers Association PAC") are not
     # swept into Ideological by the generic "pac " keyword.
+    # NOTE: generic "beverage assoc/wholesal/distribut" deliberately NOT used —
+    # they conflate soft-drink bottlers and broadline food/vending distributors
+    # (Pepsi, Coca-Cola, Virginia Beverage Association [a soft-drink PAC],
+    # Atlantic Dominion Distributors) with the alcohol industry. Real alcohol
+    # distributors are caught by wine/beer/spirits/alcohol terms or by the
+    # explicit company names below.
     ("Wine & Spirits", ["wine wholesal", "wine distribut", "wine assoc",
                         "beer wholesal", "beer distribut", "beer assoc",
                         "spirits wholesal", "spirits distribut",
-                        "beverage assoc", "beverage wholesal", "beverage distribut",
                         "malt beverage", "licensed beverage",
                         "alcohol wholesal", "alcohol distribut",
-                        "distilled spirits council", "beer institute"]),
+                        "alcohol beverage", "beverage alcohol", "alcoholic beverage",
+                        "distilled spirits council", "beer institute",
+                        "breakthru beverage", "republic national distrib",
+                        "southern glazer", "reyes beverage"]),
     # ── Ideological early-exit ────────────────────────────────────────────────
     # Must come before Financial Services so "campaign fund", "pac", etc.
     # are not mis-classified by the generic "fund" keyword.
