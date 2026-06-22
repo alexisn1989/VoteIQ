@@ -6255,6 +6255,9 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
             "who listens", "who ignores", "votes with constituents",
             "last meeting", "recent meeting", "latest meeting",
             "what happened", "meeting recap", "council meeting",
+            "trend", "over time", "growing", "increasing",
+            "opposition trend", "more opposed", "getting worse",
+            "superward", "super ward",
         ))
 
     if not triggered:
@@ -7312,12 +7315,36 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                     HAVING items_with_opp >= 2
                     ORDER BY CAST(passed_despite AS REAL) / items_with_opp DESC
                 """).fetchall()
-                if ward_out:
+                # Superward-level outcome (wards 6/7 via superward column)
+                sw_out = conn.execute("""
+                    SELECT superward,
+                           COUNT(*) items_with_opp,
+                           SUM(passed) passed_despite,
+                           SUM(oppose_n) total_opp
+                    FROM (
+                        SELECT t.superward, t.meeting_date, t.agenda_item,
+                               MAX(CASE WHEN LOWER(v.result) LIKE '%pass%' THEN 1 ELSE 0 END) passed,
+                               COUNT(*) oppose_n
+                        FROM norfolk_council_testimony t
+                        JOIN norfolk_council_votes v
+                          ON v.agenda_item = t.agenda_item
+                         AND v.meeting_date = t.meeting_date
+                        WHERE t.superward IS NOT NULL AND t.stance = 'oppose'
+                        GROUP BY t.superward, t.meeting_date, t.agenda_item
+                    )
+                    GROUP BY superward
+                    HAVING items_with_opp >= 2
+                    ORDER BY CAST(passed_despite AS REAL) / items_with_opp DESC
+                """).fetchall()
+                all_out = [(w, c, p, o) for w, c, p, o in ward_out] + \
+                          [(w, c, p, o) for w, c, p, o in sw_out]
+                all_out.sort(key=lambda x: x[2] / x[1] if x[1] else 0, reverse=True)
+                if all_out:
                     test_lines.append(
                         "\n#### Ward vs. Council Outcome\n"
-                        "(Items where ward residents testified in opposition — % that still passed)"
+                        "(Items where ward/superward residents testified in opposition — % that still passed)"
                     )
-                    for ward, contested, passed, opp_n in ward_out:
+                    for ward, contested, passed, opp_n in all_out:
                         pct = round(100 * passed / contested) if contested else 0
                         bar = "#" * (pct // 10) + "-" * (10 - pct // 10)
                         seat = _SEAT_LABEL.get(ward, f"Ward {ward}")
@@ -7339,6 +7366,7 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
             if _align_trigger and _table_exists(conn, "norfolk_council_testimony"):
                 _ward_to_rep_sql = {1: "Smigiel Jr.", 2: "Doyle", 3: "Johnson",
                                     4: "Thomas Jr.", 5: "Clanton"}
+                _sw_to_rep_sql = {6: "McGee", 7: "Paige"}
                 _align_parts: dict[str, list[int]] = {}
                 for _aw, _arep in _ward_to_rep_sql.items():
                     rows_a = conn.execute("""
@@ -7357,6 +7385,23 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                             or (stance == 'support' and vote.lower() == 'yes')
                         )
                         _align_parts[_arep] = [aligned, len(rows_a)]
+                for _asw, _arep in _sw_to_rep_sql.items():
+                    rows_a = conn.execute("""
+                        SELECT t.stance, mv.vote
+                        FROM norfolk_council_testimony t
+                        JOIN norfolk_council_member_votes mv
+                          ON mv.agenda_item = t.agenda_item
+                         AND mv.meeting_date = t.meeting_date
+                        WHERE t.superward = ? AND t.stance IN ('support','oppose')
+                          AND mv.member_name = ?
+                    """, (_asw, _arep)).fetchall()
+                    if rows_a:
+                        aligned = sum(
+                            1 for stance, vote in rows_a
+                            if (stance == 'oppose' and vote.lower() == 'no')
+                            or (stance == 'support' and vote.lower() == 'yes')
+                        )
+                        _align_parts[_arep] = [aligned, len(rows_a)]
                 align_rows = sorted(
                     [(k, v[0], v[1]) for k, v in _align_parts.items() if v[1] >= 3],
                     key=lambda x: x[1] / x[2], reverse=True,
@@ -7364,7 +7409,7 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                 if align_rows:
                     test_lines.append(
                         "\n#### Constituency Alignment Scorecard\n"
-                        "(How often each ward rep votes with their own ward's testimony stance)"
+                        "(How often each ward/superward rep votes with their constituents' testimony stance)"
                     )
                     for name, aligned, total in align_rows:
                         pct = round(100 * aligned / total) if total else 0
@@ -7434,6 +7479,42 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                             test_lines.append(f"  {item}  {vc} {result}{topic_tag}")
                             if desc:
                                 test_lines.append(f"    {desc}")
+
+            # ── Opposition trend over time ─────────────────────────────────────
+            _trend_trigger = any(w in q_lower for w in (
+                "trend", "over time", "growing", "increasing", "declining",
+                "more opposed", "less opposed", "opposition trend",
+                "changing", "shifted", "shift", "year over year",
+                "historically", "compared to", "getting worse",
+                "getting better", "more resistance", "less resistance",
+            ))
+            if _trend_trigger and _table_exists(conn, "norfolk_council_testimony"):
+                trend_rows = conn.execute("""
+                    SELECT SUBSTR(meeting_date, -4) yr,
+                           SUM(CASE WHEN stance='oppose' THEN 1 ELSE 0 END) oppose,
+                           SUM(CASE WHEN stance='support' THEN 1 ELSE 0 END) support,
+                           SUM(CASE WHEN stance='comment' THEN 1 ELSE 0 END) comment,
+                           COUNT(*) total
+                    FROM norfolk_council_testimony
+                    GROUP BY SUBSTR(meeting_date, -4)
+                    ORDER BY yr
+                """).fetchall()
+                if trend_rows and len(trend_rows) >= 2:
+                    test_lines.append("\n#### Public Testimony Trend by Year")
+                    test_lines.append("  Year   Oppose  Support  Comment  Total  Opp%")
+                    test_lines.append("  " + "-" * 50)
+                    for yr, opp, sup, com, tot in trend_rows:
+                        opp_pct = round(100 * opp / tot) if tot else 0
+                        test_lines.append(
+                            f"  {yr}   {opp:6d}  {sup:7d}  {com:7d}  {tot:5d}  {opp_pct:3d}%"
+                        )
+                    first_opp_pct = round(100 * trend_rows[0][1] / trend_rows[0][4]) if trend_rows[0][4] else 0
+                    last_opp_pct = round(100 * trend_rows[-1][1] / trend_rows[-1][4]) if trend_rows[-1][4] else 0
+                    direction = "rising" if last_opp_pct > first_opp_pct else "declining" if last_opp_pct < first_opp_pct else "stable"
+                    test_lines.append(
+                        f"  Trend: opposition share {direction} "
+                        f"({first_opp_pct}% in {trend_rows[0][0]} → {last_opp_pct}% in {trend_rows[-1][0]})"
+                    )
 
             # Influence summary note — dynamic stat replaces hardcoded version
             if test_lines:
