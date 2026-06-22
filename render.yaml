@@ -63,3 +63,19 @@ services:
         value: https://voteiq-api.onrender.com
       - key: ADMIN_TOKEN
         sync: false
+
+  # ── Virginia Beach upcoming agenda scraper ─────────────────────────────────
+  # VB City Council meets every other Tuesday; agendas posted ~1 week ahead.
+  # Calls /api/admin/ingest-vb-agenda on the web service.
+  - type: cron
+    name: voteiq-vb-agenda
+    runtime: python311
+    plan: starter
+    schedule: "0 7 * * 1,4"   # Mon, Thu at 07:00 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_vb_agenda.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq-api.onrender.com
+      - key: ADMIN_TOKEN
+        sync: false

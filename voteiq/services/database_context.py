@@ -7590,6 +7590,105 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
         pass
 
 
+# ── Virginia Beach City Council context ──────────────────────────────────────
+
+_VB_TRIGGER_RE = re.compile(
+    r"virginia\s+beach.*(council|member|district|representative|agenda|meeting|upcoming|vote|voted|votes|mayor|appoint|ordinance|resolution)"
+    r"|vb\s+(city\s+)?council"
+    r"|(council|member|district|representative|agenda|upcoming|ordinance|resolution).*virginia\s+beach",
+    re.IGNORECASE,
+)
+
+
+def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> None:
+    q_lower = query.lower()
+
+    if not _VB_TRIGGER_RE.search(query):
+        return
+
+    try:
+        conn = sqlite3.connect(_POLLS_DB, timeout=10)
+        lines: list[str] = ["## Virginia Beach City Council"]
+
+        # ── member roster ──────────────────────────────────────────────────
+        member_trigger = any(w in q_lower for w in (
+            "member", "council", "who", "roster", "list", "all", "district",
+            "represent", "mayor", "contact", "email",
+        ))
+
+        members: list[tuple] = []
+        if _table_exists(conn, "vb_council_members"):
+            members = conn.execute("""
+                SELECT name, district, district_num, email
+                FROM vb_council_members
+                ORDER BY district_num
+            """).fetchall()
+
+        if members and member_trigger:
+            # Specific district lookup
+            _dist_m = re.search(r"\bdistrict\s+(\d+)\b", q_lower)
+            if _dist_m:
+                _dn = int(_dist_m.group(1))
+                _match = [(n, d, dn, e) for n, d, dn, e in members if dn == _dn]
+                if _match:
+                    n, d, dn, e = _match[0]
+                    lines.append(f"\n#### Virginia Beach {d}")
+                    lines.append(f"  Current representative: **{n}**")
+                    if e:
+                        lines.append(f"  Email: {e}")
+                else:
+                    lines.append(f"\n  No member found for District {_dn}")
+            else:
+                lines.append("\n#### Virginia Beach City Council — Member Roster")
+                for name, district, dnum, email in members:
+                    label = f"{district:<12}" if district != "Mayor" else "Mayor (at-large)"
+                    e_str = f"  ({email})" if email else ""
+                    lines.append(f"  {label}  {name}{e_str}")
+
+        # ── upcoming agenda ────────────────────────────────────────────────
+        agenda_trigger = any(w in q_lower for w in (
+            "upcoming", "next meeting", "next council", "agenda",
+            "coming up", "scheduled", "vote on", "ordinance", "resolution",
+        ))
+
+        if agenda_trigger and _table_exists(conn, "vb_upcoming_agenda"):
+            ag_rows = conn.execute("""
+                SELECT meeting_date, item_ref, category, title
+                FROM vb_upcoming_agenda
+                WHERE meeting_date >= date('now')
+                ORDER BY meeting_date, item_ref
+                LIMIT 30
+            """).fetchall()
+
+            if ag_rows:
+                lines.append("\n#### Virginia Beach City Council — Upcoming Agenda Items")
+                cur_date = ""
+                for mdate, ref, cat, title in ag_rows:
+                    if mdate != cur_date:
+                        cur_date = mdate
+                        lines.append(f"\n  {mdate} (Formal Session)")
+                    short_title = title[:100] + ("…" if len(title) > 100 else "")
+                    lines.append(f"    {ref:<6}  [{cat}] {short_title}")
+            else:
+                lines.append("\n  No upcoming agenda items posted yet — agendas typically appear 1-2 weeks before each meeting.")
+
+        # ── vote data availability note ────────────────────────────────────
+        vote_trigger = any(w in q_lower for w in ("vote", "voted", "votes", "voting", "yes", "no", "passed", "failed"))
+        if vote_trigger:
+            lines.append(
+                "\n  Note: Per-member vote records for Virginia Beach City Council are not yet "
+                "available in VoteIQ. Vote tallies are published in 100MB meeting packet PDFs "
+                "that cannot be incrementally parsed. Agenda items and member roster are available."
+            )
+
+        conn.close()
+        if len(lines) > 1:
+            blocks.append("\n".join(lines))
+
+    except Exception:
+        pass
+
+
 def build_database_context(query: str, max_chars: int = 22000, pro: bool = False) -> str:
     q = query or ""
     blocks: list[str] = []
@@ -7639,6 +7738,7 @@ def build_database_context(query: str, max_chars: int = 22000, pro: bool = False
     # Structured access to analytically rich tables the generic scan serves poorly
     _add_donor_vote_alignment_context(blocks, q, terms)
     _add_norfolk_council_context(blocks, q, terms)
+    _add_vb_council_context(blocks, q, terms)
     _add_vpap_race_context(blocks, q)
     _add_congress_hearings_context(blocks, q, terms)
     if _is_campaign_finance_query(q):

@@ -99,6 +99,27 @@ def admin_ingest_norfolk_agenda(
     return {"ok": result.get("ok"), "scripts": {"scrape_norfolk_agenda.py": result}}
 
 
+@router.post("/ingest-vb-council")
+def admin_ingest_vb_council(_: None = Depends(require_admin_token)):
+    """Scrape VB City Council roster from clerk.virginiabeach.gov into vb_council_members."""
+    result = _run_script("scrape_vb_council.py", [], timeout=60)
+    return {"ok": result.get("ok"), "scripts": {"scrape_vb_council.py": result}}
+
+
+@router.post("/ingest-vb-agenda")
+def admin_ingest_vb_agenda(
+    days: int = 90,
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Scrape IQM2 for upcoming VB City Council agendas and store in vb_upcoming_agenda."""
+    args = ["--days", str(days)]
+    if reset:
+        args.append("--reset")
+    result = _run_script("scrape_vb_agenda.py", args, timeout=120)
+    return {"ok": result.get("ok"), "scripts": {"scrape_vb_agenda.py": result}}
+
+
 @router.get("/refresh-bill-text")
 def admin_refresh_bill_text(refresh: bool = False, _: None = Depends(require_admin_token)):
     """Fetch full bill text from Congress.gov + govinfo.gov for all stored bills."""
