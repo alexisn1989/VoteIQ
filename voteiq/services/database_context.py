@@ -7781,6 +7781,99 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
                 for title, mdate, vy, vn in contested:
                     lines.append(f"  {mdate}  [{vy}Y/{vn}N]  {title[:80]}")
 
+        # ── voting bloc / alignment ────────────────────────────────────────
+        _bloc_trigger = any(w in q_lower for w in (
+            "bloc", "align", "coalition", "faction", "together", "swing",
+            "who votes with", "voting pattern", "pair", "outlier", "isolated",
+            "agree", "disagree", "divide", "divided", "split",
+        ))
+        if _bloc_trigger and has_vote_table:
+            # Contested resolution IDs (any No vote)
+            c_ids = [r[0] for r in conn.execute("""
+                SELECT resolution_id FROM vb_council_member_votes
+                GROUP BY resolution_id
+                HAVING SUM(CASE WHEN vote='No/Nay' THEN 1 ELSE 0 END) > 0
+            """).fetchall()]
+
+            if c_ids:
+                # Build member->rid->vote map
+                _ph = ",".join("?" * len(c_ids))
+                mv_rows = conn.execute(f"""
+                    SELECT member_name, resolution_id, vote
+                    FROM vb_council_member_votes
+                    WHERE vote IN ('Yes/Aye','No/Nay') AND resolution_id IN ({_ph})
+                """, c_ids).fetchall()
+
+                mv: dict[str, dict[int, str]] = {}
+                for name, rid, vote in mv_rows:
+                    mv.setdefault(name, {})[rid] = vote
+
+                # Pairwise agreement
+                from itertools import combinations as _comb
+                pairs: list[tuple[float, int, str, str]] = []
+                names = sorted(mv.keys())
+                for a, b in _comb(names, 2):
+                    shared = set(mv[a]) & set(mv[b])
+                    if len(shared) < 10:
+                        continue
+                    agree = sum(1 for r in shared if mv[a][r] == mv[b][r])
+                    pairs.append((agree / len(shared), len(shared), a, b))
+                pairs.sort(key=lambda x: x[0])
+
+                lines.append(f"\n#### VB Council — Voting Alignment (contested votes, n={len(c_ids)})")
+                lines.append("  Note: 96% of all votes are unanimous; alignment is on contested items only.")
+
+                # Most divided
+                lines.append("\n  Most divided pairs:")
+                for pct, n, a, b in pairs[:4]:
+                    al = a.split()[-1].rstrip(",")
+                    bl = b.split()[-1].rstrip(",")
+                    lines.append(f"    {al} / {bl}: {round(pct*100)}% agree  ({n} shared contested votes)")
+
+                # Most aligned
+                lines.append("\n  Most aligned pairs:")
+                for pct, n, a, b in reversed(pairs[-4:]):
+                    al = a.split()[-1].rstrip(",")
+                    bl = b.split()[-1].rstrip(",")
+                    lines.append(f"    {al} / {bl}: {round(pct*100)}% agree  ({n} shared)")
+
+                # Outlier member (lowest average agreement)
+                avg_agree: dict[str, list[float]] = {}
+                for pct, n, a, b in pairs:
+                    avg_agree.setdefault(a, []).append(pct)
+                    avg_agree.setdefault(b, []).append(pct)
+                outlier = min(avg_agree, key=lambda m: sum(avg_agree[m]) / len(avg_agree[m]))
+                out_avg = round(100 * sum(avg_agree[outlier]) / len(avg_agree[outlier]))
+
+                # Topic breakdown for outlier's No votes
+                out_no = conn.execute("""
+                    SELECT title FROM vb_council_member_votes
+                    WHERE member_name=? AND vote='No/Nay'
+                """, (outlier,)).fetchall()
+                import re as _re2
+                _topic_pats = [
+                    ("Rezoning/Land use", r"rezon|conditional use|subdivision|variance|encroach|street closure|comprehensive plan"),
+                    ("Budget/Appropriation", r"appropriat|budget|transfer|fund|bond|tax|cip|capital"),
+                    ("Development/Property", r"develop|property|lease|easement|llc|acquisition"),
+                    ("Governance", r"charter|policy|election|ordinance to adopt|task force|bargaining"),
+                ]
+                topic_counts: dict[str, int] = {}
+                for (t,) in out_no:
+                    tl = (t or "").lower()
+                    for cat, pat in _topic_pats:
+                        if _re2.search(pat, tl):
+                            topic_counts[cat] = topic_counts.get(cat, 0) + 1
+                            break
+                    else:
+                        topic_counts["Other"] = topic_counts.get("Other", 0) + 1
+
+                lines.append(f"\n  Outlier: {outlier}")
+                lines.append(f"    Avg agreement with peers: {out_avg}% on contested votes")
+                lines.append(f"    Total No votes: {len(out_no)}")
+                if topic_counts:
+                    top_topics = sorted(topic_counts.items(), key=lambda x: -x[1])
+                    lines.append(f"    Dissent by topic: {', '.join(f'{c} ({n})' for c, n in top_topics)}")
+
         conn.close()
         if len(lines) > 1:
             blocks.append("\n".join(lines))
