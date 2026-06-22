@@ -6246,6 +6246,9 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
             "close vote", "contested", "most divided", "divided vote",
             "fault line", "controversial", "divided council",
             "most contentious", "tight vote", "most disputed",
+            "who represents ward", "represents ward", "ward rep",
+            "ward representative", "council member for ward",
+            "who is ward", "who holds ward", "who sits on",
         ))
 
     if not triggered:
@@ -6406,6 +6409,38 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
             "smigiel": "Smigiel",    "thomas": "Thomas",
             "royster": "Royster",    "mcclellan": "McClellan",
         }
+
+        # Ward / Superward → current council representative (public record, Norfolk City Council)
+        # Transitions: Riddick→Paige (Jan 2023, SW7), McClellan→Clanton + Royster→McGee (Jan 2025, W5/SW6)
+        _WARD_REP: dict[int, str] = {
+            1: "Smigiel Jr.",
+            2: "Doyle",
+            3: "Johnson",
+            4: "Thomas Jr.",
+            5: "Clanton",    # replaced McClellan Jan 2025
+            6: "McGee",      # replaced Royster Jan 2025
+            7: "Paige",      # replaced Riddick Jan 2023
+        }
+        _SEAT_LABEL: dict[int, str] = {
+            1: "Ward 1", 2: "Ward 2", 3: "Ward 3",
+            4: "Ward 4", 5: "Ward 5",
+            6: "Superward 6", 7: "Superward 7",
+        }
+        # Reverse: vote-data name → (ward_num, seat_label)  — includes former reps
+        _REP_WARD: dict[str, tuple[int, str]] = {
+            "Smigiel Jr.": (1, "Ward 1"),
+            "Doyle":        (2, "Ward 2"),
+            "Johnson":      (3, "Ward 3"),
+            "Thomas Jr.":   (4, "Ward 4"),
+            "Clanton":      (5, "Ward 5"),
+            "McClellan":    (5, "Ward 5"),      # former (–Dec 2024)
+            "McGee":        (6, "Superward 6"),
+            "Royster":      (6, "Superward 6"), # former (–Dec 2024)
+            "Paige":        (7, "Superward 7"),
+            "Riddick":      (7, "Superward 7"), # former (–Dec 2022)
+            "Alexander":    (0, "Mayor (at-large)"),
+        }
+
         donor_finance_trigger = (
             any(w in q_lower for w in ("donor", "fund", "money", "contribut", "financ",
                                        "who pays", "paid by", "backed by", "receiv"))
@@ -7141,6 +7176,38 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                         if desc:
                             test_lines.append(f"           {desc}")
 
+            # ── Who represents ward X? ───────────────────────────────────────
+            _ward_rep_query = any(w in q_lower for w in (
+                "who represents ward", "represents ward", "who is ward",
+                "council member for ward", "rep for ward", "ward rep",
+                "ward representative", "representative for ward",
+                "who sits on", "who holds ward", "who holds superward",
+                "who is the rep", "who is my council",
+            ))
+            if _ward_rep_query:
+                import re as _re
+                _wm = _re.search(r'\b(?:super\s*ward|ward)\s*([1-7])\b', q_lower)
+                if _wm:
+                    _wn = int(_wm.group(1))
+                    _wrep = _WARD_REP.get(_wn)
+                    _wseat = _SEAT_LABEL.get(_wn, f"Ward {_wn}")
+                    if _wrep:
+                        test_lines.append(f"\n#### Norfolk {_wseat} Council Seat")
+                        test_lines.append(f"  Current representative: **{_wrep}** ({_wseat})")
+                        if _wn == 5:
+                            test_lines.append("  (Clanton replaced Andria McClellan in January 2025)")
+                        elif _wn == 6:
+                            test_lines.append("  (McGee replaced Danica Royster in January 2025)")
+                        elif _wn == 7:
+                            test_lines.append("  (Paige replaced Paul Riddick in January 2023)")
+                else:
+                    # No specific ward number — show full map
+                    test_lines.append("\n#### Norfolk City Council — Seat Assignments")
+                    test_lines.append("  Mayor (at-large): Alexander")
+                    for _wn, _wrep in _WARD_REP.items():
+                        _wseat = _SEAT_LABEL.get(_wn, f"Ward {_wn}")
+                        test_lines.append(f"  {_wseat}: {_wrep}")
+
             # Ward vs. council outcome — which wards get overruled most
             _ward_outcome_trigger = (
                 ("ward" in q_lower and any(w in q_lower for w in (
@@ -7181,9 +7248,12 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                     for ward, contested, passed, opp_n in ward_out:
                         pct = round(100 * passed / contested) if contested else 0
                         bar = "#" * (pct // 10) + "-" * (10 - pct // 10)
+                        seat = _SEAT_LABEL.get(ward, f"Ward {ward}")
+                        rep  = _WARD_REP.get(ward)
+                        rep_tag = f"  [{rep} — {seat} rep]" if rep else ""
                         test_lines.append(
-                            f"  Ward {ward:<4}  {bar}  {pct:3d}% overruled "
-                            f"({passed}/{contested} items passed | {opp_n} oppose testimonies)"
+                            f"  {seat:<14}  {bar}  {pct:3d}% overruled "
+                            f"({passed}/{contested} items passed | {opp_n} oppose testimonies){rep_tag}"
                         )
 
             # Influence summary note — dynamic stat replaces hardcoded version
