@@ -7595,7 +7595,9 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
 _VB_TRIGGER_RE = re.compile(
     r"virginia\s+beach.*(council|member|district|representative|agenda|meeting|upcoming|vote|voted|votes|mayor|appoint|ordinance|resolution)"
     r"|vb\s+(city\s+)?council"
-    r"|(council|member|district|representative|agenda|upcoming|ordinance|resolution).*virginia\s+beach",
+    r"|(council|member|district|representative|agenda|upcoming|ordinance|resolution).*virginia\s+beach"
+    r"|berlucchi|hutcheson|cummings|jackson.green|remick|ross.hammond|schulman"
+    r"|(henley|rouse|wilson).*(vote|council|district|virginia)",
     re.IGNORECASE,
 )
 
@@ -7673,13 +7675,111 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
                 lines.append("\n  No upcoming agenda items posted yet — agendas typically appear 1-2 weeks before each meeting.")
 
         # ── vote data availability note ────────────────────────────────────
-        vote_trigger = any(w in q_lower for w in ("vote", "voted", "votes", "voting", "yes", "no", "passed", "failed"))
-        if vote_trigger:
-            lines.append(
-                "\n  Note: Per-member vote records for Virginia Beach City Council are not yet "
-                "available in VoteIQ. Vote tallies are published in 100MB meeting packet PDFs "
-                "that cannot be incrementally parsed. Agenda items and member roster are available."
-            )
+        vote_trigger = any(w in q_lower for w in (
+            "vote", "voted", "votes", "voting", "yes", "no", "passed", "failed",
+            "dissent", "opposed", "against", "absent", "record", "history",
+        ))
+        has_vote_table = _table_exists(conn, "vb_council_member_votes")
+
+        if vote_trigger and has_vote_table:
+            # Named member query
+            _vb_member_names = {
+                "berlucchi": "Michael F. Berlucchi",
+                "dyer": 'Robert M. "Bobby" Dyer',
+                "cummings": "Stacy Cummings",
+                "henley": "Barbara M. Henley",
+                "hutcheson": "David Hutcheson",
+                "jackson": "Cal",
+                "jackson-green": "Cal",
+                "remick": "Robert W.",
+                "ross-hammond": "Dr. Amelia",
+                "ross hammond": "Dr. Amelia",
+                "rouse": "Jennifer Rouse",
+                "schulman": "Joashua",
+                "wilson": "Rosemary C. Wilson",
+            }
+            matched_member = None
+            for key, partial in _vb_member_names.items():
+                if key in q_lower:
+                    row = conn.execute(
+                        "SELECT DISTINCT member_name, district FROM vb_council_member_votes "
+                        "WHERE member_name LIKE ?", (f"%{partial}%",)
+                    ).fetchone()
+                    if row:
+                        matched_member = row[0]
+                        break
+
+            # Title / subject keyword search
+            _kw_excl = {"virginia", "beach", "council", "vote", "voted", "how", "did",
+                        "what", "the", "on", "at", "in", "of", "is", "are", "was"}
+            search_terms = [t for t in terms if t.lower() not in _kw_excl and len(t) > 3]
+
+            if matched_member:
+                # Member voting record summary
+                stats = conn.execute("""
+                    SELECT COUNT(*) total,
+                           SUM(CASE WHEN vote='Yes/Aye' THEN 1 ELSE 0 END) yes_v,
+                           SUM(CASE WHEN vote='No/Nay'  THEN 1 ELSE 0 END) no_v,
+                           SUM(CASE WHEN vote='Absent'  THEN 1 ELSE 0 END) absent,
+                           MIN(meeting_date), MAX(meeting_date)
+                    FROM vb_council_member_votes WHERE member_name=?
+                """, (matched_member,)).fetchone()
+                if stats and stats[0]:
+                    total_v, yes_v, no_v, absent, d_min, d_max = stats
+                    lines.append(f"\n#### VB Council — {matched_member} Vote Summary")
+                    lines.append(f"  Period: {d_min} to {d_max}  ({total_v} recorded votes)")
+                    lines.append(f"  Yes/Aye: {yes_v}   No/Nay: {no_v}   Absent: {absent}")
+                    if total_v:
+                        lines.append(f"  Dissent rate: {round(100*no_v/(yes_v+no_v) if yes_v+no_v else 0)}%  "
+                                     f"Absence rate: {round(100*absent/total_v)}%")
+
+                # Show their No votes
+                no_rows = conn.execute("""
+                    SELECT meeting_date, title, vote_yes, vote_no
+                    FROM vb_council_member_votes
+                    WHERE member_name=? AND vote='No/Nay'
+                    ORDER BY meeting_date DESC LIMIT 10
+                """, (matched_member,)).fetchall()
+                if no_rows:
+                    lines.append(f"\n  Recent No/Nay votes ({len(no_rows)} shown):")
+                    for mdate, title, vy, vn in no_rows:
+                        lines.append(f"    {mdate}  [{vy}Y/{vn}N]  {title[:80]}")
+
+            elif search_terms:
+                # Search by topic keywords
+                like = "%" + "%".join(search_terms[:3]) + "%"
+                item_rows = conn.execute("""
+                    SELECT title, meeting_date, vote_yes, vote_no,
+                           GROUP_CONCAT(member_name || '=' || vote, ' | ') votes_detail
+                    FROM vb_council_member_votes
+                    WHERE title LIKE ?
+                    GROUP BY resolution_id
+                    ORDER BY meeting_date DESC LIMIT 5
+                """, (like,)).fetchall()
+                if item_rows:
+                    lines.append(f"\n#### VB Council — Vote Search: {' '.join(search_terms[:3])!r}")
+                    for title, mdate, vy, vn, detail in item_rows:
+                        lines.append(f"\n  {mdate}  [{vy}Y/{vn}N]  {title[:90]}")
+                        if detail:
+                            # Show No votes only
+                            no_detail = [p for p in detail.split(" | ") if "No/Nay" in p]
+                            if no_detail:
+                                lines.append(f"    Dissent: {', '.join(no_detail)}")
+                else:
+                    lines.append(f"\n  No VB vote records found matching: {' '.join(search_terms[:3])}")
+            else:
+                # General summary — most contested votes
+                lines.append("\n#### VB Council — Most Contested Votes (most No votes)")
+                contested = conn.execute("""
+                    SELECT title, meeting_date, vote_yes, vote_no
+                    FROM vb_council_member_votes
+                    GROUP BY resolution_id
+                    HAVING SUM(CASE WHEN vote='No/Nay' THEN 1 ELSE 0 END) >= 3
+                    ORDER BY SUM(CASE WHEN vote='No/Nay' THEN 1 ELSE 0 END) DESC
+                    LIMIT 8
+                """).fetchall()
+                for title, mdate, vy, vn in contested:
+                    lines.append(f"  {mdate}  [{vy}Y/{vn}N]  {title[:80]}")
 
         conn.close()
         if len(lines) > 1:

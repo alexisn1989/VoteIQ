@@ -64,6 +64,22 @@ services:
       - key: ADMIN_TOKEN
         sync: false
 
+  # ── Virginia Beach vote history ingestion ─────────────────────────────────
+  # Runs weekly Sunday nights — pulls full vote history for all 11 council
+  # members from the Accela IQM2 public API (~11,500 records, ~3 min runtime).
+  - type: cron
+    name: voteiq-vb-votes
+    runtime: python311
+    plan: starter
+    schedule: "0 2 * * 0"   # Sunday at 02:00 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_vb_votes.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq-api.onrender.com
+      - key: ADMIN_TOKEN
+        sync: false
+
   # ── Virginia Beach upcoming agenda scraper ─────────────────────────────────
   # VB City Council meets every other Tuesday; agendas posted ~1 week ahead.
   # Calls /api/admin/ingest-vb-agenda on the web service.

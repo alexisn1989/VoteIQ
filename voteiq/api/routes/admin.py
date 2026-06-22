@@ -106,6 +106,17 @@ def admin_ingest_vb_council(_: None = Depends(require_admin_token)):
     return {"ok": result.get("ok"), "scripts": {"scrape_vb_council.py": result}}
 
 
+@router.post("/ingest-vb-votes")
+def admin_ingest_vb_votes(
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Pull VB City Council vote history from Accela IQM2 API into vb_council_member_votes."""
+    args = ["--reset"] if reset else []
+    result = _run_script("ingest_vb_votes.py", args, timeout=300)
+    return {"ok": result.get("ok"), "scripts": {"ingest_vb_votes.py": result}}
+
+
 @router.post("/ingest-vb-agenda")
 def admin_ingest_vb_agenda(
     days: int = 90,
