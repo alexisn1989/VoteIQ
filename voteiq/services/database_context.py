@@ -6249,6 +6249,12 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
             "who represents ward", "represents ward", "ward rep",
             "ward representative", "council member for ward",
             "who is ward", "who holds ward", "who sits on",
+            "attend", "absence", "absent", "missed", "who misses",
+            "most absent", "participation", "never absent",
+            "listen", "responsive", "scorecard", "accountability score",
+            "who listens", "who ignores", "votes with constituents",
+            "last meeting", "recent meeting", "latest meeting",
+            "what happened", "meeting recap", "council meeting",
         ))
 
     if not triggered:
@@ -6706,6 +6712,72 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                     lines.append(f"  {date} | {item} | {vc} {result.upper()}{topic_tag}")
                     if desc:
                         lines.append(f"    {desc}")
+
+        # ── Attendance / absence tracker ──────────────────────────────────────
+        _attend_trigger = any(w in q_lower for w in (
+            "attend", "absence", "absent", "miss", "missed", "show up",
+            "skip", "skipped", "present", "participation",
+            "who misses", "most absent", "never absent",
+        ))
+        if _attend_trigger and _table_exists(conn, "norfolk_council_member_votes"):
+            att_rows = conn.execute("""
+                SELECT member_name,
+                       COUNT(*) total,
+                       SUM(CASE WHEN LOWER(vote)='absent' THEN 1 ELSE 0 END) absent,
+                       SUM(CASE WHEN LOWER(vote)='abstain' THEN 1 ELSE 0 END) abstain
+                FROM norfolk_council_member_votes
+                GROUP BY member_name
+                ORDER BY absent DESC
+            """).fetchall()
+            if att_rows:
+                lines.append("\n#### Council Attendance Record")
+                lines.append("  Member               Total   Absent   Rate   Abstain")
+                lines.append("  " + "-" * 55)
+                for name, total, absent, abstain in att_rows:
+                    rate = round(100 * absent / total, 1) if total else 0
+                    ward_info = _REP_WARD.get(name, (None, None))
+                    seat_tag = f"  ({ward_info[1]})" if ward_info[0] else ""
+                    lines.append(
+                        f"  {name:20s}  {total:5d}  {absent:6d}  {rate:5.1f}%  {abstain:7d}{seat_tag}"
+                    )
+
+        # ── Member-topic voting profile ───────────────────────────────────────
+        _mtopic_trigger = (
+            named_members
+            and topic_terms
+            and any(w in q_lower for w in (
+                "vote on", "votes on", "voting on", "position on",
+                "stance on", "record on", "how does", "how did",
+            ))
+        )
+        if not _mtopic_trigger and named_members and topic_terms:
+            _mtopic_trigger = True
+        if _mtopic_trigger and _table_exists(conn, "norfolk_vote_enrichment"):
+            for m in named_members[:2]:
+                display = _SBE_NAME_MAP.get(m, m.title())
+                vote_name = {"Smigiel": "Smigiel Jr.", "Thomas": "Thomas Jr."}.get(display, display)
+                for topic_kw in topic_terms[:2]:
+                    topic_label = topic_kw.replace("-", " ").title()
+                    tp_rows = conn.execute("""
+                        SELECT mv.vote, COUNT(*) n
+                        FROM norfolk_council_member_votes mv
+                        JOIN norfolk_vote_enrichment e ON e.title = mv.title
+                        WHERE mv.category = 'substantive'
+                          AND mv.member_name = ?
+                          AND LOWER(e.topic) = LOWER(?)
+                        GROUP BY mv.vote
+                        ORDER BY n DESC
+                    """, (vote_name, topic_kw)).fetchall()
+                    if tp_rows:
+                        total = sum(r[1] for r in tp_rows)
+                        breakdown = ", ".join(f"{r[0]}={r[1]}" for r in tp_rows)
+                        yes_n = next((r[1] for r in tp_rows if r[0].lower() == 'yes'), 0)
+                        no_n = next((r[1] for r in tp_rows if r[0].lower() == 'no'), 0)
+                        lines.append(
+                            f"\n#### {vote_name} — {topic_label} Voting Record\n"
+                            f"  {total} substantive {topic_label.lower()} votes: {breakdown}\n"
+                            f"  YES rate: {round(100*yes_n/total,1)}% | NO rate: {round(100*no_n/total,1)}%"
+                        )
 
         # ── Defensible donor-vote signals (schema-conformant) ────────────────
         # Schema: raw facts → derived metrics → at most one neutral signal.
@@ -7255,6 +7327,113 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                             f"  {seat:<14}  {bar}  {pct:3d}% overruled "
                             f"({passed}/{contested} items passed | {opp_n} oppose testimonies){rep_tag}"
                         )
+
+            # ── Testimony-to-vote alignment per member ─────────────────────────
+            _align_trigger = any(w in q_lower for w in (
+                "listen", "responsive", "responsiveness", "represent",
+                "votes with constituents", "votes with ward",
+                "votes against constituents", "ignores ward",
+                "alignment score", "scorecard", "accountability score",
+                "who listens", "who ignores", "responsive to",
+            ))
+            if _align_trigger and _table_exists(conn, "norfolk_council_testimony"):
+                _ward_to_rep_sql = {1: "Smigiel Jr.", 2: "Doyle", 3: "Johnson",
+                                    4: "Thomas Jr.", 5: "Clanton"}
+                _align_parts: dict[str, list[int]] = {}
+                for _aw, _arep in _ward_to_rep_sql.items():
+                    rows_a = conn.execute("""
+                        SELECT t.stance, mv.vote
+                        FROM norfolk_council_testimony t
+                        JOIN norfolk_council_member_votes mv
+                          ON mv.agenda_item = t.agenda_item
+                         AND mv.meeting_date = t.meeting_date
+                        WHERE t.ward = ? AND t.stance IN ('support','oppose')
+                          AND mv.member_name = ?
+                    """, (_aw, _arep)).fetchall()
+                    if rows_a:
+                        aligned = sum(
+                            1 for stance, vote in rows_a
+                            if (stance == 'oppose' and vote.lower() == 'no')
+                            or (stance == 'support' and vote.lower() == 'yes')
+                        )
+                        _align_parts[_arep] = [aligned, len(rows_a)]
+                align_rows = sorted(
+                    [(k, v[0], v[1]) for k, v in _align_parts.items() if v[1] >= 3],
+                    key=lambda x: x[1] / x[2], reverse=True,
+                )
+                if align_rows:
+                    test_lines.append(
+                        "\n#### Constituency Alignment Scorecard\n"
+                        "(How often each ward rep votes with their own ward's testimony stance)"
+                    )
+                    for name, aligned, total in align_rows:
+                        pct = round(100 * aligned / total) if total else 0
+                        ward_info = _REP_WARD.get(name, (None, None))
+                        seat_tag = f" ({ward_info[1]})" if ward_info[0] else ""
+                        bar = "#" * (pct // 10) + "-" * (10 - pct // 10)
+                        test_lines.append(
+                            f"  {name:16s}  {bar}  {pct:3d}% aligned "
+                            f"({aligned}/{total} items){seat_tag}"
+                        )
+
+            # ── Meeting recap ─────────────────────────────────────────────────
+            import re as _re2
+            _meeting_trigger = any(w in q_lower for w in (
+                "last meeting", "recent meeting", "latest meeting",
+                "what happened", "meeting recap", "meeting summary",
+                "council meeting", "agenda recap",
+            ))
+            _date_match = _re2.search(
+                r'(january|february|march|april|may|june|july|august|'
+                r'september|october|november|december)\s+\d{1,2},?\s*\d{4}',
+                q_lower,
+            )
+            if (_meeting_trigger or _date_match) and _table_exists(conn, "norfolk_council_votes"):
+                if _date_match:
+                    target_date = _date_match.group(0).upper()
+                    if "," not in target_date:
+                        parts = target_date.rsplit(" ", 1)
+                        target_date = parts[0] + ", " + parts[1] if len(parts) == 2 else target_date
+                    mtg_rows = conn.execute("""
+                        SELECT cv.agenda_item, cv.vote_count, cv.result,
+                               e.plain_english, e.topic, cv.category
+                        FROM norfolk_council_votes cv
+                        LEFT JOIN norfolk_vote_enrichment e ON e.title = cv.title
+                        WHERE cv.meeting_date = ?
+                        ORDER BY cv.agenda_item
+                    """, (target_date,)).fetchall()
+                else:
+                    latest = conn.execute("""
+                        SELECT meeting_date FROM norfolk_council_votes
+                        ORDER BY ROWID DESC LIMIT 1
+                    """).fetchone()
+                    if latest:
+                        target_date = latest[0]
+                        mtg_rows = conn.execute("""
+                            SELECT cv.agenda_item, cv.vote_count, cv.result,
+                                   e.plain_english, e.topic, cv.category
+                            FROM norfolk_council_votes cv
+                            LEFT JOIN norfolk_vote_enrichment e ON e.title = cv.title
+                            WHERE cv.meeting_date = ?
+                            ORDER BY cv.agenda_item
+                        """, (target_date,)).fetchall()
+                    else:
+                        mtg_rows = []
+                if mtg_rows:
+                    sub = [r for r in mtg_rows if r[5] == 'substantive']
+                    consent = [r for r in mtg_rows if r[5] == 'consent']
+                    test_lines.append(f"\n#### Meeting Recap — {target_date}")
+                    test_lines.append(
+                        f"  {len(mtg_rows)} items total "
+                        f"({len(sub)} substantive, {len(consent)} consent)"
+                    )
+                    for item, vc, result, plain, topic, cat in mtg_rows:
+                        if cat == 'substantive':
+                            desc = (plain or "")[:80]
+                            topic_tag = f" [{topic}]" if topic else ""
+                            test_lines.append(f"  {item}  {vc} {result}{topic_tag}")
+                            if desc:
+                                test_lines.append(f"    {desc}")
 
             # Influence summary note — dynamic stat replaces hardcoded version
             if test_lines:
