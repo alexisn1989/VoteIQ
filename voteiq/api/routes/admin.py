@@ -85,6 +85,20 @@ def admin_ingest_congress(
     return {"ok": all(v.get("ok") for v in results.values()), "scripts": results}
 
 
+@router.post("/ingest-norfolk-agenda")
+def admin_ingest_norfolk_agenda(
+    days: int = 90,
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Scrape IQM2 for upcoming Norfolk council agendas and store in norfolk_upcoming_agenda."""
+    args = ["--days", str(days)]
+    if reset:
+        args.append("--reset")
+    result = _run_script("scrape_norfolk_agenda.py", args, timeout=120)
+    return {"ok": result.get("ok"), "scripts": {"scrape_norfolk_agenda.py": result}}
+
+
 @router.get("/refresh-bill-text")
 def admin_refresh_bill_text(refresh: bool = False, _: None = Depends(require_admin_token)):
     """Fetch full bill text from Congress.gov + govinfo.gov for all stored bills."""

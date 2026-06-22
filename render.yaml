@@ -46,3 +46,20 @@ services:
         sync: false   # set manually in dashboard — must match web service value
       - key: HOUSE_LIMIT
         value: "500"
+
+  # ── Norfolk upcoming agenda scraper ────────────────────────────────────────
+  # Runs Mon/Wed/Fri mornings — agendas typically posted ~3 days before meeting.
+  # Calls the web service's /api/admin/ingest-norfolk-agenda endpoint so the
+  # scraper runs inside the container that owns /var/data/polls.db.
+  - type: cron
+    name: voteiq-norfolk-agenda
+    runtime: python311
+    plan: starter
+    schedule: "0 6 * * 1,3,5"   # Mon, Wed, Fri at 06:00 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_norfolk_agenda.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq-api.onrender.com
+      - key: ADMIN_TOKEN
+        sync: false

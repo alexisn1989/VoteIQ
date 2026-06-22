@@ -6258,6 +6258,8 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
             "trend", "over time", "growing", "increasing",
             "opposition trend", "more opposed", "getting worse",
             "superward", "super ward",
+            "upcoming", "next meeting", "next council",
+            "next session", "future meeting", "agenda",
         ))
 
     if not triggered:
@@ -7479,6 +7481,36 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                             test_lines.append(f"  {item}  {vc} {result}{topic_tag}")
                             if desc:
                                 test_lines.append(f"    {desc}")
+
+            # ── Upcoming agenda ────────────────────────────────────────────────
+            _upcoming_trigger = any(w in q_lower for w in (
+                "upcoming", "next meeting", "next council", "what's coming",
+                "what is coming", "agenda", "scheduled", "future meeting",
+                "when is the next", "next session",
+            ))
+            if _upcoming_trigger and _table_exists(conn, "norfolk_upcoming_agenda"):
+                up_rows = conn.execute("""
+                    SELECT meeting_date, item_ref, title, status, agenda_url
+                    FROM norfolk_upcoming_agenda
+                    ORDER BY meeting_date, item_ref
+                """).fetchall()
+                if up_rows:
+                    from itertools import groupby as _groupby
+                    test_lines.append("\n#### Upcoming Norfolk City Council Meetings")
+                    by_date: dict[str, list] = {}
+                    for date_s, ref, title, status, aurl in up_rows:
+                        by_date.setdefault(date_s, []).append((ref, title, status, aurl))
+                    for mtg_date, items in by_date.items():
+                        pending = items[0][2] == 'pending'
+                        if pending:
+                            test_lines.append(f"  {mtg_date} — Formal Session (agenda not yet posted)")
+                        else:
+                            aurl = items[0][3] or ""
+                            url_tag = f"  [agenda PDF]({aurl})" if aurl else ""
+                            test_lines.append(f"  {mtg_date} — Formal Session{url_tag}")
+                            for ref, title, _, _ in items:
+                                ref_tag = f"{ref}: " if ref and ref != "AGENDA" else ""
+                                test_lines.append(f"    {ref_tag}{title}")
 
             # ── Opposition trend over time ─────────────────────────────────────
             _trend_trigger = any(w in q_lower for w in (
