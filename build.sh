@@ -925,12 +925,49 @@ echo "  vb_council_member_votes rows: ${VB_VOTES}"
 if [ "${VB_VOTES:-0}" -lt 100 ] 2>/dev/null; then
     echo "  Skipping VB analytics — vote table empty (first-run; Sunday cron will populate)"
 else
-    for VB_SCRIPT in build_vb_blocs.py build_vb_finance.py build_vb_dvadj.py build_vb_dissent.py; do
+    for VB_SCRIPT in build_vb_blocs.py build_vb_finance.py build_vb_dvadj.py build_vb_dissent.py build_vb_splits.py; do
         echo "  Running $VB_SCRIPT..."
         python3 "$VB_SCRIPT" 2>&1 | tail -3
         [ $? -ne 0 ] && echo "  ⚠ $VB_SCRIPT failed — continuing" || true
     done
     echo "✓ VB analytics tables rebuilt"
+fi
+
+# ── STEP 4h: Seed Norfolk City Council tables ─────────────────────────────────
+# Norfolk has no live ingest/build endpoint, so its tables ship as a static
+# seed (data/norfolk_seed.sql, ~19k rows). Idempotent: skips if already loaded.
+echo ""
+echo "[STEP 4h] Seeding Norfolk City Council tables..."
+if [ ! -f data/norfolk_seed.sql ]; then
+    echo "⚠ data/norfolk_seed.sql not found — Norfolk council queries will be unavailable"
+else
+    python3 - <<PYEOF
+import sqlite3, os, sys
+
+data_dir = os.environ.get("DATA_DIR", os.getcwd())
+db = os.path.join(data_dir, "polls.db")
+conn = sqlite3.connect(db)
+try:
+    existing = conn.execute("SELECT COUNT(*) FROM norfolk_council_votes").fetchone()[0]
+    if existing >= 1000:
+        print(f"  Already populated ({existing:,} norfolk_council_votes rows) — skipping")
+        sys.exit(0)
+except Exception:
+    pass  # table doesn't exist yet — seed will create it
+try:
+    with open("data/norfolk_seed.sql", "r", encoding="utf-8") as f:
+        conn.executescript(f.read())
+    conn.commit()
+    for t in ("norfolk_council_votes", "norfolk_council_member_votes",
+              "norfolk_finance_summary", "norfolk_finance_totals"):
+        n = conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+        print(f"  {t}: {n:,} rows")
+except Exception as e:
+    print(f"  WARNING: Norfolk seed failed: {e}", file=sys.stderr)
+finally:
+    conn.close()
+PYEOF
+    [ $? -ne 0 ] && echo "⚠ Norfolk seed failed" || echo "✓ Norfolk tables seeded"
 fi
 
 # ── STEP 5: Build committee_testimony_proxy (derived from polls.db) ───────────
