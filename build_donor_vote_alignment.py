@@ -113,22 +113,60 @@ def classify_bill(title: str) -> str | None:
 # bills are classified with SECTOR_KEYWORDS above.  This maps CFS → bill names.
 
 CFS_TO_BILL_SECTOR: dict[str, str | None] = {
+    # Energy
     "Utilities":              "Energy/Utilities",
     "Fossil Fuels":           "Energy/Utilities",
+    "Renewables":             "Energy/Utilities",
+    # Alcohol / Gambling  (Skill Games + casino gaming map here too)
     "Wine & Spirits":         "Alcohol/Gambling",
     "Tobacco":                "Alcohol/Gambling",
+    "Gambling/Casinos":       "Alcohol/Gambling",
+    "Skill Games":            "Alcohol/Gambling",
+    # Finance
     "Financial Services":     "Finance",
+    "Banking":                "Finance",
+    "Insurance":              "Finance",
+    "Investment & Securities": "Finance",
+    "Crypto/Blockchain":      "Finance",
+    # Housing / Real Estate
     "Commercial Real Estate": "Housing",
-    "Agribusiness":           "Agriculture",
-    "Trial Lawyers":          "Criminal Justice",
+    "Realtors":               "Housing",
+    "Homebuilders":           "Housing",
+    # Healthcare
+    "Health Insurance":       "Healthcare",
+    "Pharma":                 "Healthcare",
+    "Hospitals":              "Healthcare",
+    "Health Professionals":   "Healthcare",
+    "Healthcare Worker Unions": "Healthcare",
+    # Tech / Data / Media
     "Software & IT":          "Tech/Data",
     "IT & Engineering":       "Tech/Data",
+    "Telecom":                "Tech/Data",
+    "Artificial Intelligence": "Tech/Data",
+    "Media":                  "Tech/Data",
+    # Agriculture
+    "Agribusiness":           "Agriculture",
+    "Livestock & Poultry":    "Agriculture",
+    # Legal / Justice
+    "Trial Lawyers":          "Criminal Justice",
+    # Education
     "Education":              "Education",
-    "Healthcare":             "Healthcare",
+    "Education Unions":       "Education",
+    # Transportation
     "Transportation":         "Transportation",
-    "Labor":                  "Labor",
-    "Environment":            "Environment",
-    # Broad / political buckets — skip as primary; fall back to next sector
+    # Environment
+    "Waste & Environmental":  "Environment",
+    # Labor
+    "Public Employee Unions":        "Labor",
+    "Building & Industrial Unions":  "Labor",
+    "Service & Retail Workers":      "Labor",
+    # Broad / no clean bill home — skip as primary; fall back to next sector
+    "Soft Drinks & Beverages": None,
+    "Corporate Law":          None,
+    "Legal":                  None,
+    "Defense":                None,
+    "Manufacturing":          None,
+    "Hospitality":            None,
     "Ideological":            None,
     "Individual/Other":       None,
     "Retail":                 None,
