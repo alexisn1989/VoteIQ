@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import csv
 import io
+import os
 import sqlite3
 import time
 import urllib.request
@@ -23,7 +24,7 @@ from pathlib import Path
 
 BASE_URL  = "https://apps.elections.virginia.gov/SBE_CSV/CF"
 BASE_DIR  = Path(__file__).resolve().parent
-DB_PATH   = BASE_DIR / "polls.db"
+DB_PATH   = Path(os.getenv("DATA_DIR", str(BASE_DIR))) / "polls.db"
 CACHE_DIR = BASE_DIR / "sbe_cache"
 
 HAMPTON_ROADS = {

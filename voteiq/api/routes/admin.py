@@ -122,6 +122,17 @@ def admin_ingest_vb_votes(
     return {"ok": all(v.get("ok") for v in results.values()), "scripts": results}
 
 
+@router.post("/ingest-sbe-local")
+def admin_ingest_sbe_local(
+    years: str = "",
+    _: None = Depends(require_admin_token),
+):
+    """Download SBE local-race contribution CSVs and populate sbe_local_contributions."""
+    args = ["--years"] + years.split() if years.strip() else []
+    result = _run_script("download_sbe_finance.py", args, timeout=480)
+    return {"ok": result.get("ok"), "scripts": {"download_sbe_finance.py": result}}
+
+
 @router.post("/ingest-vb-agenda")
 def admin_ingest_vb_agenda(
     days: int = 90,
