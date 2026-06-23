@@ -910,6 +910,29 @@ PYEOF
     [ $? -ne 0 ] && echo "⚠ Missed-vote seed failed" || echo "✓ Missed-vote tables seeded"
 fi
 
+# ── STEP 4g: Build VB analytics tables (blocs, finance, adjacency, dissent) ───
+echo ""
+echo "[STEP 4g] Building Virginia Beach derived analytics tables..."
+VB_VOTES=$(python3 -c "
+import sqlite3, os
+db = os.path.join(os.environ.get('DATA_DIR', os.getcwd()), 'polls.db')
+try:
+    print(sqlite3.connect(db).execute('SELECT COUNT(*) FROM vb_council_member_votes').fetchone()[0])
+except Exception:
+    print(0)
+" 2>/dev/null || echo "0")
+echo "  vb_council_member_votes rows: ${VB_VOTES}"
+if [ "${VB_VOTES:-0}" -lt 100 ] 2>/dev/null; then
+    echo "  Skipping VB analytics — vote table empty (first-run; Sunday cron will populate)"
+else
+    for VB_SCRIPT in build_vb_blocs.py build_vb_finance.py build_vb_dvadj.py build_vb_dissent.py; do
+        echo "  Running $VB_SCRIPT..."
+        python3 "$VB_SCRIPT" 2>&1 | tail -3
+        [ $? -ne 0 ] && echo "  ⚠ $VB_SCRIPT failed — continuing" || true
+    done
+    echo "✓ VB analytics tables rebuilt"
+fi
+
 # ── STEP 5: Build committee_testimony_proxy (derived from polls.db) ───────────
 echo ""
 echo "[STEP 5] Building committee testimony proxy (all sessions)..."

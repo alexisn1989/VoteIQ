@@ -7862,6 +7862,46 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
             if _adj_lines:
                 lines += ["", "### VB Council — Donor Sector / Vote Topic Adjacency"] + _adj_lines
 
+        # ── Per-member dissent profile (No-rate vs council avg by topic) ──
+        _vb_dissent_trigger = (
+            bool(_named_vb_finance)
+            or any(w in q_lower for w in (
+                "dissent", "pattern", "contrarian", "disagree", "against",
+                "oppose", "no vote", "outlier", "independently", "bloc",
+                "who votes against", "votes no",
+            ))
+        )
+        if _vb_dissent_trigger and _table_exists(conn, "vb_member_dissent"):
+            _dis_targets = _named_vb_finance if _named_vb_finance else _ALL_VB_FINANCE
+            _dis_lines: list[str] = []
+            for db_key in _dis_targets[:4]:
+                # Resolve to full vote-table name via partial match
+                full_name = conn.execute(
+                    "SELECT DISTINCT member_name FROM vb_member_dissent "
+                    "WHERE member_name LIKE ? LIMIT 1", (f"%{db_key.split('-')[0]}%",)
+                ).fetchone()
+                if not full_name:
+                    continue
+                vote_name = full_name[0]
+                rows_dis = conn.execute("""
+                    SELECT topic, member_no_pct, council_no_pct, delta_pp, member_no_count
+                    FROM vb_member_dissent
+                    WHERE member_name = ? AND ABS(delta_pp) >= 1 AND member_no_count >= 1
+                    ORDER BY ABS(delta_pp) DESC LIMIT 5
+                """, (vote_name,)).fetchall()
+                if not rows_dis:
+                    continue
+                _dis_lines.append(f"\n#### {db_key} — Dissent Profile (No-vote rate vs council avg)")
+                for topic, m_no, c_no, delta, nos in rows_dis:
+                    sign = "+" if delta >= 0 else ""
+                    direction = "more" if delta > 0 else "less"
+                    _dis_lines.append(
+                        f"  {topic:<22s}  {m_no:.1f}% No vs council {c_no:.1f}%  "
+                        f"({sign}{delta:.1f}pp — votes No {direction} than peers, {nos} No votes)"
+                    )
+            if _dis_lines:
+                lines += ["", "### VB Council — Dissent Profiles"] + _dis_lines
+
         # ── voting bloc / alignment ────────────────────────────────────────
         _bloc_trigger = any(w in q_lower for w in (
             "bloc", "align", "coalition", "faction", "together", "swing",

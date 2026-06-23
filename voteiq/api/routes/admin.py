@@ -116,7 +116,8 @@ def admin_ingest_vb_votes(
     results["ingest_vb_votes.py"] = _run_script(
         "ingest_vb_votes.py", ["--reset"] if reset else [], timeout=300
     )
-    for script in ("build_vb_blocs.py", "build_vb_finance.py", "build_vb_dvadj.py"):
+    for script in ("build_vb_blocs.py", "build_vb_finance.py",
+                   "build_vb_dvadj.py", "build_vb_dissent.py"):
         results[script] = _run_script(script, [], timeout=120)
     return {"ok": all(v.get("ok") for v in results.values()), "scripts": results}
 
@@ -166,6 +167,17 @@ def admin_build_vb_dvadj(
     args = ["--reset"] if reset else []
     result = _run_script("build_vb_dvadj.py", args, timeout=120)
     return {"ok": result.get("ok"), "scripts": {"build_vb_dvadj.py": result}}
+
+
+@router.post("/build-vb-dissent")
+def admin_build_vb_dissent(
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Compute per-member VB No-vote rates vs council avg by topic into vb_member_dissent."""
+    args = ["--reset"] if reset else []
+    result = _run_script("build_vb_dissent.py", args, timeout=120)
+    return {"ok": result.get("ok"), "scripts": {"build_vb_dissent.py": result}}
 
 
 @router.get("/refresh-bill-text")
