@@ -69,9 +69,11 @@ SECTOR_TOPIC_MAP: dict[str, list[str]] = {
     "Healthcare":    ["public-safety", "budget"],
     "Defense":       ["defense", "infrastructure"],
     "Education":     ["schools", "budget"],
+    "Labor":         ["governance", "budget", "public-safety"],
     "Government":    ["governance", "infrastructure"],
     "Energy":        ["environment", "infrastructure"],
     "Tech":          ["infrastructure", "economic-dev"],
+    "PAC/Advocacy":  ["governance"],
     "Retired":       [],
     "Other":         [],
 }

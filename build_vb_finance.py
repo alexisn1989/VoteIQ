@@ -39,7 +39,7 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                        "architect", "contractor", "land ", "land,", "rental", "housing",
                        "farm", "agriculture", "agric",
                        "real estate", "apartment", "commercial real estate"]),
-    ("Hospitality",   ["hotel", "resort", "restaur", "food", "beverage", "hospitality",
+    ("Hospitality",   ["hotel", "motel", "resort", "restaur", "food", "beverage", "hospitality",
                        "tourism", "marriott", "hilton", "oceanfront"]),
     ("Finance",       ["bank", "financ", "invest", "capital", "credit union", "mortgage",
                        "insur", "wealth", "fund", "securities", "lending", "asset"]),
@@ -54,15 +54,18 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
     ("Education",     ["school", "educat", "universit", "college", "teacher",
                        "professor", "academ", "old dominion", "odu", "regent",
                        "tidewater community", "tcc"]),
+    ("Labor",         ["union ", " union", "teamster", "fire fighter", "firefighter",
+                       "labor union", "afl-cio", "ibew ", "ufcw ", "seiu "]),
     ("Government",    ["city of", "county of", "state of ", "federal ", "govern",
-                       "municipal", "dept of", "department of", "public sector"]),
+                       "municipal", "dept of", "department of", "public sector",
+                       "city council", "town council"]),
     ("Energy",        ["energy", "utility", "electric", "gas ", "power ", "dominion",
                        "appalachian", "columbia gas"]),
     ("Tech",          ["tech", "software", "data ", "cyber", "digital", "computer",
                        "information tech", " it ", "systems integr"]),
     ("PAC/Advocacy",  ["pac ", "political action", "campaign committee", "advocacy org",
                        "lobby org", "political org", "political committee",
-                       "politcal action"]),
+                       "politcal action", "candidate committee"]),
     ("Retired",       ["retired", "retirement"]),
 ]
 
@@ -75,8 +78,8 @@ def classify_sector(employer: str, occupation: str) -> str:
     for sector, keywords in SECTOR_KEYWORDS:
         if any(kw in text for kw in keywords):
             return sector
-    # occupation fallback
-    occ = (occupation or "").lower()
+    # occupation fallback — checked only when employer-based path yields no match
+    occ = (occupation or "").lower().strip()
     if any(kw in occ for kw in ["attorney", "lawyer", "legal"]):
         return "Legal"
     if any(kw in occ for kw in ["realtor", "broker", "developer", "contractor", "farmer",
@@ -87,9 +90,18 @@ def classify_sector(employer: str, occupation: str) -> str:
     if any(kw in occ for kw in ["banker", "accountant", "cpa", "financial advisor",
                                   "investment advisor"]):
         return "Finance"
-    if any(kw in occ for kw in ["hotel", "hospitality", "restaur"]):
+    if any(kw in occ for kw in ["hotel", "motel", "hospitality", "restaur"]):
         return "Hospitality"
-    if any(kw in occ for kw in ["retired"]):
+    if any(kw in occ for kw in ["union", "teamster", "firefighter", "fire fighter"]):
+        return "Labor"
+    if any(kw in occ for kw in ["city council", "town council", "county supervisor",
+                                  "county board", "state senator", "state delegate"]):
+        return "Government"
+    if (any(kw in occ for kw in ["political action", "political committee",
+                                   "candidate committee", "political org", "advocacy"])
+            or occ in ("political", "pac")):
+        return "PAC/Advocacy"
+    if "retired" in occ:
         return "Retired"
     return "Other"
 
