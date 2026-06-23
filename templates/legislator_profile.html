@@ -716,10 +716,12 @@
           const color = SECTOR_COLORS[s.sector] || '#7a7468';
           const vapct = s.va_pct != null ? s.va_pct : null;
           const vaTitle = vapct != null ? `${vapct}% from Virginia donors · ${100-vapct}% out-of-state` : '';
-          return `<div class="topic-row clickable" onclick="openSectorDrawer('${esc(s.sector)}')" title="Click to see top contributors">
-            <div class="topic-label" title="${esc(s.sector)}">${esc(s.sector)}</div>
+          const displaySector = s.sector === 'Individual/Other' ? 'Uncategorized' : s.sector;
+          const truePct = Math.round(s.total / ((finMeta && finMeta.total_raised) || 1) * 100);
+          return `<div class="topic-row clickable" onclick="openSectorDrawer('${esc(displaySector)}')" title="Click to see top contributors">
+            <div class="topic-label" title="${esc(displaySector)}">${esc(displaySector)}</div>
             <div class="topic-track" title="${vaTitle}"><div class="topic-fill" style="width:${pct}%;background:${sectorGradient(color,vapct)}"></div></div>
-            <div class="topic-count" style="flex:0 0 52px">${fmtMoney(s.total)}</div>
+            <div class="topic-count" style="flex:0 0 64px">${fmtMoney(s.total)}<span style="font-size:0.58rem;color:var(--muted);margin-left:3px">${truePct}%</span></div>
             ${vaBadge(vapct)}
           </div>`;
         }).join('');
@@ -952,7 +954,7 @@
     const rows = patronTopics.map(t => {
       const color = TOPIC_COLOR[t.topic] || '#374151';
       const billList = (t.patron_bills || []).map(b =>
-        `<a href="/legislators/bill/${esc(b.bill)}" style="font-size:0.68rem;color:var(--accent);text-decoration:none" title="${esc(b.title)}">${esc(b.bill)}</a>`
+        `<a href="/?q=${encodeURIComponent('Tell me about ' + b.bill + ': ' + (b.title||''))}" class="bill-id" style="font-size:0.68rem;text-decoration:none" title="Ask VoteIQ about ${esc(b.bill)}">${esc(b.bill)}</a>`
       ).join(' ');
 
       let voteHtml = '';
@@ -987,10 +989,12 @@
       const color = SECTOR_COLORS[s.sector] || '#7a7468';
       const vapct = s.va_pct != null ? s.va_pct : null;
       const vaTitle = vapct != null ? `${vapct}% from Virginia donors · ${100-vapct}% out-of-state` : '';
-      return `<div class="sector-row" onclick="openSectorDrawer('${esc(s.sector)}')" title="Click to see top contributors">
-        <div class="sector-label" title="${esc(s.sector)}">${esc(s.sector)}</div>
+      const displaySector = s.sector === 'Individual/Other' ? 'Uncategorized' : s.sector;
+      const truePct = Math.round(s.total / ((finMeta && finMeta.total_raised) || 1) * 100);
+      return `<div class="sector-row" onclick="openSectorDrawer('${esc(displaySector)}')" title="Click to see top contributors">
+        <div class="sector-label" title="${esc(displaySector)}">${esc(displaySector)}</div>
         <div class="sector-track" title="${vaTitle}"><div class="sector-fill" style="width:${pct}%;background:${sectorGradient(color,vapct)}"></div></div>
-        <div class="sector-amount">${fmtMoney(s.total)}</div>
+        <div class="sector-amount">${fmtMoney(s.total)}<span style="font-size:0.6rem;color:var(--muted);margin-left:4px">${truePct}%</span></div>
         ${vaBadge(vapct)}
       </div>`;
     }).join('');
@@ -1348,8 +1352,9 @@ function _initDonorChart() {
           const stateBadge = c.state
             ? '<span style="background:var(--mid);padding:1px 6px;border-radius:2px;font-size:0.58rem;font-family:\'Barlow Condensed\',sans-serif;margin-left:5px;flex-shrink:0">' + _esc(c.state) + '</span>'
             : '';
-          const occ = c.occupation
-            ? '<div class="sector-contrib-occ">' + _esc(c.occupation) + '</div>'
+          const occParts = [c.occupation, c.employer].filter(Boolean);
+          const occ = occParts.length
+            ? '<div class="sector-contrib-occ">' + _esc(occParts.join(' · ')) + '</div>'
             : '';
           const gifts = c.records > 1
             ? '<div class="sector-contrib-gifts">' + c.records + ' contributions</div>'

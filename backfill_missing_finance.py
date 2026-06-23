@@ -133,7 +133,7 @@ def build_summary(conn: sqlite3.Connection, raw_names: list[str]) -> dict | None
     sector_count: dict[str, int] = defaultdict(int)
     donor_total: dict[tuple, float] = defaultdict(float)
     donor_count: dict[tuple, int] = defaultdict(int)
-    donor_sector: dict[tuple, str] = {}
+    donor_sector_amount: dict[tuple, dict[str, float]] = defaultdict(lambda: defaultdict(float))
     cycles: set[str] = set()
     total_raised = 0.0
 
@@ -150,11 +150,17 @@ def build_summary(conn: sqlite3.Connection, raw_names: list[str]) -> dict | None
         sector_count[sector] += 1
         donor_total[key] += amt
         donor_count[key] += 1
-        donor_sector.setdefault(key, sector)
+        donor_sector_amount[key][sector] += amt
         if cname and not donor_meta.get(key):
             donor_meta[key] = (cname, r["employer"] or "")
         if r["election_cycle"]:
             cycles.add(str(r["election_cycle"]))
+
+    # Pick the sector with the highest total amount per donor (most representative)
+    donor_sector: dict[tuple, str] = {
+        k: max(v, key=lambda s: v[s])
+        for k, v in donor_sector_amount.items()
+    }
 
     by_sector = sorted(
         ({
@@ -198,7 +204,7 @@ def build_summary(conn: sqlite3.Connection, raw_names: list[str]) -> dict | None
 donor_meta: dict[tuple, tuple[str, str]] = {}
 
 
-def main(write: bool) -> None:
+def main(write: bool, force_rebuild: bool = False) -> None:
     conn = sqlite3.connect(str(POLLS_DB), timeout=30)
     conn.row_factory = sqlite3.Row
 
@@ -227,13 +233,17 @@ def main(write: bool) -> None:
         if k:
             raw_index[k].add(r["candidate_name"])
 
-    missing = [n for n in roster if _name_key(n) not in fin_keys]
-    print(f"2026 roster: {len(roster)}   missing from finance: {len(missing)}\n")
+    if force_rebuild:
+        candidates = list(roster.keys())
+        print(f"2026 roster: {len(roster)}   force-rebuilding all\n")
+    else:
+        candidates = [n for n in roster if _name_key(n) not in fin_keys]
+        print(f"2026 roster: {len(roster)}   missing from finance: {len(candidates)}\n")
 
     built = skipped = 0
     rows_to_write = []
 
-    for name in sorted(missing):
+    for name in sorted(candidates):
         key = _name_key(name)
         donor_meta.clear()
         if name in _ALIASES:
@@ -277,7 +287,7 @@ def main(write: bool) -> None:
             json.dumps(summary["cycles"]), datetime.now(timezone.utc).isoformat(),
         ))
 
-    print(f"\nBuilt {built}, skipped {skipped} (of {len(missing)} missing).")
+    print(f"\nBuilt {built}, skipped {skipped} (of {len(candidates)} processed).")
 
     if write and rows_to_write:
         conn.executemany("""
@@ -307,5 +317,7 @@ def main(write: bool) -> None:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--write", action="store_true", help="persist rows to polls.db")
+    ap.add_argument("--force-rebuild", action="store_true",
+                    help="rebuild all roster legislators, not just missing ones")
     args = ap.parse_args()
-    main(write=args.write)
+    main(write=args.write, force_rebuild=args.force_rebuild)

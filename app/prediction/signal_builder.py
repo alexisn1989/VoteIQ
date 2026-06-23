@@ -28,6 +28,25 @@ from app.prediction.feature_queries import (
 
 logger = logging.getLogger(__name__)
 
+# Areas where vote_consistency is a weak predictor (validation: below-baseline accuracy).
+# Claude should treat predictions here as speculative; signal-rule abstains unless extreme.
+_LOW_RELIABILITY_AREAS  = frozenset({"SOCIAL_SERVICES", "AGRICULTURE", "TAXATION"})
+# BUDGET is fully blocked: vote_consistency is an inverted signal (0-4% validation accuracy).
+# Production Claude must treat BUDGET predictions as speculative regardless of yes_rate.
+_INVERTED_SIGNAL_AREAS  = frozenset({"BUDGET"})
+_HIGH_RELIABILITY_AREAS = frozenset({"CRIMINAL_JUSTICE", "LABOR", "ENERGY", "HOUSING"})
+
+
+def _policy_area_reliability(policy_area: str) -> str:
+    pa = (policy_area or "").upper()
+    if pa in _INVERTED_SIGNAL_AREAS:
+        return "inverted"   # vote_consistency actively misleads — treat as UNCERTAIN
+    if pa in _LOW_RELIABILITY_AREAS:
+        return "low"
+    if pa in _HIGH_RELIABILITY_AREAS:
+        return "high"
+    return "medium"
+
 
 def _compute_confidence(
     vote_c: dict | None,
@@ -90,7 +109,7 @@ def build_signals(
     donor_con = get_donor_concentration(db, canonical_name, policy_area)
     timing    = get_donor_timing(db, canonical_name, policy_area)
     outcomes  = get_policy_area_outcomes(db, policy_area)
-    coi       = get_coi_score(db, canonical_name)
+    coi       = get_coi_score(db, canonical_name, policy_area)
     gap       = (
         get_utility_funding_gap(db, canonical_name, bill_number, session)
         if bill_number and session
@@ -124,8 +143,9 @@ def build_signals(
         "policy_area_outcomes": outcomes,
         "coi_score":            coi,
         "utility_funding_gap":  gap,
-        "confidence_level":     confidence,
-        "confidence_elevated":  confidence_elevated,
-        "counter_signal_active": counter_active,
-        "counter_signal_note":   counter_note,
+        "confidence_level":        confidence,
+        "confidence_elevated":     confidence_elevated,
+        "counter_signal_active":   counter_active,
+        "counter_signal_note":     counter_note,
+        "policy_area_reliability": _policy_area_reliability(policy_area),
     }

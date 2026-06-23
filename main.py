@@ -422,6 +422,7 @@ _safe_include("voteiq.api.routes.feedback")
 _safe_include("voteiq.api.routes.tasks")
 _safe_include("voteiq.api.routes.governor")
 _safe_include("voteiq.api.routes.legislators")
+_safe_include("voteiq.api.routes.bills")
 _safe_include("voteiq.api.routes.candidate_profile")
 _safe_include("voteiq.api.routes.federal")
 
@@ -1847,7 +1848,16 @@ def _is_simple_free_question(user_query: str) -> bool:
 
 
 def _is_complex_query(query: str, ctx: str = "") -> bool:
-    """Signal-based check: 2+ signals routes to Opus; fewer stays on Sonnet."""
+    """Signal-based check: 2+ signals routes to Opus; fewer stays on Sonnet.
+
+    Pro-tier escalation criteria (from routing spec):
+    - 3+ legislators compared
+    - cross-session trend analysis (2+ sessions)
+    - cross-domain (votes + finance + lobbying combined)
+    - multi-bill pattern analysis
+    - 4+ retrieved data sources
+    - pre-demo audit runs
+    """
     q = (query or "").lower()
     c = (ctx or "").lower()
     signals = 0
@@ -1889,6 +1899,37 @@ def _is_complex_query(query: str, ctx: str = "") -> bool:
 
     # Large context → multi-source synthesis
     if len(c) > 5000:
+        signals += 1
+
+    # ── Pro-tier escalation signals ──────────────────────────────────────────
+
+    # 3+ legislators named (rough heuristic: 3+ capitalized name tokens or
+    # explicit multi-person comparison phrasing)
+    import re as _re
+    _name_candidates = _re.findall(r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+", query or "")
+    if len(_name_candidates) >= 3:
+        signals += 1
+
+    # Cross-session analysis (two 4-digit years mentioned, or explicit phrasing)
+    _years = _re.findall(r"\b20\d{2}\b", query or "")
+    if len(set(_years)) >= 2 or any(w in q for w in (
+        "multiple sessions", "past sessions", "2024 and 2026", "2023 and 2025",
+        "previous session", "last session and",
+    )):
+        signals += 1
+
+    # Cross-domain: votes + finance + lobbying all present in context
+    _lobbying = any(w in c for w in ("lobbying", "lobbyist", "registered principal", "lobby"))
+    if _finance and _votes and _lobbying:
+        signals += 1
+
+    # Multiple bill numbers in query
+    _bills = _re.findall(r"\b(?:hb|sb|hj|sj|hr|sr)\s*\d+\b", q)
+    if len(set(_bills)) >= 2:
+        signals += 1
+
+    # Pre-demo audit
+    if any(w in q for w in ("demo", "audit", "audit run", "pre-demo", "predemo")):
         signals += 1
 
     return signals >= 2

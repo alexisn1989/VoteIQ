@@ -6,7 +6,21 @@ Endpoints:
   GET /api/donor-vote-alignment/{name}      — single legislator breakdown
   GET /api/donor-vote-alignment/sector/{s}  — all legislators for a sector
 """
+
+# ── Methodology Version ───────────────────────────────────────────────────────
+# Increment whenever attribution rules, aggregation logic, ranking methodology,
+# or concentration metrics change.
+#
+# v1.0 — initial: mean-based donor-vote comparisons, no outlier detection
+# v2.0 — 2026-06: median as primary statistic; mean demoted to supplemental;
+#         outlier detection (mean>3×median, top-5 concentration >50%);
+#         funding concentration metric (donor_share_pct of total raised);
+#         statistical quality score A–D; full provenance labels; time-window
+#         normalization (session_cycle / election_cycle / multi_cycle_total);
+#         pre-render validation checklist; methodology version tagging.
 from __future__ import annotations
+
+FINANCE_METHODOLOGY_VERSION = "VoteIQ Finance Analysis v2.0"
 
 import json
 import os

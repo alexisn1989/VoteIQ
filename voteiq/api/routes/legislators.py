@@ -1253,34 +1253,55 @@ def api_sector_contributors(name: str, sector: str):
             return {"sector": sector, "contributors": [], "sector_total": 0}
 
         placeholders = ",".join("?" * len(variants))
+        # Group by (is_individual, last_or_company, employer) — NOT just last_or_company.
+        # Grouping only by last_or_company merges different people with the same surname
+        # (e.g. two "Cree" donors), causing MAX(employer) to pick whichever employer
+        # sorts alphabetically highest — which may belong to a completely different person.
         rows = conn.execute(f"""
-            SELECT lower(last_or_company)                  AS grp_key,
-                   MAX(last_or_company)                    AS name,
-                   MAX(occupation)                         AS occupation,
-                   MAX(COALESCE(NULLIF(employer,''), ''))  AS employer,
-                   MAX(state_code)                         AS state,
-                   SUM(amount)                             AS total,
-                   COUNT(*)                                AS records
+            SELECT first_name,
+                   last_or_company,
+                   MAX(occupation)   AS occupation,
+                   employer,
+                   is_individual,
+                   MAX(state_code)   AS state,
+                   SUM(amount)       AS total,
+                   COUNT(*)          AS records
             FROM va_cf_schedule_a
-            WHERE candidate_name IN ({placeholders})
-            GROUP BY lower(last_or_company)
+            WHERE candidate_name IN ({placeholders}) AND amount > 0
+            GROUP BY is_individual, last_or_company, employer
             ORDER BY total DESC
         """, variants).fetchall()
+
+        # "Individual/Other" is classify_sector's catch-all; the UI calls it "Uncategorized".
+        _CATCHALL = "Individual/Other"
+        target = _CATCHALL if sector == "Uncategorized" else sector
 
         contributors = []
         sector_total = 0.0
         for r in rows:
-            s = classify_sector(r["occupation"] or "", r["employer"] or "", r["name"] or "")
-            if s != sector:
+            is_ind = int(r["is_individual"] or 0)
+            # For individual contributors, last_or_company is their surname — passing it
+            # as the `company` argument would match it against sector keywords and
+            # misclassify the row.  The build pipeline uses company="" for individuals.
+            company = r["last_or_company"] if not is_ind else ""
+            s = classify_sector(r["occupation"] or "", r["employer"] or "", company)
+            if s != target:
                 continue
             sector_total += r["total"] or 0
+            display_name = (
+                " ".join(filter(None, [r["first_name"], r["last_or_company"]])).strip()
+                if is_ind else (r["last_or_company"] or "")
+            )
             contributors.append({
-                "name":       r["name"],
+                "name":       display_name,
+                "employer":   r["employer"] or "",
                 "occupation": r["occupation"] or "",
                 "state":      r["state"] or "",
                 "total":      round(r["total"] or 0, 2),
                 "records":    r["records"],
             })
+
+        contributors.sort(key=lambda c: c["total"], reverse=True)
 
         return {
             "sector":       sector,

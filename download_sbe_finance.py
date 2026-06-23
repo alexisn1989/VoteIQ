@@ -84,16 +84,20 @@ def ingest_period(report_path: Path, sched_path: Path, conn: sqlite3.Connection,
     if not reports or not contribs:
         return 0
 
-    # Filter reports: IsLocal == True (or all if --all-offices)
-    if not all_offices:
-        reports = [r for r in reports if r.get("IsLocal", "").strip().lower() == "true"]
+    # Whitelist of genuinely local offices (excludes state/federal races)
+    LOCAL_OFFICE_KEYWORDS = {
+        "mayor", "city council", "town council", "board of supervisors",
+        "school board", "sheriff", "treasurer", "commonwealth",
+        "commissioner of revenue", "clerk of court", "clerk of circuit",
+        "registrar", "electoral board", "constitutional officer",
+    }
 
-    # Exclude state races that SBE tags as IsLocal (HOD, Senate)
-    HOD_VARIANTS = {"member, house of delegates", "member house of delegates",
-                    "member house", "house of delegates", "senate of virginia",
-                    "state senate", "member, senate of virginia"}
-    reports = [r for r in reports
-               if r.get("OfficeSought", "").strip().lower() not in HOD_VARIANTS]
+    def is_local_office(office: str) -> bool:
+        o = office.strip().lower()
+        return any(k in o for k in LOCAL_OFFICE_KEYWORDS)
+
+    if not all_offices:
+        reports = [r for r in reports if is_local_office(r.get("OfficeSought", ""))]
 
     # Hampton Roads locality filter
     if HAMPTON_ROADS:

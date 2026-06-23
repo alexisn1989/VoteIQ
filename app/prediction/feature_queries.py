@@ -684,22 +684,33 @@ def get_policy_area_outcomes(
 _COI_COUNTER_DELTA_THRESHOLD  = -5.0   # alignment_delta below this triggers counter-signal
 _COI_COUNTER_SHARE_THRESHOLD  = 15.0   # top_sector_share must also exceed this
 
-def get_coi_score(db: sqlite3.Connection, canonical_name: str) -> dict | None:
+def get_coi_score(
+    db: sqlite3.Connection,
+    canonical_name: str,
+    policy_area: str | None = None,
+) -> dict | None:
     """
     Look up pre-computed CoI (conflict-of-interest) score from donor_vote_alignment.
 
     Source: donor_vote_alignment table (150 rows, pre-computed by build_dominion_analysis.py).
     Joined via va_name_index.votes_table_name = donor_vote_alignment.name.
 
+    If policy_area is provided and matches a sector in by_sector_json (>=5 votes),
+    sector_matched=True and sector_specific_yes_rate gives a targeted yes-rate for
+    that policy area — more precise than the aggregate top-sector signal.
+
     Returns:
-      coi_score              float 0–100  (50=neutral; >50=aligned; <50=counter-signal)
-      top_donor_industry     str | None
-      top_donor_amount       float | None
+      coi_score                float 0–100  (50=neutral; >50=aligned; <50=counter-signal)
+      top_donor_industry       str | None
+      top_donor_amount         float | None
       yes_rate_in_top_industry float | None  (sector_yes_rate as 0–1)
-      is_counter_signal      bool
-      party_median_gap       float | None   (sector_yes_rate minus party avg; negative = below median)
-      counter_signal_note    str | None     (populated only when is_counter_signal=True)
-    Returns None if legislator is not in donor_vote_alignment (coverage ≈ 44/149).
+      is_counter_signal        bool
+      party_median_gap         float | None  (sector_yes_rate minus party avg)
+      counter_signal_note      str | None    (populated only when is_counter_signal=True)
+      sector_matched           bool          (True when policy_area hit by_sector_json)
+      sector_specific_yes_rate float | None  (0–1; None when sector_matched=False)
+      sector_specific_total    int | None    (vote count for that sector)
+    Returns None if legislator is not in donor_vote_alignment.
     """
     name_row = _resolve_name(db, canonical_name)
     if not name_row:
@@ -716,7 +727,8 @@ def get_coi_score(db: sqlite3.Connection, canonical_name: str) -> dict | None:
         dv_row = db.execute(
             """
             SELECT top_donor_sector, top_sector_amt, top_sector_share,
-                   sector_yes_rate, other_yes_rate, alignment_delta, total_raised
+                   sector_yes_rate, other_yes_rate, alignment_delta, total_raised,
+                   by_sector_json
             FROM donor_vote_alignment
             WHERE name = ?
             """,
@@ -730,7 +742,7 @@ def get_coi_score(db: sqlite3.Connection, canonical_name: str) -> dict | None:
         logger.info("get_coi_score: %r (dv_name=%r) not in donor_vote_alignment", canonical_name, dv_name)
         return None
 
-    top_sector, top_amt, share, s_yes, o_yes, delta, total_raised = dv_row
+    top_sector, top_amt, share, s_yes, o_yes, delta, total_raised, by_sector_raw = dv_row
 
     # Normalise None fields that can appear when a legislator has no sector votes
     delta = delta or 0.0
@@ -773,18 +785,36 @@ def get_coi_score(db: sqlite3.Connection, canonical_name: str) -> dict | None:
             f"but votes {abs(delta):.1f}pp below the sector average."
         )
 
+    # Sector-specific yes rate when policy_area matches a by_sector_json entry
+    sector_matched           = False
+    sector_specific_yes_rate: float | None = None
+    sector_specific_total:   int | None   = None
+    if policy_area and by_sector_raw:
+        try:
+            for entry in json.loads(by_sector_raw):
+                if entry.get("sector") == policy_area and entry.get("total", 0) >= 5:
+                    sector_specific_yes_rate = round(entry["yes_rate"] / 100.0, 4)
+                    sector_specific_total    = entry["total"]
+                    sector_matched           = True
+                    break
+        except (json.JSONDecodeError, TypeError, KeyError) as exc:
+            logger.warning("get_coi_score: by_sector_json parse error for %r: %s", canonical_name, exc)
+
     logger.info(
-        "get_coi_score: %r sector=%r delta=%+.1f share=%.1f%% score=%.1f counter=%s",
-        canonical_name, top_sector, delta, share, coi_score, is_counter,
+        "get_coi_score: %r sector=%r delta=%+.1f share=%.1f%% score=%.1f counter=%s sector_match=%s",
+        canonical_name, top_sector, delta, share, coi_score, is_counter, sector_matched,
     )
     return {
-        "coi_score":              coi_score,
-        "top_donor_industry":     top_sector,
-        "top_donor_amount":       round(float(top_amt), 2) if top_amt is not None else None,
+        "coi_score":               coi_score,
+        "top_donor_industry":      top_sector,
+        "top_donor_amount":        round(float(top_amt), 2) if top_amt is not None else None,
         "yes_rate_in_top_industry": round(s_yes / 100.0, 4),
-        "is_counter_signal":      is_counter,
-        "party_median_gap":       party_median_gap,
-        "counter_signal_note":    counter_note,
+        "is_counter_signal":       is_counter,
+        "party_median_gap":        party_median_gap,
+        "counter_signal_note":     counter_note,
+        "sector_matched":          sector_matched,
+        "sector_specific_yes_rate": sector_specific_yes_rate,
+        "sector_specific_total":   sector_specific_total,
     }
 
 
