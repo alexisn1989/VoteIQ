@@ -162,7 +162,7 @@ def ingest_period(report_path: Path, sched_path: Path, conn: sqlite3.Connection,
     cols = list(rows_to_insert[0].keys())
     placeholders = ", ".join("?" for _ in cols)
     quoted_cols  = ", ".join(f'"{c}"' for c in cols)
-    sql = f"INSERT INTO sbe_local_contributions ({quoted_cols}) VALUES ({placeholders})"
+    sql = f"INSERT OR IGNORE INTO sbe_local_contributions ({quoted_cols}) VALUES ({placeholders})"
 
     conn.executemany(sql, [[r[c] for c in cols] for r in rows_to_insert])
     return len(rows_to_insert)
