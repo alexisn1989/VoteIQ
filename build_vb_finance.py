@@ -37,7 +37,8 @@ MEMBER_SBE_FILTERS: dict[str, dict] = {
 SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
     ("Real Estate",   ["realt", "develop", "construct", "proper", "build", "homebuil",
                        "architect", "contractor", "land ", "land,", "rental", "housing",
-                       "farm", "agriculture", "agric"]),
+                       "farm", "agriculture", "agric",
+                       "real estate", "apartment", "commercial real estate"]),
     ("Hospitality",   ["hotel", "resort", "restaur", "food", "beverage", "hospitality",
                        "tourism", "marriott", "hilton", "oceanfront"]),
     ("Finance",       ["bank", "financ", "invest", "capital", "credit union", "mortgage",
@@ -59,6 +60,9 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                        "appalachian", "columbia gas"]),
     ("Tech",          ["tech", "software", "data ", "cyber", "digital", "computer",
                        "information tech", " it ", "systems integr"]),
+    ("PAC/Advocacy",  ["pac ", "political action", "campaign committee", "advocacy org",
+                       "lobby org", "political org", "political committee",
+                       "politcal action"]),
     ("Retired",       ["retired", "retirement"]),
 ]
 
@@ -75,12 +79,16 @@ def classify_sector(employer: str, occupation: str) -> str:
     occ = (occupation or "").lower()
     if any(kw in occ for kw in ["attorney", "lawyer", "legal"]):
         return "Legal"
-    if any(kw in occ for kw in ["realtor", "broker", "developer", "contractor", "farmer"]):
+    if any(kw in occ for kw in ["realtor", "broker", "developer", "contractor", "farmer",
+                                  "real estate", "apartment", "property manager"]):
         return "Real Estate"
     if any(kw in occ for kw in ["physician", "doctor", "nurse", "pharmacist"]):
         return "Healthcare"
-    if any(kw in occ for kw in ["banker", "accountant", "cpa", "financial advisor"]):
+    if any(kw in occ for kw in ["banker", "accountant", "cpa", "financial advisor",
+                                  "investment advisor"]):
         return "Finance"
+    if any(kw in occ for kw in ["hotel", "hospitality", "restaur"]):
+        return "Hospitality"
     if any(kw in occ for kw in ["retired"]):
         return "Retired"
     return "Other"
