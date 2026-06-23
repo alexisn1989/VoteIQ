@@ -92,6 +92,22 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
     ("Ideological",    ["campaign fund", "campaign committee", "campaign account",
                         "for governor", "for senate", "for delegate", "for house",
                         "for congress", "for president",
+                        # candidate-committee naming variants (e.g. "Saslaw for
+                        # State Senate", "Corey Stewart for Chairman", "Friends of
+                        # Luke Torian", "Committee to Elect …")
+                        "for state senate", "for house of delegates",
+                        "for lieutenant governor", "for attorney general",
+                        "for chairman", "for sheriff", "for school board",
+                        "for supervisor", "for commonwealth", "for mayor",
+                        "for city council", "for board of supervisors",
+                        "committee to elect", "re-elect", "reelect", "re elect",
+                        "friends of", "majority for", "majority pac",
+                        # issue-advocacy / ideological orgs
+                        "emily's list", "emilys list", "pro-choice", "pro choice",
+                        "reproductive rights", "abortion rights",
+                        "league of conservation", "conservation voters",
+                        "black caucus", "legislative caucus", "caucus",
+                        "new virginia majority", "priorities usa", "the way ahead",
                         "political organization", "political action",
                         "political education", "political fund", "political committee",
                         "pac ", " pac", "p.a.c", "p.b.a pac",
@@ -123,7 +139,8 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                             "therapeutics", "life science", "medical device",
                             "med device", "medical supply", "medtronic", "pfizer",
                             "merck", "amgen", "abbvie", "genentech", "novartis",
-                            "astrazeneca", "gilead", "biogen"]),
+                            "astrazeneca", "gilead", "biogen", "phrma",
+                            "pharmaceutical research"]),
     ("Hospitals",          ["hospital", "health system", "healthcare system", "livongo",
                             "health care system", "medical center", "med center",
                             "health center", "clinic", "nursing home",
@@ -132,7 +149,7 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                             "hospice", "sentara", "bon secours", "inova",
                             "vcu health", "carilion", "riverside health",
                             "valley health", "centra health", "ballad health",
-                            "uva health", "hca healthcare"]),
+                            "uva health", "hca healthcare", "hca for good"]),
     ("Health Professionals", ["physician", "doctor", "nurse", "nursing",
                             "dentist", "dental", "orthodont", "surgeon",
                             "surgery", "therapist", "therapy", "psychiatr",
@@ -212,7 +229,9 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                              "federal reserve", "fdic"]),
     ("Financial Services",  ["financial", "investment", "accountant", "cpa", "auditor",
                              "lender", "capital", "wealth", "broker",
-                             "mortgage", "lending", "trading", "financi", "octus"]),
+                             "mortgage", "lending", "trading", "financi", "octus",
+                             "visa inc", "visa u.s", "visa usa", "mastercard",
+                             "payment processor", "payment network", "payments compan"]),
     # ── AI / Crypto early-exits (before Software & IT / Financial Services) ─────
     ("Artificial Intelligence", ["artificial intelligence", "openai", "anthropic inc",
                                   "deepmind", "palantir", "machine learning",
@@ -241,7 +260,9 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                              "computer", "digital", "cloud", "saas", "cybersecurity",
                              "programmer", "google", "microsoft", "amazon web",
                              "apple inc", "meta platform", "salesforce",
-                             "oracle corp", "ibm ", "cisco sys", "bloomberg"]),
+                             "oracle corp", "ibm ", "cisco sys", "bloomberg",
+                             "web services", "amazon.com", "data center",
+                             "facebook", "meta platforms", "social media corp"]),
     ("IT & Engineering",    ["tech", "engineer", "developer", "network", "data"]),
     # ── Energy sub-sectors (Renewables, then Utilities, then Fossil Fuels
     # as catch-all — "dominion energy" catches before generic "energy") ─────────
@@ -267,7 +288,8 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
     ("Fossil Fuels",        ["oil", "gas", "petroleum", "coal", "refin", "pipeline",
                              "drill", "frack", "coal mining", "coal mine", "coalfield",
                              "upstream", "crownquest", "crown quest", "holtzman corp",
-                             "energy"]),
+                             "alpha natural resources", "mining compan", "mining corp",
+                             "coal producer", "energy"]),
     # ── Agriculture sub-sectors ──────────────────────────────────────────────
     ("Tobacco",             ["tobacco", "altria", "philip morris", "pmi ",
                              "universal leaf", "cigar", "cigarette",
@@ -275,10 +297,32 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                              "reynolds american", "rai services", "lorillard",
                              "british american tobacco", "bat usa"]),
     ("Wine & Spirits",      ["wine", "winery", "vineyard", "distiller",
-                             "craft brew", "brewery", "meadery", "cider",
+                             "craft brew", "brewery", "brewing", "meadery", "cider",
                              "wine wholesaler", "wine assoc",
                              "spirits", "liquor", "whiskey", "bourbon",
-                             "beer wholesal", "beer distribut", "malt beverage"]),
+                             "beer wholesal", "beer distribut", "malt beverage",
+                             # brewers + Anheuser-Busch/Miller beer wholesalers
+                             # (caught here before the Soft Drinks sector so beer
+                             #  distributors are classified as alcohol, not soda)
+                             "anheuser", "budweiser", "molson coors", "coors brewing",
+                             "premium distributors", "virginia eagle", "eagle distrib",
+                             "blue ridge beverage", "valley distributing",
+                             "dixie beverage", "brown distributing"]),
+    # ── Soft Drinks & Beverages (non-alcoholic) ──────────────────────────────
+    # Must come AFTER Wine & Spirits so alcohol is matched first. Captures the
+    # soda/soft-drink lobby (Coca-Cola, Pepsi, the Virginia Beverage Association)
+    # plus broadline beverage/vending distributors (Atlantic Dominion). These
+    # previously fell to Individual/Other after alcohol-only beverage matching.
+    ("Soft Drinks & Beverages", ["soft drink", "soft-drink", "soda pop",
+                                 "carbonated bev",
+                                 "coca-cola", "coca cola", "pepsi", "pepsico",
+                                 "dr pepper", "dr. pepper", "keurig", "red bull",
+                                 "monster beverage", "gatorade", "snapple",
+                                 "american beverage", "beverage association",
+                                 "beverage manufactur", "beverage bottl",
+                                 "beverage distribut", "beverage wholesal",
+                                 "bottling co", "bottling comp",
+                                 "vending", "food and beverage", "food & beverage"]),
     ("Livestock & Poultry", ["livestock", "cattle", "poultry", "dairy",
                              "hog", "swine", "beef", "equine", "horse",
                              "mountaire", "perdue", "smithfield food",
@@ -288,7 +332,8 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                              "fertilizer", "harvest", "cooperative",
                              "cotton", "sugar cane", "forestry", "timber",
                              "rancher", "agronomist", "horticultur",
-                             "peanut", "nursery"]),
+                             "peanut", "nursery", "seafood", "menhaden",
+                             "omega protein", "fishery", "fisheries", "aquaculture"]),
     ("Education",      ["teacher", "professor", "school", "universit", "college",
                         "educat", "principal", "librarian", "tutor", "academic",
                         "faculty", "superintendent"]),
@@ -303,14 +348,20 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                                    "government employees", "state employees",
                                    "municipal employees", "public employees",
                                    "firefighters union", "fire fighters union",
+                                   "firefighters", "fire fighters", "iaff",
+                                   "professional fire fighters",
+                                   "fraternal order of police", "police benevolent",
                                    "police union", "postal workers",
                                    "letter carriers", "national postal"]),
     ("Building & Industrial Unions", ["uaw", "ibew", "iatse", "teamster",
-                                   "sheet metal workers", "boilermakers",
+                                   "sheet metal workers", "sheet metal", "boilermakers",
                                    "ironworkers", "iron workers", "machinists",
                                    "liuna", "laborers international",
                                    "laborers' international", "plumbers union",
-                                   "carpenters union", "operating engineers",
+                                   "carpenters union", "carpenters pec",
+                                   "brotherhood of carpenters", "journeymen",
+                                   "pipefitters", "steamfitters",
+                                   "operating engineers",
                                    "painters union", "bricklayers", "plasterers",
                                    "cement masons", "afl-cio", "building trades",
                                    "united auto workers", "united steelworkers",
@@ -323,7 +374,26 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                                    "retail workers", "united food"]),
     # No catch-all — "Building & Industrial Unions" is the residual in apportion()
     ("Defense",        ["defense", "military", "veteran", "aerospace", "weapon",
-                        "contractor dod", "army", "navy", "marine", "air force"]),
+                        "contractor dod", "army", "navy", "marine", "air force",
+                        "shipbuilding", "huntington ingalls", "newport news ship",
+                        "general dynamics", "northrop grumman", "lockheed",
+                        "raytheon", "bae systems", "l3harris", "leidos"]),
+    # ── Media ────────────────────────────────────────────────────────────────
+    ("Media",          ["broadcast", "broadcasting", "newspaper", "publishing",
+                        "publisher", "radio station", "television station",
+                        "media", "urban one", "gannett co", "sinclair broadcast",
+                        "nexstar", "tegna", "cox media", "cox enterprises"]),
+    # ── Waste & Environmental Services ───────────────────────────────────────
+    ("Waste & Environmental", ["waste management", "solid waste", "waste services",
+                        "recycling", "environmental service", "environmental remediation",
+                        "sanitation", "republic services", "landfill", "wm corp"]),
+    # ── Skill Games (distinct from casino gambling) ──────────────────────────
+    # Must precede Gambling/Casinos so skill-game operators are not folded into
+    # casinos by the generic "gaming" keyword.
+    ("Skill Games",    ["skill game", "pace-o-matic", "pace o matic",
+                        "pom of virginia", "queen of virginia", "operators for skill",
+                        "skill & entertainment", "skill and entertainment",
+                        "skill machine", "skilled gaming"]),
     # ── Gambling / Casinos early-exit ─────────────────────────────────────────
     ("Gambling/Casinos", ["casino", "gambling", "gaming", "lottery", "sportsbook",
                           "sports betting", "draftkings", "fanduel",
@@ -385,6 +455,7 @@ _BOUNDARY_KEYWORDS = {
     "beef":  re.compile(r"\bbeef\b", re.I),
     "seed":  re.compile(r"\bseed(s|ling|lings)?\b", re.I),
     "wine":  re.compile(r"\bwine(s|ry|ries)?\b", re.I),
+    "media": re.compile(r"\bmedia\b", re.I),  # not "remediation"/"intermediary"
 }
 
 
