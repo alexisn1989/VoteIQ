@@ -111,10 +111,14 @@ def admin_ingest_vb_votes(
     reset: bool = False,
     _: None = Depends(require_admin_token),
 ):
-    """Pull VB City Council vote history from Accela IQM2 API into vb_council_member_votes."""
-    args = ["--reset"] if reset else []
-    result = _run_script("ingest_vb_votes.py", args, timeout=300)
-    return {"ok": result.get("ok"), "scripts": {"ingest_vb_votes.py": result}}
+    """Pull VB vote history then rebuild blocs, finance, and adjacency tables."""
+    results: dict = {}
+    results["ingest_vb_votes.py"] = _run_script(
+        "ingest_vb_votes.py", ["--reset"] if reset else [], timeout=300
+    )
+    for script in ("build_vb_blocs.py", "build_vb_finance.py", "build_vb_dvadj.py"):
+        results[script] = _run_script(script, [], timeout=120)
+    return {"ok": all(v.get("ok") for v in results.values()), "scripts": results}
 
 
 @router.post("/ingest-vb-agenda")
