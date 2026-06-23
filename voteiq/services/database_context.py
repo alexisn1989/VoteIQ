@@ -315,6 +315,18 @@ _FINANCE_QUERY_TERMS = (
     "bankroll", "bankrolled", "backers",
 )
 
+# Queries matching this pattern are handled by the dedicated Norfolk/VB context
+# functions which query norfolk_finance_summary / vb_finance_summary directly.
+# Skipping the GA-level va_cf_schedule_a search here prevents a false
+# "zero records" block from overriding the municipal finance context already injected.
+_MUNICIPAL_COUNCIL_FINANCE_SKIP_RE = re.compile(
+    r"norfolk\s+(city\s+)?council"
+    r"|norfolk.*(donor|fund|financ|contribut|receiv|raised|money)"
+    r"|virginia\s+beach\s+(city\s+)?council"
+    r"|vb\s+(city\s+)?council",
+    re.IGNORECASE,
+)
+
 
 def _is_campaign_finance_query(query: str) -> bool:
     q_lower = (query or "").lower()
@@ -568,6 +580,12 @@ def _like_any_clause(columns: list[str], terms: list[str]) -> tuple[str, list[st
 
 def _add_campaign_finance_context(blocks: list[str], query: str, terms: list[str]) -> None:
     if not _is_campaign_finance_query(query):
+        return
+
+    # Municipal council finance is handled by _add_norfolk_council_context /
+    # _add_vb_council_context — bail out here to avoid a false "zero records"
+    # block from va_cf_schedule_a overriding the already-injected municipal data.
+    if _MUNICIPAL_COUNCIL_FINANCE_SKIP_RE.search(query or ""):
         return
 
     q_lower = (query or "").lower()
