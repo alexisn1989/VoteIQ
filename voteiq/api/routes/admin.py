@@ -153,6 +153,17 @@ def admin_build_vb_finance(
     return {"ok": result.get("ok"), "scripts": {"build_vb_finance.py": result}}
 
 
+@router.post("/build-vb-dvadj")
+def admin_build_vb_dvadj(
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Compute VB donor-sector ↔ vote-topic adjacency into vb_donor_vote_adjacency/summary."""
+    args = ["--reset"] if reset else []
+    result = _run_script("build_vb_dvadj.py", args, timeout=120)
+    return {"ok": result.get("ok"), "scripts": {"build_vb_dvadj.py": result}}
+
+
 @router.get("/refresh-bill-text")
 def admin_refresh_bill_text(refresh: bool = False, _: None = Depends(require_admin_token)):
     """Fetch full bill text from Congress.gov + govinfo.gov for all stored bills."""

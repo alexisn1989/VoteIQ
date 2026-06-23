@@ -7827,6 +7827,41 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
             if _vb_donor_lines:
                 lines += ["", "### VB Council — Campaign Finance by Sector"] + _vb_donor_lines
 
+        # ── Donor-sector ↔ vote-topic adjacency (facts only, no causal inference) ──
+        _vb_adj_trigger = _vb_finance_trigger or any(
+            w in q_lower for w in ("align", "adjacen", "sector", "pattern", "overlap",
+                                   "topic", "interest", "conflict")
+        )
+        if _vb_adj_trigger and _table_exists(conn, "vb_donor_vote_summary"):
+            _adj_targets = _named_vb_finance if _named_vb_finance else _ALL_VB_FINANCE
+            _adj_lines: list[str] = []
+            for db_key in _adj_targets[:4]:
+                rows_adj = conn.execute("""
+                    SELECT sector, sector_pct, top_topic, top_topic_delta,
+                           top_topic_yes_pct, council_yes_pct, topic_vote_count
+                    FROM vb_donor_vote_summary
+                    WHERE member_name = ?
+                    ORDER BY ABS(top_topic_delta) DESC
+                    LIMIT 4
+                """, (db_key,)).fetchall()
+                if not rows_adj:
+                    continue
+                _adj_lines.append(f"\n#### {db_key} — Donor Sector / Vote Topic Adjacency")
+                _adj_lines.append(
+                    "Source: SBE contributions + VB council votes joined on topic. "
+                    "Adjacency only — no causal inference drawn."
+                )
+                for r in rows_adj:
+                    sector, sec_pct, topic, delta, m_yes, c_yes, n = r
+                    sign = "+" if delta >= 0 else ""
+                    _adj_lines.append(
+                        f"  {sec_pct:4.0f}% from {sector:<15s} | "
+                        f"votes YES on {topic:<20s} {m_yes:.0f}% "
+                        f"(council avg {c_yes:.0f}%, delta {sign}{delta:.0f}pp, n={n})"
+                    )
+            if _adj_lines:
+                lines += ["", "### VB Council — Donor Sector / Vote Topic Adjacency"] + _adj_lines
+
         # ── voting bloc / alignment ────────────────────────────────────────
         _bloc_trigger = any(w in q_lower for w in (
             "bloc", "align", "coalition", "faction", "together", "swing",
