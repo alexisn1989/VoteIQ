@@ -7781,98 +7781,121 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
                 for title, mdate, vy, vn in contested:
                     lines.append(f"  {mdate}  [{vy}Y/{vn}N]  {title[:80]}")
 
+        # ── campaign finance ──────────────────────────────────────────────
+        _VB_FINANCE_KEY_MAP = {
+            "berlucchi": "Berlucchi", "dyer": "Dyer", "henley": "Henley",
+            "hutcheson": "Hutcheson", "wilson": "Wilson", "remick": "Remick",
+            "ross-hammond": "Ross-Hammond", "ross hammond": "Ross-Hammond",
+            "schulman": "Schulman", "rouse": "Rouse", "cummings": "Cummings",
+            "jackson-green": "Jackson-Green", "jackson green": "Jackson-Green",
+        }
+        _ALL_VB_FINANCE = ["Berlucchi", "Dyer", "Henley", "Hutcheson", "Wilson",
+                           "Remick", "Ross-Hammond", "Schulman", "Rouse", "Cummings",
+                           "Jackson-Green"]
+        _vb_finance_trigger = any(w in q_lower for w in (
+            "donor", "fund", "money", "contribut", "financ",
+            "who pays", "paid by", "backed by", "receiv", "campaign", "raise",
+        ))
+        _named_vb_finance = list(dict.fromkeys(
+            v for k, v in _VB_FINANCE_KEY_MAP.items() if k in q_lower
+        ))
+        if _vb_finance_trigger and _table_exists(conn, "vb_finance_summary"):
+            _finance_targets = _named_vb_finance if _named_vb_finance else _ALL_VB_FINANCE
+            _vb_donor_lines: list[str] = []
+            for db_key in _finance_targets[:4]:
+                summary = conn.execute(
+                    "SELECT total_raised, top_sector, top_sector_pct "
+                    "FROM vb_finance_summary WHERE member_name=?", (db_key,)
+                ).fetchone()
+                sectors = conn.execute(
+                    "SELECT sector, total_amount, pct_of_total, donor_count "
+                    "FROM vb_finance_totals WHERE member_name=? "
+                    "ORDER BY total_amount DESC LIMIT 5", (db_key,)
+                ).fetchall()
+                if summary or sectors:
+                    _vb_donor_lines.append(f"\n#### {db_key} — Campaign Finance (SBE contributions)")
+                    if summary and sectors:
+                        _vb_donor_lines.append(
+                            f"Total raised: ${summary[0]:,.0f}  "
+                            f"(top sector: {summary[1]}, {summary[2]:.1f}%)"
+                        )
+                        _vb_donor_lines.append("Donor sectors:")
+                        for s in sectors:
+                            _vb_donor_lines.append(
+                                f"  {s[0]:<18} ${s[1]:>9,.0f}  ({s[2]:>5.1f}%,  {s[3]} donors)"
+                            )
+            if _vb_donor_lines:
+                lines += ["", "### VB Council — Campaign Finance by Sector"] + _vb_donor_lines
+
         # ── voting bloc / alignment ────────────────────────────────────────
         _bloc_trigger = any(w in q_lower for w in (
             "bloc", "align", "coalition", "faction", "together", "swing",
             "who votes with", "voting pattern", "pair", "outlier", "isolated",
             "agree", "disagree", "divide", "divided", "split",
         ))
-        if _bloc_trigger and has_vote_table:
-            # Contested resolution IDs (any No vote)
-            c_ids = [r[0] for r in conn.execute("""
-                SELECT resolution_id FROM vb_council_member_votes
-                GROUP BY resolution_id
-                HAVING SUM(CASE WHEN vote='No/Nay' THEN 1 ELSE 0 END) > 0
-            """).fetchall()]
+        if _bloc_trigger and _table_exists(conn, "vb_voting_blocs"):
+            # Detect named member for targeted lookup
+            _bloc_member: str | None = None
+            for _bk, _bpartial in {
+                "berlucchi": "Berlucchi", "dyer": "Dyer", "henley": "Henley",
+                "hutcheson": "Hutcheson", "wilson": "Wilson", "remick": "Remick",
+                "ross-hammond": "Ross-Hammond", "schulman": "Schulman",
+                "rouse": "Rouse", "cummings": "Cummings",
+                "jackson-green": "Jackson-Green",
+            }.items():
+                if _bk in q_lower:
+                    _brow = conn.execute(
+                        "SELECT DISTINCT member_a FROM vb_voting_blocs WHERE member_a LIKE ?",
+                        (f"%{_bpartial}%",)
+                    ).fetchone()
+                    if _brow:
+                        _bloc_member = _brow[0]
+                        break
 
-            if c_ids:
-                # Build member->rid->vote map
-                _ph = ",".join("?" * len(c_ids))
-                mv_rows = conn.execute(f"""
-                    SELECT member_name, resolution_id, vote
-                    FROM vb_council_member_votes
-                    WHERE vote IN ('Yes/Aye','No/Nay') AND resolution_id IN ({_ph})
-                """, c_ids).fetchall()
-
-                mv: dict[str, dict[int, str]] = {}
-                for name, rid, vote in mv_rows:
-                    mv.setdefault(name, {})[rid] = vote
-
-                # Pairwise agreement
-                from itertools import combinations as _comb
-                pairs: list[tuple[float, int, str, str]] = []
-                names = sorted(mv.keys())
-                for a, b in _comb(names, 2):
-                    shared = set(mv[a]) & set(mv[b])
-                    if len(shared) < 10:
-                        continue
-                    agree = sum(1 for r in shared if mv[a][r] == mv[b][r])
-                    pairs.append((agree / len(shared), len(shared), a, b))
-                pairs.sort(key=lambda x: x[0])
-
-                lines.append(f"\n#### VB Council — Voting Alignment (contested votes, n={len(c_ids)})")
-                lines.append("  Note: 96% of all votes are unanimous; alignment is on contested items only.")
-
-                # Most divided
-                lines.append("\n  Most divided pairs:")
-                for pct, n, a, b in pairs[:4]:
-                    al = a.split()[-1].rstrip(",")
-                    bl = b.split()[-1].rstrip(",")
-                    lines.append(f"    {al} / {bl}: {round(pct*100)}% agree  ({n} shared contested votes)")
-
-                # Most aligned
-                lines.append("\n  Most aligned pairs:")
-                for pct, n, a, b in reversed(pairs[-4:]):
-                    al = a.split()[-1].rstrip(",")
-                    bl = b.split()[-1].rstrip(",")
-                    lines.append(f"    {al} / {bl}: {round(pct*100)}% agree  ({n} shared)")
-
-                # Outlier member (lowest average agreement)
-                avg_agree: dict[str, list[float]] = {}
-                for pct, n, a, b in pairs:
-                    avg_agree.setdefault(a, []).append(pct)
-                    avg_agree.setdefault(b, []).append(pct)
-                outlier = min(avg_agree, key=lambda m: sum(avg_agree[m]) / len(avg_agree[m]))
-                out_avg = round(100 * sum(avg_agree[outlier]) / len(avg_agree[outlier]))
-
-                # Topic breakdown for outlier's No votes
-                out_no = conn.execute("""
-                    SELECT title FROM vb_council_member_votes
-                    WHERE member_name=? AND vote='No/Nay'
-                """, (outlier,)).fetchall()
-                import re as _re2
-                _topic_pats = [
-                    ("Rezoning/Land use", r"rezon|conditional use|subdivision|variance|encroach|street closure|comprehensive plan"),
-                    ("Budget/Appropriation", r"appropriat|budget|transfer|fund|bond|tax|cip|capital"),
-                    ("Development/Property", r"develop|property|lease|easement|llc|acquisition"),
-                    ("Governance", r"charter|policy|election|ordinance to adopt|task force|bargaining"),
-                ]
-                topic_counts: dict[str, int] = {}
-                for (t,) in out_no:
-                    tl = (t or "").lower()
-                    for cat, pat in _topic_pats:
-                        if _re2.search(pat, tl):
-                            topic_counts[cat] = topic_counts.get(cat, 0) + 1
-                            break
-                    else:
-                        topic_counts["Other"] = topic_counts.get("Other", 0) + 1
-
-                lines.append(f"\n  Outlier: {outlier}")
-                lines.append(f"    Avg agreement with peers: {out_avg}% on contested votes")
-                lines.append(f"    Total No votes: {len(out_no)}")
-                if topic_counts:
-                    top_topics = sorted(topic_counts.items(), key=lambda x: -x[1])
-                    lines.append(f"    Dissent by topic: {', '.join(f'{c} ({n})' for c, n in top_topics)}")
+            if _bloc_member:
+                allies = conn.execute("""
+                    SELECT member_b, agreement_pct, shared_votes
+                    FROM vb_voting_blocs WHERE member_a = ?
+                    ORDER BY agreement_pct DESC LIMIT 4
+                """, (_bloc_member,)).fetchall()
+                contrarians = conn.execute("""
+                    SELECT member_b, agreement_pct, shared_votes
+                    FROM vb_voting_blocs WHERE member_a = ?
+                    ORDER BY agreement_pct ASC LIMIT 3
+                """, (_bloc_member,)).fetchall()
+                if allies:
+                    lines.append(f"\n#### {_bloc_member} — Voting Alignment")
+                    lines.append("  Closest allies:")
+                    for b, pct, n in allies:
+                        lines.append(f"    {b:<36s}  {pct:.1f}% agreement ({n} shared votes)")
+                    if contrarians:
+                        lines.append("  Most frequent disagreements:")
+                        for b, pct, n in contrarians:
+                            lines.append(f"    {b:<36s}  {pct:.1f}% agreement ({n} shared votes)")
+            else:
+                diverge = conn.execute("""
+                    SELECT member_a, member_b, agreement_pct, shared_votes
+                    FROM vb_voting_blocs WHERE member_a < member_b
+                    ORDER BY agreement_pct ASC LIMIT 5
+                """).fetchall()
+                aligned = conn.execute("""
+                    SELECT member_a, member_b, agreement_pct, shared_votes
+                    FROM vb_voting_blocs WHERE member_a < member_b
+                    ORDER BY agreement_pct DESC LIMIT 5
+                """).fetchall()
+                if diverge:
+                    lines.append("\n#### VB Council — Voting Alignment (precomputed, all recorded votes)")
+                    lines.append("  Most divergent pairs:")
+                    for a, b, pct, n in diverge:
+                        al = a.split()[-1].rstrip(",")
+                        bl = b.split()[-1].rstrip(",")
+                        lines.append(f"    {al} + {bl}: {pct:.1f}% agreement ({n} shared votes)")
+                    if aligned:
+                        lines.append("  Most aligned pairs:")
+                        for a, b, pct, n in aligned:
+                            al = a.split()[-1].rstrip(",")
+                            bl = b.split()[-1].rstrip(",")
+                            lines.append(f"    {al} + {bl}: {pct:.1f}% agreement ({n} shared votes)")
 
         conn.close()
         if len(lines) > 1:

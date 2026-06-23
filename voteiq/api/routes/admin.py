@@ -131,6 +131,28 @@ def admin_ingest_vb_agenda(
     return {"ok": result.get("ok"), "scripts": {"scrape_vb_agenda.py": result}}
 
 
+@router.post("/build-vb-blocs")
+def admin_build_vb_blocs(
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Recompute pairwise VB council voting agreement into vb_voting_blocs."""
+    args = ["--reset"] if reset else []
+    result = _run_script("build_vb_blocs.py", args, timeout=120)
+    return {"ok": result.get("ok"), "scripts": {"build_vb_blocs.py": result}}
+
+
+@router.post("/build-vb-finance")
+def admin_build_vb_finance(
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Classify VB council SBE contributions by sector into vb_finance_totals/summary."""
+    args = ["--reset"] if reset else []
+    result = _run_script("build_vb_finance.py", args, timeout=120)
+    return {"ok": result.get("ok"), "scripts": {"build_vb_finance.py": result}}
+
+
 @router.get("/refresh-bill-text")
 def admin_refresh_bill_text(refresh: bool = False, _: None = Depends(require_admin_token)):
     """Fetch full bill text from Congress.gov + govinfo.gov for all stored bills."""
