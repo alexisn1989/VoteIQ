@@ -107,7 +107,7 @@ def classify_sector(employer: str, occupation: str) -> str:
     if text in _EXACT_EMPLOYER:
         return _EXACT_EMPLOYER[text]
     if not text or text in ("n/a", "na", "none", "self", "individual", "self-employed",
-                             "sell-employed", "self employed", "homemaker"):
+                             "sell-employed", "self employed", "homemaker", "executive"):
         text = (occupation or "").lower().strip()
     for sector, keywords in SECTOR_KEYWORDS:
         if any(kw in text for kw in keywords):
@@ -148,7 +148,7 @@ def classify_sector(employer: str, occupation: str) -> str:
                                    "candidate committee", "political org", "advocacy",
                                    "national committee", "democrat", "republican",
                                    "political activ"])
-            or occ in ("political", "pac")):
+            or occ in ("political", "pac", "spur")):
         return "PAC/Advocacy"
     if any(kw in occ for kw in ["information technology", "software engineer",
                                   "it director", "it manager"]):
