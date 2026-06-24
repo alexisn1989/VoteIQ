@@ -44,7 +44,7 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
     ("Hospitality",   ["hotel", "motel", "resort", "restaur", "restobar", "food", "beverage",
                        "hospitality", "tourism", "marriott", "hilton", "oceanfront", "gold key",
                        "shamin", "city club", "events llc", "event venue", "marina",
-                       "events unlimited"]),
+                       "events unlimited", "pashm"]),
     ("Finance",       ["bank", "financ", "invest", "capital", "credit union", "mortgage",
                        "insur", "assurance", "wealth", "fund", "securities", "lending", "asset",
                        " trust"]),
@@ -93,6 +93,12 @@ _EXACT_EMPLOYER: dict[str, str] = {
     "cox communications": "Tech",       # Cox Communications — cable/telecom
     "inter-op.net":     "Tech",         # INTER-OP.NET — IT/networking firm
     "gates management co": "Real Estate",  # Gates Management — property management
+    "riggins company":  "Defense",      # Riggins Co — metal fabricator serving Navy/NASA
+    "riggins co":       "Defense",      # short form
+    "ems industrial":   "Defense",      # EMS Industrial — Virginia Ship Repair member
+    "xkig":             "Energy",       # XKIG — national utility/power infrastructure
+    "bruce smith enterp": "Real Estate",  # Bruce Smith Enterprise — VB commercial RE developer
+    "neighborhood harvest": "Hospitality",  # The Neighborhood Harvest — VB food delivery
 }
 
 
