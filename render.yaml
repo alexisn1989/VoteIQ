@@ -41,7 +41,7 @@ services:
     startCommand: python scripts/trigger_congress_ingest.py
     envVars:
       - key: VOTEIQ_SERVICE_URL
-        value: https://voteiq-api.onrender.com   # update if your URL differs
+        value: https://voteiq.io
       - key: ADMIN_TOKEN
         sync: false   # set manually in dashboard — must match web service value
       - key: HOUSE_LIMIT
@@ -60,7 +60,7 @@ services:
     startCommand: python scripts/trigger_norfolk_agenda.py
     envVars:
       - key: VOTEIQ_SERVICE_URL
-        value: https://voteiq-api.onrender.com
+        value: https://voteiq.io
       - key: ADMIN_TOKEN
         sync: false
 
@@ -76,7 +76,7 @@ services:
     startCommand: python scripts/trigger_vb_votes.py
     envVars:
       - key: VOTEIQ_SERVICE_URL
-        value: https://voteiq-api.onrender.com
+        value: https://voteiq.io
       - key: ADMIN_TOKEN
         sync: false
 
@@ -92,7 +92,7 @@ services:
     startCommand: python scripts/trigger_vb_agenda.py
     envVars:
       - key: VOTEIQ_SERVICE_URL
-        value: https://voteiq-api.onrender.com
+        value: https://voteiq.io
       - key: ADMIN_TOKEN
         sync: false
 
