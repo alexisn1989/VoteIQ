@@ -124,8 +124,12 @@ def classify_sector(employer: str, occupation: str) -> str:
     if any(kw in occ for kw in ["union", "teamster", "firefighter", "fire fighter"]):
         return "Labor"
     if any(kw in occ for kw in ["city council", "town council", "county supervisor",
-                                  "county board", "state senator", "state delegate"]):
+                                  "county board", "state senator", "state delegate",
+                                  "senator", "governor"]):
         return "Government"
+    if any(kw in occ for kw in ["navy", "army", " air force", "coast guard", "military",
+                                  "veteran", "soldier", "sailor", "airman"]):
+        return "Defense"
     if (any(kw in occ for kw in ["political action", "political committee",
                                    "candidate committee", "political org", "advocacy",
                                    "national committee", "democrat", "republican",
