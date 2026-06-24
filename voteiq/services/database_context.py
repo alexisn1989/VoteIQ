@@ -7990,6 +7990,62 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
                             bl = b.split()[-1].rstrip(",")
                             lines.append(f"    {al} + {bl}: {pct:.1f}% agreement ({n} shared votes)")
 
+        # ── Split votes — specific non-unanimous examples ─────────────────────
+        _split_trigger = (
+            bool(_named_vb_finance)
+            or any(w in q_lower for w in (
+                "voted against", "voted no", "no vote", "voted down", "split",
+                "contested", "controversial", "opposed", "specific vote",
+                "which vote", "example", "minority",
+            ))
+        )
+        if _split_trigger and _table_exists(conn, "vb_split_votes"):
+            _split_lines: list[str] = []
+            if _named_vb_finance:
+                for _sv_key in _named_vb_finance[:2]:
+                    _sv_last = _sv_key.split()[-1]
+                    _sv_rows = conn.execute("""
+                        SELECT meeting_date, topic, yes_count, no_count, no_voters, title
+                        FROM vb_split_votes
+                        WHERE no_voters LIKE ?
+                        ORDER BY meeting_date DESC LIMIT 8
+                    """, (f"%{_sv_last}%",)).fetchall()
+                    if not _sv_rows:
+                        continue
+                    _sv_total = conn.execute(
+                        "SELECT COUNT(*) FROM vb_split_votes WHERE no_voters LIKE ?",
+                        (f"%{_sv_last}%",)
+                    ).fetchone()[0]
+                    _split_lines.append(
+                        f"\n#### {_sv_key} — No votes on contested resolutions ({_sv_total} total)"
+                    )
+                    for _dt, _tp, _yes, _no, _voters, _title in _sv_rows:
+                        _t = f"[{_tp}]" if _tp else "[other]"
+                        _split_lines.append(
+                            f"  {_dt}  {_t:18s}  {_yes}Y/{_no}N  ({_voters})  {_title[:72]}"
+                        )
+            else:
+                _split_lines.append("\n#### Most contested votes (highest No count):")
+                for _dt, _tp, _yes, _no, _voters, _title in conn.execute("""
+                    SELECT meeting_date, topic, yes_count, no_count, no_voters, title
+                    FROM vb_split_votes ORDER BY no_count DESC, meeting_date DESC LIMIT 8
+                """).fetchall():
+                    _t = f"[{_tp}]" if _tp else "[other]"
+                    _split_lines.append(
+                        f"  {_dt}  {_t:18s}  {_yes}Y/{_no}N  ({_voters})  {_title[:72]}"
+                    )
+                _split_lines.append("\n#### Most recent split votes:")
+                for _dt, _tp, _yes, _no, _voters, _title in conn.execute("""
+                    SELECT meeting_date, topic, yes_count, no_count, no_voters, title
+                    FROM vb_split_votes ORDER BY meeting_date DESC LIMIT 6
+                """).fetchall():
+                    _t = f"[{_tp}]" if _tp else "[other]"
+                    _split_lines.append(
+                        f"  {_dt}  {_t:18s}  {_yes}Y/{_no}N  ({_voters})  {_title[:72]}"
+                    )
+            if _split_lines:
+                lines += ["", "### VB Council — Split Votes (Specific Examples)"] + _split_lines
+
         conn.close()
         if len(lines) > 1:
             blocks.append("\n".join(lines))
