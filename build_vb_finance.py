@@ -38,9 +38,10 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
     ("Real Estate",   ["realt", "develop", "construct", "proper", "build", "homebuil",
                        "architect", "contractor", "land ", "land,", "rental", "housing",
                        "farm", "agriculture", "agric",
-                       "real estate", "apartment", "commercial real estate"]),
+                       "real estate", "apartment", "commercial real estate",
+                       "sifen"]),
     ("Hospitality",   ["hotel", "motel", "resort", "restaur", "food", "beverage", "hospitality",
-                       "tourism", "marriott", "hilton", "oceanfront"]),
+                       "tourism", "marriott", "hilton", "oceanfront", "gold key"]),
     ("Finance",       ["bank", "financ", "invest", "capital", "credit union", "mortgage",
                        "insur", "wealth", "fund", "securities", "lending", "asset"]),
     ("Legal",         ["law ", "attorney", "legal", "counsel", " llp", " pllc", "esq",
@@ -70,8 +71,16 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
 ]
 
 
+# Exact employer names too short/ambiguous for safe substring matching
+_EXACT_EMPLOYER: dict[str, str] = {
+    "phr": "Hospitality",   # Gold Key | PHR, Virginia Beach hospitality group
+}
+
+
 def classify_sector(employer: str, occupation: str) -> str:
     text = (employer or "").lower().strip()
+    if text in _EXACT_EMPLOYER:
+        return _EXACT_EMPLOYER[text]
     if not text or text in ("n/a", "na", "none", "self", "individual", "self-employed",
                              "sell-employed", "homemaker"):
         text = (occupation or "").lower().strip()
