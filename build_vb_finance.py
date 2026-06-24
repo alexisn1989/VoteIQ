@@ -203,6 +203,24 @@ def compute_sector_totals(contribs: list[dict]) -> list[dict]:
     return result
 
 
+# Employer/occupation values that indicate no useful disclosure
+_UNDISCLOSED = {
+    "unknown", "unkown", "unknow", "n/a", "na", "none",
+    "", "not provided", "not available",
+}
+
+
+def _undisclosed_stats(contribs: list[dict]) -> tuple[int, float]:
+    """Return (count, total_amount) for contributions with no employer or occupation."""
+    count, amt = 0, 0.0
+    for c in contribs:
+        if (c["employer"].lower().strip() in _UNDISCLOSED
+                and c["occupation"].lower().strip() in _UNDISCLOSED):
+            count += 1
+            amt += c["amount"]
+    return count, amt
+
+
 def ensure_tables(conn: sqlite3.Connection) -> None:
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS vb_finance_totals (
@@ -216,15 +234,28 @@ def ensure_tables(conn: sqlite3.Connection) -> None:
             UNIQUE(member_name, sector)
         );
         CREATE TABLE IF NOT EXISTS vb_finance_summary (
-            member_name     TEXT PRIMARY KEY,
-            total_raised    REAL,
-            top_sector      TEXT,
-            top_sector_amt  REAL,
-            top_sector_pct  REAL,
-            sector_json     TEXT,
-            updated_at      TEXT DEFAULT (datetime('now'))
+            member_name        TEXT PRIMARY KEY,
+            total_raised       REAL,
+            top_sector         TEXT,
+            top_sector_amt     REAL,
+            top_sector_pct     REAL,
+            sector_json        TEXT,
+            undisclosed_count  INTEGER DEFAULT 0,
+            undisclosed_amt    REAL DEFAULT 0,
+            undisclosed_pct    REAL DEFAULT 0,
+            updated_at         TEXT DEFAULT (datetime('now'))
         );
     """)
+    # Add columns to existing tables that predate this schema change
+    for col, typedef in [
+        ("undisclosed_count", "INTEGER DEFAULT 0"),
+        ("undisclosed_amt",   "REAL DEFAULT 0"),
+        ("undisclosed_pct",   "REAL DEFAULT 0"),
+    ]:
+        try:
+            conn.execute(f"ALTER TABLE vb_finance_summary ADD COLUMN {col} {typedef}")
+        except Exception:
+            pass
     conn.commit()
 
 
@@ -253,6 +284,8 @@ def main() -> None:
         totals = compute_sector_totals(contribs)
         total_raised = sum(c["amount"] for c in contribs)
         top = totals[0] if totals else {}
+        unk_count, unk_amt = _undisclosed_stats(contribs)
+        unk_pct = round(100.0 * unk_amt / total_raised, 1) if total_raised else 0.0
 
         for t in totals:
             conn.execute("""
@@ -265,14 +298,15 @@ def main() -> None:
         conn.execute("""
             INSERT OR REPLACE INTO vb_finance_summary
                 (member_name, total_raised, top_sector, top_sector_amt, top_sector_pct,
-                 sector_json, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                 sector_json, undisclosed_count, undisclosed_amt, undisclosed_pct, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             member, total_raised,
             top.get("sector", "Other"),
             top.get("total_amount", 0),
             top.get("pct_of_total", 0),
             json.dumps(totals),
+            unk_count, unk_amt, unk_pct,
             now,
         ))
         conn.commit()

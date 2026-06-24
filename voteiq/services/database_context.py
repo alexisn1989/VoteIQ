@@ -7849,7 +7849,8 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
             _vb_donor_lines: list[str] = []
             for db_key in _finance_targets[:4]:
                 summary = conn.execute(
-                    "SELECT total_raised, top_sector, top_sector_pct "
+                    "SELECT total_raised, top_sector, top_sector_pct, "
+                    "undisclosed_count, undisclosed_amt, undisclosed_pct "
                     "FROM vb_finance_summary WHERE member_name=?", (db_key,)
                 ).fetchone()
                 sectors = conn.execute(
@@ -7868,6 +7869,14 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
                         for s in sectors:
                             _vb_donor_lines.append(
                                 f"  {s[0]:<18} ${s[1]:>9,.0f}  ({s[2]:>5.1f}%,  {s[3]} donors)"
+                            )
+                        unk_pct = summary[5] or 0
+                        if unk_pct >= 1.0:
+                            _vb_donor_lines.append(
+                                f"  Transparency note: {unk_pct:.1f}% of contributions "
+                                f"(${summary[4]:,.0f}, {summary[3]} records) list no employer "
+                                f"or occupation — Virginia SBE does not verify or enforce "
+                                f"disclosure of this field."
                             )
             if _vb_donor_lines:
                 lines += ["", "### VB Council — Campaign Finance by Sector"] + _vb_donor_lines
