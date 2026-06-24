@@ -199,7 +199,9 @@ class GovernorActionContextTests(unittest.TestCase):
         context = dc.build_database_context("Spanberger vetoes 2026")
 
         self.assertIn("lookup_status=records_found", context)
-        self.assertIn("action_summary=vetoed=2; signed=1", context)
+        self.assertIn("CONFIRMED governor_actions DATABASE TOTALS", context)
+        self.assertIn("vetoed: 2 bills/orders IN DATABASE", context)
+        self.assertIn("signed: 1 bills/orders IN DATABASE", context)
         self.assertIn("bill_number=HB1", context)
         self.assertNotIn("HB4", context)
 
