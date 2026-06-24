@@ -40,12 +40,13 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                        "farm", "agriculture", "agric", "abatement",
                        "real estate", "apartment", "commercial real estate",
                        "residential", "property management", "sifen", "ainslie",
-                       "heatwole"]),
+                       "heatwole", "armada hoffler", "lawson compan", "title compan"]),
     ("Hospitality",   ["hotel", "motel", "resort", "restaur", "food", "beverage", "hospitality",
                        "tourism", "marriott", "hilton", "oceanfront", "gold key",
-                       "shamin", "city club", "events llc", "event venue"]),
+                       "shamin", "city club", "events llc", "event venue", "marina"]),
     ("Finance",       ["bank", "financ", "invest", "capital", "credit union", "mortgage",
-                       "insur", "assurance", "wealth", "fund", "securities", "lending", "asset"]),
+                       "insur", "assurance", "wealth", "fund", "securities", "lending", "asset",
+                       " trust"]),
     ("Legal",         ["law ", "attorney", "legal", "counsel", " llp", " pllc", "esq",
                        " p.c.", " pc", "firm", "lawyer"]),
     ("Healthcare",    ["health", "hospital", "medic", "doctor", "physician", "nurs",
@@ -62,7 +63,7 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                        "labor union", "afl-cio", "ibew ", "ufcw ", "seiu "]),
     ("Government",    ["city of", "county of", "state of ", "federal ", "govern",
                        "municipal", "dept of", "department of", "public sector",
-                       "city council", "town council"]),
+                       "city council", "town council", "internal revenue"]),
     ("Energy",        ["energy", "utility", "electric", "gas ", "power ", "dominion",
                        "appalachian", "columbia gas", "papco", "petroleum", "fuel distrib"]),
     ("Tech",          ["tech", "software", "data ", "cyber", "digital", "computer",
@@ -74,14 +75,19 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
     ("PAC/Advocacy",  ["pac ", "political action", "campaign committee", "advocacy org",
                        "lobby org", "political org", "political committee",
                        "politcal action", "candidate committee",
-                       "democrat", "republican", "national committee", "party committee"]),
-    ("Retired",       ["retired", "retirement", "not employed"]),
+                       "democrat", "republican", "national committee", "party committee",
+                       "political activ"]),
+    ("Retired",       ["retired", "retirement", "not employed", "not employ"]),
 ]
 
 
 # Exact employer names too short/ambiguous for safe substring matching
 _EXACT_EMPLOYER: dict[str, str] = {
-    "phr": "Hospitality",   # Gold Key | PHR, Virginia Beach hospitality group
+    "phr":            "Hospitality",  # Gold Key | PHR, Virginia Beach hospitality group
+    "globalinx":      "Tech",         # Globalinx — IT firm, Wilson donor
+    "lynnhaven marine": "Automotive", # Lynnhaven Marine — boat dealer, Wilson donor
+    "meb":            "Real Estate",  # MEB General Contractors, Virginia Beach
+    "rk auto":        "Automotive",   # RK Auto Group, Virginia Beach
 }
 
 
@@ -90,7 +96,7 @@ def classify_sector(employer: str, occupation: str) -> str:
     if text in _EXACT_EMPLOYER:
         return _EXACT_EMPLOYER[text]
     if not text or text in ("n/a", "na", "none", "self", "individual", "self-employed",
-                             "sell-employed", "homemaker"):
+                             "sell-employed", "self employed", "homemaker"):
         text = (occupation or "").lower().strip()
     for sector, keywords in SECTOR_KEYWORDS:
         if any(kw in text for kw in keywords):
@@ -101,18 +107,19 @@ def classify_sector(employer: str, occupation: str) -> str:
         return "Legal"
     if any(kw in occ for kw in ["realtor", "broker", "developer", "contractor", "farmer",
                                   "real estate", "apartment", "property manager",
-                                  "property management", "residential company"]):
+                                  "property management", "residential company",
+                                  "homebuil", "agric", "title "]):
         return "Real Estate"
     if any(kw in occ for kw in ["physician", "doctor", "nurse", "pharmacist",
-                                  "psychiatrist", "psychotherap", "therapist"]):
+                                  "psychiatrist", "psychotherap", "therapist", "biostat"]):
         return "Healthcare"
     if any(kw in occ for kw in ["banker", "accountant", "cpa", "financial advisor",
-                                  "investment advisor"]):
+                                  "investment advisor", "insur"]):
         return "Finance"
     if any(kw in occ for kw in ["hotel", "motel", "hospitality", "restaur"]):
         return "Hospitality"
     if any(kw in occ for kw in ["car dealer", "auto dealer", "automobile", "automotive",
-                                  "car sales", "car dealership"]):
+                                  "car sales", "car dealership", "boat dealer"]):
         return "Automotive"
     if any(kw in occ for kw in ["union", "teamster", "firefighter", "fire fighter"]):
         return "Labor"
@@ -121,10 +128,14 @@ def classify_sector(employer: str, occupation: str) -> str:
         return "Government"
     if (any(kw in occ for kw in ["political action", "political committee",
                                    "candidate committee", "political org", "advocacy",
-                                   "national committee", "democrat", "republican"])
+                                   "national committee", "democrat", "republican",
+                                   "political activ"])
             or occ in ("political", "pac")):
         return "PAC/Advocacy"
-    if "retired" in occ or "not employed" in occ:
+    if any(kw in occ for kw in ["information technology", "software engineer",
+                                  "it director", "it manager"]):
+        return "Tech"
+    if "retired" in occ or "not employ" in occ or occ == "homemaker":
         return "Retired"
     return "Other"
 
