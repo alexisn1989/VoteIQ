@@ -202,6 +202,50 @@ def admin_build_norfolk_splits(
     return {"ok": result.get("ok"), "scripts": {"build_norfolk_splits.py": result}}
 
 
+@router.post("/build-norfolk-blocs")
+def admin_build_norfolk_blocs(
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Precompute pairwise Norfolk council voting agreement into norfolk_voting_blocs."""
+    args = ["--reset"] if reset else []
+    result = _run_script("build_norfolk_blocs.py", args, timeout=120)
+    return {"ok": result.get("ok"), "scripts": {"build_norfolk_blocs.py": result}}
+
+
+@router.post("/build-norfolk-dissent")
+def admin_build_norfolk_dissent(
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Precompute per-member Norfolk No-vote rates by topic into norfolk_member_dissent."""
+    args = ["--reset"] if reset else []
+    result = _run_script("build_norfolk_dissent.py", args, timeout=120)
+    return {"ok": result.get("ok"), "scripts": {"build_norfolk_dissent.py": result}}
+
+
+@router.post("/build-norfolk-finance")
+def admin_build_norfolk_finance(
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Classify Norfolk council SBE contributions by sector into norfolk_finance_totals."""
+    args = ["--reset"] if reset else []
+    result = _run_script("build_norfolk_finance.py", args, timeout=120)
+    return {"ok": result.get("ok"), "scripts": {"build_norfolk_finance.py": result}}
+
+
+@router.post("/build-norfolk-dvadj")
+def admin_build_norfolk_dvadj(
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Compute Norfolk donor-sector ↔ vote-topic adjacency into norfolk_donor_vote_adjacency."""
+    args = ["--reset"] if reset else []
+    result = _run_script("build_norfolk_dvadj.py", args, timeout=120)
+    return {"ok": result.get("ok"), "scripts": {"build_norfolk_dvadj.py": result}}
+
+
 @router.post("/build-vb-splits")
 def admin_build_vb_splits(
     reset: bool = False,
