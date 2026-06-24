@@ -95,3 +95,21 @@ services:
         value: https://voteiq-api.onrender.com
       - key: ADMIN_TOKEN
         sync: false
+
+  # ── SBE local-race campaign finance monthly refresh ────────────────────────
+  # Virginia SBE posts new filing windows quarterly (Jan/Apr/Jul/Oct).
+  # Running on the 1st of each month at 05:00 UTC picks up new filings
+  # shortly after each quarterly deadline without hammering the SBE server.
+  # Calls /api/admin/ingest-sbe-local — runs inside the container with the DB.
+  - type: cron
+    name: voteiq-sbe-monthly
+    runtime: python311
+    plan: starter
+    schedule: "0 5 1 * *"   # 1st of each month at 05:00 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_sbe_ingest.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
