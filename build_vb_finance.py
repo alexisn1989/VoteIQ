@@ -37,33 +37,34 @@ MEMBER_SBE_FILTERS: dict[str, dict] = {
 SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
     ("Real Estate",   ["realt", "develop", "devlop", "construct", "proper", "build", "homebuil",
                        "architect", "contractor", "land ", "land,", "rental", "housing",
-                       "farm", "agriculture", "agric", "abatement",
+                       "farm", "agriculture", "agric", "abatement", "roofing",
                        "real estate", "apartment", "commercial real estate",
                        "residential", "property management", "sifen", "ainslie",
                        "heatwole", "armada hoffler", "lawson compan", "title compan"]),
-    ("Hospitality",   ["hotel", "motel", "resort", "restaur", "food", "beverage", "hospitality",
-                       "tourism", "marriott", "hilton", "oceanfront", "gold key",
-                       "shamin", "city club", "events llc", "event venue", "marina"]),
+    ("Hospitality",   ["hotel", "motel", "resort", "restaur", "restobar", "food", "beverage",
+                       "hospitality", "tourism", "marriott", "hilton", "oceanfront", "gold key",
+                       "shamin", "city club", "events llc", "event venue", "marina",
+                       "events unlimited"]),
     ("Finance",       ["bank", "financ", "invest", "capital", "credit union", "mortgage",
                        "insur", "assurance", "wealth", "fund", "securities", "lending", "asset",
                        " trust"]),
-    ("Legal",         ["law ", "attorney", "legal", "counsel", " llp", " pllc", "esq",
+    ("Legal",         ["law ", "attorn", "legal", "counsel", " llp", " pllc", "esq",
                        " p.c.", " pc", "firm", "lawyer"]),
     ("Healthcare",    ["health", "hospital", "medic", "doctor", "physician", "nurs",
                        "pharma", "clinic", "dental", "care ", "sentara", "bon secours",
                        "optom", "ophthalm", "opthalm", "eye ", "eye consult",
-                       "chiropr", "psychotherapy", "psychiatr", "therapist"]),
+                       "chiropr", "psychotherapy", "psychiatr", "therapist", "surgical"]),
     ("Defense",       ["defense", "military", "navy", "army", "coast guard", "veteran",
-                       "naval", "bae systems", "northrop", "general dynamics", "raytheon",
-                       "leidos", "booz allen", "saic", "huntington ingalls", "l3"]),
+                       "naval", "ship repair", "bae systems", "northrop", "general dynamics",
+                       "raytheon", "leidos", "booz allen", "saic", "huntington ingalls", "l3"]),
     ("Education",     ["school", "educat", "universit", "college", "teacher",
                        "professor", "academ", "old dominion", "odu", "regent",
-                       "tidewater community", "tcc", "ecpi"]),
+                       "tidewater community", "tcc", "ecpi", "aviation institute"]),
     ("Labor",         ["union ", " union", "teamster", "fire fighter", "firefighter",
                        "labor union", "afl-cio", "ibew ", "ufcw ", "seiu "]),
     ("Government",    ["city of", "county of", "state of ", "federal ", "govern",
                        "municipal", "dept of", "department of", "public sector",
-                       "city council", "town council", "internal revenue"]),
+                       "city council", "town council", "internal revenue", "sheriff"]),
     ("Energy",        ["energy", "utility", "electric", "gas ", "power ", "dominion",
                        "appalachian", "columbia gas", "papco", "petroleum", "fuel distrib"]),
     ("Tech",          ["tech", "software", "data ", "cyber", "digital", "computer",
@@ -83,11 +84,15 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
 
 # Exact employer names too short/ambiguous for safe substring matching
 _EXACT_EMPLOYER: dict[str, str] = {
-    "phr":            "Hospitality",  # Gold Key | PHR, Virginia Beach hospitality group
-    "globalinx":      "Tech",         # Globalinx — IT firm, Wilson donor
-    "lynnhaven marine": "Automotive", # Lynnhaven Marine — boat dealer, Wilson donor
-    "meb":            "Real Estate",  # MEB General Contractors, Virginia Beach
-    "rk auto":        "Automotive",   # RK Auto Group, Virginia Beach
+    "phr":              "Hospitality",  # Gold Key | PHR, Virginia Beach hospitality group
+    "globalinx":        "Tech",         # Globalinx — IT firm, Wilson donor
+    "lynnhaven marine": "Automotive",   # Lynnhaven Marine — boat dealer, Wilson donor
+    "meb":              "Real Estate",  # MEB General Contractors, Virginia Beach
+    "rk auto":          "Automotive",   # RK Auto Group, Virginia Beach
+    "757 angels":       "Finance",      # 757 Angels — VB angel investor group
+    "cox communications": "Tech",       # Cox Communications — cable/telecom
+    "inter-op.net":     "Tech",         # INTER-OP.NET — IT/networking firm
+    "gates management co": "Real Estate",  # Gates Management — property management
 }
 
 
@@ -108,15 +113,18 @@ def classify_sector(employer: str, occupation: str) -> str:
     if any(kw in occ for kw in ["realtor", "broker", "developer", "contractor", "farmer",
                                   "real estate", "apartment", "property manager",
                                   "property management", "residential company",
-                                  "homebuil", "agric", "title "]):
+                                  "homebuil", "agric", "title ", "builder",
+                                  "civil engineer", "construct"]):
         return "Real Estate"
     if any(kw in occ for kw in ["physician", "doctor", "nurse", "pharmacist",
-                                  "psychiatrist", "psychotherap", "therapist", "biostat"]):
+                                  "psychiatrist", "psychotherap", "therapist", "biostat",
+                                  "home care", "surgical"]):
         return "Healthcare"
     if any(kw in occ for kw in ["banker", "accountant", "cpa", "financial advisor",
                                   "investment advisor", "insur"]):
         return "Finance"
-    if any(kw in occ for kw in ["hotel", "motel", "hospitality", "restaur"]):
+    if any(kw in occ for kw in ["hotel", "motel", "hospitality", "restaur",
+                                  "event organiz", "bar service"]):
         return "Hospitality"
     if any(kw in occ for kw in ["car dealer", "auto dealer", "automobile", "automotive",
                                   "car sales", "car dealership", "boat dealer"]):
@@ -128,7 +136,7 @@ def classify_sector(employer: str, occupation: str) -> str:
                                   "senator", "governor"]):
         return "Government"
     if any(kw in occ for kw in ["navy", "army", " air force", "coast guard", "military",
-                                  "veteran", "soldier", "sailor", "airman"]):
+                                  "veteran", "soldier", "sailor", "airman", "ship repair"]):
         return "Defense"
     if (any(kw in occ for kw in ["political action", "political committee",
                                    "candidate committee", "political org", "advocacy",
