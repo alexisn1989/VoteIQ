@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Bill Profile — VoteIQ</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root { --navy:#0d1b2a; --red:#c8102e; --light:#f4f1eb; --mid:#ddd8cc; --muted:#7a7468; --dem:#1a52c8; --rep:#c8102e; --yes:#2a8f4f; --no:#c8102e; --nv:#7a7468; --amber:#92400e; --amber-bg:#fffbeb; --amber-border:#fde68a; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--light); color: var(--navy); font-family: 'Barlow', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f4f1eb'/%3E%3Crect width='1' height='1' fill='%23e8e4dc' opacity='0.4'/%3E%3C/svg%3E"); pointer-events: none; z-index: 0; }
+
+  .topbar { background: var(--navy); color: var(--mid); font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; text-align: center; padding: 7px 16px; position: relative; z-index: 10; }
+  .topbar span { color: var(--red); margin: 0 6px; }
+
+  header { position: relative; z-index: 10; border-bottom: 3px double var(--navy); padding: 28px 48px 22px; display: flex; align-items: center; justify-content: space-between; background: var(--light); }
+  .logo-wrap { display: flex; align-items: center; gap: 16px; text-decoration: none; }
+  .logo-text { font-family: 'Playfair Display', serif; font-size: 1.9rem; font-weight: 900; color: var(--navy); letter-spacing: -0.03em; }
+  .logo-text em { color: var(--red); font-style: normal; }
+  .logo-sub { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+  .header-nav { display: flex; gap: 24px; align-items: center; }
+  .header-nav a { font-family: 'Barlow Condensed', sans-serif; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--navy); text-decoration: none; border-bottom: 2px solid transparent; padding-bottom: 2px; transition: border-color 0.2s, color 0.2s; }
+  .header-nav a:hover, .header-nav a.active { color: var(--red); border-bottom-color: var(--red); }
+
+  .content-wrap { position: relative; z-index: 10; max-width: 960px; margin: 0 auto; padding: 0 32px 80px; }
+
+  .back-link { display: inline-flex; align-items: center; gap: 7px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); text-decoration: none; padding: 28px 0 20px; transition: color 0.18s; }
+  .back-link:hover { color: var(--navy); }
+  .back-link::before { content: '\2190'; font-size: 0.9rem; }
+
+  /* Hero */
+  .bill-hero { background: white; border: 1px solid var(--mid); overflow: hidden; margin-bottom: 24px; }
+  .hero-stripe { height: 6px; background: var(--navy); }
+  .hero-stripe.passed { background: var(--yes); }
+  .hero-stripe.failed { background: var(--no); }
+  .hero-body { padding: 28px 32px; display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+  .hero-left { flex: 1; min-width: 200px; }
+  .hero-eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .hero-title { font-family: 'Playfair Display', serif; font-size: clamp(1.3rem, 2.5vw, 1.9rem); font-weight: 900; color: var(--navy); line-height: 1.15; margin-bottom: 16px; letter-spacing: -0.02em; }
+  .badge { display: inline-block; font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; padding: 4px 12px; border: 1.5px solid; margin-right: 6px; margin-bottom: 4px; }
+  .badge.passed  { color: var(--yes); border-color: var(--yes); background: #edf7f1; }
+  .badge.failed  { color: var(--no);  border-color: var(--no);  background: #fbeef0; }
+  .badge.pending { color: var(--muted); border-color: var(--mid); background: white; }
+  .badge.area    { color: var(--navy); border-color: var(--navy); background: white; }
+  .badge.session { color: var(--muted); border-color: var(--mid); background: white; }
+
+  /* Session switcher */
+  .session-nav { display: flex; gap: 6px; flex-shrink: 0; align-items: flex-start; }
+  .session-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 6px 14px; border: 1.5px solid var(--mid); background: white; color: var(--muted); cursor: pointer; text-decoration: none; transition: all 0.15s; }
+  .session-btn:hover { border-color: var(--navy); color: var(--navy); }
+  .session-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
+
+  /* Cards */
+  .card { background: white; border: 1px solid var(--mid); padding: 22px 26px; margin-bottom: 20px; }
+  .card-header { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--mid); }
+  .description-text { font-size: 0.9rem; line-height: 1.7; color: var(--navy); }
+
+  /* Vote breakdown */
+  .vote-bar-wrap { margin-bottom: 16px; }
+  .vote-bar { display: flex; height: 16px; overflow: hidden; border-radius: 2px; }
+  .vote-bar-seg { height: 100%; transition: width 0.5s ease; }
+  .vote-bar-seg.yes { background: var(--yes); }
+  .vote-bar-seg.no  { background: var(--no); }
+  .vote-bar-seg.nv  { background: var(--nv); }
+  .vote-counts { display: flex; gap: 24px; margin-top: 10px; flex-wrap: wrap; }
+  .vote-count-item { display: flex; flex-direction: column; align-items: center; }
+  .vote-count-num { font-family: 'Barlow Condensed', sans-serif; font-size: 1.8rem; font-weight: 700; line-height: 1; }
+  .vote-count-num.yes { color: var(--yes); }
+  .vote-count-num.no  { color: var(--no); }
+  .vote-count-num.nv  { color: var(--nv); }
+  .vote-count-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.58rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+
+  .party-breakdown { margin-top: 18px; border-top: 1px solid var(--mid); padding-top: 14px; }
+  .party-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .party-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; width: 100px; flex-shrink: 0; }
+  .party-label.D { color: var(--dem); }
+  .party-label.R { color: var(--rep); }
+  .party-mini-bar { flex: 1; display: flex; height: 8px; overflow: hidden; border-radius: 1px; }
+  .party-counts { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 600; color: var(--muted); width: 80px; text-align: right; flex-shrink: 0; }
+
+  /* Your rep finder */
+  .rep-search-wrap { margin-bottom: 14px; }
+  .rep-search-input { width: 100%; border: 1.5px solid var(--mid); background: white; padding: 10px 14px; font-family: 'Barlow', sans-serif; font-size: 0.88rem; color: var(--navy); outline: none; transition: border-color 0.18s; }
+  .rep-search-input:focus { border-color: var(--navy); }
+  .rep-search-input::placeholder { color: var(--muted); }
+  .rep-results { border: 1px solid var(--mid); background: white; max-height: 220px; overflow-y: auto; display: none; }
+  .rep-result-item { padding: 9px 14px; cursor: pointer; font-size: 0.84rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--mid); transition: background 0.12s; }
+  .rep-result-item:last-child { border-bottom: none; }
+  .rep-result-item:hover { background: #f0ede6; }
+  .rep-result-name { font-weight: 500; }
+  .rep-result-meta { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+
+  .rep-vote-result { display: none; border: 2px solid var(--mid); padding: 20px 24px; margin-top: 12px; background: white; }
+  .rep-vote-result.yes { border-color: var(--yes); background: #f0faf4; }
+  .rep-vote-result.no  { border-color: var(--no);  background: #fdf0f2; }
+  .rep-vote-result.nv  { border-color: var(--nv);  background: white; }
+  .rep-vote-name { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .rep-vote-verdict { font-family: 'Playfair Display', serif; font-size: 2rem; font-weight: 900; line-height: 1; }
+  .rep-vote-verdict.yes { color: var(--yes); }
+  .rep-vote-verdict.no  { color: var(--no); }
+  .rep-vote-verdict.nv  { color: var(--nv); }
+  .rep-vote-sub { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
+  .rep-profile-link { display: inline-block; margin-top: 10px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--navy); text-decoration: none; border-bottom: 1.5px solid var(--navy); }
+  .rep-profile-link:hover { color: var(--red); border-color: var(--red); }
+
+  /* Sponsors */
+  .sponsor-list { display: flex; flex-direction: column; gap: 10px; }
+  .sponsor-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border: 1px solid var(--mid); background: #fafaf8; }
+  .sponsor-name-wrap { display: flex; flex-direction: column; }
+  .sponsor-name { font-weight: 600; font-size: 0.88rem; color: var(--navy); text-decoration: none; }
+  .sponsor-name:hover { color: var(--red); }
+  .sponsor-meta { font-family: 'Barlow Condensed', sans-serif; font-size: 0.62rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+  .sponsor-type { font-family: 'Barlow Condensed', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; padding: 3px 9px; border: 1.5px solid var(--mid); color: var(--muted); }
+  .sponsor-type.primary { color: var(--navy); border-color: var(--navy); background: white; }
+
+  /* Analysis card */
+  .analysis-card { border-color: var(--amber-border); background: var(--amber-bg); }
+  .analysis-card .card-header { color: var(--amber); border-bottom-color: var(--amber-border); }
+  .analysis-disclaimer { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; color: var(--amber); background: white; border: 1px solid var(--amber-border); padding: 9px 14px; margin-bottom: 16px; line-height: 1.5; }
+
+  /* Chat CTA */
+  .chat-cta-block { background: var(--navy); padding: 26px 32px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  .chat-cta-text { color: white; }
+  .chat-cta-title { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; margin-bottom: 4px; }
+  .chat-cta-sub { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.55); }
+  .chat-cta-btn { display: inline-flex; align-items: center; gap: 8px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; padding: 12px 24px; background: var(--red); color: white; border: none; cursor: pointer; text-decoration: none; transition: opacity 0.18s; flex-shrink: 0; }
+  .chat-cta-btn:hover { opacity: 0.88; }
+
+  .spinner { display: inline-block; width: 28px; height: 28px; border: 3px solid var(--mid); border-top-color: var(--navy); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 768px) {
+    header { padding: 18px 20px; flex-direction: column; gap: 14px; }
+    .header-nav { gap: 14px; flex-wrap: wrap; justify-content: center; }
+    .content-wrap { padding: 0 16px 60px; }
+    .hero-body { flex-direction: column; }
+    .vote-counts { gap: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">Virginia General Assembly <span>|</span> VoteIQ</div>
+
+<header>
+  <a href="/" class="logo-wrap">
+    <img src="/static/logo.png" alt="VoteIQ" style="height:72px;object-fit:contain;" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"/>
+    <div style="display:none">
+      <div class="logo-text">Vote<em>IQ</em></div>
+      <div class="logo-sub">Virginia Civic Intelligence</div>
+    </div>
+  </a>
+  <nav class="header-nav">
+    <a href="/">Chat</a>
+    <a href="/representatives">Representatives</a>
+    <a href="/legislators">Legislators</a>
+    <a href="/pac-spending">PACs</a>
+    <a href="/donor-map-state">Donors</a>
+    <a href="/past-elections">Elections</a>
+  </nav>
+</header>
+
+<div class="content-wrap">
+
+  <a href="/legislators" class="back-link">All Legislators</a>
+
+  <div id="loading" style="display:flex;align-items:center;justify-content:center;padding:60px">
+    <span class="spinner"></span>
+  </div>
+
+  <div id="page-content" style="display:none">
+
+    <!-- Hero -->
+    <div class="bill-hero" id="bill-hero">
+      <div class="hero-stripe" id="hero-stripe"></div>
+      <div class="hero-body">
+        <div class="hero-left">
+          <div class="hero-eyebrow" id="hero-eyebrow"></div>
+          <div class="hero-title" id="hero-title"></div>
+          <div id="hero-badges"></div>
+        </div>
+        <div class="session-nav" id="session-nav"></div>
+      </div>
+    </div>
+
+    <!-- What this bill does -->
+    <div class="card" id="description-card" style="display:none">
+      <div class="card-header">What This Bill Does</div>
+      <p class="description-text" id="description-text"></p>
+    </div>
+
+    <!-- Vote breakdown -->
+    <div class="card" id="votes-card" style="display:none">
+      <div class="card-header">Vote Breakdown</div>
+      <div class="vote-bar-wrap">
+        <div class="vote-bar" id="vote-bar"></div>
+      </div>
+      <div class="vote-counts" id="vote-counts"></div>
+    </div>
+
+    <!-- Your representative -->
+    <div class="card">
+      <div class="card-header">How Did Your Representative Vote?</div>
+      <div class="rep-search-wrap">
+        <input type="text" class="rep-search-input" id="rep-search"
+               placeholder="Search by representative name..." autocomplete="off"/>
+        <div class="rep-results" id="rep-results"></div>
+      </div>
+      <div class="rep-vote-result" id="rep-vote-result">
+        <div class="rep-vote-name" id="rep-vote-name"></div>
+        <div class="rep-vote-verdict" id="rep-vote-verdict"></div>
+        <div class="rep-vote-sub" id="rep-vote-sub"></div>
+        <a class="rep-profile-link" id="rep-profile-link" href="#" style="display:none">View full profile &rarr;</a>
+      </div>
+      <div id="no-vote-data" style="display:none;font-family:'Barlow Condensed',sans-serif;font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);padding:12px 0">
+        No vote record found for this bill.
+      </div>
+    </div>
+
+    <!-- Sponsors -->
+    <div class="card" id="sponsors-card" style="display:none">
+      <div class="card-header">Sponsors</div>
+      <div class="sponsor-list" id="sponsor-list"></div>
+    </div>
+
+    <!-- Analysis card: party patterns, visually separated from factual record -->
+    <div class="card analysis-card" id="analysis-card" style="display:none">
+      <div class="card-header">Voting Pattern Analysis</div>
+      <div class="analysis-disclaimer">
+        ⚠ This section reflects observed patterns in public roll-call records.
+        It does not imply causation, motive, or intent.
+      </div>
+      <div class="party-breakdown" id="party-breakdown"></div>
+    </div>
+
+    <!-- Chat CTA -->
+    <div class="chat-cta-block" id="chat-cta">
+      <div class="chat-cta-text">
+        <div class="chat-cta-title">Ask VoteIQ About This Bill</div>
+        <div class="chat-cta-sub">Who funded the sponsors? What interest groups benefit? How does it compare to past sessions?</div>
+      </div>
+      <a class="chat-cta-btn" id="chat-link" href="/">Ask Now</a>
+    </div>
+
+  </div><!-- /page-content -->
+</div>
+
+<script>
+(function () {
+  const d = window._BILL_DATA;
+  if (!d) return;
+
+  // Show page
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('page-content').style.display = 'block';
+
+  // ── Hero ──────────────────────────────────────────────────────────────────
+  const isPassed = d.vote_breakdown.passed;
+  const isIntro  = (d.status || '').toLowerCase().includes('introduc');
+  document.getElementById('hero-eyebrow').textContent =
+    `${d.session} Session · ${d.bill_number}`;
+  document.getElementById('hero-title').textContent = d.title || d.bill_number;
+
+  const stripe = document.getElementById('hero-stripe');
+  stripe.classList.add(isPassed ? 'passed' : isIntro ? '' : 'failed');
+
+  const badgesEl = document.getElementById('hero-badges');
+  const statusClass = isPassed ? 'passed' : isIntro ? 'pending' : 'failed';
+  badgesEl.innerHTML =
+    `<span class="badge ${statusClass}">${d.status}</span>` +
+    (d.policy_area ? `<span class="badge area">${d.policy_area}</span>` : '');
+
+  // ── Session nav ──────────────────────────────────────────────────────────
+  const sessNav = document.getElementById('session-nav');
+  if (d.sessions_available && d.sessions_available.length > 1) {
+    d.sessions_available.forEach(s => {
+      const a = document.createElement('a');
+      a.className = 'session-btn' + (s === d.session ? ' active' : '');
+      a.textContent = s;
+      a.href = `/bills/${d.bill_number}?session=${s}`;
+      sessNav.appendChild(a);
+    });
+  }
+
+  // ── Description ──────────────────────────────────────────────────────────
+  if (d.description && d.description.trim()) {
+    document.getElementById('description-text').textContent = d.description;
+    document.getElementById('description-card').style.display = 'block';
+  }
+
+  // ── Vote breakdown ───────────────────────────────────────────────────────
+  const vb = d.vote_breakdown;
+  if (vb && vb.total > 0) {
+    document.getElementById('votes-card').style.display = 'block';
+
+    const total = vb.total;
+    const yesPct = vb.yes / total * 100;
+    const noPct  = vb.no  / total * 100;
+    const nvPct  = vb.nv  / total * 100;
+
+    document.getElementById('vote-bar').innerHTML =
+      `<div class="vote-bar-seg yes" style="width:${yesPct.toFixed(1)}%"></div>` +
+      `<div class="vote-bar-seg no"  style="width:${noPct.toFixed(1)}%"></div>` +
+      `<div class="vote-bar-seg nv"  style="width:${nvPct.toFixed(1)}%"></div>`;
+
+    document.getElementById('vote-counts').innerHTML =
+      `<div class="vote-count-item">
+         <span class="vote-count-num yes">${vb.yes}</span>
+         <span class="vote-count-label">Yes</span>
+       </div>
+       <div class="vote-count-item">
+         <span class="vote-count-num no">${vb.no}</span>
+         <span class="vote-count-label">No</span>
+       </div>` +
+      (vb.nv > 0 ? `<div class="vote-count-item">
+         <span class="vote-count-num nv">${vb.nv}</span>
+         <span class="vote-count-label">Not Voting</span>
+       </div>` : '') +
+      `<div class="vote-count-item">
+         <span class="vote-count-num" style="color:var(--navy)">${total}</span>
+         <span class="vote-count-label">Total</span>
+       </div>`;
+
+    // Party breakdown
+    const pbEl = document.getElementById('party-breakdown');
+    const parties = Object.entries(vb.by_party || {}).sort((a, b) => {
+      const order = {Democratic: 0, Republican: 1};
+      return (order[a[0]] ?? 2) - (order[b[0]] ?? 2);
+    });
+    if (parties.length > 1) {
+      document.getElementById('analysis-card').style.display = 'block';
+      pbEl.innerHTML = parties.map(([party, counts]) => {
+        const pt = (counts.yes + counts.no + counts.nv) || 1;
+        const yp = counts.yes / pt * 100;
+        const np = counts.no  / pt * 100;
+        const nvp= counts.nv  / pt * 100;
+        const initial = party === 'Democratic' ? 'D' : party === 'Republican' ? 'R' : 'I';
+        return `<div class="party-row">
+          <span class="party-label ${initial}">${party}</span>
+          <div class="party-mini-bar">
+            <div class="vote-bar-seg yes" style="width:${yp.toFixed(1)}%"></div>
+            <div class="vote-bar-seg no"  style="width:${np.toFixed(1)}%"></div>
+            <div class="vote-bar-seg nv"  style="width:${nvp.toFixed(1)}%"></div>
+          </div>
+          <span class="party-counts">${counts.yes}Y / ${counts.no}N</span>
+        </div>`;
+      }).join('');
+    }
+  } else {
+    document.getElementById('no-vote-data').style.display = 'block';
+  }
+
+  // ── Your rep search ──────────────────────────────────────────────────────
+  const votes = d.votes || [];
+  const searchInput = document.getElementById('rep-search');
+  const resultsBox  = document.getElementById('rep-results');
+  const voteResult  = document.getElementById('rep-vote-result');
+  const voteNameEl  = document.getElementById('rep-vote-name');
+  const voteVerdict = document.getElementById('rep-vote-verdict');
+  const voteSub     = document.getElementById('rep-vote-sub');
+  const profileLink = document.getElementById('rep-profile-link');
+
+  function showVote(v) {
+    const opt = v.option;
+    const label = opt === 'yes' ? 'VOTED YES' : opt === 'no' ? 'VOTED NO' : 'DID NOT VOTE';
+    const cls   = opt === 'yes' ? 'yes'  : opt === 'no' ? 'no' : 'nv';
+    voteResult.className = `rep-vote-result ${cls}`;
+    voteNameEl.textContent = v.canonical_name || v.voter_name;
+    voteVerdict.className = `rep-vote-verdict ${cls}`;
+    voteVerdict.textContent = label;
+    const chamberLabel = v.chamber === 'Senate' ? 'Senator' : 'Delegate';
+    voteSub.textContent = [
+      v.party === 'Democratic' ? 'Democrat' : v.party === 'Republican' ? 'Republican' : v.party,
+      v.chamber ? chamberLabel : '',
+      v.district ? `District ${v.district}` : ''
+    ].filter(Boolean).join(' · ');
+    profileLink.href = `/legislators/${encodeURIComponent(v.canonical_name || v.voter_name)}?session=${d.session}`;
+    profileLink.style.display = v.canonical_name ? 'inline-block' : 'none';
+    voteResult.style.display = 'block';
+    resultsBox.style.display = 'none';
+    searchInput.value = v.canonical_name || v.voter_name;
+  }
+
+  searchInput.addEventListener('input', function () {
+    const q = this.value.trim().toLowerCase();
+    if (!q || q.length < 2) { resultsBox.style.display = 'none'; return; }
+    const matches = votes.filter(v =>
+      (v.canonical_name || v.voter_name || '').toLowerCase().includes(q)
+    ).slice(0, 8);
+    if (!matches.length) { resultsBox.style.display = 'none'; return; }
+    resultsBox.innerHTML = matches.map((v, i) => {
+      const name = v.canonical_name || v.voter_name;
+      const chamberLabel = v.chamber === 'Senate' ? 'Senator' : 'Delegate';
+      const meta = [
+        v.party === 'Democratic' ? 'D' : v.party === 'Republican' ? 'R' : v.party || '',
+        v.district ? `Dist. ${v.district}` : '',
+        v.chamber ? chamberLabel : ''
+      ].filter(Boolean).join(' · ');
+      return `<div class="rep-result-item" data-idx="${i}" data-name="${name}">
+        <span class="rep-result-name">${name}</span>
+        <span class="rep-result-meta">${meta}</span>
+      </div>`;
+    }).join('');
+    resultsBox.style.display = 'block';
+    resultsBox._matches = matches;
+  });
+
+  resultsBox.addEventListener('click', function (e) {
+    const item = e.target.closest('.rep-result-item');
+    if (!item) return;
+    const idx = parseInt(item.dataset.idx, 10);
+    showVote(this._matches[idx]);
+  });
+
+  document.addEventListener('click', function (e) {
+    if (!searchInput.contains(e.target) && !resultsBox.contains(e.target)) {
+      resultsBox.style.display = 'none';
+    }
+  });
+
+  // ── Sponsors ─────────────────────────────────────────────────────────────
+  if (d.sponsors && d.sponsors.length) {
+    document.getElementById('sponsors-card').style.display = 'block';
+    document.getElementById('sponsor-list').innerHTML = d.sponsors.map(s => {
+      const partyColor = s.party === 'Democratic' ? 'dem' : s.party === 'Republican' ? 'rep' : 'other';
+      const nameEl = s.profile_url
+        ? `<a class="sponsor-name" href="${s.profile_url}">${s.name}</a>`
+        : `<span class="sponsor-name">${s.name}</span>`;
+      const meta = [
+        s.party === 'Democratic' ? 'Democrat' : s.party === 'Republican' ? 'Republican' : s.party,
+        s.chamber
+      ].filter(Boolean).join(' · ');
+      return `<div class="sponsor-item">
+        <div class="sponsor-name-wrap">
+          ${nameEl}
+          <span class="sponsor-meta">${meta}</span>
+        </div>
+        <span class="sponsor-type${s.is_primary ? ' primary' : ''}">${s.is_primary ? 'Primary Sponsor' : 'Co-Sponsor'}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Chat CTA ──────────────────────────────────────────────────────────────
+  const q = encodeURIComponent(`Tell me about ${d.bill_number} — ${d.title}`);
+  document.getElementById('chat-link').href = `/?q=${q}`;
+
+  // Page title
+  document.title = `${d.bill_number} — ${d.title || 'Bill Profile'} · VoteIQ`;
+})();
+</script>
+</body>
+</html>

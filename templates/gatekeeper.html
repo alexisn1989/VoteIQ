@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>The Gatekeeper Effect · VoteIQ Virginia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet"/>
+  <style>
+    :root{
+      --navy:#0d1b2a;--red:#c8102e;--cream:#f4f1eb;--gold:#b8963e;
+      --dem:#1a52c8;--rep:#c8102e;--border:#d6d0c4;--muted:#6b6560;
+      --green:#15803d;--orange:#ea580c;--mid:#e5e1d8;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Barlow',system-ui,sans-serif;background:var(--cream);color:var(--navy);min-height:100vh}
+    a{color:inherit}
+
+    /* ── Header ── */
+    header{background:#fff;border-bottom:2px solid #ddd8cc;padding:10px 28px;display:flex;align-items:center;gap:18px}
+    .logo{font-family:'Playfair Display',Georgia,serif;font-size:1.2rem;font-weight:700;color:var(--navy);text-decoration:none}
+    nav{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+    nav a{color:var(--navy);text-decoration:none;font-size:.8rem;font-weight:600;padding:5px 11px;border-radius:4px;transition:background .15s}
+    nav a:hover,nav a.active{background:rgba(13,27,42,.08);font-weight:700}
+
+    /* ── Hero ── */
+    .page-hero{background:var(--navy);color:#fff;padding:28px 32px 24px;border-bottom:3px solid var(--red)}
+    .page-hero h1{font-family:'Playfair Display',Georgia,serif;font-size:2rem;font-weight:700;line-height:1.15}
+    .page-hero p{color:rgba(255,255,255,.65);font-size:.88rem;margin-top:7px;max-width:720px;line-height:1.6}
+    .hero-tabs{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+    .hero-tab{padding:7px 18px;border-radius:5px;font-size:.82rem;font-weight:600;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.7);transition:all .15s;cursor:pointer;background:none}
+    .hero-tab:hover{background:rgba(255,255,255,.1);color:#fff}
+    .hero-tab.on{background:#fff;color:var(--navy);border-color:#fff}
+
+    /* ── Stats bar ── */
+    .stats-bar{display:flex;background:var(--navy);border-bottom:1px solid rgba(255,255,255,.08);overflow-x:auto}
+    .stat-item{padding:14px 26px;border-right:1px solid rgba(255,255,255,.08);min-width:150px;flex-shrink:0}
+    .stat-label{font-size:.67rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.5)}
+    .stat-value{font-size:1.25rem;font-weight:700;color:#fff;margin-top:3px}
+    .stat-value.gold{color:var(--gold)}
+    .stat-value.orange{color:#fb923c}
+    .stat-value.red{color:#f87171}
+    .stat-value.green{color:#86efac}
+
+    /* ── Explainer box ── */
+    .explainer{background:#fff;border-left:4px solid var(--gold);padding:18px 22px;margin:24px 28px;border-radius:0 6px 6px 0;max-width:780px;font-size:.87rem;line-height:1.7;color:#3a3530}
+    .explainer strong{color:var(--navy)}
+
+    /* ── Filters ── */
+    .filter-bar{padding:14px 28px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:50}
+    .filter-label{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+    .btn-f{padding:6px 15px;background:#fff;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:.8rem;font-weight:600;color:var(--muted);transition:all .15s;font-family:'Barlow',sans-serif}
+    .btn-f:hover:not(.on){background:var(--cream)}
+    .btn-f.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+    /* ── Grid ── */
+    .cards-section{padding:24px 28px 40px}
+    .chamber-header{font-family:'Barlow Condensed',sans-serif;font-size:.67rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:16px;padding-bottom:6px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+    .chamber-header::after{content:'';flex:1;height:1px;background:var(--border)}
+    .cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px;margin-bottom:32px}
+
+    /* ── Committee card ── */
+    .cmt-card{background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:box-shadow .15s;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+    .cmt-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}
+    .cmt-card.has-match{border-top:3px solid var(--orange)}
+
+    .card-head{padding:14px 16px 10px;border-bottom:1px solid var(--mid);display:flex;align-items:flex-start;gap:8px}
+    .cmt-name{font-family:'Barlow Condensed',sans-serif;font-size:.97rem;font-weight:700;line-height:1.25;flex:1}
+    .chamber-badge{font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 7px;border-radius:3px;flex-shrink:0;margin-top:2px}
+    .chamber-badge.senate{background:#0d1b2a18;color:var(--navy)}
+    .chamber-badge.house{background:#c8102e18;color:var(--red)}
+
+    .chair-row{padding:10px 16px 10px;display:flex;align-items:center;gap:8px}
+    .party-dot{display:inline-block;width:9px;height:9px;border-radius:50%;flex-shrink:0}
+    .chair-name{font-size:.88rem;font-weight:600;flex:1}
+    .total-raised{font-family:'Barlow Condensed',sans-serif;font-size:.82rem;color:var(--muted);white-space:nowrap}
+
+    /* ── Sector bars ── */
+    .sector-list{padding:6px 16px 12px}
+    .sector-row{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+    .sector-row.match .s-name{color:var(--navy);font-weight:700}
+    .s-name{font-size:.73rem;color:var(--muted);flex:0 0 145px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .s-bar-wrap{flex:1;background:var(--mid);border-radius:2px;height:7px;overflow:hidden}
+    .s-bar{height:100%;border-radius:2px;transition:width .3s}
+    .s-amt{font-family:'Barlow Condensed',sans-serif;font-size:.7rem;color:var(--muted);white-space:nowrap;flex:0 0 52px;text-align:right}
+    .match-dot{font-size:.55rem;color:var(--orange);flex-shrink:0}
+
+    /* ── Match badge ── */
+    .match-banner{background:#fff7ed;border-top:1px solid #fed7aa;padding:8px 16px;display:flex;align-items:flex-start;gap:6px;font-size:.73rem;line-height:1.5}
+    .match-icon{font-size:.85rem;flex-shrink:0;margin-top:1px}
+    .match-text{color:#7c2d12}
+    .match-text strong{color:#9a3412}
+
+    /* ── Killed bills ── */
+    .killed-row{padding:8px 16px 10px;border-top:1px solid var(--mid);display:flex;align-items:center;gap:8px;cursor:pointer}
+    .killed-count{font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:700;color:var(--red);min-width:28px}
+    .killed-label{font-size:.73rem;color:var(--muted)}
+    .killed-toggle{margin-left:auto;font-size:.68rem;color:var(--muted);text-decoration:underline;flex-shrink:0}
+    .killed-list{padding:0 16px 10px;display:none;border-top:1px dashed var(--mid)}
+    .killed-list.open{display:block}
+    .killed-bill{font-size:.71rem;color:#3a3530;padding:3px 0;border-bottom:1px solid var(--mid);line-height:1.4}
+    .killed-bill:last-child{border-bottom:none}
+    .killed-bill .bn{font-weight:700;color:var(--red);margin-right:4px}
+
+    /* ── No data state ── */
+    .no-data{padding:16px;font-size:.77rem;color:var(--muted);font-style:italic;text-align:center}
+
+    /* ── Legend ── */
+    .legend{padding:0 28px 16px;display:flex;align-items:center;gap:20px;font-size:.75rem;color:var(--muted);flex-wrap:wrap}
+    .legend-item{display:flex;align-items:center;gap:5px}
+    .legend-swatch{width:12px;height:12px;border-radius:2px;flex-shrink:0}
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/" class="logo">VoteIQ</a>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/donor-map-state">State Donors</a>
+    <a href="/analysis">Analysis</a>
+    <a href="/follow-the-money">Follow the Money</a>
+    <a href="/donor-legislation">Donor–Legislation</a>
+    <a href="/gatekeeper" class="active">Gatekeeper Effect</a>
+    <a href="/legislators">State Legislature</a>
+  </nav>
+</header>
+
+<div class="page-hero">
+  <h1>The Gatekeeper Effect</h1>
+  <p>Virginia committee chairs have singular power to advance or kill legislation. We mapped every committee chair's top donor sectors against their committee's jurisdiction — revealing which industries fund the legislators who regulate them.</p>
+</div>
+
+<div class="stats-bar" id="stats-bar">
+  <div class="stat-item"><span class="stat-label">Chairs Analyzed</span><div class="stat-value gold" id="stat-total">—</div></div>
+  <div class="stat-item"><span class="stat-label">With Donor–Domain Match</span><div class="stat-value orange" id="stat-match">—</div></div>
+  <div class="stat-item"><span class="stat-label">Match Rate</span><div class="stat-value red" id="stat-rate">—</div></div>
+  <div class="stat-item"><span class="stat-label">Total Raised by Chairs</span><div class="stat-value green" id="stat-raised">—</div></div>
+  <div class="stat-item"><span class="stat-label">Bills Killed (2026)</span><div class="stat-value gold" id="stat-killed">—</div></div>
+  <div class="stat-item"><span class="stat-label">Bills Killed (2025)</span><div class="stat-value gold" id="stat-killed-2025">—</div></div>
+  <div class="stat-item"><span class="stat-label">Bills Killed (2024)</span><div class="stat-value gold" id="stat-killed-2024">—</div></div>
+  <div class="stat-item"><span class="stat-label">Coordinated Kills</span><div class="stat-value" id="stat-coord-kills" style="color:var(--red)" title="Same bill blocked in BOTH chambers">—</div></div>
+</div>
+
+<div class="explainer">
+  <strong>What is the Gatekeeper Effect?</strong> When a Finance Committee chair's largest donors are banks and real estate firms — the same industries whose legislation flows through their committee — it raises a structural question: does money follow jurisdiction, or does jurisdiction follow money?
+  An <strong style="color:var(--orange)">orange-bordered card</strong> means the chair's top donor sectors overlap directly with their committee's policy domain. This is a correlation, not a verdict.
+</div>
+
+<div class="filter-bar">
+  <span class="filter-label">Chamber:</span>
+  <button class="btn-f on" id="f-all" onclick="setFilter('all',this)">All</button>
+  <button class="btn-f" id="f-senate" onclick="setFilter('senate',this)">Senate</button>
+  <button class="btn-f" id="f-house" onclick="setFilter('house',this)">House</button>
+  <span style="margin-left:12px" class="filter-label">Show:</span>
+  <button class="btn-f on" id="s-all" onclick="setShow('all',this)">All Chairs</button>
+  <button class="btn-f" id="s-match" onclick="setShow('match',this)">Donor Match Only</button>
+</div>
+
+<div class="legend">
+  <span class="legend-item"><span class="legend-swatch" style="border:2px solid var(--orange);background:transparent"></span>Top donor sector overlaps committee domain</span>
+  <span class="legend-item"><span class="legend-swatch" style="background:var(--orange);opacity:.6"></span>Highlighted sector bar = in committee's jurisdiction</span>
+  <span class="legend-item"><span class="legend-swatch" style="background:var(--dem)"></span>Democrat</span>
+  <span class="legend-item"><span class="legend-swatch" style="background:var(--rep)"></span>Republican</span>
+</div>
+
+<div class="cards-section" id="cards-section"></div>
+
+<script>
+(function(){
+  const DATA = __GATEKEEPER_DATA__;
+
+  // ── Sector colours ─────────────────────────────────────────────────────────
+  const SC = {
+    'Fossil Fuels':'#92400e','Utilities':'#1d4ed8','Agribusiness':'#3f6212',
+    'Tobacco':'#44403c','Wine & Spirits':'#881337','Finance':'#0e7490',
+    'Banking':'#0c4a6e','Securities & Investment':'#0891b2',
+    'Commercial Real Estate':'#b45309','Health Professionals':'#16a34a',
+    'Pharmaceuticals / Health Products':'#14b8a6','Corporate Law':'#1e3a5f',
+    'Lawyers & Lobbyists':'#374151','Ideological':'#7c3aed',
+    'Labor':'#9d174d','Transportation':'#1e3a5f','Technology':'#0369a1',
+    'Telecom':'#0369a1','Education':'#047857','Construction':'#b45309',
+    'Hospitals & Nursing Homes':'#15803d','Alternative Energy':'#22c55e',
+    'Automotive':'#374151',
+  };
+  function sColor(s){ return SC[s] || '#7a7468'; }
+
+  function esc(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function fmtK(n){ if(!n) return '0'; if(n>=1e6) return '$'+(n/1e6).toFixed(1)+'M'; if(n>=1e3) return '$'+(n/1e3).toFixed(0)+'K'; return '$'+Math.round(n); }
+  function fmtM(n){ if(!n) return '—'; if(n>=1e6) return '$'+(n/1e6).toFixed(2)+'M'; if(n>=1e3) return '$'+(n/1e3).toFixed(0)+'K'; return '$'+n; }
+
+  let activeFilter = 'all';
+  let activeShow = 'all';
+
+  function setFilter(v, btn){
+    activeFilter = v;
+    document.querySelectorAll('#filter-bar .btn-f[id^="f-"]').forEach(b => b.classList.remove('on'));
+    document.getElementById('f-'+v).classList.add('on');
+    render();
+  }
+  function setShow(v, btn){
+    activeShow = v;
+    document.querySelectorAll('.btn-f[id^="s-"]').forEach(b => b.classList.remove('on'));
+    document.getElementById('s-'+v).classList.add('on');
+    render();
+  }
+
+  window.setFilter = setFilter;
+  window.setShow = setShow;
+
+  window.toggleKilled = function(id, row){
+    const list = document.getElementById('kl-'+id);
+    const tog  = document.getElementById('tog-'+id);
+    if(!list) return;
+    list.classList.toggle('open');
+    tog.innerHTML = list.classList.contains('open') ? 'hide &#9650;' : 'show &#9660;';
+  };
+
+  function renderCard(c){
+    const pColor = c.party==='D' ? 'var(--dem)' : c.party==='R' ? 'var(--rep)' : '#888';
+    const chamberClass = c.chamber.toLowerCase();
+    const chamberLabel = c.chamber==='Senate' ? 'SEN' : 'HSE';
+    const maxAmt = c.top_sectors.length ? (c.top_sectors[0].total||1) : 1;
+
+    const sRows = c.top_sectors.slice(0,5).map(s => {
+      const pct = Math.round((s.total||0)/maxAmt*100);
+      const isMatch = (c.jurisdiction||[]).includes(s.sector);
+      const col = sColor(s.sector);
+      const opacity = isMatch ? '1' : '0.5';
+      return `<div class="sector-row${isMatch?' match':''}">
+        <div class="s-name" title="${esc(s.sector)}">${esc(s.sector)}</div>
+        <div class="s-bar-wrap"><div class="s-bar" style="width:${pct}%;background:${col};opacity:${opacity}"></div></div>
+        <div class="s-amt">${fmtK(s.total)}</div>
+        ${isMatch?'<span class="match-dot" title="In committee jurisdiction">&#9679;</span>':'<span style="width:10px;flex-shrink:0"></span>'}
+      </div>`;
+    }).join('');
+
+    const matchBanner = c.jurisdiction_match && c.matching_sectors.length
+      ? `<div class="match-banner"><span class="match-icon">&#9888;</span><span class="match-text">Donor–domain overlap: <strong>${esc(c.matching_sectors.join(', '))}</strong> — top funder(s) operate in this committee's jurisdiction</span></div>`
+      : '';
+
+    // Killed bills section
+    const cardId = c.chamber.slice(0,1) + c.committee.replace(/[^a-z]/gi,'').slice(0,12);
+    const k26 = c.bills_killed || 0;
+    const k25 = c.bills_killed_2025 || 0;
+    const k24 = c.bills_killed_2024 || 0;
+    let killedHtml = '';
+    if(k26 > 0 || k25 > 0 || k24 > 0){
+      const sampleHtml = (c.killed_sample||[]).map(s => {
+        const dash = s.indexOf(' — ');
+        const bn = dash>=0 ? s.slice(0,dash) : s;
+        const title = dash>=0 ? s.slice(dash+3) : '';
+        return `<div class="killed-bill"><span class="bn">${esc(bn)}</span>${esc(title)}</div>`;
+      }).join('');
+      const more = k26 > 5 ? ` +${k26-5} more (2026)` : '';
+      killedHtml = `
+        <div class="killed-row" onclick="toggleKilled('${cardId}',this)">
+          <span class="killed-count">${k26}</span>
+          <span class="killed-label">killed 2026</span>
+          <span class="killed-label" style="color:var(--muted)">·</span>
+          <span class="killed-count" style="font-size:.85rem">${k25}</span>
+          <span class="killed-label">2025</span>
+          <span class="killed-label" style="color:var(--muted)">·</span>
+          <span class="killed-count" style="font-size:.85rem">${k24}</span>
+          <span class="killed-label">2024</span>
+          <span class="killed-toggle" id="tog-${cardId}">show 2026 &#9660;</span>
+        </div>
+        <div class="killed-list" id="kl-${cardId}">
+          ${sampleHtml}
+          ${more ? `<div class="killed-bill" style="color:var(--muted);font-style:italic">${more}</div>` : ''}
+        </div>`;
+    }
+
+    return `<div class="cmt-card${c.jurisdiction_match?' has-match':''}">
+      <div class="card-head">
+        <div class="cmt-name">${esc(c.committee)}</div>
+        <div class="chamber-badge ${chamberClass}">${chamberLabel}</div>
+      </div>
+      <div class="chair-row">
+        <span class="party-dot" style="background:${pColor}"></span>
+        <span class="chair-name">${esc(c.chair)}</span>
+        <span class="total-raised">${c.has_data ? fmtM(c.total_raised) : '—'}</span>
+      </div>
+      ${c.has_data
+        ? `<div class="sector-list">${sRows}</div>${matchBanner}`
+        : '<div class="no-data">Donor data not available</div>'
+      }
+      ${killedHtml}
+    </div>`;
+  }
+
+  function render(){
+    let senate = DATA.senate || [];
+    let house  = DATA.house  || [];
+
+    if(activeShow === 'match'){
+      senate = senate.filter(c => c.jurisdiction_match);
+      house  = house.filter(c => c.jurisdiction_match);
+    }
+
+    const section = document.getElementById('cards-section');
+    let html = '';
+
+    if(activeFilter !== 'house' && senate.length){
+      html += `<div><div class="chamber-header">Senate — ${senate.length} committee${senate.length>1?'s':''}</div>
+        <div class="cards-grid">${senate.map(renderCard).join('')}</div></div>`;
+    }
+    if(activeFilter !== 'senate' && house.length){
+      html += `<div><div class="chamber-header">House of Delegates — ${house.length} committee${house.length>1?'s':''}</div>
+        <div class="cards-grid">${house.map(renderCard).join('')}</div></div>`;
+    }
+    if(!html) html = '<div style="padding:40px 28px;color:var(--muted);font-size:.9rem">No matching committees.</div>';
+    section.innerHTML = html;
+  }
+
+  // ── Stats ──────────────────────────────────────────────────────────────────
+  const all = [...(DATA.senate||[]), ...(DATA.house||[])];
+  const withMatch = all.filter(c => c.jurisdiction_match).length;
+  const totalRaised = all.reduce((s,c) => s + (c.total_raised||0), 0);
+  document.getElementById('stat-total').textContent = all.length;
+  document.getElementById('stat-match').textContent = withMatch;
+  document.getElementById('stat-rate').textContent = Math.round(withMatch/all.length*100) + '%';
+  document.getElementById('stat-raised').textContent = totalRaised >= 1e6
+    ? '$' + (totalRaised/1e6).toFixed(1) + 'M'
+    : '$' + (totalRaised/1e3).toFixed(0) + 'K';
+  document.getElementById('stat-killed').textContent = DATA.total_bills_killed || '—';
+  document.getElementById('stat-killed-2025').textContent = DATA.total_bills_killed_2025 || '—';
+  document.getElementById('stat-killed-2024').textContent = DATA.total_bills_killed_2024 || '—';
+  document.getElementById('stat-coord-kills').textContent = DATA.coordinated_kills || '—';
+
+  render();
+})();
+</script>
+</body>
+</html>
