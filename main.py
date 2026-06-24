@@ -10415,11 +10415,46 @@ async def _on_startup():
         except Exception as exc:
             print(f"[finance-backfill] Failed: {exc}")
 
+    def _norfolk_seed_task():
+        """Seed Norfolk City Council tables from data/norfolk_seed.sql if missing.
+        Norfolk has no live ingest endpoint; the Render disk is not written by
+        build.sh, so the tables are loaded here at runtime (same path the other
+        seed tasks use to write the persistent /var/data/polls.db)."""
+        try:
+            conn = sqlite3.connect(_POLLS_DB)
+            try:
+                n = conn.execute("SELECT COUNT(*) FROM norfolk_council_votes").fetchone()[0]
+            except Exception:
+                n = 0
+            if n >= 1000:
+                print(f"[norfolk-seed] {n} norfolk_council_votes rows present — skipping.")
+                conn.close()
+                return
+            seed_file = os.path.join(BASE_DIR, "data", "norfolk_seed.sql")
+            if not os.path.exists(seed_file):
+                print(f"[norfolk-seed] Seed file not found at {seed_file}")
+                conn.close()
+                return
+            print(f"[norfolk-seed] Seeding Norfolk tables from {seed_file}...")
+            with open(seed_file, "r", encoding="utf-8") as f:
+                conn.executescript(f.read())
+            conn.commit()
+            v = conn.execute("SELECT COUNT(*) FROM norfolk_council_votes").fetchone()[0]
+            mv = conn.execute("SELECT COUNT(*) FROM norfolk_council_member_votes").fetchone()[0]
+            fs = conn.execute("SELECT COUNT(*) FROM norfolk_finance_summary").fetchone()[0]
+            ft = conn.execute("SELECT COUNT(*) FROM norfolk_finance_totals").fetchone()[0]
+            print(f"[norfolk-seed] Done: {v} votes, {mv} member votes, "
+                  f"{fs} finance summary, {ft} finance totals.")
+            conn.close()
+        except Exception as exc:
+            print(f"[norfolk-seed] Failed: {exc}")
+
     # Seed all pre-aggregated tables synchronously before background threads
     _governor_seed_task()
     _finance_seed_task()
     _legislators_seed_task()
     _finance_backfill_task()
+    _norfolk_seed_task()
     threading.Thread(target=_embed_task, daemon=True).start()
     threading.Thread(target=_gov_actions_task, daemon=True).start()
     threading.Thread(target=_finance_rebuild_task, daemon=True).start()
