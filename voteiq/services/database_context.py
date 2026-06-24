@@ -6736,6 +6736,33 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                     if desc:
                         lines.append(f"    {desc}")
 
+        # ── Named-member No-vote history (from precomputed norfolk_split_votes) ──
+        _named_split_trigger = (
+            bool(named_members)
+            and any(w in q_lower for w in (
+                "voted against", "voted no", "no vote", "voted down", "split",
+                "contested", "controversial", "opposed", "specific vote",
+                "which vote", "example", "minority", "dissent", "record",
+                "disagree", "against", "no on",
+            ))
+        )
+        if _named_split_trigger and _table_exists(conn, "norfolk_split_votes"):
+            _nm = named_members[0]
+            _nm_rows = conn.execute("""
+                SELECT meeting_date, topic, yes_count, no_count, no_voters, title
+                FROM norfolk_split_votes
+                WHERE no_voters LIKE ?
+                ORDER BY meeting_date DESC
+                LIMIT 8
+            """, (f"%{_nm}%",)).fetchall()
+            if _nm_rows:
+                lines.append(f"\n#### {_nm.title()} — No votes on contested resolutions")
+                for dt, topic, yes, no, voters, title in _nm_rows:
+                    t = f"[{topic}]" if topic else "[other]"
+                    lines.append(
+                        f"  {dt}  {t:22s}  {yes}Y/{no}N  ({voters})  {title[:65]}"
+                    )
+
         # ── Attendance / absence tracker ──────────────────────────────────────
         _attend_trigger = any(w in q_lower for w in (
             "attend", "absence", "absent", "miss", "missed", "show up",

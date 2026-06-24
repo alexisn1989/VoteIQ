@@ -191,6 +191,17 @@ def admin_build_vb_dissent(
     return {"ok": result.get("ok"), "scripts": {"build_vb_dissent.py": result}}
 
 
+@router.post("/build-norfolk-splits")
+def admin_build_norfolk_splits(
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Precompute non-unanimous Norfolk council votes into norfolk_split_votes."""
+    args = ["--reset"] if reset else []
+    result = _run_script("build_norfolk_splits.py", args, timeout=120)
+    return {"ok": result.get("ok"), "scripts": {"build_norfolk_splits.py": result}}
+
+
 @router.post("/build-vb-splits")
 def admin_build_vb_splits(
     reset: bool = False,

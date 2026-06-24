@@ -970,6 +970,12 @@ PYEOF
     [ $? -ne 0 ] && echo "⚠ Norfolk seed failed" || echo "✓ Norfolk tables seeded"
 fi
 
+# ── STEP 4h: Precompute Norfolk split votes ────────────────────────────────────
+echo ""
+echo "[STEP 4h] Building Norfolk split-vote index..."
+python3 build_norfolk_splits.py --reset 2>&1 | tail -5
+[ $? -ne 0 ] && echo "⚠ build_norfolk_splits.py failed" || echo "✓ Norfolk split votes indexed"
+
 # ── STEP 5: Build committee_testimony_proxy (derived from polls.db) ───────────
 echo ""
 echo "[STEP 5] Building committee testimony proxy (all sessions)..."
