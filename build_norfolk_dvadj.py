@@ -239,7 +239,7 @@ def main() -> None:
         print(f"\n  {fin_name} ({vote_name}):")
         for r in rows:
             sign = "+" if r[3] >= 0 else ""
-            print(f"    {r[1]:4.0f}% {r[0]:15s} → {r[2]:22s} delta {sign}{r[3]:.0f}pp")
+            print(f"    {r[1]:4.0f}% {r[0]:15s} -> {r[2]:22s} delta {sign}{r[3]:.0f}pp")
 
     conn.close()
     print("\nDone.")

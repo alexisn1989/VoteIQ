@@ -976,6 +976,29 @@ echo "[STEP 4h] Building Norfolk split-vote index..."
 python3 build_norfolk_splits.py --reset 2>&1 | tail -5
 [ $? -ne 0 ] && echo "⚠ build_norfolk_splits.py failed" || echo "✓ Norfolk split votes indexed"
 
+# ── STEP 4i: Norfolk analytics tables ────────────────────────────────────────
+echo ""
+echo "[STEP 4i] Building Norfolk analytics tables..."
+NORFOLK_VOTES=$(python3 -c "
+import sqlite3, os
+data_dir = os.environ.get('DATA_DIR', os.getcwd())
+db = os.path.join(data_dir, 'polls.db')
+try:
+    print(sqlite3.connect(db).execute('SELECT COUNT(*) FROM norfolk_council_votes').fetchone()[0])
+except Exception:
+    print(0)
+" 2>/dev/null || echo "0")
+if [ "${NORFOLK_VOTES:-0}" -lt 1000 ] 2>/dev/null; then
+    echo "  Skipping Norfolk analytics — norfolk_council_votes empty (seed not loaded)"
+else
+    for NF_SCRIPT in build_norfolk_blocs.py build_norfolk_dissent.py build_norfolk_finance.py build_norfolk_dvadj.py; do
+        echo "  Running $NF_SCRIPT..."
+        python3 "$NF_SCRIPT" --reset 2>&1 | tail -3
+        [ $? -ne 0 ] && echo "  ⚠ $NF_SCRIPT failed — continuing" || true
+    done
+    echo "✓ Norfolk analytics tables rebuilt"
+fi
+
 # ── STEP 5: Build committee_testimony_proxy (derived from polls.db) ───────────
 echo ""
 echo "[STEP 5] Building committee testimony proxy (all sessions)..."
