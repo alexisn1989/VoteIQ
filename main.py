@@ -10449,12 +10449,42 @@ async def _on_startup():
         except Exception as exc:
             print(f"[norfolk-seed] Failed: {exc}")
 
+    def _vb_splits_seed_task():
+        """Seed vb_split_votes from data/vb_split_votes_seed.sql if missing.
+        Built locally and shipped as a seed because the build-vb-splits admin
+        endpoint spawns a subprocess that OOMs the 512MB instance. Idempotent."""
+        try:
+            conn = sqlite3.connect(_POLLS_DB)
+            try:
+                n = conn.execute("SELECT COUNT(*) FROM vb_split_votes").fetchone()[0]
+            except Exception:
+                n = 0
+            if n >= 1:
+                print(f"[vb-splits-seed] {n} vb_split_votes rows present — skipping.")
+                conn.close()
+                return
+            seed_file = os.path.join(BASE_DIR, "data", "vb_split_votes_seed.sql")
+            if not os.path.exists(seed_file):
+                print(f"[vb-splits-seed] Seed file not found at {seed_file}")
+                conn.close()
+                return
+            print(f"[vb-splits-seed] Seeding vb_split_votes from {seed_file}...")
+            with open(seed_file, "r", encoding="utf-8") as f:
+                conn.executescript(f.read())
+            conn.commit()
+            sv = conn.execute("SELECT COUNT(*) FROM vb_split_votes").fetchone()[0]
+            print(f"[vb-splits-seed] Done: {sv} split votes.")
+            conn.close()
+        except Exception as exc:
+            print(f"[vb-splits-seed] Failed: {exc}")
+
     # Seed all pre-aggregated tables synchronously before background threads
     _governor_seed_task()
     _finance_seed_task()
     _legislators_seed_task()
     _finance_backfill_task()
     _norfolk_seed_task()
+    _vb_splits_seed_task()
     threading.Thread(target=_embed_task, daemon=True).start()
     threading.Thread(target=_gov_actions_task, daemon=True).start()
     threading.Thread(target=_finance_rebuild_task, daemon=True).start()
