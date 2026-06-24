@@ -39,16 +39,17 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                        "architect", "contractor", "land ", "land,", "rental", "housing",
                        "farm", "agriculture", "agric",
                        "real estate", "apartment", "commercial real estate",
-                       "sifen"]),
+                       "residential", "property management", "sifen", "ainslie"]),
     ("Hospitality",   ["hotel", "motel", "resort", "restaur", "food", "beverage", "hospitality",
-                       "tourism", "marriott", "hilton", "oceanfront", "gold key"]),
+                       "tourism", "marriott", "hilton", "oceanfront", "gold key",
+                       "shamin", "city club"]),
     ("Finance",       ["bank", "financ", "invest", "capital", "credit union", "mortgage",
                        "insur", "wealth", "fund", "securities", "lending", "asset"]),
     ("Legal",         ["law ", "attorney", "legal", "counsel", " llp", " pllc", "esq",
-                       " p.c.", "firm", "lawyer"]),
+                       " p.c.", " pc", "firm", "lawyer"]),
     ("Healthcare",    ["health", "hospital", "medic", "doctor", "physician", "nurs",
                        "pharma", "clinic", "dental", "care ", "sentara", "bon secours",
-                       "optom", "chiropr"]),
+                       "optom", "chiropr", "psychotherapy", "psychiatr", "therapist"]),
     ("Defense",       ["defense", "military", "navy", "army", "coast guard", "veteran",
                        "naval", "bae systems", "northrop", "general dynamics", "raytheon",
                        "leidos", "booz allen", "saic", "huntington ingalls", "l3"]),
@@ -61,13 +62,17 @@ SECTOR_KEYWORDS: list[tuple[str, list[str]]] = [
                        "municipal", "dept of", "department of", "public sector",
                        "city council", "town council"]),
     ("Energy",        ["energy", "utility", "electric", "gas ", "power ", "dominion",
-                       "appalachian", "columbia gas"]),
+                       "appalachian", "columbia gas", "papco", "petroleum", "fuel distrib"]),
     ("Tech",          ["tech", "software", "data ", "cyber", "digital", "computer",
                        "information tech", " it ", "systems integr"]),
+    ("Automotive",    ["automobile", "automotive", "car dealer", "auto dealer",
+                       "checkered flag", "priority toyota", "priority auto",
+                       "beach ford", "auto group"]),
     ("PAC/Advocacy",  ["pac ", "political action", "campaign committee", "advocacy org",
                        "lobby org", "political org", "political committee",
-                       "politcal action", "candidate committee"]),
-    ("Retired",       ["retired", "retirement"]),
+                       "politcal action", "candidate committee",
+                       "democrat", "republican", "national committee", "party committee"]),
+    ("Retired",       ["retired", "retirement", "not employed"]),
 ]
 
 
@@ -92,25 +97,31 @@ def classify_sector(employer: str, occupation: str) -> str:
     if any(kw in occ for kw in ["attorney", "lawyer", "legal"]):
         return "Legal"
     if any(kw in occ for kw in ["realtor", "broker", "developer", "contractor", "farmer",
-                                  "real estate", "apartment", "property manager"]):
+                                  "real estate", "apartment", "property manager",
+                                  "property management", "residential company"]):
         return "Real Estate"
-    if any(kw in occ for kw in ["physician", "doctor", "nurse", "pharmacist"]):
+    if any(kw in occ for kw in ["physician", "doctor", "nurse", "pharmacist",
+                                  "psychiatrist", "psychotherap", "therapist"]):
         return "Healthcare"
     if any(kw in occ for kw in ["banker", "accountant", "cpa", "financial advisor",
                                   "investment advisor"]):
         return "Finance"
     if any(kw in occ for kw in ["hotel", "motel", "hospitality", "restaur"]):
         return "Hospitality"
+    if any(kw in occ for kw in ["car dealer", "auto dealer", "automobile", "automotive",
+                                  "car sales", "car dealership"]):
+        return "Automotive"
     if any(kw in occ for kw in ["union", "teamster", "firefighter", "fire fighter"]):
         return "Labor"
     if any(kw in occ for kw in ["city council", "town council", "county supervisor",
                                   "county board", "state senator", "state delegate"]):
         return "Government"
     if (any(kw in occ for kw in ["political action", "political committee",
-                                   "candidate committee", "political org", "advocacy"])
+                                   "candidate committee", "political org", "advocacy",
+                                   "national committee", "democrat", "republican"])
             or occ in ("political", "pac")):
         return "PAC/Advocacy"
-    if "retired" in occ:
+    if "retired" in occ or "not employed" in occ:
         return "Retired"
     return "Other"
 
