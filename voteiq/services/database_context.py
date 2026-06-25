@@ -67,6 +67,91 @@ def _request_connection_cache():
 
 # ─────────────────────────────────────────────────────────────────────────────
 
+# ── Block-priority budget allocator ──────────────────────────────────────────
+# Replaces the blunt context[:max_chars] tail-cut.  When the assembled context
+# would exceed max_chars, whole low-priority blocks are dropped rather than
+# slicing bytes mid-sentence.  CRITICAL blocks (scope guards, demo-protected
+# vote waterfall, PAC correlation) are never dropped.
+
+
+class PriorityBlockList:
+    """Drop-in replacement for list[str] with per-block priority tracking.
+
+    Builders call blocks.append(text) unchanged.  The orchestrator calls
+    blocks.set_priority(n) before each builder group to tag its blocks.
+    budget_fit() then drops lowest-priority blocks first when over budget.
+    """
+
+    CRITICAL = 1  # never dropped: scope guards, vote waterfall, PAC correlation
+    HIGH = 2      # core facts: votes, bills, named-legislator lookups
+    MEDIUM = 3    # supplemental: profiles, lobbying, donor trends
+    LOW = 4       # dropped first: rendering rules, keyword fallback
+
+    def __init__(self) -> None:
+        self._items: list[tuple[int, str]] = []
+        self._current = self.MEDIUM
+
+    def set_priority(self, priority: int) -> "PriorityBlockList":
+        self._current = priority
+        return self
+
+    def append(self, text: str) -> None:
+        self._items.append((self._current, text))
+
+    def insert(self, index: int, text: str) -> None:
+        # insert(0, ...) is used for critical out_of_scope guards — always CRITICAL
+        self._items.insert(index, (self.CRITICAL, text))
+
+    def __len__(self) -> int:
+        return len(self._items)
+
+    def __bool__(self) -> bool:
+        return bool(self._items)
+
+    def __iter__(self):
+        return (text for _, text in self._items)
+
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            return [t for _, t in self._items[key]]
+        return self._items[key][1]
+
+    def budget_fit(self, max_chars: int, sep: str = "\n\n---\n\n") -> str:
+        """Assemble blocks within budget, dropping lowest-priority whole blocks first."""
+        items = self._items
+        if not items:
+            return ""
+
+        sep_len = len(sep)
+        n = len(items)
+        total = sum(len(t) for _, t in items) + sep_len * max(0, n - 1)
+
+        if total <= max_chars:
+            return sep.join(t for _, t in items)
+
+        dropped: set[int] = set()
+        # Candidates: non-CRITICAL blocks, sorted lowest-priority (highest p) first,
+        # then latest position first so early context is preserved.
+        candidates = sorted(
+            (i for i, (p, _) in enumerate(items) if p > self.CRITICAL),
+            key=lambda i: (-items[i][0], -i),
+        )
+        for idx in candidates:
+            if total <= max_chars:
+                break
+            total -= len(items[idx][1]) + sep_len
+            dropped.add(idx)
+
+        texts = [t for i, (_, t) in enumerate(items) if i not in dropped]
+        result = sep.join(texts)
+        # Safety net: if CRITICAL blocks alone exceed max_chars, hard-cut with notice
+        if len(result) > max_chars:
+            result = result[:max_chars].rstrip() + "\n\n[Database Context truncated to fit model context.]"
+        return result
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+
 DATA_DIR_ENV_VARS = ("DATA_DIR", "VOTEIQ_DATA_DIR", "RENDER_DISK_MOUNT_PATH")
 COMMON_DATA_DIRS = (Path("/data"), Path("/var/data"))
 
@@ -8153,82 +8238,101 @@ def build_database_context(query: str, max_chars: int = 22000, pro: bool = False
 
 def _build_database_context_inner(query: str, max_chars: int = 22000, pro: bool = False) -> str:
     q = query or ""
-    blocks: list[str] = []
+    blocks = PriorityBlockList()
     q_lower = q.lower()
     if (
         re.search(r"\b(database|databases|tables|schema)\b", q_lower)
         or "data do you have" in q_lower
         or "what data" in q_lower
     ):
+        blocks.set_priority(PriorityBlockList.MEDIUM)
         _add_schema_summary(blocks)
 
     bills = _bill_numbers(q)
     session = _session_year(q)
     terms = _keywords(q)
+    blocks.set_priority(PriorityBlockList.HIGH)
     _add_known_person_scope_context(blocks, q)
     _add_city_district_context(blocks, q)
-    # Pre-generated civic profile — injected early so it always fits within max_chars
+    blocks.set_priority(PriorityBlockList.MEDIUM)
+    # Pre-generated civic profile
     _add_legislator_narrative_context(blocks, q)
+    blocks.set_priority(PriorityBlockList.HIGH)
     # Follow-the-money chain — fires when a bill number + money terms appear
     _add_follow_the_money_context(blocks, q)
+    blocks.set_priority(PriorityBlockList.MEDIUM)
     # Testimony proxy — fires when a bill number + lobbying/testimony terms appear
     _add_testimony_proxy_context(blocks, q)
+    blocks.set_priority(PriorityBlockList.HIGH)
     # Committee chair lookup — fires on "who chairs X" or committee name + money context
     _add_committee_chair_context(blocks, q)
+    blocks.set_priority(PriorityBlockList.MEDIUM)
     # Legislator committee memberships — fires on "[name] + committee" queries
     _add_legislator_committee_membership_context(blocks, q)
     # Vote similarity — fires on "votes most similarly", "most aligned with", etc.
     _add_vote_similarity_context(blocks, q)
+    blocks.set_priority(PriorityBlockList.HIGH)
     # Gatekeeper — fires when query asks who kills/blocks bills in committee
     _add_gatekeeper_context(blocks, q)
+    blocks.set_priority(PriorityBlockList.MEDIUM)
     # VEC financial disclosures — fires on SOEI / conflict-of-interest queries
     _add_disclosures_context(blocks, q)
     # Direct lobbyist/principal queries — fires without requiring a bill number
     _add_lobbyist_direct_context(blocks, q)
     # Sponsor–donor sector correlation
     _add_sponsor_correlation_context(blocks, q)
+    blocks.set_priority(PriorityBlockList.HIGH)
     _add_bill_context(blocks, bills, session, pro=pro)
     _add_bill_committee_chair_context(blocks, bills, session, pro=pro)
     _add_pac_context(blocks, q, terms)
     _add_federal_bill_context(blocks, q, terms)
     _add_federal_vote_context(blocks, q, terms)
+    blocks.set_priority(PriorityBlockList.MEDIUM)
     _add_floor_statements_context(blocks, q, terms)
     _add_indy_exp_context(blocks, q, terms)
     _add_fec_employer_context(blocks, q, terms)
+    blocks.set_priority(PriorityBlockList.CRITICAL)
     _add_pac_vote_correlation_context(blocks, q, terms)
+    blocks.set_priority(PriorityBlockList.HIGH)
     _add_spike_alerts_context(blocks, q)
     # Structured access to analytically rich tables the generic scan serves poorly
     _add_donor_vote_alignment_context(blocks, q, terms)
     _add_norfolk_council_context(blocks, q, terms)
     _add_vb_council_context(blocks, q, terms)
+    blocks.set_priority(PriorityBlockList.MEDIUM)
     _add_vpap_race_context(blocks, q)
     _add_congress_hearings_context(blocks, q, terms)
+    blocks.set_priority(PriorityBlockList.HIGH)
     if _is_campaign_finance_query(q):
         _add_campaign_finance_context(blocks, q, terms)
         _add_governor_action_context(blocks, q, terms, session)
     else:
         _add_governor_action_context(blocks, q, terms, session)
         _add_campaign_finance_context(blocks, q, terms)
+    blocks.set_priority(PriorityBlockList.CRITICAL)
     _add_targeted_vote_lookup(blocks, q, bills, terms, session)
+    blocks.set_priority(PriorityBlockList.HIGH)
     # Authoritative chief-patron sponsorship counts — injected before the generic
     # person-vote sweep so the model anchors on structured totals (chief vs co-patron,
     # real did-not-pass count) instead of inferring them from the ambiguous LIKE sweep.
     _add_sponsorship_summary_context(blocks, q, terms, session)
     _add_person_vote_context(blocks, q, terms, session)
     _add_state_vote_donor_context(blocks, q, terms, session)
+    blocks.set_priority(PriorityBlockList.LOW)
     _add_keyword_context(blocks, q, terms, session)
 
-    # Multi-cycle donor trend / investment-return signal — run FIRST so it
-    # is never truncated by the generic SQL dump that comes later
+    # Multi-cycle donor trend / investment-return signal
+    blocks.set_priority(PriorityBlockList.HIGH)
     _add_donor_trend_context(blocks, q)
 
-    # Civic analysis rendering rules — injected before donor/finance context so
-    # the LLM sees the formatting contract before the data it must render.
+    # Civic analysis rendering rules
+    blocks.set_priority(PriorityBlockList.LOW)
     _add_civic_rendering_rules(blocks, q)
 
     # Donor-influence analysis for CoI / Dominion / industry sponsor queries
     # Also triggered by any campaign-finance query so named-legislator lookups
     # can return their donor-industry breakdown.
+    blocks.set_priority(PriorityBlockList.MEDIUM)
     if _ANALYSIS_TRIGGER.search(q) or _is_campaign_finance_query(q):
         _add_donor_analysis_context(blocks, q)
     _add_dominion_recipient_ranking_context(blocks, q)
@@ -8236,10 +8340,10 @@ def _build_database_context_inner(query: str, max_chars: int = 22000, pro: bool 
     # ── Known data-gap signals ─────────────────────────────────────────────────
     # Emit explicit out_of_scope blocks for categories the DB layer cannot satisfy,
     # so the LLM declines rather than fabricating from unrelated records.
+    # All scope guards are CRITICAL — insert(0, ...) also uses CRITICAL via PriorityBlockList.
+    blocks.set_priority(PriorityBlockList.CRITICAL)
 
     # Historical years (19xx) — VA state bills/votes/finance start at 2018
-    # Insert at position 0 so it is never truncated by max_chars even when
-    # governor_actions or other builders produce large volumes of content.
     hist_years = _HIST_YEAR_RE.findall(q)
     if hist_years:
         yr = hist_years[0]
@@ -8310,12 +8414,10 @@ def _build_database_context_inner(query: str, max_chars: int = 22000, pro: bool 
 
     # Enforce the 3-layer FACT/CONTEXT/ANALYSIS contract when any finance data is
     # present, so campaign-finance content is segregated out of the factual narrative.
+    blocks.set_priority(PriorityBlockList.LOW)
     _add_layer_rendering_rules(blocks)
 
-    context = "\n\n---\n\n".join(blocks)
-    if len(context) > max_chars:
-        context = context[:max_chars].rstrip() + "\n\n[Database Context truncated to fit model context.]"
-    return context
+    return blocks.budget_fit(max_chars)
 
 
 def build_admin_database_context(query: str, max_chars: int = 28000) -> str:
