@@ -169,7 +169,7 @@ class GovernorActionContextTests(unittest.TestCase):
             """,
             """
             INSERT INTO governor_actions VALUES (
-                'HB1', '2026', 'SIGNED', '2026-04-13', 'Other Governor'
+                'HB1', '2026', 'APPROVED', '2026-04-13', 'Other Governor'
             )
             """,
         )
@@ -266,13 +266,14 @@ class GovernorActionContextTests(unittest.TestCase):
             CREATE TABLE va_cf_schedule_a (
                 candidate_name TEXT, election_cycle TEXT, first_name TEXT,
                 last_or_company TEXT, employer TEXT, occupation TEXT,
-                is_individual INTEGER, transaction_date TEXT, amount REAL
+                is_individual INTEGER, transaction_date TEXT, amount REAL,
+                report_uid TEXT
             )
             """,
             """
             INSERT INTO va_cf_schedule_a VALUES
-                ('Abigail  Spanberger', '2025', '', 'DGA Action', '', 'Federal PAC', 0, '2025-09-01', 1000000),
-                ('Abigail  Spanberger', '2025', 'Jane', 'Doe', 'Acme', 'Engineer', 1, '2025-10-01', 250)
+                ('Abigail  Spanberger', '2025', '', 'DGA Action', '', 'Federal PAC', 0, '2025-09-01', 1000000, NULL),
+                ('Abigail  Spanberger', '2025', 'Jane', 'Doe', 'Acme', 'Engineer', 1, '2025-10-01', 250, NULL)
             """
         )
 
@@ -294,13 +295,14 @@ class GovernorActionContextTests(unittest.TestCase):
             CREATE TABLE va_cf_schedule_a (
                 candidate_name TEXT, election_cycle TEXT, first_name TEXT,
                 last_or_company TEXT, employer TEXT, occupation TEXT,
-                is_individual INTEGER, transaction_date TEXT, amount REAL
+                is_individual INTEGER, transaction_date TEXT, amount REAL,
+                report_uid TEXT
             )
             """,
             """
             INSERT INTO va_cf_schedule_a VALUES (
                 'Abigail  Spanberger', '2025', '', 'Clean Virginia Fund',
-                '', 'PAC', 0, '2025-08-01', 500000
+                '', 'PAC', 0, '2025-08-01', 500000, NULL
             )
             """
         )
@@ -334,12 +336,13 @@ class GovernorActionContextTests(unittest.TestCase):
         self._exec(
             """
             CREATE TABLE va_cf_schedule_a (
-                candidate_name TEXT, election_cycle TEXT, amount REAL
+                candidate_name TEXT, election_cycle TEXT, amount REAL,
+                report_uid TEXT
             )
             """,
             """
             INSERT INTO va_cf_schedule_a VALUES (
-                'Abigail  Spanberger', '2025', 500000
+                'Abigail  Spanberger', '2025', 500000, NULL
             )
             """
         )
@@ -370,20 +373,21 @@ class GovernorActionContextTests(unittest.TestCase):
             CREATE TABLE va_cf_schedule_a (
                 candidate_name TEXT, election_cycle TEXT, first_name TEXT,
                 last_or_company TEXT, employer TEXT, occupation TEXT,
-                is_individual INTEGER, transaction_date TEXT, amount REAL
+                is_individual INTEGER, transaction_date TEXT, amount REAL,
+                report_uid TEXT
             )
             """,
             """
             INSERT INTO va_cf_schedule_a VALUES (
                 'Abigail  Spanberger', '2025', '', 'DGA Action',
-                '', 'Federal PAC', 0, '2025-09-01', 1000000
+                '', 'Federal PAC', 0, '2025-09-01', 1000000, NULL
             )
             """,
             """
             CREATE TABLE congress_votes (
                 bioguide_id TEXT, congress INTEGER, session INTEGER,
                 vote_number INTEGER, vote_date TEXT, bill TEXT, question TEXT,
-                member_vote TEXT, result TEXT
+                member_vote TEXT, result TEXT, chamber TEXT
             )
             """,
             """
@@ -402,8 +406,10 @@ class GovernorActionContextTests(unittest.TestCase):
         self.assertIn("bill_number=HB1385", context)
         self.assertIn("polls.va_cf_schedule_a campaign finance totals", context)
         self.assertIn("total_amount=1000000.0", context)
-        self.assertNotIn("polls federal vote lookup", context)
-        self.assertNotIn("bioguide_id=S001209", context)
+        # Federal vote block may appear (Spanberger is is_current_federal=True as dual-role
+        # governor+former rep), but it must return zero_records — no actual vote rows.
+        self.assertNotIn("congress_votes summary", context)
+        self.assertNotIn("total_votes=", context)
 
     def test_spanberger_vote_finance_correlation_analysis_keeps_state_finance_terms(self):
         self._exec(
@@ -425,13 +431,14 @@ class GovernorActionContextTests(unittest.TestCase):
             CREATE TABLE va_cf_schedule_a (
                 candidate_name TEXT, election_cycle TEXT, first_name TEXT,
                 last_or_company TEXT, employer TEXT, occupation TEXT,
-                is_individual INTEGER, transaction_date TEXT, amount REAL
+                is_individual INTEGER, transaction_date TEXT, amount REAL,
+                report_uid TEXT
             )
             """,
             """
             INSERT INTO va_cf_schedule_a VALUES (
                 'Abigail  Spanberger', '2025', '', 'DGA Action',
-                '', 'Federal PAC', 0, '2025-09-01', 1000000
+                '', 'Federal PAC', 0, '2025-09-01', 1000000, NULL
             )
             """,
         )
@@ -481,13 +488,14 @@ class GovernorActionContextTests(unittest.TestCase):
             CREATE TABLE va_cf_schedule_a (
                 candidate_name TEXT, election_cycle TEXT, first_name TEXT,
                 last_or_company TEXT, employer TEXT, occupation TEXT,
-                is_individual INTEGER, transaction_date TEXT, amount REAL
+                is_individual INTEGER, transaction_date TEXT, amount REAL,
+                report_uid TEXT
             )
             """,
             """
             INSERT INTO va_cf_schedule_a VALUES (
                 'Abigail  Spanberger', '2025', '', 'Clean Virginia Fund',
-                '', 'PAC', 0, '2025-08-01', 500000
+                '', 'PAC', 0, '2025-08-01', 500000, NULL
             )
             """,
         )
@@ -508,13 +516,13 @@ class GovernorActionContextTests(unittest.TestCase):
             CREATE TABLE congress_votes (
                 bioguide_id TEXT, congress INTEGER, session INTEGER,
                 vote_number INTEGER, vote_date TEXT, bill TEXT, question TEXT,
-                member_vote TEXT, result TEXT
+                member_vote TEXT, result TEXT, chamber TEXT
             )
             """,
             """
             INSERT INTO congress_votes VALUES
-                ('S001209', 118, 2, 1, '2024-01-10', 'H R 1', 'On Passage', 'Yea', 'Passed'),
-                ('S001209', 118, 2, 2, '2024-01-11', 'H R 2', 'On Passage', 'Nay', 'Failed')
+                ('S001209', 118, 2, 1, '2024-01-10', 'H R 1', 'On Passage', 'Yea', 'Passed', 'House'),
+                ('S001209', 118, 2, 2, '2024-01-11', 'H R 2', 'On Passage', 'Nay', 'Failed', 'House')
             """,
             """
             CREATE TABLE federal_votes (
@@ -547,14 +555,14 @@ class GovernorActionContextTests(unittest.TestCase):
             """,
             """
             CREATE TABLE votes (
-                bill_id TEXT, session TEXT, vote_date TEXT, chamber TEXT,
+                id INTEGER, bill_id TEXT, session TEXT, vote_date TEXT, chamber TEXT,
                 motion TEXT, result TEXT, voter_name TEXT, option TEXT,
                 party TEXT, district TEXT
             )
             """,
             """
             INSERT INTO votes VALUES (
-                'SB764', '2026', '2026-03-14', 'Senate',
+                1, 'SB764', '2026', '2026-03-14', 'Senate',
                 'Adopt Conference Committee Report', 'pass',
                 'Aaron R. Rouse', 'yes', 'Democratic', '22'
             )
@@ -595,28 +603,29 @@ class GovernorActionContextTests(unittest.TestCase):
             CREATE TABLE va_cf_schedule_a (
                 candidate_name TEXT, election_cycle TEXT, first_name TEXT,
                 last_or_company TEXT, employer TEXT, occupation TEXT,
-                is_individual INTEGER, transaction_date TEXT, amount REAL
+                is_individual INTEGER, transaction_date TEXT, amount REAL,
+                report_uid TEXT
             )
             """,
             """
             INSERT INTO va_cf_schedule_a VALUES (
                 'Mr. Aaron Roosevelt Rouse', '2018', '',
                 'Health Care Services of Hampton Roads, Inc.', '',
-                'Healthcare', 0, '2018-04-05', 250
+                'Healthcare', 0, '2018-04-05', 250, NULL
             )
             """,
         )
         self._exec_openstates(
             """
             CREATE TABLE votes (
-                bill_id TEXT, session TEXT, vote_date TEXT, chamber TEXT,
+                id INTEGER, bill_id TEXT, session TEXT, vote_date TEXT, chamber TEXT,
                 motion TEXT, result TEXT, voter_name TEXT, option TEXT,
                 party TEXT, district TEXT
             )
             """,
             """
             INSERT INTO votes VALUES (
-                'SB764', '2026', '2026-03-14', 'Senate',
+                1, 'SB764', '2026', '2026-03-14', 'Senate',
                 'Adopt Conference Committee Report', 'pass',
                 'Aaron R. Rouse', 'yes', 'Democratic', '22'
             )
