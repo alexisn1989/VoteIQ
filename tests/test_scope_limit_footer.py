@@ -50,7 +50,7 @@ class ScopeLimitFooterTests(unittest.TestCase):
         self.assertIn("external_reply = _external_polling_reply(query)", self.polling_reply)
 
     def test_polling_scope_limit_footer_avoids_generic_record_sources(self):
-        scope_branch = self.source_line.split("if sources_used:", 1)[0]
+        scope_branch = self.source_line.split("if sources_used is not None:", 1)[0]
         for source_name in (
             "Virginia LIS",
             "FEC",

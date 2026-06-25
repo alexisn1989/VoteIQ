@@ -26,7 +26,7 @@ class VotingRecordPromptSafetyTests(unittest.TestCase):
         self.assertNotIn("voted NO but bill passed", self.prompt)
 
     def test_includes_no_inference_note(self):
-        self.assertIn("VoteIQ does not infer why Sen. Rouse voted NO", self.prompt)
+        self.assertIn("VoteIQ does not infer why [Name] voted NO", self.prompt)
         self.assertIn("vote outcomes, party-majority comparison, bill category, and whether the bill passed", self.prompt)
 
     def test_committee_vote_caveat_appears(self):
@@ -46,7 +46,7 @@ class VotingRecordPromptSafetyTests(unittest.TestCase):
 
         self.assertIn("sources_used: set[str] | None", source_helpers)
         self.assertIn('"OpenStates"', source_helpers)
-        self.assertIn('if "virginia lis" in context_lower', source_helpers)
+        self.assertIn('"virginia lis" in context_lower', source_helpers)
         self.assertNotIn('if "[database context" in context_lower:\n        sources.add("Virginia LIS")', source_helpers)
 
     def test_response_sanitizer_covers_legacy_phrases(self):

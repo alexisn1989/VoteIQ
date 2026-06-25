@@ -158,9 +158,9 @@ def _source_line(
             "Sources used: Polling source records / news feed / Gemini extraction.\n"
             f"Data limits: {limit}"
         )
-    # Use `is not None` so an explicitly-empty set() (state-only query, no federal
-    # sources touched) still produces a dynamic footer without FEC / Congress.gov.
     if sources_used is not None:
+        # Use `is not None` so an explicitly-empty set() (state-only query, no federal
+        # sources touched) still produces a dynamic footer without specific source names.
         source_text = " · ".join(sorted(sources_used)) if sources_used else "Virginia LIS"
         prefix = f"*Answer type: {answer_type}. Sources:" if answer_type else "*Sources:"
         return (
