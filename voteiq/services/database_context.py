@@ -12,6 +12,15 @@ from typing import Iterable
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 from config.db import POLLS_DB as _POLLS_DB  # noqa: E402
+from voteiq.services.context._budget import PriorityBlockList  # noqa: F401
+from voteiq.services.context._parsing import (  # noqa: F401
+    BILL_RE,
+    YEAR_RE,
+    _bill_numbers,
+    _keywords,
+    _norm_bill,
+    _session_year,
+)
 
 DB_PATHS = {
     "polls": _POLLS_DB,
@@ -67,96 +76,12 @@ def _request_connection_cache():
 
 # ─────────────────────────────────────────────────────────────────────────────
 
-# ── Block-priority budget allocator ──────────────────────────────────────────
-# Replaces the blunt context[:max_chars] tail-cut.  When the assembled context
-# would exceed max_chars, whole low-priority blocks are dropped rather than
-# slicing bytes mid-sentence.  CRITICAL blocks (scope guards, demo-protected
-# vote waterfall, PAC correlation) are never dropped.
-
-
-class PriorityBlockList:
-    """Drop-in replacement for list[str] with per-block priority tracking.
-
-    Builders call blocks.append(text) unchanged.  The orchestrator calls
-    blocks.set_priority(n) before each builder group to tag its blocks.
-    budget_fit() then drops lowest-priority blocks first when over budget.
-    """
-
-    CRITICAL = 1  # never dropped: scope guards, vote waterfall, PAC correlation
-    HIGH = 2      # core facts: votes, bills, named-legislator lookups
-    MEDIUM = 3    # supplemental: profiles, lobbying, donor trends
-    LOW = 4       # dropped first: rendering rules, keyword fallback
-
-    def __init__(self) -> None:
-        self._items: list[tuple[int, str]] = []
-        self._current = self.MEDIUM
-
-    def set_priority(self, priority: int) -> "PriorityBlockList":
-        self._current = priority
-        return self
-
-    def append(self, text: str) -> None:
-        self._items.append((self._current, text))
-
-    def insert(self, index: int, text: str) -> None:
-        # insert(0, ...) is used for critical out_of_scope guards — always CRITICAL
-        self._items.insert(index, (self.CRITICAL, text))
-
-    def __len__(self) -> int:
-        return len(self._items)
-
-    def __bool__(self) -> bool:
-        return bool(self._items)
-
-    def __iter__(self):
-        return (text for _, text in self._items)
-
-    def __getitem__(self, key):
-        if isinstance(key, slice):
-            return [t for _, t in self._items[key]]
-        return self._items[key][1]
-
-    def budget_fit(self, max_chars: int, sep: str = "\n\n---\n\n") -> str:
-        """Assemble blocks within budget, dropping lowest-priority whole blocks first."""
-        items = self._items
-        if not items:
-            return ""
-
-        sep_len = len(sep)
-        n = len(items)
-        total = sum(len(t) for _, t in items) + sep_len * max(0, n - 1)
-
-        if total <= max_chars:
-            return sep.join(t for _, t in items)
-
-        dropped: set[int] = set()
-        # Candidates: non-CRITICAL blocks, sorted lowest-priority (highest p) first,
-        # then latest position first so early context is preserved.
-        candidates = sorted(
-            (i for i, (p, _) in enumerate(items) if p > self.CRITICAL),
-            key=lambda i: (-items[i][0], -i),
-        )
-        for idx in candidates:
-            if total <= max_chars:
-                break
-            total -= len(items[idx][1]) + sep_len
-            dropped.add(idx)
-
-        texts = [t for i, (_, t) in enumerate(items) if i not in dropped]
-        result = sep.join(texts)
-        # Safety net: if CRITICAL blocks alone exceed max_chars, hard-cut with notice
-        if len(result) > max_chars:
-            result = result[:max_chars].rstrip() + "\n\n[Database Context truncated to fit model context.]"
-        return result
-
-
+# PriorityBlockList and parsing helpers live in voteiq.services.context
 # ─────────────────────────────────────────────────────────────────────────────
 
 DATA_DIR_ENV_VARS = ("DATA_DIR", "VOTEIQ_DATA_DIR", "RENDER_DISK_MOUNT_PATH")
 COMMON_DATA_DIRS = (Path("/data"), Path("/var/data"))
 
-BILL_RE = re.compile(r"\b(HB|SB|HJ|SJ|HR|SR|HJR|SJR)\s*-?\s*(\d{1,5})\b", re.I)
-YEAR_RE = re.compile(r"\b20\d{2}\b")
 _HIST_YEAR_RE = re.compile(r"\b(19\d{2})\b")
 
 KNOWN_FEDERAL_PEOPLE = {
@@ -264,47 +189,6 @@ KNOWN_FEDERAL_PEOPLE = {
     },
 }
 
-
-def _norm_bill(value: str) -> str:
-    match = BILL_RE.search(value or "")
-    return f"{match.group(1).upper()}{match.group(2)}" if match else ""
-
-
-def _bill_numbers(query: str) -> list[str]:
-    seen: set[str] = set()
-    bills: list[str] = []
-    for match in BILL_RE.finditer(query or ""):
-        bill = f"{match.group(1).upper()}{match.group(2)}"
-        if bill not in seen:
-            seen.add(bill)
-            bills.append(bill)
-    return bills
-
-
-def _session_year(query: str) -> str:
-    years = YEAR_RE.findall(query or "")
-    return years[-1] if years else "2026"
-
-
-def _keywords(query: str) -> list[str]:
-    stop = {
-        "what", "when", "where", "which", "about", "with", "from", "that",
-        "this", "have", "does", "did", "were", "they", "them", "your",
-        "show", "tell", "give", "list", "vote", "votes", "voted", "bill",
-        "bills", "governor",
-    }
-    words = re.findall(r"[A-Za-z][A-Za-z0-9'-]{2,}", query or "")
-    result: list[str] = []
-    seen: set[str] = set()
-    for word in words:
-        low = word.lower().strip("'")
-        if len(low) < 4 or low in stop or low in seen:
-            continue
-        seen.add(low)
-        result.append(low)
-        if len(result) >= 8:
-            break
-    return result
 
 
 def _row_to_line(row: sqlite3.Row, max_value: int = 360) -> str:
