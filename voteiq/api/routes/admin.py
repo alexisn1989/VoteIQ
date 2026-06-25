@@ -169,6 +169,112 @@ def admin_build_vb_finance(
     return {"ok": result.get("ok"), "scripts": {"build_vb_finance.py": result}}
 
 
+@router.get("/vb-undisclosed-donors")
+def admin_vb_undisclosed_donors(
+    member: str | None = None,
+    _: None = Depends(require_admin_token),
+):
+    """
+    No params → all 11 members ranked by undisclosed_pct with summary stats.
+    ?member=Hutcheson → full list of that member's undisclosed donor records.
+    Undisclosed = both employer AND occupation filed as blank/unknown/n/a.
+    """
+    _UNDISCLOSED = {
+        "unknown", "unkown", "unknow", "n/a", "na", "none",
+        "", "not provided", "not available",
+    }
+    _SBE_FILTERS = {
+        "Berlucchi":     {"first": "Michael",  "last": "Berlucchi",     "office": "Council"},
+        "Dyer":          {"first": "Robert",   "last": "Dyer",          "office": "Mayor"},
+        "Henley":        {"first": "Barbara",  "last": "Henley",        "office": "Council"},
+        "Hutcheson":     {"first": "David",    "last": "Hutcheson",     "office": "Council"},
+        "Wilson":        {"first": "Rosemary", "last": "Wilson",        "office": "Council"},
+        "Remick":        {"first": "Robert",   "last": "Remick",        "office": "Council"},
+        "Ross-Hammond":  {"first": "Amelia",   "last": "Ross-Hammond",  "office": "Council"},
+        "Schulman":      {"first": "Joashua",  "last": "Schulman",      "office": "Council"},
+        "Rouse":         {"first": "Jennifer", "last": "Rouse",         "office": "Council"},
+        "Cummings":      {"first": "Stacy",    "last": "Cummings",      "office": "Council"},
+        "Jackson-Green": {"first": "Calvern",  "last": "Jackson-Green", "office": "Council"},
+    }
+
+    conn = sqlite3.connect(_POLLS_DB)
+    conn.row_factory = sqlite3.Row
+    try:
+        if not member:
+            rows = conn.execute("""
+                SELECT member_name, total_raised, undisclosed_count,
+                       undisclosed_amt, undisclosed_pct
+                FROM vb_finance_summary
+                ORDER BY undisclosed_pct DESC
+            """).fetchall()
+            return {
+                "members": [
+                    {
+                        "member": r["member_name"],
+                        "total_raised": r["total_raised"],
+                        "undisclosed_count": r["undisclosed_count"],
+                        "undisclosed_amt": r["undisclosed_amt"],
+                        "undisclosed_pct": r["undisclosed_pct"],
+                    }
+                    for r in rows
+                ]
+            }
+
+        key = member.strip().title().replace(" ", "-")
+        # Allow flexible match: "hutcheson", "Hutcheson", "David Hutcheson"
+        matched = next(
+            (k for k in _SBE_FILTERS if k.lower() == key.lower()
+             or k.lower() in key.lower()),
+            None,
+        )
+        if not matched:
+            raise HTTPException(status_code=404,
+                                detail=f"Member '{member}' not found. "
+                                       f"Valid keys: {list(_SBE_FILTERS)}")
+
+        f = _SBE_FILTERS[matched]
+        rows = conn.execute("""
+            SELECT contributor_first, contributor_last, employer, occupation,
+                   amount, transaction_date, election_cycle
+            FROM sbe_local_contributions
+            WHERE locality = 'Virginia Beach'
+              AND LOWER(candidate_name) LIKE LOWER(?)
+              AND LOWER(candidate_name) LIKE LOWER(?)
+              AND LOWER(office_sought) LIKE LOWER(?)
+              AND amount > 0
+            ORDER BY amount DESC, transaction_date DESC
+        """, (f"%{f['first']}%", f"%{f['last']}%", f"%{f['office']}%")).fetchall()
+
+        undisclosed = [
+            {
+                "name": f"{r['contributor_first'] or ''} {r['contributor_last'] or ''}".strip(),
+                "employer": r["employer"],
+                "occupation": r["occupation"],
+                "amount": r["amount"],
+                "date": r["transaction_date"],
+                "cycle": r["election_cycle"],
+            }
+            for r in rows
+            if (r["employer"] or "").lower().strip() in _UNDISCLOSED
+            and (r["occupation"] or "").lower().strip() in _UNDISCLOSED
+        ]
+        total_amt = sum(d["amount"] for d in undisclosed)
+        total_raised = conn.execute(
+            "SELECT total_raised FROM vb_finance_summary WHERE member_name=?",
+            (matched,)
+        ).fetchone()
+        return {
+            "member": matched,
+            "undisclosed_count": len(undisclosed),
+            "undisclosed_amt": total_amt,
+            "undisclosed_pct": round(100 * total_amt / total_raised["total_raised"], 1)
+            if total_raised and total_raised["total_raised"] else 0,
+            "donors": undisclosed,
+        }
+    finally:
+        conn.close()
+
+
 @router.post("/build-vb-dvadj")
 def admin_build_vb_dvadj(
     reset: bool = False,

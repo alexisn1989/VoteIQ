@@ -4,6 +4,8 @@ import json
 import os
 import re
 import sqlite3
+import threading
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterable
 
@@ -17,6 +19,53 @@ DB_PATHS = {
     "legislative_intelligence": BASE_DIR / "legislative_intelligence.db",
     "virginia_legislature": BASE_DIR / "virginia_legislature.db",
 }
+
+# ── Per-request SQLite connection cache ───────────────────────────────────────
+# build_database_context fires ~35 builders per chat message, many hitting the
+# same DB. Without caching, each _connect() opens a new file handle + PRAGMA
+# round-trip. The cache keeps one connection per db_key for the duration of a
+# single build_database_context call, then closes all on exit.
+
+_local = threading.local()
+
+
+class _CachedConn:
+    """Wraps sqlite3.Connection; makes close() a no-op so the per-request cache stays live."""
+
+    __slots__ = ("_conn",)
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        object.__setattr__(self, "_conn", conn)
+
+    def __getattr__(self, name: str):
+        return getattr(object.__getattribute__(self, "_conn"), name)
+
+    def __setattr__(self, name: str, value) -> None:
+        setattr(object.__getattribute__(self, "_conn"), name, value)
+
+    def close(self) -> None:
+        pass  # closed by _request_connection_cache when the request completes
+
+
+@contextmanager
+def _request_connection_cache():
+    """Re-entrant: inner activation is a no-op. Closes all connections on outermost exit."""
+    if getattr(_local, "cache", None) is not None:
+        yield
+        return
+    _local.cache: dict[str, _CachedConn] = {}
+    try:
+        yield
+    finally:
+        for wrapped in _local.cache.values():
+            try:
+                object.__getattribute__(wrapped, "_conn").close()
+            except Exception:
+                pass
+        _local.cache = {}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 
 DATA_DIR_ENV_VARS = ("DATA_DIR", "VOTEIQ_DATA_DIR", "RENDER_DISK_MOUNT_PATH")
 COMMON_DATA_DIRS = (Path("/data"), Path("/var/data"))
@@ -223,6 +272,9 @@ def _db_unavailable_line(db_key: str) -> str:
 
 
 def _connect(db_key: str) -> sqlite3.Connection | None:
+    cache = getattr(_local, "cache", None)
+    if cache is not None and db_key in cache:
+        return cache[db_key]
     path = _resolve_db_path(db_key)
     if path is None:
         return None
@@ -231,6 +283,10 @@ def _connect(db_key: str) -> sqlite3.Connection | None:
     conn = sqlite3.connect(path, timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA busy_timeout=30000")
+    if cache is not None:
+        wrapped = _CachedConn(conn)
+        cache[db_key] = wrapped
+        return wrapped
     return conn
 
 
@@ -8091,6 +8147,11 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
 
 
 def build_database_context(query: str, max_chars: int = 22000, pro: bool = False) -> str:
+    with _request_connection_cache():
+        return _build_database_context_inner(query, max_chars, pro)
+
+
+def _build_database_context_inner(query: str, max_chars: int = 22000, pro: bool = False) -> str:
     q = query or ""
     blocks: list[str] = []
     q_lower = q.lower()
@@ -8259,18 +8320,19 @@ def build_database_context(query: str, max_chars: int = 22000, pro: bool = False
 
 def build_admin_database_context(query: str, max_chars: int = 28000) -> str:
     """Build read-only SQL context for admin chat, including generic all-table search."""
-    q = query or ""
-    q_lower = q.lower()
-    terms = _keywords(q)
-    blocks: list[str] = []
-    _add_admin_sql_coverage_summary(blocks)
-    base = build_database_context(q, max_chars=max_chars)
-    if base:
-        blocks.append(base)
-    _add_generic_sql_search_context(blocks, q, terms)
-    if re.search(r"\b(database|databases|tables|schema|columns)\b", q_lower):
-        _add_full_schema_summary(blocks)
-    context = "\n\n---\n\n".join(blocks)
-    if len(context) > max_chars:
-        context = context[:max_chars].rstrip() + "\n\n[Admin Database Context truncated to fit model context.]"
-    return context
+    with _request_connection_cache():
+        q = query or ""
+        q_lower = q.lower()
+        terms = _keywords(q)
+        blocks: list[str] = []
+        _add_admin_sql_coverage_summary(blocks)
+        base = build_database_context(q, max_chars=max_chars)
+        if base:
+            blocks.append(base)
+        _add_generic_sql_search_context(blocks, q, terms)
+        if re.search(r"\b(database|databases|tables|schema|columns)\b", q_lower):
+            _add_full_schema_summary(blocks)
+        context = "\n\n---\n\n".join(blocks)
+        if len(context) > max_chars:
+            context = context[:max_chars].rstrip() + "\n\n[Admin Database Context truncated to fit model context.]"
+        return context
