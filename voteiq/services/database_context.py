@@ -62,7 +62,7 @@ def _request_connection_cache():
                 object.__getattribute__(wrapped, "_conn").close()
             except Exception:
                 pass
-        _local.cache = {}
+        _local.cache = None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
