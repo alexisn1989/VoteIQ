@@ -7750,6 +7750,7 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
             "dissent", "opposed", "against", "absent", "record", "history",
         ))
         has_vote_table = _table_exists(conn, "vb_council_member_votes")
+        _vote_section_added = False
 
         if vote_trigger and has_vote_table:
             # Named member query
@@ -7814,6 +7815,7 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
                     lines.append(f"\n  Recent No/Nay votes ({len(no_rows)} shown):")
                     for mdate, title, vy, vn in no_rows:
                         lines.append(f"    {mdate}  [{vy}Y/{vn}N]  {title[:80]}")
+                _vote_section_added = True
 
             elif search_terms:
                 # Search by topic keywords
@@ -7837,19 +7839,21 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
                                 lines.append(f"    Dissent: {', '.join(no_detail)}")
                 else:
                     lines.append(f"\n  No VB vote records found matching: {' '.join(search_terms[:3])}")
-            else:
-                # General summary — most contested votes
-                lines.append("\n#### VB Council — Most Contested Votes (most No votes)")
-                contested = conn.execute("""
-                    SELECT title, meeting_date, vote_yes, vote_no
-                    FROM vb_council_member_votes
-                    GROUP BY resolution_id
-                    HAVING SUM(CASE WHEN vote='No/Nay' THEN 1 ELSE 0 END) >= 3
-                    ORDER BY SUM(CASE WHEN vote='No/Nay' THEN 1 ELSE 0 END) DESC
-                    LIMIT 8
-                """).fetchall()
-                for title, mdate, vy, vn in contested:
-                    lines.append(f"  {mdate}  [{vy}Y/{vn}N]  {title[:80]}")
+                _vote_section_added = True
+
+        if has_vote_table and not _vote_section_added:
+            # General summary — shown whenever no member/topic branch fired
+            lines.append("\n#### VB Council — Most Contested Votes (most No votes)")
+            contested = conn.execute("""
+                SELECT title, meeting_date, vote_yes, vote_no
+                FROM vb_council_member_votes
+                GROUP BY resolution_id
+                HAVING SUM(CASE WHEN vote='No/Nay' THEN 1 ELSE 0 END) >= 3
+                ORDER BY SUM(CASE WHEN vote='No/Nay' THEN 1 ELSE 0 END) DESC
+                LIMIT 8
+            """).fetchall()
+            for title, mdate, vy, vn in contested:
+                lines.append(f"  {mdate}  [{vy}Y/{vn}N]  {title[:80]}")
 
         # ── campaign finance ──────────────────────────────────────────────
         _VB_FINANCE_KEY_MAP = {
