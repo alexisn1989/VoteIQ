@@ -1,68 +1,1042 @@
 [
     {
+        "name": "Joe Baron",
+        "district": "Norfolk Sheriff",
+        "email": "",
+        "jurisdiction": "Norfolk",
+        "party": "Democrat (nonpartisan)",
+        "url": "https://norfolk-sheriff.com/about/sheriff-joseph-joe-baron"
+    },
+    {
+        "name": "Ramin Fatehi",
+        "district": "Norfolk Commonwealth's Attorney",
+        "email": "",
+        "jurisdiction": "Norfolk",
+        "party": "Democrat (nonpartisan)",
+        "url": "https://www.norfolk.gov/577/Commonwealths-Attorneys-Office"
+    },
+    {
+        "name": "Daun Sessoms Hester",
+        "district": "Norfolk City Treasurer",
+        "email": "",
+        "jurisdiction": "Norfolk",
+        "party": "Democrat (nonpartisan)",
+        "url": "https://www.norfolk.gov/4633/About-the-City-Treasurer"
+    },
+    {
+        "name": "Blythe Scott",
+        "district": "Norfolk Commissioner of the Revenue",
+        "email": "",
+        "jurisdiction": "Norfolk",
+        "party": "Democrat (nonpartisan)",
+        "url": "https://www.norfolk.gov/565/Commissioner-of-the-Revenue"
+    },
+    {
+        "name": "Kenneth Cooper Alexander",
+        "district": "Norfolk Mayor",
+        "email": "",
+        "jurisdiction": "Norfolk",
+        "party": "Democrat (nonpartisan)",
+        "url": "https://www.norfolk.gov/3515/Mayor-Kenneth-Cooper-Alexander-PhD"
+    },
+    {
+        "name": "Colin Stolle",
+        "district": "Commonwealth's Attorney",
+        "email": "cstolle@vbgov.com",
+        "jurisdiction": "Virginia Beach",
+        "party": "Republican (nonpartisan)",
+        "url": "https://www.colinstolle.com/contact-9"
+    },
+    {
+        "name": "Philip Kellam",
+        "district": "Commissioner of the Revenue",
+        "email": "pkellam@vbgov.com",
+        "jurisdiction": "Virginia Beach",
+        "party": "Democrat (nonpartisan)",
+        "url": "https://cor.virginiabeach.gov/commissioner-of-the-revenue"
+    },
+    {
+        "name": "Leigh Henderson",
+        "district": "City Treasurer",
+        "email": "lhenderson@vbgov.com",
+        "url": "https://treasurer.virginiabeach.gov/",
+        "jurisdiction": "Virginia Beach",
+        "party": "Republican (nonpartisan)"
+    },
+    {
+        "name": "Tina Sinnen",
+        "district": "Clerk of the Circuit Court",
+        "email": "tsinnen@vbgov.com",
+        "url": "https://courts.virginiabeach.gov/circuit-court-clerks-office",
+        "jurisdiction": "Virginia Beach",
+        "party": "Republican (nonpartisan)"
+    },
+    {
+        "name": "Rocky Holcomb",
+        "district": "Sheriff",
+        "email": "sheriff@vbso.net",
+        "url": "https://rockyholcombvbsheriff.com/",
+        "jurisdiction": "Virginia Beach",
+        "party": "Republican (nonpartisan)"
+    },
+    {
         "name": "Robert M. \"Bobby\" Dyer",
         "district": "Mayor",
         "email": "mayorsoffice@vbgov.com",
-        "jurisdiction": "Virginia Beach"
+        "jurisdiction": "Virginia Beach",
+        "party": "Republican (nonpartisan)"
     },
     {
         "name": "Michael Berlucchi",
         "district": "District 3",
         "email": "mberlucc@vbgov.com",
-        "jurisdiction": "Virginia Beach"
+        "jurisdiction": "Virginia Beach",
+        "party": "Republican (nonpartisan)"
     },
     {
         "name": "Stacy Cummings",
         "district": "District 8",
         "email": "stcummings@vbgov.com",
-        "jurisdiction": "Virginia Beach"
+        "jurisdiction": "Virginia Beach",
+        "party": "Democrat (nonpartisan)"
     },
     {
         "name": "Barbara Henley",
         "district": "District 2",
         "email": "bhenley@vbgov.com",
-        "jurisdiction": "Virginia Beach"
+        "jurisdiction": "Virginia Beach",
+        "party": "Republican (nonpartisan)"
     },
     {
         "name": "David Hutcheson",
         "district": "District 1",
         "email": "dhutcheson@vbgov.com",
-        "jurisdiction": "Virginia Beach"
+        "jurisdiction": "Virginia Beach",
+        "party": "Republican (nonpartisan)"
     },
     {
         "name": "Cal \"Cash\" Jackson-Green",
         "district": "District 7",
         "email": "cjacksongreen@vbgov.com",
-        "jurisdiction": "Virginia Beach"
+        "jurisdiction": "Virginia Beach",
+        "party": "Democrat (nonpartisan)"
     },
     {
         "name": "Robert W. \"Worth\" Remick",
         "district": "District 6",
         "email": "wremick@vbgov.com",
-        "jurisdiction": "Virginia Beach"
+        "jurisdiction": "Virginia Beach",
+        "party": "Republican (nonpartisan)"
     },
     {
         "name": "Dr. Amelia Ross-Hammond",
         "district": "District 4",
         "email": "arosshammond@vbgov.com",
-        "jurisdiction": "Virginia Beach"
+        "jurisdiction": "Virginia Beach",
+        "party": "Democrat (nonpartisan)"
     },
     {
         "name": "Jennifer V. Rouse",
         "district": "District 10",
         "email": "jvrouse@vbgov.com",
-        "jurisdiction": "Virginia Beach"
+        "jurisdiction": "Virginia Beach",
+        "party": "Democrat (nonpartisan)"
     },
     {
         "name": "Joashua F. Schulman",
         "district": "District 9",
         "email": "jschulman@vbgov.com",
-        "jurisdiction": "Virginia Beach"
+        "jurisdiction": "Virginia Beach",
+        "party": "Democrat (nonpartisan)"
     },
     {
         "name": "Rosemary Wilson",
         "district": "District 5",
         "email": "rcwilson@vbgov.com",
-        "jurisdiction": "Virginia Beach"
+        "jurisdiction": "Virginia Beach",
+        "party": "Republican (nonpartisan)"
+    },
+    {
+        "name": "Rose Dwyer",
+        "district": "School Board District 1",
+        "email": "",
+        "jurisdiction": "Virginia Beach",
+        "party": "",
+        "url": "https://schoolboard.vbschools.com/board"
+    },
+    {
+        "name": "Kimberly A. Melnyk",
+        "district": "School Board District 2",
+        "email": "",
+        "jurisdiction": "Virginia Beach",
+        "party": "Democrat (nonpartisan)",
+        "url": "https://schoolboard.vbschools.com/board"
+    },
+    {
+        "name": "Mark Bohenstiel",
+        "district": "School Board District 3",
+        "email": "",
+        "jurisdiction": "Virginia Beach",
+        "party": "Republican (nonpartisan)",
+        "url": "https://schoolboard.vbschools.com/board"
+    },
+    {
+        "name": "Dr. Alveta J. Green",
+        "district": "School Board District 4",
+        "email": "",
+        "jurisdiction": "Virginia Beach",
+        "party": "Democrat (nonpartisan)",
+        "url": "https://schoolboard.vbschools.com/board"
+    },
+    {
+        "name": "Melinda Rogers",
+        "district": "School Board District 5",
+        "email": "",
+        "jurisdiction": "Virginia Beach",
+        "party": "",
+        "url": "https://schoolboard.vbschools.com/board"
+    },
+    {
+        "name": "Michael Callan",
+        "district": "School Board District 6",
+        "email": "",
+        "jurisdiction": "Virginia Beach",
+        "party": "",
+        "url": "https://schoolboard.vbschools.com/board"
+    },
+    {
+        "name": "Matt Cummings",
+        "district": "School Board District 7",
+        "email": "",
+        "jurisdiction": "Virginia Beach",
+        "party": "",
+        "url": "https://schoolboard.vbschools.com/board"
+    },
+    {
+        "name": "David Culpepper",
+        "district": "School Board District 8",
+        "email": "",
+        "jurisdiction": "Virginia Beach",
+        "party": "Republican (nonpartisan)",
+        "url": "https://schoolboard.vbschools.com/board"
+    },
+    {
+        "name": "Carolyn D. Weems",
+        "district": "School Board District 9",
+        "email": "",
+        "jurisdiction": "Virginia Beach",
+        "party": "Republican (nonpartisan)",
+        "url": "https://schoolboard.vbschools.com/board"
+    },
+    {
+        "name": "Kathleen Brown",
+        "district": "School Board District 10",
+        "email": "",
+        "jurisdiction": "Virginia Beach",
+        "party": "",
+        "url": "https://schoolboard.vbschools.com/board"
+    },
+    {
+        "name": "Sharon Felton",
+        "district": "School Board At-Large",
+        "email": "",
+        "jurisdiction": "Virginia Beach",
+        "party": "Democrat (nonpartisan)",
+        "url": "https://schoolboard.vbschools.com/board"
+    },
+    {
+        "name": "Rick West",
+        "district": "Chesapeake Mayor",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "Republican (nonpartisan)",
+        "url": "https://www.cityofchesapeake.net/directory.aspx?eid=99"
+    },
+    {
+        "name": "S.Z. \"Debbie\" Ritter",
+        "district": "Chesapeake Vice Mayor",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "Republican (nonpartisan)",
+        "url": "https://www.cityofchesapeake.net/directory.aspx?eid=105"
+    },
+    {
+        "name": "Wallace W. Chadwick III",
+        "district": "Chesapeake Sheriff",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "Republican (nonpartisan)",
+        "url": "https://vasheriff.org/va-sheriffs-directory/chesapeake-wallace-w-chadwick/"
+    },
+    {
+        "name": "Matthew R. Hamel",
+        "district": "Chesapeake Commonwealth's Attorney",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "Democrat (nonpartisan)",
+        "url": "https://www.cityofchesapeake.net/1237/Commonwealths-Attorney"
+    },
+    {
+        "name": "Victoria L. Proffitt",
+        "district": "Chesapeake Commissioner of the Revenue",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "Republican (nonpartisan)",
+        "url": "https://www.cityofchesapeake.net/directory.aspx?EID=29"
+    },
+    {
+        "name": "Corrie A. Kring",
+        "district": "Chesapeake City Treasurer",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "Democrat (nonpartisan)",
+        "url": "https://www.cityofchesapeake.net/directory.aspx?EID=289"
+    },
+    {
+        "name": "Alan P. Krasnoff",
+        "district": "Chesapeake Clerk of the Circuit Court",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "",
+        "url": "https://www.cityofchesapeake.net/directory.aspx?eid=238"
+    },
+    {
+        "name": "C. Jeff Bunn",
+        "district": "Chesapeake Council",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "",
+        "url": "https://www.cityofchesapeake.net/directory.aspx?eid=234"
+    },
+    {
+        "name": "E.R. \"Jeff\" Jefferies, Jr.",
+        "district": "Chesapeake Council",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "",
+        "url": "https://www.cityofchesapeake.net/directory.aspx?EID=386"
+    },
+    {
+        "name": "Patricia Y. \"Pat\" King, MD",
+        "district": "Chesapeake Council",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "",
+        "url": "https://www.cityofchesapeake.net/directory.aspx?eid=350"
+    },
+    {
+        "name": "Amanda L. Newins",
+        "district": "Chesapeake Council",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "",
+        "url": "https://www.cityofchesapeake.net/directory.aspx?eid=235"
+    },
+    {
+        "name": "Les Smith, Jr.",
+        "district": "Chesapeake Council",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "",
+        "url": "https://www.cityofchesapeake.net/directory.aspx?eid=349"
+    },
+    {
+        "name": "Dr. Ella P. Ward",
+        "district": "Chesapeake Council",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "",
+        "url": "https://www.cityofchesapeake.net/directory.aspx?eid=107"
+    },
+    {
+        "name": "Daniel W. Whitaker",
+        "district": "Chesapeake Council",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "",
+        "url": "https://www.cityofchesapeake.net/directory.aspx?eid=236"
+    },
+    {
+        "name": "Kim A. Scott",
+        "district": "Chesapeake School Board",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "",
+        "url": "https://www.cpschools.com/page/school-board"
+    },
+    {
+        "name": "Michael K. Lamonea",
+        "district": "Chesapeake School Board",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "",
+        "url": "https://www.cpschools.com/page/school-board"
+    },
+    {
+        "name": "Elijah Colon",
+        "district": "Chesapeake School Board",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "",
+        "url": "https://www.cpschools.com/page/school-board"
+    },
+    {
+        "name": "Malia Huddle",
+        "district": "Chesapeake School Board",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "",
+        "url": "https://www.cpschools.com/page/school-board"
+    },
+    {
+        "name": "John M. McCormick",
+        "district": "Chesapeake School Board",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "",
+        "url": "https://www.cpschools.com/page/school-board"
+    },
+    {
+        "name": "Norman Pool",
+        "district": "Chesapeake School Board",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "",
+        "url": "https://www.cpschools.com/page/school-board"
+    },
+    {
+        "name": "Dr. Amanda Quillin",
+        "district": "Chesapeake School Board",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "",
+        "url": "https://www.cpschools.com/page/school-board"
+    },
+    {
+        "name": "Angela B. Swygert",
+        "district": "Chesapeake School Board",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "",
+        "url": "https://www.cpschools.com/page/school-board"
+    },
+    {
+        "name": "Amanda G. Walker",
+        "district": "Chesapeake School Board",
+        "email": "",
+        "jurisdiction": "Chesapeake",
+        "party": "",
+        "url": "https://www.cpschools.com/page/school-board"
+    },
+    {
+        "name": "Stephanie N. Morales",
+        "district": "Portsmouth Commonwealth's Attorney",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": "",
+        "url": "https://www.portsmouthcwa.com/"
+    },
+    {
+        "name": "Michael A. Moore",
+        "district": "Portsmouth Sheriff",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": "",
+        "url": "https://portsmouthsheriffsofficeva.gov/sheriff/"
+    },
+    {
+        "name": "Paige D. Cherry",
+        "district": "Portsmouth City Treasurer",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": "Democrat (nonpartisan)",
+        "url": "https://www.portsmouthva.gov/188/City-Treasurer"
+    },
+    {
+        "name": "Franklin D. Edmondson",
+        "district": "Portsmouth Commissioner of the Revenue",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": "Democrat (nonpartisan)",
+        "url": "https://www.portsmouthva.gov/189/Commissioner-of-the-Revenue"
+    },
+    {
+        "name": "Cynthia P. Morrison",
+        "district": "Portsmouth Clerk of the Circuit Court",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": "",
+        "url": "https://www.portsmouthva.gov/229/Directory?contentId=81b4eaf0-020c-4ec2-84ae-43b1a0d008c1"
+    },
+    {
+        "name": "Shannon E. Glover",
+        "district": "Portsmouth Mayor",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": "",
+        "url": "https://www.portsmouthva.gov/2250/The-Honorable-Shannon-E-Glover"
+    },
+    {
+        "name": "William E. Moody, Jr.",
+        "district": "Portsmouth Vice Mayor",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": "",
+        "url": "https://www.portsmouthva.gov/524/City-Council?contentId=0e65b74f-ef59-43bf-9bef-439fea900194"
+    },
+    {
+        "name": "Mark A. Hugel",
+        "district": "Portsmouth Council",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": "",
+        "url": "https://www.portsmouthva.gov/524/City-Council?contentId=cd922ea9-18ca-4281-a62a-00c0d30352f1"
+    },
+    {
+        "name": "Vernon L. Tillage, Jr.",
+        "district": "Portsmouth Council",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": "",
+        "url": "https://www.portsmouthva.gov/524/City-Council?contentId=da4194f9-29e4-4fee-a01b-0a2c5a1c3634"
+    },
+    {
+        "name": "Kathryn W. Bryant",
+        "district": "Portsmouth Council",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": "",
+        "url": "https://www.portsmouthva.gov/524/City-Council"
+    },
+    {
+        "name": "William S. Dodson, Jr.",
+        "district": "Portsmouth Council",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": "",
+        "url": "https://www.portsmouthva.gov/524/City-Council?contentId=e87e6e83-68b0-4f72-8093-876680c9ac40"
+    },
+    {
+        "name": "Yolanda E. Thomas",
+        "district": "Portsmouth Council",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": "",
+        "url": "https://www.portsmouthva.gov/524/City-Council"
+    },
+    {
+        "name": "Dr. Cardell C. Patillo, Jr.",
+        "district": "Portsmouth School Board",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": "",
+        "url": "https://www.ppsk12.us/page/dr-cardell-c-patillo"
+    },
+    {
+        "name": "Dr. Melvin Cotton, Jr.",
+        "district": "Portsmouth School Board",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": "",
+        "url": "https://www.ppsk12.us/schoolboard/dr__melvin_cotton__jr_"
+    },
+    {
+        "name": "LaKeesha S. \"Klu\" Atkinson",
+        "district": "Portsmouth School Board",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": "",
+        "url": "https://www.ppsk12.us/page/ms-lakeesha-s-klu-atkinson"
+    },
+    {
+        "name": "Irene S. Boone",
+        "district": "Portsmouth School Board",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": ""
+    },
+    {
+        "name": "Quniana D. Futrell",
+        "district": "Portsmouth School Board",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": "",
+        "url": "https://www.ppsk12.us/page/mrs-quniana-d-futrell"
+    },
+    {
+        "name": "Arnette D. McSwain",
+        "district": "Portsmouth School Board",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": "",
+        "url": "https://www.ppsk12.us/page/ms-arnette-mcswain"
+    },
+    {
+        "name": "Lateacia A. Sessoms",
+        "district": "Portsmouth School Board",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": "",
+        "url": "https://www.ppsk12.us/page/mrs-lateacia-sessoms"
+    },
+    {
+        "name": "Tamara L. Shewmake",
+        "district": "Portsmouth School Board",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": "",
+        "url": "https://www.ppsk12.us/schoolboard/mrs__tamara_l__shewmake"
+    },
+    {
+        "name": "Dr. Jaclyn T. \"Jackie\" Walker",
+        "district": "Portsmouth School Board",
+        "email": "",
+        "jurisdiction": "Portsmouth",
+        "party": "",
+        "url": "https://www.ppsk12.us/page/dr-jaclyn-walker"
+    },
+    {
+        "name": "Jimmy Gray",
+        "district": "Hampton Mayor",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": "",
+        "url": "https://www.hampton.gov/3070/Mayor-Jimmy-Gray"
+    },
+    {
+        "name": "Steven L. Brown",
+        "district": "Hampton Vice Mayor",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": "",
+        "url": "https://www.hampton.gov/3516/Vice-Mayor-Steven-L-Brown"
+    },
+    {
+        "name": "Karen Bowden",
+        "district": "Hampton Sheriff",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": "Democrat (nonpartisan)",
+        "url": "https://vasheriff.org/va-sheriffs-directory/hampton-karen-e-bowden/"
+    },
+    {
+        "name": "Anton Bell",
+        "district": "Hampton Commonwealth's Attorney",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": "Democrat (nonpartisan)",
+        "url": "https://www.hampton.gov/226/Commonwealths-Attorney"
+    },
+    {
+        "name": "Michael A. Harris",
+        "district": "Hampton Commissioner of the Revenue",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": "",
+        "url": "https://www.hampton.gov/directory.aspx?EID=600"
+    },
+    {
+        "name": "Christine Snead",
+        "district": "Hampton City Treasurer",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": "Democrat (nonpartisan)",
+        "url": "https://www.hampton.gov/directory.aspx?EID=97"
+    },
+    {
+        "name": "Linda Batchelor Smith",
+        "district": "Hampton Clerk of the Circuit Court",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": "Democrat (nonpartisan)",
+        "url": "https://www.hampton.gov/directory.aspx?EID=178"
+    },
+    {
+        "name": "Randy Bowman",
+        "district": "Hampton Council",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": "",
+        "url": "https://www.hampton.gov/directory.aspx?EID=552"
+    },
+    {
+        "name": "Carolyn Campbell",
+        "district": "Hampton Council",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": ""
+    },
+    {
+        "name": "Michelle Ferebee",
+        "district": "Hampton Council",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": "",
+        "url": "https://www.hampton.gov/3906/Council-member-Michelle-Ferebee"
+    },
+    {
+        "name": "Hope L. Harper",
+        "district": "Hampton Council",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": "",
+        "url": "https://www.hampton.gov/4038/Council-member-Hope-L-Harper"
+    },
+    {
+        "name": "Martha Mugler",
+        "district": "Hampton Council",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": "",
+        "url": "https://www.hampton.gov/4040/Council-member-Martha-Mugler"
+    },
+    {
+        "name": "Dr. Richard Mason",
+        "district": "Hampton School Board",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": "",
+        "url": "https://www.hampton.k12.va.us/board/board.html"
+    },
+    {
+        "name": "Stephanie Jackson Afonja",
+        "district": "Hampton School Board",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": "",
+        "url": "https://www.hampton.k12.va.us/board/board.html"
+    },
+    {
+        "name": "Dr. Tina Banks-Gray",
+        "district": "Hampton School Board",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": "",
+        "url": "https://www.hampton.k12.va.us/board/board.html"
+    },
+    {
+        "name": "Ann Cherry",
+        "district": "Hampton School Board",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": "",
+        "url": "https://www.hampton.k12.va.us/board/board.html"
+    },
+    {
+        "name": "Dr. Reginald Woodhouse",
+        "district": "Hampton School Board",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": "",
+        "url": "https://www.hampton.k12.va.us/board/board.html"
+    },
+    {
+        "name": "Jason Samuels",
+        "district": "Hampton School Board",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": "",
+        "url": "https://www.hampton.k12.va.us/board/board.html"
+    },
+    {
+        "name": "Joseph \"Joe\" Kilgore",
+        "district": "Hampton School Board",
+        "email": "",
+        "jurisdiction": "Hampton",
+        "party": "",
+        "url": "https://www.hampton.k12.va.us/board/board.html"
+    },
+    {
+        "name": "Phillip D. Jones",
+        "district": "Newport News Mayor",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": "",
+        "url": "https://www.nnva.gov/2965/Office-of-Mayor-Phillip-Jones"
+    },
+    {
+        "name": "Curtis D. Bethany III",
+        "district": "Newport News Vice Mayor",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": "",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
+    },
+    {
+        "name": "Gabriel \"Gabe\" Morgan Sr.",
+        "district": "Newport News Sheriff",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": "Democrat (nonpartisan)",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
+    },
+    {
+        "name": "Shannon M. Jones",
+        "district": "Newport News Commonwealth's Attorney",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": "Democrat (nonpartisan)",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
+    },
+    {
+        "name": "Tiffany Boyle",
+        "district": "Newport News Commissioner of the Revenue",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": "Democrat (nonpartisan)",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
+    },
+    {
+        "name": "Sanu Dieng Cooper",
+        "district": "Newport News City Treasurer",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": "Democrat (nonpartisan)",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
+    },
+    {
+        "name": "Angela Reason",
+        "district": "Newport News Clerk of the Circuit Court",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": "Democrat (nonpartisan)",
+        "url": "https://www.nnva.gov/2843/Clerk-of-Court-Bio"
+    },
+    {
+        "name": "Marcellus L. Harris III, D. Div.",
+        "district": "Newport News Council 1",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": "",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
+    },
+    {
+        "name": "Robert Coleman",
+        "district": "Newport News Council 2",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": "",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
+    },
+    {
+        "name": "Cleon M. Long, P.E.",
+        "district": "Newport News Council 2",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": "",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
+    },
+    {
+        "name": "John R. Eley III",
+        "district": "Newport News Council 3",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": "",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
+    },
+    {
+        "name": "Tina L. Vick",
+        "district": "Newport News Council 3",
+        "email": "",
+        "jurisdiction": "Newport News",
+        "party": "",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
+    },
+    {
+        "name": "Dr. Terri L. Best",
+        "district": "Newport News School Board 3",
+        "email": "Terri.Best@nn.k12.va.us",
+        "jurisdiction": "Newport News",
+        "party": "",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
+    },
+    {
+        "name": "Maritsa Alger",
+        "district": "Newport News School Board 3",
+        "email": "Maritsa.Alger@nn.k12.va.us",
+        "jurisdiction": "Newport News",
+        "party": "",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
+    },
+    {
+        "name": "Rebecca S. Aman",
+        "district": "Newport News School Board 2",
+        "email": "Rebecca.Aman@nn.k12.va.us",
+        "jurisdiction": "Newport News",
+        "party": "",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
+    },
+    {
+        "name": "Douglas C. Brown",
+        "district": "Newport News School Board 1",
+        "email": "Douglas.Brown@nn.k12.va.us",
+        "jurisdiction": "Newport News",
+        "party": "",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
+    },
+    {
+        "name": "Rasheena D. Harris",
+        "district": "Newport News School Board 1",
+        "email": "Rasheena.Harris@nn.k12.va.us",
+        "jurisdiction": "Newport News",
+        "party": "",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
+    },
+    {
+        "name": "Gary B. Hunter",
+        "district": "Newport News School Board At-Large",
+        "email": "Gary.Hunter@nn.k12.va.us",
+        "jurisdiction": "Newport News",
+        "party": "",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
+    },
+    {
+        "name": "Lisa R. Surles-Law",
+        "district": "Newport News School Board 2",
+        "email": "Lisa.SurlesLaw@nn.k12.va.us",
+        "jurisdiction": "Newport News",
+        "party": "",
+        "url": "https://www.nnva.gov/465/Elected-Officials"
+    },
+    {
+        "name": "Michael D. Duman",
+        "district": "Suffolk Mayor",
+        "email": "",
+        "jurisdiction": "Suffolk",
+        "party": ""
+    },
+    {
+        "name": "Lue R. Ward, Jr.",
+        "district": "Suffolk Vice Mayor",
+        "email": "",
+        "jurisdiction": "Suffolk",
+        "party": ""
+    },
+    {
+        "name": "E.C. Harris",
+        "district": "Suffolk Sheriff",
+        "email": "",
+        "jurisdiction": "Suffolk",
+        "party": ""
+    },
+    {
+        "name": "Narendra R. Pleas",
+        "district": "Suffolk Commonwealth's Attorney",
+        "email": "",
+        "jurisdiction": "Suffolk",
+        "party": "Democrat",
+        "url": "https://www.suffolkva.us/204/Commonwealths-Attorney"
+    },
+    {
+        "name": "Susan L. Draper",
+        "district": "Suffolk Commissioner of the Revenue",
+        "email": "",
+        "jurisdiction": "Suffolk",
+        "party": ""
+    },
+    {
+        "name": "Andrew Owen",
+        "district": "Suffolk City Treasurer",
+        "email": "",
+        "jurisdiction": "Suffolk",
+        "party": "Democrat"
+    },
+    {
+        "name": "W. Randolph Carter, Jr.",
+        "district": "Suffolk Clerk of the Circuit Court",
+        "email": "",
+        "jurisdiction": "Suffolk",
+        "party": ""
+    },
+    {
+        "name": "Shelley Butler Barlow",
+        "district": "Suffolk Council",
+        "email": "",
+        "jurisdiction": "Suffolk",
+        "party": ""
+    },
+    {
+        "name": "Roger W. Fawcett",
+        "district": "Suffolk Council",
+        "email": "",
+        "jurisdiction": "Suffolk",
+        "party": ""
+    },
+    {
+        "name": "John B. Rector",
+        "district": "Suffolk Council",
+        "email": "",
+        "jurisdiction": "Suffolk",
+        "party": ""
+    },
+    {
+        "name": "Timothy J. Johnson",
+        "district": "Suffolk Council",
+        "email": "",
+        "jurisdiction": "Suffolk",
+        "party": ""
+    },
+    {
+        "name": "LeOtis L. Williams",
+        "district": "Suffolk Council",
+        "email": "",
+        "jurisdiction": "Suffolk",
+        "party": ""
+    },
+    {
+        "name": "Tyron D. Riddick",
+        "district": "Suffolk School Board",
+        "email": "",
+        "jurisdiction": "Suffolk",
+        "party": "",
+        "url": "https://www.spsk12.net/school-board/board-members"
+    },
+    {
+        "name": "Heather Howell",
+        "district": "Suffolk School Board",
+        "email": "",
+        "jurisdiction": "Suffolk",
+        "party": "",
+        "url": "https://www.spsk12.net/school-board/board-members"
+    },
+    {
+        "name": "Karen L. Jenkins",
+        "district": "Suffolk School Board",
+        "email": "",
+        "jurisdiction": "Suffolk",
+        "party": "",
+        "url": "https://www.spsk12.net/school-board/board-members"
+    },
+    {
+        "name": "Phyllis C. Byrum",
+        "district": "Suffolk School Board",
+        "email": "",
+        "jurisdiction": "Suffolk",
+        "party": "",
+        "url": "https://www.spsk12.net/school-board/board-members"
+    },
+    {
+        "name": "Judith Brooks-Buck",
+        "district": "Suffolk School Board",
+        "email": "",
+        "jurisdiction": "Suffolk",
+        "party": "",
+        "url": "https://www.spsk12.net/school-board/board-members"
+    },
+    {
+        "name": "Dawn Marie Brittingham",
+        "district": "Suffolk School Board",
+        "email": "",
+        "jurisdiction": "Suffolk",
+        "party": "",
+        "url": "https://www.spsk12.net/school-board/board-members"
+    },
+    {
+        "name": "Kimberly Slingluff",
+        "district": "Suffolk School Board",
+        "email": "",
+        "jurisdiction": "Suffolk",
+        "party": "",
+        "url": "https://www.spsk12.net/school-board/board-members"
     }
 ]
