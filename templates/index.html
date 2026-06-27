@@ -555,7 +555,7 @@
         ].filter(Boolean),
         executive: vaStatewide.filter(r => r.title === 'Governor').map(r => ({ title: 'Gov.', name: r.name, party: r.party, district: 'Virginia' }))
       };
-      initViqChat(districtCode, d.locality, del ? del.district_number : null, sen ? sen.district_number : null, repNames, repData);
+      initViqChat(districtCode, d.locality, del ? del.district_number : null, sen ? sen.district_number : null, repNames, repData, council ? council.district_number : null, council ? council.name : null);
       // Load funding profiles for state reps immediately after address lookup.
       // Routed through window because loadRepProfiles is defined inside a later IIFE;
       // guarded so a missing ref can never abort the whole results render.
@@ -566,6 +566,8 @@
           locality: d.locality || '',
           hod: del ? del.district_number : null,
           sd: sen ? sen.district_number : null,
+          vbCouncilDistrict: council ? council.district_number : null,
+          vbCouncilMember: council ? council.name : null,
           repNames: repNames,
           repData: repData
         });
@@ -637,6 +639,7 @@
     let viqDistrict = 'VA-00';
     let viqLocality = '';
     let viqHod = null, viqSd = null;
+    let viqVbCouncilDistrict = null, viqVbCouncilMember = null;
     const viqMsgs = [];
 
     window.viqVoice = window.viqVoice || 'free';
@@ -679,6 +682,8 @@
           locality: ctx.locality || '',
           hod: ctx.hod || null,
           sd: ctx.sd || null,
+          vbCouncilDistrict: ctx.vbCouncilDistrict != null ? ctx.vbCouncilDistrict : null,
+          vbCouncilMember: ctx.vbCouncilMember || null,
           repNames: Array.isArray(ctx.repNames) ? ctx.repNames.slice(0, 4) : [],
           savedAt: Date.now()
         }));
@@ -760,11 +765,13 @@
       // Auto-load funding profiles for state reps
       if (ctx.repNames && ctx.repNames.length) loadRepProfiles(ctx.repNames);
     }
-    window.initViqChat = function (districtCode, locality, hod, sd, repNames, repData) {
+    window.initViqChat = function (districtCode, locality, hod, sd, repNames, repData, vbCouncilDistrict, vbCouncilMember) {
       viqDistrict = districtCode || 'VA-00';
       viqLocality = locality || '';
       viqHod = hod || null;
       viqSd = sd || null;
+      viqVbCouncilDistrict = vbCouncilDistrict != null ? vbCouncilDistrict : null;
+      viqVbCouncilMember   = vbCouncilMember   || null;
       viqMsgs.length = 0;
       document.getElementById('viqDistrictBadge').textContent = viqLocality || (viqDistrict === 'VA-00' ? 'Virginia' : viqDistrict);
       document.getElementById('viqMsgList').innerHTML = '';
@@ -825,7 +832,7 @@
       }
       const saved = viqLoadDistrictContext();
       if (saved) {
-        initViqChat(saved.districtCode, saved.locality, saved.hod, saved.sd, saved.repNames || [], saved.repData || null);
+        initViqChat(saved.districtCode, saved.locality, saved.hod, saved.sd, saved.repNames || [], saved.repData || null, saved.vbCouncilDistrict != null ? saved.vbCouncilDistrict : null, saved.vbCouncilMember || null);
         viqSavedDistrictNotice(saved);
         const panel = document.getElementById('viqChatPanel');
         if (panel) setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
@@ -1333,7 +1340,7 @@
         const res = await fetch('/api/bills-chat-stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ district: viqDistrict, locality: viqLocality, hod_district: viqHod, sd_district: viqSd, messages: viqMsgs, voice: window.viqVoice, tier: window.viqVoice })
+          body: JSON.stringify({ district: viqDistrict, locality: viqLocality, hod_district: viqHod, sd_district: viqSd, vb_council_district: viqVbCouncilDistrict, vb_council_member: viqVbCouncilMember, messages: viqMsgs, voice: window.viqVoice, tier: window.viqVoice })
         });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const reader = res.body.getReader();

@@ -880,13 +880,15 @@ class ChatRequest(BaseModel):
     district: str
     messages: list[ChatMessage] = Field(default_factory=list, max_length=20)
     locality: str = ""
-    hod_district: int | None = None
-    sd_district:  int | None = None
+    hod_district:       int | None = None
+    sd_district:        int | None = None
+    vb_council_district: int | None = None
+    vb_council_member:   str | None = None
     tier:  str = "free"
     voice: str = "free"
     session_type: str = "quick"  # "quick" (5min cache) or "research" (1hr cache)
 
-    @field_validator("hod_district", "sd_district", mode="before")
+    @field_validator("hod_district", "sd_district", "vb_council_district", mode="before")
     @classmethod
     def empty_str_to_none(cls, v):
         if v == "" or v is None:
@@ -5122,6 +5124,12 @@ async def chat(request: Request, req: ChatRequest):
             f"Region: {sd_info['region']}"
         )
 
+    if req.vb_council_district is not None and req.vb_council_member:
+        district_block += (
+            f"\nVIRGINIA BEACH CITY COUNCIL DISTRICT: {req.vb_council_district}\n"
+            f"City Council Member: {req.vb_council_member}"
+        )
+
     scope_limit_reply = _scope_limit_polling_reply(last_question)
     if scope_limit_reply:
         return _truth_chat_response(
@@ -5696,6 +5704,8 @@ async def bills_chat(request: Request, req: BillsChatRequest):
     if req.locality:    district_parts.append(f"locality: {req.locality}")
     if req.hod_district: district_parts.append(f"HOD district: {req.hod_district}")
     if req.sd_district:  district_parts.append(f"Senate district: {req.sd_district}")
+    if req.vb_council_district is not None: district_parts.append(f"VB City Council district: {req.vb_council_district}")
+    if req.vb_council_member:               district_parts.append(f"VB City Council member: {req.vb_council_member}")
     district_note = f"\nUSER'S DISTRICT CONTEXT: {', '.join(district_parts)}\n" if district_parts else ""
 
     _ck = _m._cache_key(user_query, district_note) if len(req.messages) == 1 else None
