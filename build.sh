@@ -910,6 +910,39 @@ PYEOF
     [ $? -ne 0 ] && echo "⚠ Missed-vote seed failed" || echo "✓ Missed-vote tables seeded"
 fi
 
+# ── STEP 4g0: Seed vb_council_members (static roster — 11 members) ───────────
+echo ""
+echo "[STEP 4g0] Seeding vb_council_members roster..."
+if [ ! -f data/vb_council_members_seed.sql ]; then
+    echo "⚠ data/vb_council_members_seed.sql not found — VB council roster will be missing"
+else
+    python3 - <<PYEOF
+import sqlite3, os, sys
+
+data_dir = os.environ.get("DATA_DIR", os.getcwd())
+db = os.path.join(data_dir, "polls.db")
+conn = sqlite3.connect(db)
+try:
+    existing = conn.execute("SELECT COUNT(*) FROM vb_council_members").fetchone()[0]
+    if existing >= 11:
+        print(f"  Already populated ({existing} rows) — skipping")
+        sys.exit(0)
+except Exception:
+    pass
+try:
+    with open("data/vb_council_members_seed.sql", "r", encoding="utf-8") as f:
+        conn.executescript(f.read())
+    conn.commit()
+    n = conn.execute("SELECT COUNT(*) FROM vb_council_members").fetchone()[0]
+    print(f"  vb_council_members: {n} rows")
+except Exception as e:
+    print(f"  WARNING: vb_council_members seed failed: {e}", file=sys.stderr)
+finally:
+    conn.close()
+PYEOF
+    [ $? -ne 0 ] && echo "⚠ vb_council_members seed failed" || echo "✓ vb_council_members seeded"
+fi
+
 # ── STEP 4g: Build VB analytics tables (blocs, finance, adjacency, dissent) ───
 echo ""
 echo "[STEP 4g] Building Virginia Beach derived analytics tables..."
