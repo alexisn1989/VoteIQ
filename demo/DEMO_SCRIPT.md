@@ -90,11 +90,12 @@ Payload base: `district="VA-02"`, `sd_district=22`, `tier="pro"`,
 ### Beat 5 — federal money + votes (descriptive, verifiable)
 > **How much defense industry money has Jen Kiggans received, and how does she vote on defense bills?**
 
-Expect: Defense & Aerospace ~$65k (Colonna's Shipyard, Bollinger Shipyards —
-local employers), plus final-passage votes with bill numbers (S 1071, the
-FY2026 NDAA — Yea). *Talking point: donations and votes are listed separately
-and every count cites the roll call — we deliberately don't assert causation;
-the journalist draws the conclusion.*
+Expect: Defense & Aerospace sector total ~$65k (fec_industry_totals, 2026 cycle)
+plus employer-level breakdown showing Colonna's Shipyard (~$19k) and Bollinger
+Shipyards (~$7k) as the largest named local defense employers. Also: S 1071
+(FY2026 NDAA) — Yea (final-passage vote, 2025-12-10). *Talking point: donations
+and votes are listed separately and every count cites the roll call — we
+deliberately don't assert causation; the journalist draws the conclusion.*
 
 ### Beat 6 — outside money
 > **What outside groups have spent money for or against Jen Kiggans?**

@@ -73,7 +73,7 @@ BEATS = [
         _VABEACH,
         "How much defense industry money has Jen Kiggans received, and "
         "how does she vote on defense bills?",
-        [["kiggans"], ["defense"], ["shipyard", "65,268", "$"]],
+        [["kiggans"], ["defense"], ["65,268", "defense & aerospace", "shipyard", "$"]],
     ),
     (
         "6. Kiggans outside money",
