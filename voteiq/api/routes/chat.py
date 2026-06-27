@@ -869,7 +869,7 @@ def _run_admin_agent(
 
 class ChatMessage(BaseModel):
     role: str
-    content: str
+    content: str = Field(max_length=8000)
 
 
 class ChatResponse(BaseModel):
@@ -878,7 +878,7 @@ class ChatResponse(BaseModel):
 
 class ChatRequest(BaseModel):
     district: str
-    messages: list[ChatMessage]
+    messages: list[ChatMessage] = Field(default_factory=list, max_length=20)
     locality: str = ""
     hod_district: int | None = None
     sd_district:  int | None = None
@@ -904,7 +904,7 @@ class ChatRequest(BaseModel):
 
 
 class BillsChatRequest(BaseModel):
-    messages:     list[ChatMessage]
+    messages:     list[ChatMessage] = Field(default_factory=list, max_length=20)
     district:     str = ""
     locality:     str = ""
     hod_district: int | None = None
@@ -5059,7 +5059,8 @@ def _direct_va_house_fec_candidate_reply(user_query: str) -> str:
 # ── /chat ─────────────────────────────────────────────────────────────────────
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat(req: ChatRequest):
+@limiter.limit("20/minute;100/hour")
+async def chat(request: Request, req: ChatRequest):
     import main as _m
 
     last_question = req.messages[-1].content if req.messages else ""
@@ -5508,6 +5509,7 @@ When citing a vote, include the bill name and Yea/Nay. When citing donors or ind
 # ── /api/election-chat ────────────────────────────────────────────────────────
 
 @router.post("/api/gemini-chat", response_model=ChatResponse)
+@limiter.limit("20/minute;100/hour")
 async def gemini_chat(request: Request, req: ChatRequest):
     """Chat with VoteIQ using Gemini, grounded in FEC data and district context."""
     import main as _m
@@ -5581,7 +5583,8 @@ Additional rules:
 
 
 @router.post("/api/election-chat", response_model=ChatResponse)
-async def election_chat(req: ElectionChatRequest):
+@limiter.limit("20/minute;100/hour")
+async def election_chat(request: Request, req: ElectionChatRequest):
     import main as _m
 
     user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
@@ -5626,7 +5629,8 @@ Answer questions about these results clearly and concisely (2-4 sentences). Be f
 # ── /api/bills-chat ───────────────────────────────────────────────────────────
 
 @router.post("/api/bills-chat", response_model=ChatResponse)
-async def bills_chat(req: BillsChatRequest):
+@limiter.limit("20/minute;100/hour")
+async def bills_chat(request: Request, req: BillsChatRequest):
     import main as _m
 
     user_query = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
@@ -5955,7 +5959,9 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
 # ── /api/pdf-chat ─────────────────────────────────────────────────────────────
 
 @router.post("/api/pdf-chat")
+@limiter.limit("20/minute;100/hour")
 async def pdf_chat(
+    request: Request,
     file:    UploadFile = File(...),
     message: str        = Form(...),
     voice:   str        = Form("free"),
@@ -6006,7 +6012,8 @@ async def pdf_chat(
 # ── /api/analyst-chat ─────────────────────────────────────────────────────────
 
 @router.post("/api/analyst-chat", response_model=ChatResponse)
-async def analyst_chat(req: BillsChatRequest):
+@limiter.limit("20/minute;100/hour")
+async def analyst_chat(request: Request, req: BillsChatRequest):
     """
     Public Record Analyst mode: structured fact-based answers with scope-aware source selection.
     Detects query scope (local, state, federal, mixed) and filters sources accordingly.
@@ -6124,7 +6131,8 @@ Retrieved context:
 # ── /api/support-chat ─────────────────────────────────────────────────────────
 
 @router.post("/api/support-chat", response_model=ChatResponse)
-async def support_chat(req: ChatRequest):
+@limiter.limit("20/minute;100/hour")
+async def support_chat(request: Request, req: ChatRequest):
     """
     VoteIQ Support Agent mode: customer support with escalation routing.
     Assesses confidence level and drafts escalations for data quality, privacy, legal, or system issues.
@@ -6182,7 +6190,8 @@ DO NOT automatically send escalations. Draft them for human review."""
 
 
 @router.post("/api/deep-researcher-chat", response_model=ChatResponse)
-async def deep_researcher_chat(req: ChatRequest):
+@limiter.limit("20/minute;100/hour")
+async def deep_researcher_chat(request: Request, req: ChatRequest):
     """
     Deep Researcher mode: broader research synthesis with source tiers and confidence levels.
     Produces 3-5 sub-questions, source tiers, findings, recency, confidence, synthesis, and gaps.
@@ -6232,7 +6241,8 @@ Available Database Context (SQL/Structured Records - Tier 1):
 
 
 @router.post("/api/visual-explainer-chat", response_model=ChatResponse)
-async def visual_explainer_chat(req: ChatRequest):
+@limiter.limit("20/minute;100/hour")
+async def visual_explainer_chat(request: Request, req: ChatRequest):
     """
     Visual Explainer mode: turns verified data into visual definitions for charts, maps, and tables.
     Returns JSON-structured visual definitions with plain-English explanations.
@@ -6287,7 +6297,8 @@ Available Database Context (Verified Records):
 # ── /api/route-question ────────────────────────────────────────────────────────
 
 @router.post("/api/route-question")
-async def route_question(req: ChatRequest):
+@limiter.limit("20/minute;100/hour")
+async def route_question(request: Request, req: ChatRequest):
     """
     Router: Detects question type and recommends which agent mode to use.
     Returns: recommended_agent, reason, suggested_endpoint
@@ -6346,7 +6357,8 @@ class EscalationDraft(BaseModel):
 
 
 @router.post("/api/escalation-agent")
-async def escalation_agent(ticket: EscalationTicket):
+@limiter.limit("20/minute;100/hour")
+async def escalation_agent(request: Request, ticket: EscalationTicket):
     """
     Data Quality Escalation Agent
 
@@ -6824,7 +6836,8 @@ class FieldMonitorDraft(BaseModel):
 
 
 @router.post("/api/field-monitor")
-async def field_monitor(req: FieldMonitorRequest):
+@limiter.limit("20/minute;100/hour")
+async def field_monitor(request: Request, req: FieldMonitorRequest):
     """
     VoteIQ Civic Field Monitor
 
@@ -7580,7 +7593,8 @@ NOW: Extract the provided text into structured JSON matching the schema. Emit ON
 
 
 @router.post("/api/structured-extractor")
-async def structured_extractor(req: StructuredExtractorRequest):
+@limiter.limit("20/minute;100/hour")
+async def structured_extractor(request: Request, req: StructuredExtractorRequest):
     """
     Structured Data Extractor
 
