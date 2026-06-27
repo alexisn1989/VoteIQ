@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS vb_council_members (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     name          TEXT NOT NULL,
     district      TEXT NOT NULL,
-    district_num  INTEGER NOT NULL,
+    district_num  INTEGER NOT NULL UNIQUE,
     email         TEXT,
     jurisdiction  TEXT DEFAULT 'Virginia Beach',
     scraped_date  TEXT
