@@ -882,8 +882,11 @@ class ChatRequest(BaseModel):
     locality: str = ""
     hod_district:       int | None = None
     sd_district:        int | None = None
-    vb_council_district: int | None = None
-    vb_council_member:   str | None = None
+    vb_council_district:      int | None = None
+    vb_council_member:        str | None = None
+    vb_school_board_member:   str | None = None
+    vb_school_board_at_large: str | None = None
+    vb_commonwealths_attorney: str | None = None
     tier:  str = "free"
     voice: str = "free"
     session_type: str = "quick"  # "quick" (5min cache) or "research" (1hr cache)
@@ -5129,6 +5132,12 @@ async def chat(request: Request, req: ChatRequest):
             f"\nVIRGINIA BEACH CITY COUNCIL DISTRICT: {req.vb_council_district}\n"
             f"City Council Member: {req.vb_council_member}"
         )
+    if req.vb_school_board_member:
+        district_block += f"\nVIRGINIA BEACH SCHOOL BOARD (DISTRICT SEAT): {req.vb_school_board_member}"
+    if req.vb_school_board_at_large:
+        district_block += f"\nVIRGINIA BEACH SCHOOL BOARD (AT-LARGE): {req.vb_school_board_at_large}"
+    if req.vb_commonwealths_attorney:
+        district_block += f"\nVIRGINIA BEACH COMMONWEALTH'S ATTORNEY: {req.vb_commonwealths_attorney}"
 
     scope_limit_reply = _scope_limit_polling_reply(last_question)
     if scope_limit_reply:
@@ -5706,6 +5715,9 @@ async def bills_chat(request: Request, req: BillsChatRequest):
     if req.sd_district:  district_parts.append(f"Senate district: {req.sd_district}")
     if req.vb_council_district is not None: district_parts.append(f"VB City Council district: {req.vb_council_district}")
     if req.vb_council_member:               district_parts.append(f"VB City Council member: {req.vb_council_member}")
+    if req.vb_school_board_member:          district_parts.append(f"VB School Board (district): {req.vb_school_board_member}")
+    if req.vb_school_board_at_large:        district_parts.append(f"VB School Board (at-large): {req.vb_school_board_at_large}")
+    if req.vb_commonwealths_attorney:       district_parts.append(f"VB Commonwealth's Attorney: {req.vb_commonwealths_attorney}")
     district_note = f"\nUSER'S DISTRICT CONTEXT: {', '.join(district_parts)}\n" if district_parts else ""
 
     _ck = _m._cache_key(user_query, district_note) if len(req.messages) == 1 else None

@@ -555,7 +555,7 @@
         ].filter(Boolean),
         executive: vaStatewide.filter(r => r.title === 'Governor').map(r => ({ title: 'Gov.', name: r.name, party: r.party, district: 'Virginia' }))
       };
-      initViqChat(districtCode, d.locality, del ? del.district_number : null, sen ? sen.district_number : null, repNames, repData, council ? council.district_number : null, council ? council.name : null);
+      initViqChat(districtCode, d.locality, del ? del.district_number : null, sen ? sen.district_number : null, repNames, repData, council ? council.district_number : null, council ? council.name : null, schoolBoard && schoolBoard.member ? schoolBoard.member.name : null, schoolBoard && schoolBoard.at_large ? schoolBoard.at_large.name : null, council && council.commonwealths_attorney ? council.commonwealths_attorney.name : null);
       // Load funding profiles for state reps immediately after address lookup.
       // Routed through window because loadRepProfiles is defined inside a later IIFE;
       // guarded so a missing ref can never abort the whole results render.
@@ -568,6 +568,9 @@
           sd: sen ? sen.district_number : null,
           vbCouncilDistrict: council ? council.district_number : null,
           vbCouncilMember: council ? council.name : null,
+          vbSchoolBoardMember: schoolBoard && schoolBoard.member ? schoolBoard.member.name : null,
+          vbSchoolBoardAtLarge: schoolBoard && schoolBoard.at_large ? schoolBoard.at_large.name : null,
+          vbCA: council && council.commonwealths_attorney ? council.commonwealths_attorney.name : null,
           repNames: repNames,
           repData: repData
         });
@@ -640,6 +643,7 @@
     let viqLocality = '';
     let viqHod = null, viqSd = null;
     let viqVbCouncilDistrict = null, viqVbCouncilMember = null;
+    let viqVbSchoolBoardMember = null, viqVbSchoolBoardAtLarge = null, viqVbCA = null;
     const viqMsgs = [];
 
     window.viqVoice = window.viqVoice || 'free';
@@ -684,6 +688,9 @@
           sd: ctx.sd || null,
           vbCouncilDistrict: ctx.vbCouncilDistrict != null ? ctx.vbCouncilDistrict : null,
           vbCouncilMember: ctx.vbCouncilMember || null,
+          vbSchoolBoardMember: ctx.vbSchoolBoardMember || null,
+          vbSchoolBoardAtLarge: ctx.vbSchoolBoardAtLarge || null,
+          vbCA: ctx.vbCA || null,
           repNames: Array.isArray(ctx.repNames) ? ctx.repNames.slice(0, 4) : [],
           savedAt: Date.now()
         }));
@@ -765,13 +772,16 @@
       // Auto-load funding profiles for state reps
       if (ctx.repNames && ctx.repNames.length) loadRepProfiles(ctx.repNames);
     }
-    window.initViqChat = function (districtCode, locality, hod, sd, repNames, repData, vbCouncilDistrict, vbCouncilMember) {
+    window.initViqChat = function (districtCode, locality, hod, sd, repNames, repData, vbCouncilDistrict, vbCouncilMember, vbSbMember, vbSbAtLarge, vbCA) {
       viqDistrict = districtCode || 'VA-00';
       viqLocality = locality || '';
       viqHod = hod || null;
       viqSd = sd || null;
-      viqVbCouncilDistrict = vbCouncilDistrict != null ? vbCouncilDistrict : null;
-      viqVbCouncilMember   = vbCouncilMember   || null;
+      viqVbCouncilDistrict    = vbCouncilDistrict != null ? vbCouncilDistrict : null;
+      viqVbCouncilMember      = vbCouncilMember   || null;
+      viqVbSchoolBoardMember  = vbSbMember        || null;
+      viqVbSchoolBoardAtLarge = vbSbAtLarge       || null;
+      viqVbCA                 = vbCA              || null;
       viqMsgs.length = 0;
       document.getElementById('viqDistrictBadge').textContent = viqLocality || (viqDistrict === 'VA-00' ? 'Virginia' : viqDistrict);
       document.getElementById('viqMsgList').innerHTML = '';
@@ -832,7 +842,7 @@
       }
       const saved = viqLoadDistrictContext();
       if (saved) {
-        initViqChat(saved.districtCode, saved.locality, saved.hod, saved.sd, saved.repNames || [], saved.repData || null, saved.vbCouncilDistrict != null ? saved.vbCouncilDistrict : null, saved.vbCouncilMember || null);
+        initViqChat(saved.districtCode, saved.locality, saved.hod, saved.sd, saved.repNames || [], saved.repData || null, saved.vbCouncilDistrict != null ? saved.vbCouncilDistrict : null, saved.vbCouncilMember || null, saved.vbSchoolBoardMember || null, saved.vbSchoolBoardAtLarge || null, saved.vbCA || null);
         viqSavedDistrictNotice(saved);
         const panel = document.getElementById('viqChatPanel');
         if (panel) setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
@@ -1340,7 +1350,7 @@
         const res = await fetch('/api/bills-chat-stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ district: viqDistrict, locality: viqLocality, hod_district: viqHod, sd_district: viqSd, vb_council_district: viqVbCouncilDistrict, vb_council_member: viqVbCouncilMember, messages: viqMsgs, voice: window.viqVoice, tier: window.viqVoice })
+          body: JSON.stringify({ district: viqDistrict, locality: viqLocality, hod_district: viqHod, sd_district: viqSd, vb_council_district: viqVbCouncilDistrict, vb_council_member: viqVbCouncilMember, vb_school_board_member: viqVbSchoolBoardMember, vb_school_board_at_large: viqVbSchoolBoardAtLarge, vb_commonwealths_attorney: viqVbCA, messages: viqMsgs, voice: window.viqVoice, tier: window.viqVoice })
         });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const reader = res.body.getReader();
