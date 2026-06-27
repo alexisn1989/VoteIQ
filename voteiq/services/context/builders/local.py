@@ -1837,6 +1837,22 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
 
 # ── Virginia Beach City Council context ──────────────────────────────────────
 
+# Static roster — current term (2024 election), valid through at least 2026 primary.
+# Used as fallback when vb_council_members table hasn't been seeded yet.
+_VB_COUNCIL_ROSTER_FALLBACK: list[tuple] = [
+    ("Robert M. \"Bobby\" Dyer", "Mayor",       0,  "mayorsoffice@vbgov.com"),
+    ("David Hutcheson",          "District 1",  1,  "dhutcheson@vbgov.com"),
+    ("Barbara Henley",           "District 2",  2,  "bhenley@vbgov.com"),
+    ("Michael Berlucchi",        "District 3",  3,  "mberlucc@vbgov.com"),
+    ("Dr. Amelia Ross-Hammond",  "District 4",  4,  "arosshammond@vbgov.com"),
+    ("Rosemary Wilson",          "District 5",  5,  "rcwilson@vbgov.com"),
+    ("Robert W. \"Worth\" Remick","District 6", 6,  "wremick@vbgov.com"),
+    ("Cal \"Cash\" Jackson-Green","District 7", 7,  "cjacksongreen@vbgov.com"),
+    ("Stacy Cummings",           "District 8",  8,  "stcummings@vbgov.com"),
+    ("Joashua F. Schulman",      "District 9",  9,  "jschulman@vbgov.com"),
+    ("Jennifer V. Rouse",        "District 10", 10, "jvrouse@vbgov.com"),
+]
+
 _VB_TRIGGER_RE = re.compile(
     r"virginia\s+beach.*(council|member|district|representative|agenda|meeting|upcoming|vote|voted|votes|mayor|appoint|ordinance|resolution)"
     r"|vb\s+(city\s+)?council"
@@ -1872,6 +1888,8 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
                 FROM vb_council_members
                 ORDER BY district_num
             """).fetchall()
+        if not members:
+            members = _VB_COUNCIL_ROSTER_FALLBACK
 
         if members and member_trigger:
             # Specific district lookup
