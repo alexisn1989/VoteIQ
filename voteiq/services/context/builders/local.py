@@ -437,7 +437,10 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                       "testif", "testimony", "constituent", "resident", "public",
                       "spoke", "said", "comment", "hearing", "oppos", "support",
                       "dissent", "pattern", "differently", "profile", "outlier",
-                      "contrarian", "disagree", "record")
+                      "contrarian", "disagree", "record",
+                      "tell me about", "who is", "background", "position",
+                      "favor", "favors", "supports", "against", "what does", "what do",
+                      "issue", "stance", "believe", "stand on")
         )
         triggered = member_hit and action_intent
 
@@ -784,17 +787,24 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                 """, (vote_name,)).fetchall()
                 if not rows_dis:
                     continue
-                dis_lines.append(f"\n#### {display} — Dissent Profile (No-vote rate vs council avg)")
-                top_topic = None
-                for topic, m_no, c_no, delta, nos in rows_dis:
-                    sign = "+" if delta >= 0 else ""
-                    direction = "more" if delta > 0 else "less"
-                    dis_lines.append(
-                        f"  {topic:<22s}  {m_no:.1f}% No vs council {c_no:.1f}%  "
-                        f"({sign}{delta:.1f}pp — votes No {direction} than peers, {nos} No votes)"
-                    )
-                    if top_topic is None and delta > 0:
-                        top_topic = topic
+                supports_nf = [(t, m, c, d, n) for t, m, c, d, n in rows_dis if d < 0]
+                opposes_nf  = [(t, m, c, d, n) for t, m, c, d, n in rows_dis if d > 0]
+                dis_lines.append(f"\n#### {display} — Issue Positions (vs council average)")
+                if supports_nf:
+                    dis_lines.append("  Tends to SUPPORT (votes Yes more than peers):")
+                    for topic, m_no, c_no, delta, nos in supports_nf:
+                        dis_lines.append(
+                            f"    {topic:<22s}  Yes rate above avg by {abs(delta):.1f}pp "
+                            f"(No only {m_no:.0f}% vs council {c_no:.0f}%)"
+                        )
+                if opposes_nf:
+                    dis_lines.append("  Tends to OPPOSE (votes No more than peers):")
+                    for topic, m_no, c_no, delta, nos in opposes_nf:
+                        dis_lines.append(
+                            f"    {topic:<22s}  No rate above avg by {delta:.1f}pp "
+                            f"({m_no:.0f}% No vs council {c_no:.0f}%, {nos} No votes)"
+                        )
+                top_topic = opposes_nf[0][0] if opposes_nf else None
                 # Signature No votes: 3 actual bills from the most distinctive topic
                 if top_topic:
                     sig_rows = conn.execute("""
@@ -1854,11 +1864,12 @@ _VB_COUNCIL_ROSTER_FALLBACK: list[tuple] = [
 ]
 
 _VB_TRIGGER_RE = re.compile(
-    r"virginia\s+beach.*(council|member|district|representative|agenda|meeting|upcoming|vote|voted|votes|mayor|appoint|ordinance|resolution)"
+    r"virginia\s+beach.*(council|member|district|representative|agenda|meeting|upcoming|vote|voted|votes|mayor|appoint|ordinance|resolution|support|oppos|fund|donor|profile|background)"
     r"|vb\s+(city\s+)?council"
     r"|(council|member|district|representative|agenda|upcoming|ordinance|resolution).*virginia\s+beach"
-    r"|berlucchi|hutcheson|cummings|jackson.green|remick|ross.hammond|schulman"
-    r"|(henley|rouse|wilson).*(vote|council|district|virginia)",
+    r"|berlucchi|hutcheson|cummings|jackson.green|remick|ross.hammond|schulman|dyer"
+    r"|henley|rouse"
+    r"|(wilson).*(vote|council|district|virginia|support|oppos|fund|profile)",
     re.IGNORECASE,
 )
 
@@ -1943,6 +1954,8 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
         vote_trigger = any(w in q_lower for w in (
             "vote", "voted", "votes", "voting", "yes", "no", "passed", "failed",
             "dissent", "opposed", "against", "absent", "record", "history",
+            "profile", "background", "tell me about", "what does", "what do",
+            "support", "supports", "supporting", "favor", "position",
         ))
         has_vote_table = _table_exists(conn, "vb_council_member_votes")
         _vote_section_added = False
@@ -2064,6 +2077,8 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
         _vb_finance_trigger = any(w in q_lower for w in (
             "donor", "fund", "money", "contribut", "financ",
             "who pays", "paid by", "backed by", "receiv", "campaign", "raise",
+            "profile", "background", "tell me about", "who is",
+            "support", "supports", "what does", "what do",
         ))
         _named_vb_finance = list(dict.fromkeys(
             v for k, v in _VB_FINANCE_KEY_MAP.items() if k in q_lower
@@ -2169,16 +2184,25 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
                 """, (vote_name,)).fetchall()
                 if not rows_dis:
                     continue
-                _dis_lines.append(f"\n#### {db_key} — Dissent Profile (No-vote rate vs council avg)")
-                for topic, m_no, c_no, delta, nos in rows_dis:
-                    sign = "+" if delta >= 0 else ""
-                    direction = "more" if delta > 0 else "less"
-                    _dis_lines.append(
-                        f"  {topic:<22s}  {m_no:.1f}% No vs council {c_no:.1f}%  "
-                        f"({sign}{delta:.1f}pp — votes No {direction} than peers, {nos} No votes)"
-                    )
+                supports = [(t, m, c, d, n) for t, m, c, d, n in rows_dis if d < 0]
+                opposes  = [(t, m, c, d, n) for t, m, c, d, n in rows_dis if d > 0]
+                _dis_lines.append(f"\n#### {db_key} — Issue Positions (vs council average)")
+                if supports:
+                    _dis_lines.append("  Tends to SUPPORT (votes Yes more than peers):")
+                    for topic, m_no, c_no, delta, nos in supports:
+                        _dis_lines.append(
+                            f"    {topic:<22s}  Yes rate above avg by {abs(delta):.1f}pp "
+                            f"(No only {m_no:.0f}% vs council {c_no:.0f}%)"
+                        )
+                if opposes:
+                    _dis_lines.append("  Tends to OPPOSE (votes No more than peers):")
+                    for topic, m_no, c_no, delta, nos in opposes:
+                        _dis_lines.append(
+                            f"    {topic:<22s}  No rate above avg by {delta:.1f}pp "
+                            f"({m_no:.0f}% No vs council {c_no:.0f}%, {nos} No votes)"
+                        )
             if _dis_lines:
-                lines += ["", "### VB Council — Dissent Profiles"] + _dis_lines
+                lines += ["", "### VB Council — Issue Positions by Topic"] + _dis_lines
 
         # ── voting bloc / alignment ────────────────────────────────────────
         _bloc_trigger = any(w in q_lower for w in (
