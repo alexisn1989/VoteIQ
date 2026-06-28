@@ -914,6 +914,11 @@ class BillsChatRequest(BaseModel):
     locality:     str = ""
     hod_district: int | None = None
     sd_district:  int | None = None
+    vb_council_district:       int | None = None
+    vb_council_member:         str | None = None
+    vb_school_board_member:    str | None = None
+    vb_school_board_at_large:  str | None = None
+    vb_commonwealths_attorney: str | None = None
     tier:  str = "free"
     voice: str = "free"
     session_type: str = "quick"
@@ -925,7 +930,7 @@ class BillsChatRequest(BaseModel):
             return {"messages": [{"role": "user", "content": data}]}
         return data
 
-    @field_validator("hod_district", "sd_district", mode="before")
+    @field_validator("hod_district", "sd_district", "vb_council_district", mode="before")
     @classmethod
     def empty_str_to_none(cls, v):
         if v == "" or v is None:
