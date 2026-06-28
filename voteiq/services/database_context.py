@@ -5809,6 +5809,140 @@ def _add_vote_similarity_context(blocks: list[str], query: str) -> None:
 
 
 
+# ── Election results (JSON-backed: election_results_{year}.json) ───────────────
+
+_ELECTION_RESULT_TRIGGER = re.compile(
+    r"\b(election\s+result|past\s+election|who\s+won|who\s+win|won\s+the|"
+    r"win\s+the|lost\s+the|margin|competitive|safe\s+seat|swing\s+district|"
+    r"how\s+did.*vote|how\s+close|toss.?up|"
+    r"spanberger|earle.?sears|youngkin|mcauliffe|blanding|"
+    r"hashmi|reid|miyares|"
+    r"governor.*race|lieutenant\s+governor|attorney\s+general.*race|"
+    r"statewide\s+result|election\s+night|"
+    r"(2025|2023|2021|2019).*(governor|delegate|senate|hod|election|result|race|won|win|vote)|"
+    r"(governor|delegate|senate|hod|election|result|race|won|win).*(2025|2023|2021|2019))\b",
+    re.IGNORECASE,
+)
+
+_ELECT_DIST_RE  = re.compile(
+    r"\b(?:district|hod|del(?:egate)?|senate\s+district|sd)\s*#?\s*(\d{1,3})\b",
+    re.IGNORECASE,
+)
+_ELECT_YEAR_RE  = re.compile(r"\b(2025|2023|2021|2019|2017)\b")
+_ELECT_SW_RE    = re.compile(
+    r"\b(governor|lt\.?\s*gov|lieutenant\s+governor|attorney\s+general|"
+    r"ag\b|statewide|spanberger|earle.?sears|youngkin|mcauliffe|"
+    r"hashmi|reid|miyares|blanding)\b",
+    re.IGNORECASE,
+)
+_ELECT_HOD_RE   = re.compile(
+    r"\b(hod|house\s+of\s+delegates?|delegate|del\.?)\b", re.IGNORECASE
+)
+_ELECT_SD_RE    = re.compile(
+    r"\b(state\s+senate|senate\s+district|virginia\s+senate)\b", re.IGNORECASE
+)
+
+_election_json_cache: dict[int, dict] = {}
+
+
+def _load_election_json(year: int) -> dict:
+    if year in _election_json_cache:
+        return _election_json_cache[year]
+    path = BASE_DIR / f"election_results_{year}.json"
+    try:
+        with path.open(encoding="utf-8") as f:
+            _election_json_cache[year] = json.load(f)
+    except Exception:
+        _election_json_cache[year] = {}
+    return _election_json_cache[year]
+
+
+def _fmt_election_race(race_data: dict, label: str) -> str:
+    cands = race_data.get("candidates", [])
+    total = race_data.get("total", 0)
+    if not cands:
+        return ""
+    lines = [f"**{label}**"]
+    for i, c in enumerate(cands[:3]):
+        tag = "[WINNER]" if i == 0 else "(runner-up)" if i == 1 else ""
+        lines.append(
+            f"  {c['name']} ({(c.get('party') or '?')[:1]}): "
+            f"{c.get('pct', 0):.1f}%  ({c.get('votes', 0):,} votes){' ' + tag if tag else ''}"
+        )
+    if len(cands) >= 2 and total:
+        margin = round(cands[0].get("pct", 0) - cands[1].get("pct", 0), 1)
+        tier = ("Safe" if margin >= 15 else "Lean" if margin >= 7
+                else "Competitive" if margin >= 3 else "Toss-up")
+        lines.append(f"  Margin: {margin:.1f}pp  |  {tier}  |  Total: {total:,} votes")
+    elif len(cands) == 1:
+        lines.append(f"  Uncontested  |  Total: {total:,} votes")
+    return "\n".join(lines)
+
+
+def _add_election_results_context(blocks: PriorityBlockList, query: str) -> None:
+    """Inject VA election results from committed JSON files for election-intent queries."""
+    if not _ELECTION_RESULT_TRIGGER.search(query):
+        return
+
+    q = query.lower()
+    year_hits = [int(m) for m in _ELECT_YEAR_RE.findall(query)]
+    req_year  = year_hits[0] if year_hits else None
+
+    dist_m    = _ELECT_DIST_RE.search(query)
+    specific  = int(dist_m.group(1)) if dist_m else None
+
+    out = ["### VA Election Results"]
+
+    # ── Statewide (Governor / LG / AG) ───────────────────────────────────────
+    sw_query = _ELECT_SW_RE.search(query)
+    if sw_query or (not specific and not _ELECT_HOD_RE.search(query) and not _ELECT_SD_RE.search(query)):
+        sw_years = {req_year} if req_year else {2025, 2021}
+        for yr in sorted(sw_years & {2025, 2021}, reverse=True):
+            data = _load_election_json(yr)
+            statewide = data.get("statewide", [])
+            if not statewide:
+                continue
+            out.append(f"\n#### {yr} Statewide Races")
+            for race in statewide:
+                office = race.get("office") or race.get("race", "")
+                out.append(_fmt_election_race(race, office))
+
+    # ── HOD district(s) ──────────────────────────────────────────────────────
+    hod_query = _ELECT_HOD_RE.search(query) or specific
+    if hod_query:
+        hod_yr   = req_year if req_year in (2025, 2023, 2021, 2019) else 2025
+        hod_data = _load_election_json(hod_yr).get("hod", {})
+        if specific and str(specific) in hod_data:
+            out.append(f"\n#### {hod_yr} HOD District {specific}")
+            out.append(_fmt_election_race(hod_data[str(specific)], f"District {specific}"))
+        elif not specific and hod_data:
+            d = sum(1 for v in hod_data.values()
+                    if v.get("candidates") and v["candidates"][0].get("party", "").upper().startswith("D"))
+            r = sum(1 for v in hod_data.values()
+                    if v.get("candidates") and v["candidates"][0].get("party", "").upper().startswith("R"))
+            out.append(f"\n#### {hod_yr} House of Delegates ({len(hod_data)} districts)")
+            out.append(f"  Democrats: {d} seats  |  Republicans: {r} seats")
+
+    # ── State Senate ─────────────────────────────────────────────────────────
+    if _ELECT_SD_RE.search(query) or (specific and "senate" in q):
+        sd_yr   = req_year if req_year in (2023, 2019) else 2023
+        sd_data = _load_election_json(sd_yr).get("senate", {})
+        if specific and str(specific) in sd_data:
+            out.append(f"\n#### {sd_yr} State Senate District {specific}")
+            out.append(_fmt_election_race(sd_data[str(specific)], f"Senate District {specific}"))
+        elif not specific and sd_data:
+            d = sum(1 for v in sd_data.values()
+                    if v.get("candidates") and v["candidates"][0].get("party", "").upper().startswith("D"))
+            r = sum(1 for v in sd_data.values()
+                    if v.get("candidates") and v["candidates"][0].get("party", "").upper().startswith("R"))
+            out.append(f"\n#### {sd_yr} State Senate ({len(sd_data)} districts)")
+            out.append(f"  Democrats: {d} seats  |  Republicans: {r} seats")
+
+    if len(out) <= 1:
+        return
+    blocks.append("\n".join(out))
+
+
 def build_database_context(query: str, max_chars: int = 22000, pro: bool = False) -> str:
     with _request_connection_cache():
         return _build_database_context_inner(query, max_chars, pro)
@@ -5877,6 +6011,8 @@ def _build_database_context_inner(query: str, max_chars: int = 22000, pro: bool 
     _add_donor_vote_alignment_context(blocks, q, terms)
     _add_norfolk_council_context(blocks, q, terms)
     _add_vb_council_context(blocks, q, terms)
+    blocks.set_priority(PriorityBlockList.HIGH)
+    _add_election_results_context(blocks, q)
     blocks.set_priority(PriorityBlockList.MEDIUM)
     _add_vpap_race_context(blocks, q)
     _add_congress_hearings_context(blocks, q, terms)
