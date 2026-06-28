@@ -234,7 +234,9 @@ def _norfolk_body_summary(conn: "sqlite3.Connection") -> list[str]:
             )
 
     # ── Topic / policy-area breakdown ────────────────────────────────────────
-    topic_rows = conn.execute("""
+    topic_rows: list = []
+    if _table_exists(conn, "norfolk_vote_enrichment"):
+        topic_rows = conn.execute("""
         SELECT e.topic,
                COUNT(*) total_votes,
                SUM(CASE WHEN v.vote_count NOT IN ('8-0','7-0','6-0','5-0','0-8','0-7','0-6','0-5','')
@@ -245,7 +247,7 @@ def _norfolk_body_summary(conn: "sqlite3.Connection") -> list[str]:
         GROUP BY e.topic
         ORDER BY total_votes DESC
         LIMIT 12
-    """).fetchall()
+        """).fetchall()
 
     if topic_rows:
         lines += ["", "**Legislative agenda by topic** (excludes procedural votes)"]
@@ -1906,6 +1908,19 @@ _VB_TRIGGER_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Map of lower-case name fragments → canonical display names used in vb_finance_summary.
+# Defined at module level so it's available before the finance section of the builder runs.
+_VB_FINANCE_KEY_MAP = {
+    "berlucchi": "Berlucchi", "dyer": "Dyer", "henley": "Henley",
+    "hutcheson": "Hutcheson", "wilson": "Wilson", "remick": "Remick",
+    "ross-hammond": "Ross-Hammond", "ross hammond": "Ross-Hammond",
+    "schulman": "Schulman", "rouse": "Rouse", "cummings": "Cummings",
+    "jackson-green": "Jackson-Green", "jackson green": "Jackson-Green",
+}
+_ALL_VB_FINANCE = ["Berlucchi", "Dyer", "Henley", "Hutcheson", "Wilson",
+                   "Remick", "Ross-Hammond", "Schulman", "Rouse", "Cummings",
+                   "Jackson-Green"]
+
 
 def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> None:
     q_lower = query.lower()
@@ -2157,16 +2172,6 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
                 lines.append(f"  {mdate}  [{vy}Y/{vn}N]  {title[:80]}")
 
         # ── campaign finance ──────────────────────────────────────────────
-        _VB_FINANCE_KEY_MAP = {
-            "berlucchi": "Berlucchi", "dyer": "Dyer", "henley": "Henley",
-            "hutcheson": "Hutcheson", "wilson": "Wilson", "remick": "Remick",
-            "ross-hammond": "Ross-Hammond", "ross hammond": "Ross-Hammond",
-            "schulman": "Schulman", "rouse": "Rouse", "cummings": "Cummings",
-            "jackson-green": "Jackson-Green", "jackson green": "Jackson-Green",
-        }
-        _ALL_VB_FINANCE = ["Berlucchi", "Dyer", "Henley", "Hutcheson", "Wilson",
-                           "Remick", "Ross-Hammond", "Schulman", "Rouse", "Cummings",
-                           "Jackson-Green"]
         _vb_finance_trigger = any(w in q_lower for w in (
             "donor", "fund", "money", "contribut", "financ",
             "who pays", "paid by", "backed by", "receiv", "campaign", "raise",
