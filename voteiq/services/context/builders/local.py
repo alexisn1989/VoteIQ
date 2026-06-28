@@ -233,6 +233,35 @@ def _norfolk_body_summary(conn: "sqlite3.Connection") -> list[str]:
                 f"{100*r[2]/tot:>5.1f}% {100*r[3]/tot:>4.1f}%"
             )
 
+    # ── Topic / policy-area breakdown ────────────────────────────────────────
+    topic_rows = conn.execute("""
+        SELECT e.topic,
+               COUNT(*) total_votes,
+               SUM(CASE WHEN v.vote_count NOT IN ('8-0','7-0','6-0','5-0','0-8','0-7','0-6','0-5','')
+                        THEN 1 ELSE 0 END) contested_votes
+        FROM norfolk_vote_enrichment e
+        JOIN norfolk_council_votes v ON v.title = e.title
+        WHERE e.topic IS NOT NULL AND e.topic != 'procedural'
+        GROUP BY e.topic
+        ORDER BY total_votes DESC
+        LIMIT 12
+    """).fetchall()
+
+    if topic_rows:
+        lines += ["", "**Legislative agenda by topic** (excludes procedural votes)"]
+        lines.append(f"  {'Topic':<26} {'Votes':>6}  {'Contested':>9}  {'Contested%':>10}  Stance")
+        lines.append("  " + "-" * 70)
+        for topic, tvotes, tcontest in topic_rows:
+            pct = round(100 * tcontest / tvotes) if tvotes else 0
+            stance = (
+                "Most contested" if pct >= 15
+                else "Occasionally divided" if pct >= 8
+                else "Near-unanimous"
+            )
+            lines.append(
+                f"  {topic:<26} {tvotes:>6}  {tcontest:>9}  {pct:>9d}%  {stance}"
+            )
+
     gate_pass = contested >= CONTESTED_VOTE_MIN
     lines += [
         "",
@@ -510,6 +539,10 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
             and any(kw in q_lower for kw in (
                 "how does", "body summary", "consensus", "voting pattern",
                 "overall voting", "as a body", "whole council",
+                "agenda", "priorities", "priority", "focus", "what topics",
+                "what does the council", "what does norfolk council",
+                "overall agenda", "policy areas", "what kind", "what do they vote",
+                "council stance", "council overall", "collectively",
             ))
         )
 
@@ -1949,6 +1982,66 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
                     lines.append(f"    {ref:<6}  [{cat}] {short_title}")
             else:
                 lines.append("\n  No upcoming agenda items posted yet — agendas typically appear 1-2 weeks before each meeting.")
+
+        # ── overall council agenda / policy priorities ─────────────────────
+        _council_agenda_trigger = (
+            not any(k in q_lower for k in _VB_FINANCE_KEY_MAP)  # no specific member named
+            and any(w in q_lower for w in (
+                "agenda", "priorities", "priority", "focus", "what topics",
+                "what does the council", "what does vb council",
+                "what does virginia beach council", "overall agenda",
+                "policy areas", "what kind", "what do they vote",
+                "council stance", "council overall", "collectively",
+                "what does the vb", "big issues", "main issues",
+                "what are they working on", "what is the council working",
+            ))
+        )
+        if _council_agenda_trigger and _table_exists(conn, "vb_member_dissent"):
+            ovr = conn.execute("""
+                SELECT COUNT(DISTINCT resolution_id) total,
+                       SUM(CASE WHEN vote_no > 0 THEN 1 ELSE 0 END) contested,
+                       MIN(meeting_date), MAX(meeting_date)
+                FROM (
+                    SELECT resolution_id,
+                           MAX(vote_no) vote_no,
+                           MIN(meeting_date) meeting_date
+                    FROM vb_council_member_votes
+                    GROUP BY resolution_id
+                )
+            """).fetchone()
+            topic_agenda = conn.execute("""
+                SELECT topic,
+                       SUM(topic_vote_count) / COUNT(DISTINCT member_name) avg_votes,
+                       AVG(council_no_pct) avg_no_pct
+                FROM vb_member_dissent
+                GROUP BY topic
+                ORDER BY avg_votes DESC
+            """).fetchall()
+            if ovr and topic_agenda:
+                total_r, contested_r, d_min, d_max = ovr
+                consensus_pct = round(100 * (total_r - (contested_r or 0)) / total_r) if total_r else 0
+                lines.append(f"\n#### Virginia Beach City Council — Legislative Agenda ({d_min} to {d_max})")
+                lines.append(
+                    f"Total resolutions: {total_r}  |  "
+                    f"Contested (any No vote): {contested_r or 0} ({100 - consensus_pct}%)  |  "
+                    f"Consensus: {consensus_pct}% pass without dissent"
+                )
+                lines.append("")
+                lines.append(f"  {'Topic':<22} {'Est. votes':>10}  {'Avg No%':>8}  Stance")
+                lines.append("  " + "-" * 58)
+                for topic, avg_v, avg_no in topic_agenda:
+                    stance = (
+                        "Occasionally divided" if avg_no >= 1.5
+                        else "Strong consensus" if avg_no >= 0.5
+                        else "Near-unanimous"
+                    )
+                    lines.append(
+                        f"  {topic:<22} {int(avg_v):>10,}  {avg_no:>7.1f}%  {stance}"
+                    )
+                lines.append(
+                    "\nNote: Virginia Beach council is highly consensus-driven. "
+                    "Most dissent appears on rezoning and governance items."
+                )
 
         # ── vote data availability note ────────────────────────────────────
         vote_trigger = any(w in q_lower for w in (
