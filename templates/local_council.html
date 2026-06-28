@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>City Council — VoteIQ</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{--navy:#0d1b2a;--red:#c8102e;--light:#f4f1eb;--mid:#ddd8cc;--muted:#7a7468;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--light);color:var(--navy);font-family:'Barlow',sans-serif;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f4f1eb'/%3E%3Crect width='1' height='1' fill='%23e8e4dc' opacity='0.4'/%3E%3C/svg%3E");pointer-events:none;z-index:0;}
+
+/* ── Topbar ── */
+.topbar{background:var(--navy);color:var(--mid);font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;text-align:center;padding:7px 16px;position:relative;z-index:10;}
+.topbar span{color:var(--red);margin:0 6px;}
+
+/* ── Header ── */
+header{position:relative;z-index:10;border-bottom:3px double var(--navy);padding:22px 48px 18px;display:flex;align-items:center;justify-content:space-between;background:var(--light);}
+.logo-wrap{display:flex;align-items:center;gap:16px;text-decoration:none;}
+.logo-text{font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:900;color:var(--navy);letter-spacing:-0.03em;}
+.logo-text em{color:var(--red);font-style:normal;}
+.logo-sub{font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--muted);margin-top:2px;}
+.header-nav{display:flex;gap:24px;align-items:center;}
+.header-nav a{font-family:'Barlow Condensed',sans-serif;font-size:0.82rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy);text-decoration:none;border-bottom:2px solid transparent;padding-bottom:2px;transition:border-color 0.2s,color 0.2s;}
+.header-nav a:hover,.header-nav a.active{color:var(--red);border-bottom-color:var(--red);}
+
+/* ── City tabs ── */
+.city-tabs{position:relative;z-index:10;display:flex;justify-content:center;gap:0;padding:32px 32px 0;max-width:1080px;margin:0 auto;}
+.city-tab{font-family:'Barlow Condensed',sans-serif;font-size:0.82rem;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;padding:10px 28px;border:2px solid var(--mid);background:white;color:var(--muted);cursor:pointer;transition:all 0.18s;text-decoration:none;display:inline-block;}
+.city-tab:first-child{border-right:none;}
+.city-tab.active{background:var(--navy);color:white;border-color:var(--navy);}
+.city-tab:hover:not(.active){border-color:var(--navy);color:var(--navy);}
+
+/* ── Hero ── */
+.page-hero{position:relative;z-index:10;max-width:1080px;margin:0 auto;padding:40px 32px 28px;text-align:center;}
+.page-hero-eyebrow{font-family:'Barlow Condensed',sans-serif;font-size:0.78rem;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--red);margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:10px;}
+.page-hero-eyebrow::before,.page-hero-eyebrow::after{content:'';flex:1;max-width:60px;height:1px;background:var(--red);}
+.page-hero h1{font-family:'Playfair Display',serif;font-size:clamp(1.8rem,4vw,2.8rem);font-weight:900;line-height:1.1;color:var(--navy);margin-bottom:12px;letter-spacing:-0.02em;}
+.page-hero h1 em{font-style:italic;color:var(--red);}
+.page-hero-meta{font-size:0.88rem;color:var(--muted);display:flex;gap:24px;justify-content:center;flex-wrap:wrap;margin-top:8px;}
+.page-hero-meta span{display:flex;align-items:center;gap:6px;}
+
+/* ── Mayor section ── */
+.mayor-wrap{position:relative;z-index:10;max-width:1080px;margin:0 auto;padding:0 32px 32px;}
+.section-label{font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--muted);margin-bottom:20px;display:flex;align-items:center;gap:12px;}
+.section-label::after{content:'';flex:1;height:1px;background:var(--mid);}
+.section-label span{color:var(--red);}
+
+.mayor-card{background:white;border:2px solid var(--navy);overflow:hidden;display:flex;flex-direction:column;}
+.mayor-card-stripe{height:5px;background:var(--navy);}
+.mayor-card-body{padding:28px 32px;display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap;}
+.mayor-avatar{width:72px;height:72px;border-radius:50%;background:var(--navy);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:white;letter-spacing:-0.02em;}
+.mayor-info{flex:1;min-width:200px;}
+.mayor-eyebrow{font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--red);margin-bottom:6px;}
+.mayor-name{font-family:'Playfair Display',serif;font-size:clamp(1.3rem,2.5vw,1.8rem);font-weight:900;color:var(--navy);line-height:1.1;margin-bottom:16px;letter-spacing:-0.02em;}
+.mayor-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.btn-primary{display:inline-flex;align-items:center;gap:7px;font-family:'Barlow Condensed',sans-serif;font-size:0.74rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:10px 20px;background:var(--navy);color:white;border:none;cursor:pointer;text-decoration:none;transition:background 0.18s;}
+.btn-primary:hover{background:#162539;}
+.btn-outline{display:inline-flex;align-items:center;gap:7px;font-family:'Barlow Condensed',sans-serif;font-size:0.74rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:9px 18px;background:white;color:var(--navy);border:2px solid var(--navy);text-decoration:none;transition:all 0.18s;}
+.btn-outline:hover{background:var(--navy);color:white;}
+.btn-email{display:inline-flex;align-items:center;gap:7px;font-family:'Barlow Condensed',sans-serif;font-size:0.74rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:9px 18px;background:white;color:var(--muted);border:2px solid var(--mid);text-decoration:none;transition:all 0.18s;}
+.btn-email:hover{border-color:var(--navy);color:var(--navy);}
+
+/* ── Member grid ── */
+.members-wrap{position:relative;z-index:10;max-width:1080px;margin:0 auto;padding:0 32px 64px;}
+.members-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;}
+.member-card{background:white;border:1px solid var(--mid);overflow:hidden;display:flex;flex-direction:column;transition:box-shadow 0.2s,border-color 0.2s;}
+.member-card:hover{box-shadow:0 4px 20px rgba(13,27,42,0.10);border-color:#b8b4ac;}
+.member-card-top{padding:20px 20px 16px;border-bottom:1px solid var(--mid);display:flex;gap:14px;align-items:flex-start;}
+.member-number{width:40px;height:40px;background:var(--light);border:1px solid var(--mid);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:700;color:var(--muted);}
+.member-info{flex:1;min-width:0;}
+.member-district{font-family:'Barlow Condensed',sans-serif;font-size:0.63rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--red);margin-bottom:5px;}
+.member-name{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:var(--navy);line-height:1.25;margin-bottom:0;}
+.member-actions{padding:14px 18px;display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;}
+.member-actions a{font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:6px 14px;text-decoration:none;transition:all 0.18s;}
+.member-actions .a-email{color:var(--muted);border:1px solid var(--mid);background:white;}
+.member-actions .a-email:hover{border-color:var(--navy);color:var(--navy);}
+.member-actions .a-web{color:var(--navy);border:1px solid var(--navy);background:white;}
+.member-actions .a-web:hover{background:var(--navy);color:white;}
+.member-actions .a-chat{background:var(--red);color:white;border:1px solid var(--red);}
+.member-actions .a-chat:hover{background:#a00d26;}
+
+/* ── Loading / error ── */
+.state-msg{text-align:center;padding:60px 20px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:0.9rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;}
+.spinner{display:inline-block;width:32px;height:32px;border:3px solid var(--mid);border-top-color:var(--navy);border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:14px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+@media(max-width:640px){
+  header{padding:18px 20px;}
+  .mayor-wrap,.members-wrap,.page-hero,.city-tabs{padding-left:16px;padding-right:16px;}
+  .mayor-card-body{padding:20px 18px;}
+  .members-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">VoteIQ<span>·</span>Hampton Roads Civic Intelligence</div>
+
+<header>
+  <a href="/" class="logo-wrap" style="text-decoration:none;">
+    <div>
+      <div class="logo-text">Vote<em>IQ</em></div>
+      <div class="logo-sub">Virginia Civic Intelligence</div>
+    </div>
+  </a>
+  <nav class="header-nav">
+    <a href="/">Home</a>
+    <a href="/chat">Chat</a>
+    <a href="/representatives">My Reps</a>
+    <a href="/council/virginia-beach" id="navVb">VB Council</a>
+    <a href="/council/norfolk" id="navNf">Norfolk Council</a>
+  </nav>
+</header>
+
+<div class="city-tabs">
+  <a href="/council/virginia-beach" class="city-tab" id="tabVb">Virginia Beach</a>
+  <a href="/council/norfolk" class="city-tab" id="tabNf">Norfolk</a>
+</div>
+
+<div class="page-hero">
+  <div class="page-hero-eyebrow">Local Government</div>
+  <h1 id="heroTitle">Loading…</h1>
+  <div class="page-hero-meta" id="heroMeta"></div>
+</div>
+
+<div class="mayor-wrap">
+  <div class="section-label"><span>Mayor</span></div>
+  <div id="mayorCard" class="state-msg"><div class="spinner"></div><p>Loading</p></div>
+</div>
+
+<div class="members-wrap">
+  <div class="section-label" id="membersLabel"><span>Council Members</span></div>
+  <div id="membersGrid" class="members-grid"></div>
+</div>
+
+<script>
+(function(){
+  const slug = window.location.pathname.replace(/\/+$/,'').split('/').pop();
+
+  // highlight nav + tabs
+  document.getElementById('tabVb').classList.toggle('active', slug === 'virginia-beach');
+  document.getElementById('tabNf').classList.toggle('active', slug === 'norfolk');
+
+  function initials(name){
+    return name.replace(/["()]/g,'').split(/\s+/).filter(w=>/^[A-Z]/.test(w)).slice(0,2).map(w=>w[0]).join('');
+  }
+
+  function emailBtn(email, name){
+    if(!email) return '';
+    return `<a class="a-email" href="mailto:${email}" title="Email ${name}">✉ Email</a>`;
+  }
+
+  function webBtn(url){
+    if(!url) return '';
+    return `<a class="a-web" href="${url}" target="_blank" rel="noopener">Official Page ↗</a>`;
+  }
+
+  function chatBtn(name, role){
+    const q = encodeURIComponent(`Tell me about ${name}, ${role}`);
+    return `<a class="a-chat" href="/chat?q=${q}">Ask VoteIQ</a>`;
+  }
+
+  function renderMayor(m, cityName){
+    document.getElementById('mayorCard').outerHTML = `<div class="mayor-card">
+      <div class="mayor-card-stripe"></div>
+      <div class="mayor-card-body">
+        <div class="mayor-avatar">${initials(m.name)}</div>
+        <div class="mayor-info">
+          <div class="mayor-eyebrow">Mayor · ${cityName}</div>
+          <div class="mayor-name">${m.name}</div>
+          <div class="mayor-actions">
+            ${emailBtn(m.email, m.name)}
+            ${webBtn(m.url)}
+            ${chatBtn(m.name, 'Mayor of ' + cityName)}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function renderMembers(members, cityName){
+    const grid = document.getElementById('membersGrid');
+    if(!members || !members.length){ grid.innerHTML='<p class="state-msg">No member data available.</p>'; return; }
+    grid.innerHTML = members.map(m => `
+      <div class="member-card">
+        <div class="member-card-top">
+          <div class="member-number">${m.district_num}</div>
+          <div class="member-info">
+            <div class="member-district">${m.role}</div>
+            <div class="member-name">${m.name}</div>
+          </div>
+        </div>
+        <div class="member-actions">
+          ${emailBtn(m.email, m.name)}
+          ${webBtn(m.url)}
+          ${chatBtn(m.name, m.role + ' · ' + cityName)}
+        </div>
+      </div>`).join('');
+  }
+
+  async function load(){
+    try {
+      const res = await fetch(`/api/council/${slug}`);
+      if(!res.ok) throw new Error('not found');
+      const data = await res.json();
+
+      document.title = `${data.name} City Council — VoteIQ`;
+      document.getElementById('heroTitle').innerHTML = `<em>${data.name}</em> City Council`;
+      document.getElementById('heroMeta').innerHTML =
+        `<span>🏛️ ${data.seats} seats</span><span>📐 ${data.structure}</span>` +
+        (data.council_url ? `<span><a href="${data.council_url}" target="_blank" rel="noopener" style="color:var(--red);text-decoration:none;">Official Site ↗</a></span>` : '');
+
+      const membersLabel = document.getElementById('membersLabel');
+      if(membersLabel) membersLabel.innerHTML = `<span>${data.name === 'Norfolk' ? 'Ward &amp; Superward Members' : 'District Members'}</span>`;
+
+      renderMayor(data.mayor, data.name);
+      renderMembers(data.members, data.name);
+    } catch(e){
+      document.getElementById('heroTitle').textContent = 'Council not found';
+      document.getElementById('mayorCard').innerHTML = '<p class="state-msg">Unable to load council data.</p>';
+    }
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>
