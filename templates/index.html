@@ -553,7 +553,11 @@
           del ? { title: 'Del.', name: del.delegate, party: del.party, district: 'HD-' + del.district_number } : null,
           sen ? { title: 'Sen.', name: sen.senator, party: sen.party, district: 'SD-' + sen.district_number } : null,
         ].filter(Boolean),
-        executive: vaStatewide.filter(r => r.title === 'Governor').map(r => ({ title: 'Gov.', name: r.name, party: r.party, district: 'Virginia' }))
+        executive: vaStatewide.filter(r => r.title === 'Governor').map(r => ({ title: 'Gov.', name: r.name, party: r.party, district: 'Virginia' })),
+        local: [
+          council && council.mayor ? { title: 'Mayor', name: council.mayor.name, party: council.mayor.party || '', district: 'Virginia Beach' } : null,
+          council ? { title: 'City Council', name: council.name, party: council.party || '', district: council.district } : null,
+        ].filter(Boolean)
       };
       initViqChat(districtCode, d.locality, del ? del.district_number : null, sen ? sen.district_number : null, repNames, repData, council ? council.district_number : null, council ? council.name : null, schoolBoard && schoolBoard.member ? schoolBoard.member.name : null, schoolBoard && schoolBoard.at_large ? schoolBoard.at_large.name : null, council && council.commonwealths_attorney ? council.commonwealths_attorney.name : null);
       // Load funding profiles for state reps immediately after address lookup.
@@ -805,6 +809,11 @@
         if (repData.executive && repData.executive.length) {
           lines.push('**🏛️ Executive**');
           repData.executive.forEach(r => lines.push(repLine(r)));
+          lines.push('');
+        }
+        if (repData.local && repData.local.length) {
+          lines.push('**🏛️ Local**');
+          repData.local.forEach(r => lines.push(r.title + ' ' + r.name + ' — ' + r.district));
           lines.push('');
         }
         lines.push('Ask me about any of them.');
