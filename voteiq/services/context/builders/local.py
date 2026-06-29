@@ -234,18 +234,22 @@ def _norfolk_body_summary(conn: "sqlite3.Connection") -> list[str]:
             )
 
     # ── Topic / policy-area breakdown ────────────────────────────────────────
-    topic_rows = conn.execute("""
-        SELECT e.topic,
-               COUNT(*) total_votes,
-               SUM(CASE WHEN v.vote_count NOT IN ('8-0','7-0','6-0','5-0','0-8','0-7','0-6','0-5','')
-                        THEN 1 ELSE 0 END) contested_votes
-        FROM norfolk_vote_enrichment e
-        JOIN norfolk_council_votes v ON v.title = e.title
-        WHERE e.topic IS NOT NULL AND e.topic != 'procedural'
-        GROUP BY e.topic
-        ORDER BY total_votes DESC
-        LIMIT 12
-    """).fetchall()
+    # Enrichment is supplemental — skip the topic breakdown when the table is
+    # absent so the body summary still renders member rows + methodology gate.
+    topic_rows = []
+    if _table_exists(conn, "norfolk_vote_enrichment"):
+        topic_rows = conn.execute("""
+            SELECT e.topic,
+                   COUNT(*) total_votes,
+                   SUM(CASE WHEN v.vote_count NOT IN ('8-0','7-0','6-0','5-0','0-8','0-7','0-6','0-5','')
+                            THEN 1 ELSE 0 END) contested_votes
+            FROM norfolk_vote_enrichment e
+            JOIN norfolk_council_votes v ON v.title = e.title
+            WHERE e.topic IS NOT NULL AND e.topic != 'procedural'
+            GROUP BY e.topic
+            ORDER BY total_votes DESC
+            LIMIT 12
+        """).fetchall()
 
     if topic_rows:
         lines += ["", "**Legislative agenda by topic** (excludes procedural votes)"]
@@ -1917,6 +1921,19 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
     if not _VB_TRIGGER_RE.search(query):
         return
 
+    # Member key maps — defined up front because the council-agenda trigger
+    # below references _VB_FINANCE_KEY_MAP before the finance section runs.
+    _VB_FINANCE_KEY_MAP = {
+        "berlucchi": "Berlucchi", "dyer": "Dyer", "henley": "Henley",
+        "hutcheson": "Hutcheson", "wilson": "Wilson", "remick": "Remick",
+        "ross-hammond": "Ross-Hammond", "ross hammond": "Ross-Hammond",
+        "schulman": "Schulman", "rouse": "Rouse", "cummings": "Cummings",
+        "jackson-green": "Jackson-Green", "jackson green": "Jackson-Green",
+    }
+    _ALL_VB_FINANCE = ["Berlucchi", "Dyer", "Henley", "Hutcheson", "Wilson",
+                       "Remick", "Ross-Hammond", "Schulman", "Rouse", "Cummings",
+                       "Jackson-Green"]
+
     try:
         conn = _connect("polls")
         if conn is None:
@@ -2161,16 +2178,7 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
                 lines.append(f"  {mdate}  [{vy}Y/{vn}N]  {title[:80]}")
 
         # ── campaign finance ──────────────────────────────────────────────
-        _VB_FINANCE_KEY_MAP = {
-            "berlucchi": "Berlucchi", "dyer": "Dyer", "henley": "Henley",
-            "hutcheson": "Hutcheson", "wilson": "Wilson", "remick": "Remick",
-            "ross-hammond": "Ross-Hammond", "ross hammond": "Ross-Hammond",
-            "schulman": "Schulman", "rouse": "Rouse", "cummings": "Cummings",
-            "jackson-green": "Jackson-Green", "jackson green": "Jackson-Green",
-        }
-        _ALL_VB_FINANCE = ["Berlucchi", "Dyer", "Henley", "Hutcheson", "Wilson",
-                           "Remick", "Ross-Hammond", "Schulman", "Rouse", "Cummings",
-                           "Jackson-Green"]
+        # (_VB_FINANCE_KEY_MAP / _ALL_VB_FINANCE defined at function top)
         _vb_finance_trigger = any(w in q_lower for w in (
             "donor", "fund", "money", "contribut", "financ",
             "who pays", "paid by", "backed by", "receiv", "campaign", "raise",
