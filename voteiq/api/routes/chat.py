@@ -52,7 +52,7 @@ _NEWS_TERMS = (
 _SOURCE_LINE = (
     "\n\n---\n"
     "*Sources: Virginia LIS · FEC · Congress.gov · VPAP · Governor of Virginia. "
-    "Data current through May 16, 2026. "
+    "Data current through June 29, 2026. "
     "Data limits: This answer depends on available public records and may not include late filings, amended records, or records not yet digitized. "
     "VoteIQ does not infer motive, intent, corruption, influence, causation, or policy effectiveness.*"
 )
@@ -509,6 +509,8 @@ def _answer_type_from_context(context: str, chroma_error: str | None = None) -> 
             "[Virginia Statewide Official]",
             "[Finance",
             "[PAC",
+            "## Norfolk City Council Vote Records",
+            "## Virginia Beach City Council",
         )
     )
     labels = re.findall(r"\[[^\]\n]+\]", text)
