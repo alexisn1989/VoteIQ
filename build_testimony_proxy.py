@@ -119,7 +119,8 @@ BILL_SECTOR_KWS: dict[str, list[str]] = {
 PRINCIPAL_SECTOR_KWS: dict[str, list[str]] = {
     "Energy/Utilities": [
         "energy", "electric", "utility", "solar", "gas", "oil", "coal",
-        "pipeline", "dominion", "appalachian", "nuclear", "power company",
+        "pipeline", "dominion energy", "dominion resources", "appalachian power",
+        "appalachian natural", "nuclear", "power company",
     ],
     "Healthcare": [
         "health", "hospital", "medical", "physician", "dental", "pharma",

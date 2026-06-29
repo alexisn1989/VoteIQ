@@ -5678,13 +5678,16 @@ async def bills_chat(request: Request, req: BillsChatRequest):
     if direct_governor_reply:
         return ChatResponse(reply=direct_governor_reply)
 
-    ctx_data = await build_bills_context_parallel(
-        query=user_query,
-        district=req.district or "",
-        hod_district=req.hod_district,
-        sd_district=req.sd_district,
-        locality=req.locality or "",
-    )
+    try:
+        ctx_data = await build_bills_context_parallel(
+            query=user_query,
+            district=req.district or "",
+            hod_district=req.hod_district,
+            sd_district=req.sd_district,
+            locality=req.locality or "",
+        )
+    except Exception as e:
+        return ChatResponse(reply=_m._friendly_claude_error(e))
     context = ctx_data["context"]
     exact_lookup_note = ctx_data["exact_lookup_note"]
     use_haiku = ctx_data["use_haiku"]
@@ -5833,13 +5836,19 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
             yield "data: [DONE]\n\n"
         return StreamingResponse(_direct_gen(), media_type="text/event-stream")
 
-    ctx_data = await build_bills_context_parallel(
-        query       = user_query,
-        district    = req.district    or "",
-        hod_district= req.hod_district,
-        sd_district = req.sd_district,
-        locality    = req.locality    or "",
-    )
+    try:
+        ctx_data = await build_bills_context_parallel(
+            query       = user_query,
+            district    = req.district    or "",
+            hod_district= req.hod_district,
+            sd_district = req.sd_district,
+            locality    = req.locality    or "",
+        )
+    except Exception as _ctx_err:
+        async def _err_gen(msg=_m._friendly_claude_error(_ctx_err)):
+            yield f"data: {json.dumps({'error': msg})}\n\n"
+            yield "data: [DONE]\n\n"
+        return StreamingResponse(_err_gen(), media_type="text/event-stream")
 
     context          = ctx_data["context"]
     exact_lookup_note= ctx_data["exact_lookup_note"]
@@ -6065,13 +6074,16 @@ async def analyst_chat(request: Request, req: BillsChatRequest):
     scope_notes = scope_context["scope_notes"]
 
     # Build context using same approach as bills-chat but with analyst framing
-    ctx_data = await build_bills_context_parallel(
-        query=user_query,
-        district=req.district or "",
-        hod_district=req.hod_district,
-        sd_district=req.sd_district,
-        locality=req.locality or "",
-    )
+    try:
+        ctx_data = await build_bills_context_parallel(
+            query=user_query,
+            district=req.district or "",
+            hod_district=req.hod_district,
+            sd_district=req.sd_district,
+            locality=req.locality or "",
+        )
+    except Exception as e:
+        return ChatResponse(reply=_m._friendly_claude_error(e))
 
     context = ctx_data["context"]
     sources_from_context = _track_sources(context)
