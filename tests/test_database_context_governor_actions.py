@@ -350,7 +350,7 @@ class GovernorActionContextTests(unittest.TestCase):
         context = dc.build_database_context("Does Jane Example have campaign finance records?")
 
         self.assertIn("lookup_status=zero_records", context)
-        self.assertIn("No rows matched searched_terms=jane, example", context)
+        self.assertIn("No named-candidate records found in the finance tables", context)
         self.assertIn("- va_cf_schedule_a: rows=1", context)
 
     def test_spanberger_governor_record_and_campaign_query_uses_state_records(self):
