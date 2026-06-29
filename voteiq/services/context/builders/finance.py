@@ -104,7 +104,14 @@ _MUNICIPAL_COUNCIL_FINANCE_SKIP_RE = re.compile(
     r"norfolk\s+(city\s+)?council"
     r"|norfolk.*(donor|fund|financ|contribut|receiv|raised|money)"
     r"|virginia\s+beach\s+(city\s+)?council"
-    r"|vb\s+(city\s+)?council",
+    r"|vb\s+(city\s+)?council"
+    # VB council members whose names would otherwise match GA legislators —
+    # first-name-qualified to avoid misrouting to state finance tables.
+    r"|jennifer\s+rouse"        # VB District 10 (vs. Aaron Rouse, GA)
+    r"|berlucchi"               # VB District 3 (no GA counterpart)
+    r"|ross.hammond"            # VB District 4
+    r"|joashua|schulman"        # VB District 9
+    r"|jackson.green",          # VB District 7
     re.IGNORECASE,
 )
 
