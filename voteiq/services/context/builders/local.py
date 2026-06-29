@@ -608,11 +608,15 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
             and t.lower() not in _NORFOLK_STOP_WORDS
             and len(t) > 3
         ]
-        if topic_terms:
+        # Also include address numbers (3-5 digit tokens) from the raw query
+        # so queries like "1511 Lea View" don't miss the record.
+        addr_nums = re.findall(r"\b\d{3,5}\b", query or "")
+        all_search = topic_terms + addr_nums
+        if all_search:
             like_clauses = " OR ".join(
-                "LOWER(v.title) LIKE ?" for _ in topic_terms
+                "LOWER(v.title) LIKE ?" for _ in all_search
             )
-            params = [f"%{t.lower()}%" for t in topic_terms]
+            params = [f"%{t.lower()}%" for t in all_search]
             topic_rows = conn.execute(f"""
                 SELECT v.meeting_date, v.agenda_item, v.title, v.vote_count,
                        v.result, v.votes_json, e.plain_english, e.topic,
@@ -621,11 +625,11 @@ def _add_norfolk_council_context(blocks: list[str], query: str, terms: list[str]
                 LEFT JOIN norfolk_vote_enrichment e ON v.title = e.title
                 WHERE ({like_clauses})
                 ORDER BY v.meeting_date DESC
-                LIMIT 10
+                LIMIT 15
             """, params).fetchall()
 
             if topic_rows:
-                lines += ["", f"### Votes matching query ({', '.join(topic_terms[:3])})"]
+                lines += ["", f"### Votes matching query ({', '.join(topic_terms[:3] or addr_nums[:3])})"]
                 for r in topic_rows:
                     member_votes = json.loads(r[5] or "{}")
                     vote_str = ", ".join(
