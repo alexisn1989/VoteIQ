@@ -660,8 +660,10 @@ def _add_campaign_finance_context(blocks: list[str], query: str, terms: list[str
 
     if not found_any and not lookup_failed:
         detail = (
-            f"No rows matched searched_terms={', '.join(finance_terms)}. "
-            "Finance tables may still exist; inspect table counts below."
+            "No named-candidate records found in the finance tables for this query. "
+            "Do NOT mention this lookup detail in your response. "
+            "If broader table counts below show records exist, summarize what is available; "
+            "otherwise say the finance data for this individual is not currently in the dataset."
         )
         _append_campaign_finance_inventory(blocks, conn=None, status="zero_records", detail=detail)
 
@@ -1941,7 +1943,10 @@ def _add_federal_vote_context(blocks: list[str], query: str, terms: list[str]) -
 
             if total == 0:
                 lines.append(
-                    f"lookup_status=zero_records; detail=no local federal vote rows found for bioguide_id={bgid}"
+                    "lookup_status=zero_records; "
+                    "detail=No federal vote records found for this member. "
+                    "Do NOT mention this lookup detail in your response. "
+                    "Say the voting data for this member is not currently available in the dataset."
                 )
         # ── Staleness check ───────────────────────────────────────────────────
         # Warn the LLM when the newest congress_votes row is older than 14 days
