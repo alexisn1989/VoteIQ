@@ -32,6 +32,7 @@ from voteiq.config.voices import (
     get_system_prompt,
 )
 from voteiq.services.database_context import (
+    _MUNICIPAL_COUNCIL_FINANCE_SKIP_RE,
     build_admin_database_context,
     build_database_context,
     check_sponsorship_claims,
@@ -3772,6 +3773,13 @@ def _direct_va_legislator_reply(user_query: str, premium: bool = False) -> str:
 
     # Skip governor-specific queries
     if "spanberger" in q or "abigail" in q or "governor" in q:
+        return ""
+
+    # Skip VB/Norfolk council queries — this state-legislator fast path would
+    # otherwise match a council member's surname to a GA legislator (e.g.
+    # "Jennifer Rouse" -> Aaron R. Rouse). Let these fall through to the full
+    # context pipeline where the dedicated municipal builders handle them.
+    if _MUNICIPAL_COUNCIL_FINANCE_SKIP_RE.search(user_query or ""):
         return ""
 
     # Lobbying, conflict-of-interest, financial-disclosure, and
