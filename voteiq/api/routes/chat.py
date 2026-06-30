@@ -183,7 +183,9 @@ def _with_source_line(
     """Append the standard source footer unless the model already included one."""
     reply = _sanitize_voting_record_language(reply)
     reply = check_sponsorship_claims(reply)
-    if "Sources:" in (reply or ""):
+    # Only skip if the canonical footer is already present — don't defer to
+    # Claude-generated footers which may contain stale dates or improvised labels.
+    if "Virginia LIS · FEC" in (reply or ""):
         return reply.rstrip()
     return reply.rstrip() + _source_line(answer_type, sources_used, data_limits)
 
@@ -6134,7 +6136,7 @@ ANSWER FORMAT:
 **Record Type:** [person|bill|vote|donation|executive_order|meeting|other]
 **Answer Type:** [SQL-backed|API-backed|RAG-backed|mixed|fallback]
 **Sources:** {' · '.join(sorted(sources_used)) if sources_used else 'None'}
-**Current Through:** [date or "unknown"]
+**Current Through:** June 29, 2026
 **Data Quality:** [Complete|Partial|Limited]
 **Data Limits:** [scope, gaps, exclusions]
 **Inference Flag:** [NONE or "INFERRED: ..."]
