@@ -921,6 +921,12 @@ def _add_keyword_context(blocks: list[str], query: str, terms: list[str], sessio
     is_finance = _is_campaign_finance_query(query) or "pac" in q_lower
 
     conn = _connect("polls")
+    # Skip GA finance tables for VB/Norfolk council queries — the dedicated
+    # municipal builders handle those and the GA lookup returns wrong people
+    # (e.g. "Jennifer Rouse" matching Aaron R. Rouse, state senator).
+    if conn and is_finance and _MUNICIPAL_COUNCIL_FINANCE_SKIP_RE.search(query or ""):
+        conn.close()
+        return
     if conn and is_finance:
         finance_terms = _campaign_finance_terms(query, terms)
         if finance_terms:
