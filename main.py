@@ -10426,15 +10426,26 @@ async def _on_startup():
                 n = conn.execute("SELECT COUNT(*) FROM norfolk_council_votes").fetchone()[0]
             except Exception:
                 n = 0
-            if n >= 1000:
-                print(f"[norfolk-seed] {n} norfolk_council_votes rows present — skipping.")
-                conn.close()
-                return
             seed_file = os.path.join(BASE_DIR, "data", "norfolk_seed.sql")
             if not os.path.exists(seed_file):
                 print(f"[norfolk-seed] Seed file not found at {seed_file}")
                 conn.close()
                 return
+            # Compare against the seed file's row count rather than a static
+            # threshold: production was seeded before later meetings were scraped,
+            # so a fixed ">=1000" guard froze it below the current seed and never
+            # picked up new records (e.g. the Jan 2024 1511 Lea View Ave vote).
+            seed_count = 0
+            with open(seed_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.startswith('INSERT INTO "norfolk_council_votes"'):
+                        seed_count += 1
+            if seed_count and n >= seed_count:
+                print(f"[norfolk-seed] {n} rows present (seed has {seed_count}) — skipping.")
+                conn.close()
+                return
+            if n:
+                print(f"[norfolk-seed] {n} rows present, seed has {seed_count} — re-seeding to pick up new records.")
             print(f"[norfolk-seed] Seeding Norfolk tables from {seed_file}...")
             with open(seed_file, "r", encoding="utf-8") as f:
                 conn.executescript(f.read())
