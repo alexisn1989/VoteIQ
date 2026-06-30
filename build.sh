@@ -980,11 +980,24 @@ import sqlite3, os, sys
 data_dir = os.environ.get("DATA_DIR", os.getcwd())
 db = os.path.join(data_dir, "polls.db")
 conn = sqlite3.connect(db)
+
+# Count how many council_votes rows are in the seed file
+seed_count = 0
+try:
+    with open("data/norfolk_seed.sql", "r", encoding="utf-8") as _f:
+        for _line in _f:
+            if _line.startswith('INSERT INTO "norfolk_council_votes"'):
+                seed_count += 1
+except Exception:
+    seed_count = 0
+
 try:
     existing = conn.execute("SELECT COUNT(*) FROM norfolk_council_votes").fetchone()[0]
-    if existing >= 1000:
-        print(f"  Already populated ({existing:,} norfolk_council_votes rows) — skipping")
+    if existing >= seed_count > 0:
+        print(f"  Already populated ({existing:,} rows, seed has {seed_count}) — skipping")
         sys.exit(0)
+    elif seed_count > existing:
+        print(f"  Seed has {seed_count} rows, production has {existing} — re-seeding to pick up new records")
 except Exception:
     pass  # table doesn't exist yet — seed will create it
 try:
