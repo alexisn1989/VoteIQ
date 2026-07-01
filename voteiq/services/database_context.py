@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import sqlite3
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 from config.db import POLLS_DB as _POLLS_DB  # noqa: E402 — used directly in VB builder; patched by tests as dc._POLLS_DB
 from voteiq.services.context._budget import PriorityBlockList  # noqa: F401
@@ -256,14 +259,16 @@ def _table_exists(conn: sqlite3.Connection, table: str) -> bool:
 def _table_columns(conn: sqlite3.Connection, table: str) -> set[str]:
     try:
         return {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         return set()
 
 
 def _table_column_info(conn: sqlite3.Connection, table: str) -> list[sqlite3.Row]:
     try:
         return conn.execute(f"PRAGMA table_info({_quote_identifier(table)})").fetchall()
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         return []
 
 
@@ -288,7 +293,8 @@ def _query_rows(
 ) -> None:
     try:
         rows = conn.execute(sql, tuple(params)).fetchmany(limit)
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         return
     if not rows:
         return
@@ -655,6 +661,7 @@ def _add_campaign_finance_context(blocks: list[str], query: str, terms: list[str
                     lines.extend(f"- {_row_to_line(row)}" for row in rows)
                     blocks.append("\n".join(lines))
     except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         lookup_failed = True
         blocks.append(
             "[Database Context - campaign finance lookup]\n"
@@ -713,6 +720,7 @@ def _append_campaign_finance_inventory(
                 try:
                     count = conn.execute(f"SELECT COUNT(*) FROM {_quote_identifier(table)}").fetchone()[0]
                 except Exception as exc:
+                    logger.warning("suppressed exception: %s", exc)
                     count = f"count_error:{type(exc).__name__}"
                 columns = sorted(_table_columns(conn, table))
                 lines.append(
@@ -799,7 +807,8 @@ def _add_bill_context(blocks: list[str], bills: list[str], session: str, pro: bo
                             "in the same policy sector during this session."
                         )
                         blocks.append("\n".join(lines))
-            except Exception:
+            except Exception as exc:
+                logger.warning("suppressed exception: %s", exc)
                 pass  # proxy unavailable — silent fallback
 
         conn.close()
@@ -835,7 +844,8 @@ def _add_bill_context(blocks: list[str], bills: list[str], session: str, pro: bo
                     ORDER BY vote_date DESC
                     LIMIT 20
                 """, (bill, session)).fetchall()
-            except Exception:
+            except Exception as exc:
+                logger.warning("suppressed exception: %s", exc)
                 agg_rows = []
             if agg_rows:
                 floor_lines, cmte_lines = [], []
@@ -863,8 +873,8 @@ def _add_bill_context(blocks: list[str], bills: list[str], session: str, pro: bo
                     ).fetchone()
                     if url_row and url_row["openstates_url"]:
                         out.append(f"source=OpenStates; openstates_url={url_row['openstates_url']}")
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("suppressed exception: %s", exc)
                 blocks.append("\n".join(out))
             if _table_exists(conn, "bill_descriptions"):
                 _query_rows(conn, """
@@ -960,8 +970,8 @@ def _add_keyword_context(blocks: list[str], query: str, terms: list[str], sessio
                     ]
                     lines.extend(f"- {_row_to_line(row)}" for row in cst_rows)
                     blocks.append("\n".join(lines))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("suppressed exception: %s", exc)
         conn.close()
 
     if is_finance and not any(term in q_lower for term in ("bill", "hb", "sb", "legislation", "veto", "signed")):
@@ -1015,8 +1025,8 @@ def _add_keyword_context(blocks: list[str], query: str, terms: list[str], sessio
                         gj = {}
                         try:
                             gj = _json.loads(row[4] or "{}")
-                        except Exception:
-                            pass
+                        except Exception as exc:
+                            logger.warning("suppressed exception: %s", exc)
                         # Extract attribution fields
                         outlet  = gj.get("outlet") or row[0] or "Unknown outlet"
                         author  = gj.get("author")
@@ -1038,8 +1048,8 @@ def _add_keyword_context(blocks: list[str], query: str, terms: list[str], sessio
                             line += f"\n  Read full article: {url}"
                         lines.append(line)
                     blocks.append("\n".join(lines))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("suppressed exception: %s", exc)
 
         conn.close()
 
@@ -1129,8 +1139,8 @@ def _add_pac_context(blocks: list[str], query: str, terms: list[str]) -> None:
                 ]
                 lines.extend(f"- {_row_to_line(row)}" for row in fit_rows)
                 blocks.append("\n".join(lines))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("suppressed exception: %s", exc)
     else:
         _query_rows(conn, """
             SELECT committee_id, committee_name, short_name, ideology, alignment,
@@ -1426,8 +1436,8 @@ def _add_sponsorship_summary_context(
             "from any other block.",
         ]
         blocks.append("\n".join(lines))
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
     finally:
         conn.close()
 
@@ -2024,7 +2034,8 @@ def _resolve_federal_member(
                 FROM congress_members WHERE {clause} LIMIT 5""",
             tuple(params),
         ).fetchall()
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         return []
 
 
@@ -2139,8 +2150,8 @@ def _add_floor_statements_context(
 
         blocks.append("\n".join(lines))
 
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
     finally:
         conn.close()
 
@@ -2253,8 +2264,8 @@ def _add_indy_exp_context(blocks: list[str], query: str, terms: list[str]) -> No
 
         blocks.append("\n".join(lines))
 
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
     finally:
         conn.close()
 
@@ -2358,8 +2369,8 @@ def _add_fec_employer_context(blocks: list[str], query: str, terms: list[str]) -
                 )
             blocks.append("\n".join(lines))
 
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
     finally:
         conn.close()
 
@@ -2972,8 +2983,8 @@ def _add_federal_bill_context(
 
         blocks.append("\n".join(lines))
 
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
     finally:
         conn.close()
 
@@ -3087,8 +3098,8 @@ def _add_governor_action_context(blocks: list[str], query: str, terms: list[str]
                     LIMIT 5
                 """, (session,) if "session" in columns else ()).fetchall()
                 rows = list(rows) + list(signed_sample)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("suppressed exception: %s", exc)
 
         if not rows and "veto" in q_lower:
             veto_cols = [
@@ -3108,6 +3119,7 @@ def _add_governor_action_context(blocks: list[str], query: str, terms: list[str]
                     LIMIT 40
                 """, tuple(veto_params)).fetchall()
     except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         conn.close()
         _append_governor_action_lookup_block(
             blocks,
@@ -3149,7 +3161,8 @@ def _add_governor_action_context(blocks: list[str], query: str, terms: list[str]
             """, tuple(summary_params)).fetchall():
                 key = str(summary_row["action_value"] or "unknown").strip() or "unknown"
                 action_summary[key] = int(summary_row["count"] or 0)
-        except Exception:
+        except Exception as exc:
+            logger.warning("suppressed exception: %s", exc)
             action_summary = {}
 
     conn.close()
@@ -3233,7 +3246,8 @@ def _add_schema_summary(blocks: list[str]) -> None:
                 continue
             try:
                 count = conn.execute(f"SELECT COUNT(*) FROM {_quote_identifier(name)}").fetchone()[0]
-            except Exception:
+            except Exception as exc:
+                logger.warning("suppressed exception: %s", exc)
                 count = "?"
             tables.append(f"{name}({count})")
         conn.close()
@@ -3261,7 +3275,8 @@ def _add_full_schema_summary(blocks: list[str]) -> None:
                     count = conn.execute(
                         f"SELECT COUNT(*) FROM {_quote_identifier(table)}"
                     ).fetchone()[0]
-                except Exception:
+                except Exception as exc:
+                    logger.warning("suppressed exception: %s", exc)
                     count = "?"
                 column_names = [info[1] for info in _table_column_info(conn, table)]
                 preview = ", ".join(column_names[:14])
@@ -3369,6 +3384,7 @@ def _add_generic_sql_search_context(blocks: list[str], query: str, terms: list[s
                         LIMIT 2
                     """, tuple(params)).fetchall()
                 except Exception as exc:
+                    logger.warning("suppressed exception: %s", exc)
                     skipped_tables.append(f"{db_key}.{table}: search_error:{type(exc).__name__}")
                     continue
                 if not rows:
@@ -3402,8 +3418,8 @@ _ANALYSIS_CACHE: dict = {}
 try:
     _cache_path = BASE_DIR / "data" / "donor_map_cache.json"
     _ANALYSIS_CACHE = json.loads(_cache_path.read_text(encoding="utf-8"))
-except Exception:
-    pass
+except Exception as exc:
+    logger.warning("suppressed exception: %s", exc)
 
 _DONOR_TREND_TRIGGER = re.compile(
     r'\b('
@@ -3969,8 +3985,8 @@ def _add_donor_trend_context(blocks: list[str], query: str) -> None:
                             )
                     blocks.append("\n".join(lines))
 
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("suppressed exception: %s", exc)
 
     # ── Top institutional spikes (always show when trend query) ───────────────
     if _DONOR_TREND_TRIGGER.search(query):
@@ -4000,8 +4016,8 @@ def _add_donor_trend_context(blocks: list[str], query: str) -> None:
                         f"{s['election_cycle']} ({yr_type}): {ratio_s}, {pct_s}"
                     )
                 blocks.append("\n".join(lines))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("suppressed exception: %s", exc)
 
     conn.close()
 
@@ -4126,11 +4142,13 @@ def _add_follow_the_money_context(blocks: list[str], query: str) -> None:
 
             try:
                 top_donors = json.loads(fin["top_donors_json"] or "[]")
-            except Exception:
+            except Exception as exc:
+                logger.warning("suppressed exception: %s", exc)
                 top_donors = []
             try:
                 by_sector = json.loads(fin["by_sector_json"] or "[]")
-            except Exception:
+            except Exception as exc:
+                logger.warning("suppressed exception: %s", exc)
                 by_sector = []
 
             # Skip vague top sector
@@ -4172,8 +4190,8 @@ def _add_follow_the_money_context(blocks: list[str], query: str) -> None:
 
         blocks.append("\n".join(lines))
 
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
     finally:
         conn.close()
         if li:
@@ -4280,8 +4298,8 @@ def _add_testimony_proxy_context(blocks: list[str], query: str) -> None:
 
         blocks.append("\n".join(lines))
 
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
     finally:
         conn.close()
 
@@ -4446,8 +4464,8 @@ def _add_committee_chair_context(blocks: list[str], query: str) -> None:
                     slist = _json.loads(raw)
                     top = sorted(slist, key=lambda x: -(x.get("total") or 0))[:3]
                     top_sectors = ", ".join(s.get("sector", "") for s in top if s.get("sector"))
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("suppressed exception: %s", exc)
 
             raised_str = f"${raised/1_000_000:.1f}M raised" if raised >= 1_000_000 else (
                 f"${raised/1000:.0f}k raised" if raised else "no finance data"
@@ -4462,8 +4480,8 @@ def _add_committee_chair_context(blocks: list[str], query: str) -> None:
         if len(ctx_lines) > 1:
             blocks.append("\n".join(ctx_lines))
 
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
     finally:
         conn.close()
 
@@ -4516,8 +4534,8 @@ def _add_legislator_committee_membership_context(blocks: list[str], query: str) 
         lines.append("\nSource: VoteIQ SQL (va_committee_assignments, scraped 2026-06-02).")
         blocks.append("\n".join(lines))
 
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
     finally:
         conn.close()
 
@@ -4632,7 +4650,8 @@ def _add_bill_committee_chair_context(blocks: list[str], bills: list[str], sessi
                         slist = _json.loads(raw)
                         top = sorted(slist, key=lambda x: -(x.get("total") or 0))[:4]
                         top_sectors = ", ".join(s["sector"] for s in top if s.get("sector"))
-                    except Exception:
+                    except Exception as exc:
+                        logger.warning("suppressed exception: %s", exc)
                         top_sectors = ""
                     raised_str = (
                         f"${raised/1_000_000:.1f}M raised"
@@ -4651,8 +4670,8 @@ def _add_bill_committee_chair_context(blocks: list[str], bills: list[str], sessi
             if len(ctx_lines) > 1:
                 blocks.append("\n".join(ctx_lines))
 
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
     finally:
         conn.close()
 
@@ -4773,8 +4792,8 @@ def _add_gatekeeper_context(blocks: list[str], query: str) -> None:
                     if isinstance(slist, list):
                         top = sorted(slist, key=lambda x: -(x.get("total") or 0))[:3]
                         top_sectors_str = ", ".join(s.get("sector", "") for s in top if s.get("sector"))
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("suppressed exception: %s", exc)
 
             cards.append({
                 "committee": committee,
@@ -4832,8 +4851,8 @@ def _add_gatekeeper_context(blocks: list[str], query: str) -> None:
 
         blocks.append("\n".join(lines))
 
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
     finally:
         conn.close()
 
@@ -4860,7 +4879,8 @@ def _add_legislator_narrative_context(blocks: list[str], query: str) -> None:
             "SELECT legislator_id, name, narrative, narrative_short "
             "FROM legislator_narratives WHERE name IS NOT NULL"
         ).fetchall()
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         conn.close()
         return
 
@@ -4999,8 +5019,8 @@ def _add_disclosures_context(blocks: list[str], query: str) -> None:
 
             blocks.append("\n".join(lines))
 
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
     finally:
         conn.close()
 
@@ -5072,8 +5092,8 @@ def _add_lobbyist_direct_context(blocks: list[str], query: str) -> None:
 
         blocks.append("\n".join(lines))
 
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
     finally:
         conn.close()
 
@@ -5131,8 +5151,8 @@ def _add_sponsor_correlation_context(blocks: list[str], query: str) -> None:
 
         blocks.append("\n".join(lines))
 
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
     finally:
         conn.close()
 
@@ -5212,7 +5232,8 @@ def _add_spike_alerts_context(blocks: list[str], query: str) -> None:
             pct_s = f", up {pct:.0f}% from prior {yr_type}" if pct else ""
             try:
                 bills = json.loads(ctx_raw or "[]")
-            except Exception:
+            except Exception as exc:
+                logger.warning("suppressed exception: %s", exc)
                 bills = []
             bill_s = (
                 f" Related legislation this cycle: {', '.join(str(b) for b in bills[:3])}."
@@ -5224,8 +5245,8 @@ def _add_spike_alerts_context(blocks: list[str], query: str) -> None:
                 f"{yr_type} giving{pct_s}. Trigger: {label}.{bill_s}"
             )
         blocks.append("\n".join(lines))
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
 
 
 def _add_dominion_recipient_ranking_context(blocks: list[str], query: str) -> None:
@@ -5359,8 +5380,8 @@ def _add_dominion_recipient_ranking_context(blocks: list[str], query: str) -> No
             " Do not assert causation."
         )
         blocks.append("\n".join(out))
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
     finally:
         conn.close()
 
@@ -5497,8 +5518,8 @@ def _add_donor_vote_alignment_context(blocks: list[str], query: str, terms: list
                 f"  Alignment delta: {delta_s} pp{delta_note}"
             )
         blocks.append("\n".join(lines))
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
 
 
 def _add_vpap_race_context(blocks: list[str], query: str) -> None:
@@ -5571,8 +5592,8 @@ def _add_vpap_race_context(blocks: list[str], query: str) -> None:
                 )
         conn.close()
         blocks.append("\n".join(lines))
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
 
 
 def _add_congress_hearings_context(blocks: list[str], query: str, terms: list[str]) -> None:
@@ -5622,8 +5643,8 @@ def _add_congress_hearings_context(blocks: list[str], query: str, terms: list[st
             comm_s = f" — {committee}" if committee else ""
             lines.append(f"• {hdate}: {title} ({nm}, {chamber}{comm_s})")
         blocks.append("\n".join(lines))
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
 
 
 # ── Vote similarity ────────────────────────────────────────────────────────────
@@ -5821,8 +5842,8 @@ def _add_vote_similarity_context(blocks: list[str], query: str) -> None:
         ]
         blocks.append("\n".join(lines))
 
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
 
 
 
@@ -5870,7 +5891,8 @@ def _load_election_json(year: int) -> dict:
     try:
         with path.open(encoding="utf-8") as f:
             _election_json_cache[year] = json.load(f)
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         _election_json_cache[year] = {}
     return _election_json_cache[year]
 

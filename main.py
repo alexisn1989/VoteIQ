@@ -44,6 +44,25 @@ import ingest_news
 
 load_dotenv()
 
+# ── Logging & error reporting ─────────────────────────────────────────────────
+# Root config so module loggers (voteiq.*) emit to stdout on Render.
+# funcName/lineno in the format lets suppressed-exception warnings pinpoint
+# exactly which context builder or handler swallowed an error.
+import logging
+
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)s %(name)s:%(funcName)s:%(lineno)d %(message)s",
+)
+
+if os.getenv("SENTRY_DSN"):
+    try:
+        import sentry_sdk
+
+        sentry_sdk.init(dsn=os.getenv("SENTRY_DSN"), traces_sample_rate=0.0)
+    except ImportError:
+        logging.getLogger(__name__).warning("SENTRY_DSN set but sentry-sdk not installed")
+
 
 def _require_admin(
     token: str | None = Query(default=None),

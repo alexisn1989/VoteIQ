@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import logging
 import json
 import os
 import re
@@ -39,6 +40,8 @@ from voteiq.services.database_context import (
 )
 from voteiq.services.data_meta import freshness_lookup as _freshness_lookup
 from voteiq.services.truth import get_truth_debug, log_truth_event
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["chat"])
 
@@ -116,8 +119,8 @@ def _truth_chat_response(
             rag_docs=rag_docs or [],
             final_answer=reply,
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
     return ChatResponse(reply=reply)
 
 
@@ -310,7 +313,8 @@ def _external_polling_reply(query: str) -> str | None:
                 """
             ).fetchall()
         conn.close()
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         return None
 
     if not rows and not article_rows:
@@ -715,7 +719,8 @@ def _load_admin_state() -> dict:
         for key, value in default.items():
             data.setdefault(key, value)
         return data
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         return default
 
 
@@ -866,6 +871,7 @@ def _run_admin_agent(
         _record_admin_agent_call(mode, True, elapsed)
         return response.content[0].text
     except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         elapsed = int((datetime.utcnow() - start).total_seconds() * 1000)
         _record_admin_agent_call(mode, False, elapsed)
         import main as _m
@@ -1356,7 +1362,8 @@ def _build_bills_context(
 
         try:
             gov_block = _m._fetch_governor_action_context(user_query, bill_numbers=mentioned or None)
-        except Exception:
+        except Exception as exc:
+            logger.warning("suppressed exception: %s", exc)
             gov_block = ""
         if gov_block and gov_block not in seen_docs:
             seen_docs.add(gov_block)
@@ -1364,7 +1371,8 @@ def _build_bills_context(
 
         try:
             eo_block = _m._fetch_governor_eo_context(user_query)
-        except Exception:
+        except Exception as exc:
+            logger.warning("suppressed exception: %s", exc)
             eo_block = ""
         if eo_block and eo_block not in seen_docs:
             seen_docs.add(eo_block)
@@ -1500,15 +1508,16 @@ def _local_bills_fallback_context(_m, req, user_query: str) -> str:
             gov_fb = _m._fetch_governor_action_context(user_query)
             if gov_fb and gov_fb not in pieces:
                 pieces.append(gov_fb)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("suppressed exception: %s", exc)
         try:
             gov_eo_fb = _m._fetch_governor_eo_context(user_query)
             if gov_eo_fb and gov_eo_fb not in pieces:
                 pieces.append(gov_eo_fb)
-        except Exception:
-            pass
-    except Exception:
+        except Exception as exc:
+            logger.warning("suppressed exception: %s", exc)
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         return "\n\n".join(pieces)
 
     return "\n\n".join(pieces)
@@ -1634,10 +1643,12 @@ def _direct_governor_veto_reply(user_query: str) -> str:
                         LIMIT 5
                         """
                     ).fetchall()
-                except Exception:
+                except Exception as exc:
+                    logger.warning("suppressed exception: %s", exc)
                     eo_rows_direct = []
             conn.close()
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         veto_rows = []
         signed_rows = []
         eo_rows_direct = []
@@ -1804,6 +1815,7 @@ async def admin_chat(req: AdminChatRequest, _: None = Depends(require_admin_toke
         )
         return ChatResponse(reply=response.content[0].text)
     except Exception as e:
+        logger.warning("suppressed exception: %s", e)
         import main as _m
         return ChatResponse(reply=_m._friendly_claude_error(e))
 
@@ -1951,8 +1963,8 @@ async def admin_qa_results(
         try:
             if datetime.fromisoformat(result.get("test_date", "")) < cutoff:
                 continue
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("suppressed exception: %s", exc)
         results.append(result)
         if len(results) >= limit:
             break
@@ -1978,7 +1990,8 @@ def _admin_table_count(db_path: str, table: str) -> int | None:
         count = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
         conn.close()
         return int(count)
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         return None
 
 
@@ -2251,10 +2264,12 @@ def _find_identity_name(user_query: str) -> str:
                     for row in conn.execute(f"SELECT DISTINCT {column} FROM {table} WHERE {column} IS NOT NULL")
                     if row[0]
                 )
-            except Exception:
+            except Exception as exc:
+                logger.warning("suppressed exception: %s", exc)
                 continue
         conn.close()
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         return ""
 
     best_name = ""
@@ -2377,7 +2392,8 @@ def _direct_identity_crosswalk_reply(user_query: str) -> str:
             (name_like,),
         ).fetchall()
         conn.close()
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         return ""
 
     aliases: set[str] = {name}
@@ -2442,7 +2458,8 @@ def _json_text_list(value: str | None, limit: int = 12) -> list[str]:
         return []
     try:
         parsed = json.loads(value)
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         parsed = None
     if isinstance(parsed, list):
         return [str(item).strip() for item in parsed if str(item).strip()][:limit]
@@ -2584,7 +2601,8 @@ def _direct_governor_correlation_reply(user_query: str) -> str:
         ).fetchall()
 
         conn.close()
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         return ""
 
     if not action_counts:
@@ -2602,7 +2620,8 @@ def _direct_governor_correlation_reply(user_query: str) -> str:
     # Supplement: va_cf_schedule_a aggregated by candidate name (first+last key)
     try:
         sbe_supplement = _m._get_sbe_supplement()
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         sbe_supplement = {}
 
     def _norm_first_last(name: str) -> str:
@@ -2793,7 +2812,8 @@ def _direct_governor_eo_reply(user_query: str) -> str:
                 """
             ).fetchall()
             conn.close()
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         rows = []
 
     if not rows:
@@ -2992,10 +3012,12 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
                     stats = sector_totals.setdefault(sector, {"total": 0.0, "records": 0})
                     stats["total"] = float(stats["total"]) + float(row["amount"] or 0)
                     stats["records"] = int(stats["records"]) + 1
-            except Exception:
+            except Exception as exc:
+                logger.warning("suppressed exception: %s", exc)
                 sector_totals = {}
         conn.close()
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         pass  # Finance tables unavailable — continue with legislative record
 
     # Governor actions — required; return "" only if this block fails
@@ -3043,7 +3065,8 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
                 LIMIT 8
                 """
             ).fetchall()
-        except Exception:
+        except Exception as exc:
+            logger.warning("suppressed exception: %s", exc)
             # chapter_number may not exist in older schema
             signed_rows = conn.execute(
                 """
@@ -3068,11 +3091,13 @@ def _direct_spanberger_governor_overview_reply(user_query: str) -> str:
             eo_total = conn.execute(
                 "SELECT COUNT(*) FROM governor_executive_orders"
             ).fetchone()[0]
-        except Exception:
+        except Exception as exc:
+            logger.warning("suppressed exception: %s", exc)
             eo_rows = []
             eo_total = 0
         conn.close()
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         return ""
 
     swearing_url = "https://www.governor.virginia.gov/newsroom/news-releases/2026/january-releases/name-1111196-en.html"
@@ -3296,7 +3321,8 @@ def _direct_va_finance_reply(user_query: str, premium: bool = False) -> str:
         ).fetchall()
 
         conn.close()
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         return ""
 
     committee_url = (
@@ -3470,8 +3496,8 @@ def _direct_donor_alignment_reply(user_query: str) -> str:
                 _dc.close()
                 if _matched:
                     name_candidates = _matched
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("suppressed exception: %s", exc)
     if not name_candidates:
         return ""
 
@@ -3551,7 +3577,8 @@ def _direct_donor_alignment_reply(user_query: str) -> str:
 
         try:
             by_sector = _json.loads(row["by_sector_json"] or "[]")
-        except Exception:
+        except Exception as exc:
+            logger.warning("suppressed exception: %s", exc)
             by_sector = []
 
         # ── Correct the donor-dollar framing ─────────────────────────
@@ -3612,8 +3639,8 @@ def _direct_donor_alignment_reply(user_query: str) -> str:
                             nonind_amt, nonind_name = a, e.get("sector")
                 if nonind_amt <= donor_amt:
                     nonind_name = None
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("suppressed exception: %s", exc)
 
         # ── Statistical significance: two-proportion z-test ──────────
         # Raw percentage-point gaps mislead at low baselines: +5 pts on a
@@ -3754,7 +3781,8 @@ def _direct_donor_alignment_reply(user_query: str) -> str:
 
         return "\n".join(lines)
 
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         return ""
 
 
@@ -3995,7 +4023,8 @@ def _direct_va_legislator_reply(user_query: str, premium: bool = False) -> str:
                 district = _dist_row[0]
 
         conn.close()
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         return ""
 
     # ── Targeted responses (suppress full brief) ──────────────────────────────
@@ -4020,7 +4049,8 @@ def _direct_va_legislator_reply(user_query: str, premium: bool = False) -> str:
                             lines.append(f"{i}. {s['sector']} — ${amount:,.0f}{pct_str}")
                     else:
                         lines.append(f"Top sector: {finance['top_sector']} ({finance['top_sector_pct']}%)")
-                except Exception:
+                except Exception as exc:
+                    logger.warning("suppressed exception: %s", exc)
                     lines.append(f"Top sector: {finance['top_sector']} ({finance['top_sector_pct']}%)")
             else:
                 lines.append(f"Top sector: {finance['top_sector']} ({finance['top_sector_pct']}%)")
@@ -4217,8 +4247,8 @@ def _direct_va_legislator_reply(user_query: str, premium: bool = False) -> str:
                     for s in sectors[:8]:
                         lines.append(f"| {s['sector']} | ${float(s['total']):,.0f} |")
                     lines.append("")
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("suppressed exception: %s", exc)
     else:
         lines += [
             "#### F1a. Incoming Contributions",
@@ -4336,7 +4366,8 @@ def _fetch_floor_statements(
                 + (f"\nSource: {url}" if url else "")
             )
         return "\n\n".join(blocks)
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         return ""
 
 
@@ -4466,7 +4497,8 @@ def _fetch_transcript_context(query: str, bill_id: str | None = None,
                 )
 
         conn.close()
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         return ""
 
     return "\n\n".join(blocks)
@@ -5074,7 +5106,8 @@ def _direct_va_house_fec_candidate_reply(user_query: str) -> str:
         ]
         return "\n".join(lines)
 
-    except Exception:
+    except Exception as exc:
+        logger.warning("suppressed exception: %s", exc)
         return ""
 
 
@@ -5521,6 +5554,7 @@ When citing a vote, include the bill name and Yea/Nay. When citing donors or ind
             rag_docs=rag_docs_payload,
         )
     except Exception as e:
+        logger.warning("suppressed exception: %s", e)
         return _truth_chat_response(
             query=last_question,
             reply=_m._friendly_claude_error(e),
@@ -5657,6 +5691,7 @@ Answer questions about these results clearly and concisely (2-4 sentences). Be f
         )
         return ChatResponse(reply=reply)
     except Exception as e:
+        logger.warning("suppressed exception: %s", e)
         return ChatResponse(reply=_m._friendly_claude_error(e))
 
 
@@ -5699,6 +5734,7 @@ async def bills_chat(request: Request, req: BillsChatRequest):
             locality=req.locality or "",
         )
     except Exception as e:
+        logger.warning("suppressed exception: %s", e)
         return ChatResponse(reply=_m._friendly_claude_error(e))
     context = ctx_data["context"]
     exact_lookup_note = ctx_data["exact_lookup_note"]
@@ -5801,6 +5837,7 @@ async def bills_chat(request: Request, req: BillsChatRequest):
             _m._set_cached_reply(_ck, reply)
         return ChatResponse(reply=reply)
     except Exception as e:
+        logger.warning("suppressed exception: %s", e)
         return ChatResponse(reply=_m._friendly_claude_error(e))
 
 
@@ -5857,6 +5894,7 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
             locality    = req.locality    or "",
         )
     except Exception as _ctx_err:
+        logger.warning("suppressed exception: %s", _ctx_err)
         async def _err_gen(msg=_m._friendly_claude_error(_ctx_err)):
             yield f"data: {json.dumps({'error': msg})}\n\n"
             yield "data: [DONE]\n\n"
@@ -5994,6 +6032,7 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
             if _ck:
                 _m._set_cached_reply(_ck, full_reply)
         except Exception as e:
+            logger.warning("suppressed exception: %s", e)
             yield f"data: {json.dumps({'error': _m._friendly_claude_error(e)})}\n\n"
         yield "data: [DONE]\n\n"
 
@@ -6095,6 +6134,7 @@ async def analyst_chat(request: Request, req: BillsChatRequest):
             locality=req.locality or "",
         )
     except Exception as e:
+        logger.warning("suppressed exception: %s", e)
         return ChatResponse(reply=_m._friendly_claude_error(e))
 
     context = ctx_data["context"]
@@ -6176,6 +6216,7 @@ Retrieved context:
 
         return ChatResponse(reply=reply)
     except Exception as e:
+        logger.warning("suppressed exception: %s", e)
         return ChatResponse(reply=_m._friendly_claude_error(e))
 
 
@@ -6237,6 +6278,7 @@ DO NOT automatically send escalations. Draft them for human review."""
 
         return ChatResponse(reply=reply)
     except Exception as e:
+        logger.warning("suppressed exception: %s", e)
         return ChatResponse(reply=_m._friendly_claude_error(e))
 
 
@@ -6288,6 +6330,7 @@ Available Database Context (SQL/Structured Records - Tier 1):
         reply = _m._claude_reply(deep_researcher_prompt, req.messages, max_tokens=2000, cache_ttl="1h")
         return ChatResponse(reply=reply)
     except Exception as e:
+        logger.warning("suppressed exception: %s", e)
         return ChatResponse(reply=_m._friendly_claude_error(e))
 
 
@@ -6342,6 +6385,7 @@ Available Database Context (Verified Records):
         reply = _m._claude_reply(visual_explainer_prompt, req.messages, max_tokens=1500, cache_ttl="1h")
         return ChatResponse(reply=reply)
     except Exception as e:
+        logger.warning("suppressed exception: %s", e)
         return ChatResponse(reply=_m._friendly_claude_error(e))
 
 
@@ -6545,6 +6589,7 @@ async def _investigate_data_quality(complaint: str, evidence_url: str, db_path: 
         investigation += f"\n### Evidence Provided\nURL: {evidence_url}\n"
 
     except Exception as e:
+        logger.warning("suppressed exception: %s", e)
         investigation += f"\n❌ Database query error: {str(e)}\n"
     finally:
         conn.close()
@@ -7684,6 +7729,7 @@ Emit only JSON (object or array of objects). No prose."""
         )
         response_text = response.content[0].text.strip()
     except Exception as e:
+        logger.warning("suppressed exception: %s", e)
         return StructuredExtractorResponse(
             status="parse_failed",
             extraction_type=req.extraction_type,
