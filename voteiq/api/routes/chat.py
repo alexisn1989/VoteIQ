@@ -1776,7 +1776,12 @@ def _direct_voteiq_source_hierarchy_reply(user_query: str) -> str:
 
 
 @router.get("/admin/chat", response_class=HTMLResponse)
-def admin_chat_page(_: None = Depends(require_admin_token)):
+def admin_chat_page():
+    # Unauthenticated shell by design: the page contains no data and prompts
+    # for the admin token in the UI, sending it as a Bearer header. All data
+    # stays behind the POST endpoints, which still enforce require_admin_token.
+    # (Browsers can't send an Authorization header on page load, and the old
+    # ?token= URL form leaked the token into logs and history.)
     with open(os.path.join(_BASE_DIR, "templates", "admin_chat.html"), encoding="utf-8") as f:
         return f.read()
 

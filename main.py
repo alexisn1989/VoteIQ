@@ -64,23 +64,9 @@ if os.getenv("SENTRY_DSN"):
         logging.getLogger(__name__).warning("SENTRY_DSN set but sentry-sdk not installed")
 
 
-def _require_admin(
-    token: str | None = Query(default=None),
-    authorization: str | None = Header(default=None),
-) -> None:
-    """FastAPI dependency — enforces ADMIN_TOKEN on admin/debug endpoints.
-    Accepts the token as ?token= query param or Authorization: Bearer <token>.
-    If ADMIN_TOKEN is not set the app is in dev mode and all requests pass.
-    """
-    expected = os.getenv("ADMIN_TOKEN", "")
-    if not expected:
-        return
-    bearer = ""
-    if authorization and authorization.lower().startswith("bearer "):
-        bearer = authorization[7:].strip()
-    provided = bearer or (token or "")
-    if provided != expected:
-        raise HTTPException(status_code=403, detail="Invalid or missing admin token")
+# Single admin-auth implementation lives in voteiq.api.dependencies —
+# Bearer-header only, constant-time comparison, fails closed in production.
+from voteiq.api.dependencies import require_admin_token as _require_admin
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 

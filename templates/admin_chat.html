@@ -93,15 +93,38 @@
         <input id="maxTokens" type="number" min="200" max="4000" value="1200" />
       </div>
       <div class="row">
-        <p class="hint">Protected by ADMIN_TOKEN. Use <code>?token=...</code> in the page URL or set an Authorization bearer token for direct API calls.</p>
+        <label for="adminToken">Admin token</label>
+        <input id="adminToken" type="password" placeholder="ADMIN_TOKEN" autocomplete="off" />
+      </div>
+      <div class="row">
+        <p class="hint">Protected by ADMIN_TOKEN — sent as an Authorization bearer header, kept in this tab's sessionStorage only.</p>
       </div>
     </aside>
   </main>
 
   <script>
     const history = [];
+    const tokenInput = document.getElementById('adminToken');
+
+    // Back-compat: absorb a legacy ?token= URL into sessionStorage, then
+    // scrub it from the address bar so it stops leaking into history/logs.
     const params = new URLSearchParams(location.search);
-    const token = params.get('token') || '';
+    if (params.get('token')) {
+      sessionStorage.setItem('adminToken', params.get('token'));
+      params.delete('token');
+      const qs = params.toString();
+      window.history.replaceState(null, '', location.pathname + (qs ? '?' + qs : ''));
+    }
+    tokenInput.value = sessionStorage.getItem('adminToken') || '';
+    tokenInput.addEventListener('change', () => {
+      sessionStorage.setItem('adminToken', tokenInput.value.trim());
+    });
+
+    function adminToken() {
+      const t = tokenInput.value.trim();
+      if (t) sessionStorage.setItem('adminToken', t);
+      return t;
+    }
 
     function addMsg(role, text) {
       const box = document.getElementById('messages');
@@ -129,10 +152,12 @@
       const thinking = addMsg('assistant', 'Thinking...');
       send.disabled = true;
       try {
-        const url = '/admin/chat' + (token ? ('?token=' + encodeURIComponent(token)) : '');
-        const res = await fetch(url, {
+        const token = adminToken();
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        const res = await fetch('/admin/chat', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             mode: document.getElementById('mode').value,
             query: question,
