@@ -519,45 +519,11 @@ def _poll_ingest_background() -> None:
         print(f"[polls] Startup ingestion failed: {result.get('error') or result.get('stderr')}")
 
 
-def _fec_pacs_are_fresh(max_age_days: int = 7) -> bool:
-    """Return True if FEC PAC data was ingested within max_age_days."""
-    from datetime import datetime, timezone, timedelta
-    try:
-        conn = sqlite3.connect(_POLLS_DB)
-        row = conn.execute("SELECT MAX(fetched_at) FROM fec_industry_totals").fetchone()
-        conn.close()
-        if row and row[0]:
-            last = datetime.fromisoformat(row[0].replace("Z", "+00:00"))
-            return datetime.now(timezone.utc) - last < timedelta(days=max_age_days)
-    except Exception:
-        pass
-    return False
-
-
-def _run_fec_ingest_background() -> None:
-    """Run ingest_fec_pacs.py for all three cycles in a background thread."""
-    if _fec_pacs_are_fresh():
-        print("[fec] PAC data fresh — skipping startup ingestion.")
-        return
-    print("[fec] PAC data stale — starting background ingestion (all cycles)…")
-    script = os.path.join(BASE_DIR, "ingest_fec_pacs.py")
-    if not os.path.exists(script):
-        print("[fec] ingest_fec_pacs.py not found — skipping.")
-        return
-    try:
-        result = subprocess.run(
-            [sys.executable, script],
-            capture_output=True, text=True, timeout=1800,  # 30 min max
-        )
-        if result.returncode == 0:
-            _load_pac_cache()
-            print("[fec] Background ingestion complete — PAC cache reloaded.")
-        else:
-            print(f"[fec] Ingestion failed (rc={result.returncode}): {result.stderr[-500:]}")
-    except subprocess.TimeoutExpired:
-        print("[fec] Ingestion timed out after 30 minutes.")
-    except Exception as exc:
-        print(f"[fec] Ingestion error: {exc}")
+# FEC PAC ingestion moved to the Render cron "voteiq-fec-weekly" →
+# /api/admin/ingest-fec-pacs. The old startup thread re-ran a 30-minute FEC
+# crawl inside the web container on every deploy while data was stale (and
+# both gunicorn workers launched it), repeatedly timing out and pressuring
+# the 512MB instance.
 
 
 def _run_federal_alignment_background() -> None:
@@ -829,7 +795,6 @@ async def _startup_ingest() -> None:
     except Exception as _exc:
         print(f"[startup] _cleanup_stale_bill_descriptions failed (non-fatal): {_exc}")
     threading.Thread(target=_poll_ingest_background, daemon=True).start()
-    threading.Thread(target=_run_fec_ingest_background, daemon=True).start()
     threading.Thread(target=_run_fec_2026_background, daemon=True).start()
     threading.Thread(target=_run_federal_alignment_background, daemon=True).start()
     threading.Thread(target=_run_party_breakdown_background, daemon=True).start()

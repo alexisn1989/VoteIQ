@@ -20,6 +20,9 @@ services:
         value: /var/data
       - key: ADMIN_TOKEN
         generateValue: true   # auto-generates a secret; copy to cron job below
+      - key: FEC_API_KEY
+        sync: false   # set in dashboard — without it FEC ingest falls back to
+                      # DEMO_KEY (40 req/hr) and can never finish in 30 min
     health:
       path: /health
       pollIntervalSeconds: 30
@@ -108,6 +111,25 @@ services:
     schedule: "0 */6 * * *"   # Every 6 hours
     buildCommand: echo "no build"
     startCommand: python scripts/trigger_va_polls_gemini.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
+  # ── FEC PAC/industry weekly refresh ────────────────────────────────────────
+  # Was previously a startup thread in main.py that re-ran a 30-minute FEC
+  # crawl inside the web container on every deploy while data was stale (both
+  # gunicorn workers launched it), repeatedly timing out against the FEC rate
+  # limit. Calls /api/admin/ingest-fec-pacs (non-blocking) so it runs inside
+  # the container that owns /var/data/polls.db and FEC_API_KEY.
+  - type: cron
+    name: voteiq-fec-weekly
+    runtime: python311
+    plan: starter
+    schedule: "0 4 * * 1"   # Every Monday at 04:00 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_fec_pacs.py
     envVars:
       - key: VOTEIQ_SERVICE_URL
         value: https://voteiq.io
