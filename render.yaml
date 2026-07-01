@@ -96,6 +96,24 @@ services:
       - key: ADMIN_TOKEN
         sync: false
 
+  # ── Virginia election polls (Gemini news extraction) ───────────────────────
+  # Was previously a local-machine scheduled task; moved to Render cron since
+  # it only fired while a laptop + Claude Code happened to be running, causing
+  # multi-day gaps. Calls /api/admin/ingest-polls?use_gemini=true so it runs
+  # inside the container that owns /var/data/polls.db and GEMINI_API_KEY.
+  - type: cron
+    name: voteiq-polls-gemini
+    runtime: python311
+    plan: starter
+    schedule: "0 */6 * * *"   # Every 6 hours
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_va_polls_gemini.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
   # ── SBE local-race campaign finance monthly refresh ────────────────────────
   # Virginia SBE posts new filing windows quarterly (Jan/Apr/Jul/Oct).
   # Running on the 1st of each month at 05:00 UTC picks up new filings
