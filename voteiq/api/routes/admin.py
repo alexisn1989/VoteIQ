@@ -80,9 +80,130 @@ def admin_ingest_congress(
     for script_name, args in scripts:
         results[script_name] = _run_script(script_name, args, timeout=600)
 
-    import main as _m
-    _m._federal_members_cache = None
+    # Reload in-memory PAC/votes caches so the currently-running process
+    # picks up what this call just ingested — the old startup thread did this
+    # unconditionally on every boot; now it's the ingest call's job instead.
+    _reload_caches()
     return {"ok": all(v.get("ok") for v in results.values()), "scripts": results}
+
+
+@router.post("/ingest-fec-2026")
+def admin_ingest_fec_2026(
+    background: BackgroundTasks,
+    _: None = Depends(require_admin_token),
+):
+    """Seed/refresh fec_industry_totals for the 2026 cycle (non-blocking)."""
+    script = os.path.join(_BASE_DIR, "scripts", "ingest_fec_2026.py")
+    if not os.path.exists(script):
+        return {"ok": False, "error": "scripts/ingest_fec_2026.py not found"}
+
+    def _run():
+        try:
+            result = subprocess.run(
+                [sys.executable, script, "--cycle", "2026"],
+                capture_output=True, text=True, timeout=1800,
+            )
+            if result.returncode == 0:
+                _reload_caches()
+                print("[fec-2026] Admin ingestion complete — caches reloaded.")
+            else:
+                print(f"[fec-2026] Admin ingestion failed: {result.stderr[-500:]}")
+        except subprocess.TimeoutExpired:
+            print("[fec-2026] Admin ingestion timed out after 30 minutes.")
+        except Exception as exc:
+            print(f"[fec-2026] Admin ingestion error: {exc}")
+
+    background.add_task(_run)
+    return {"ok": True, "message": "FEC 2026 ingestion started in background."}
+
+
+@router.post("/ingest-federal-alignment")
+def admin_ingest_federal_alignment(
+    background: BackgroundTasks,
+    _: None = Depends(require_admin_token),
+):
+    """Rebuild federal vote-donor alignment rows (non-blocking)."""
+    script = os.path.join(_BASE_DIR, "build_federal_vote_alignment.py")
+    if not os.path.exists(script):
+        return {"ok": False, "error": "build_federal_vote_alignment.py not found"}
+
+    def _run():
+        try:
+            result = subprocess.run(
+                [sys.executable, script],
+                capture_output=True, text=True, timeout=300,
+            )
+            if result.returncode == 0:
+                print("[fed-alignment] Admin ingestion complete.")
+            else:
+                print(f"[fed-alignment] Admin ingestion failed: {result.stderr[-400:]}")
+        except subprocess.TimeoutExpired:
+            print("[fed-alignment] Admin ingestion timed out.")
+        except Exception as exc:
+            print(f"[fed-alignment] Admin ingestion error: {exc}")
+
+    background.add_task(_run)
+    return {"ok": True, "message": "Federal vote-donor alignment build started in background."}
+
+
+@router.post("/ingest-party-breakdown")
+def admin_ingest_party_breakdown(
+    background: BackgroundTasks,
+    _: None = Depends(require_admin_token),
+):
+    """Refresh congressional party-breakdown / unity stats (non-blocking)."""
+    script = os.path.join(_BASE_DIR, "ingest_party_breakdown.py")
+    if not os.path.exists(script):
+        return {"ok": False, "error": "ingest_party_breakdown.py not found"}
+
+    def _run():
+        try:
+            result = subprocess.run(
+                [sys.executable, script],
+                capture_output=True, text=True, timeout=1800,
+            )
+            if result.returncode == 0:
+                print("[party-breakdown] Admin ingestion complete.")
+            else:
+                print(f"[party-breakdown] Admin ingestion failed: {result.stderr[-400:]}")
+        except subprocess.TimeoutExpired:
+            print("[party-breakdown] Admin ingestion timed out after 30 minutes.")
+        except Exception as exc:
+            print(f"[party-breakdown] Admin ingestion error: {exc}")
+
+    background.add_task(_run)
+    return {"ok": True, "message": "Party breakdown ingestion started in background."}
+
+
+@router.post("/ingest-fec-schedule-e")
+def admin_ingest_fec_schedule_e(
+    background: BackgroundTasks,
+    _: None = Depends(require_admin_token),
+):
+    """Refresh FEC Schedule E independent-expenditure data (non-blocking)."""
+    if not os.getenv("FEC_API_KEY"):
+        return {"ok": False, "error": "FEC_API_KEY not set"}
+    script = os.path.join(_BASE_DIR, "ingest_fec_schedule_e.py")
+    if not os.path.exists(script):
+        return {"ok": False, "error": "ingest_fec_schedule_e.py not found"}
+
+    def _run():
+        try:
+            result = subprocess.run(
+                [sys.executable, script],
+                capture_output=True, text=True, timeout=1800,
+            )
+            if result.returncode == 0:
+                print("[schedule-e] Admin ingestion complete.")
+            else:
+                print(f"[schedule-e] Admin ingestion failed: {result.stderr[-500:]}")
+        except subprocess.TimeoutExpired:
+            print("[schedule-e] Admin ingestion timed out after 30 minutes.")
+        except Exception as exc:
+            print(f"[schedule-e] Admin ingestion error: {exc}")
+
+    background.add_task(_run)
+    return {"ok": True, "message": "FEC Schedule E ingestion started in background."}
 
 
 @router.post("/ingest-norfolk-agenda")

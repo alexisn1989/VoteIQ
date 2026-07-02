@@ -136,6 +136,107 @@ services:
       - key: ADMIN_TOKEN
         sync: false
 
+  # ── Congressional committee assignments weekly refresh ─────────────────────
+  # Was previously a startup thread (7-day freshness check) that re-fetched
+  # from unitedstates/congress-legislators on every deploy. Calls the existing
+  # /api/admin/ingest-committees endpoint (non-blocking).
+  - type: cron
+    name: voteiq-committees-weekly
+    runtime: python311
+    plan: starter
+    schedule: "0 4 * * 2"   # Tuesday at 04:00 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_committees.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
+  # ── FEC Schedule E (independent expenditures) weekly refresh ───────────────
+  # Was previously a startup thread that re-ran a 30-minute FEC crawl on every
+  # deploy while data was stale (7-day freshness check), on both gunicorn
+  # workers. Calls the new /api/admin/ingest-fec-schedule-e endpoint.
+  - type: cron
+    name: voteiq-schedule-e-weekly
+    runtime: python311
+    plan: starter
+    schedule: "0 5 * * 2"   # Tuesday at 05:00 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_fec_schedule_e.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
+  # ── Classic multi-source poll refresh (FiveThirtyEight/VoteHub/news) ───────
+  # Distinct from voteiq-polls-gemini above — this is the non-Gemini source
+  # set. Was a startup thread with a 23-hour freshness check; daily cadence
+  # matches that window. Calls the existing /api/admin/ingest-polls endpoint.
+  - type: cron
+    name: voteiq-polls-classic-daily
+    runtime: python311
+    plan: starter
+    schedule: "0 9 * * *"   # Daily at 09:00 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_polls_classic.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
+  # ── FEC 2026-cycle industry totals (one-time-per-disk seed) ─────────────────
+  # Was a startup thread that skips forever once fec_industry_totals has any
+  # 2026 rows — monthly cadence is a safety net in case the disk is rebuilt.
+  # Calls the new /api/admin/ingest-fec-2026 endpoint.
+  - type: cron
+    name: voteiq-fec-2026-monthly
+    runtime: python311
+    plan: starter
+    schedule: "0 5 2 * *"   # 2nd of each month at 05:00 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_fec_2026.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
+  # ── Federal vote-donor alignment monthly rebuild ────────────────────────────
+  # Was a startup thread with a 30-day freshness check. Calls the new
+  # /api/admin/ingest-federal-alignment endpoint.
+  - type: cron
+    name: voteiq-federal-alignment-monthly
+    runtime: python311
+    plan: starter
+    schedule: "0 5 3 * *"   # 3rd of each month at 05:00 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_federal_alignment.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
+  # ── Congressional party-breakdown / unity stats monthly refresh ────────────
+  # Was a startup thread that skips once fetched>=500 and stats>=5 rows exist
+  # (populate-once shape, no time-based TTL) — monthly cadence is a safety
+  # net. Calls the new /api/admin/ingest-party-breakdown endpoint.
+  - type: cron
+    name: voteiq-party-breakdown-monthly
+    runtime: python311
+    plan: starter
+    schedule: "0 5 4 * *"   # 4th of each month at 05:00 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_party_breakdown.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
   # ── SBE local-race campaign finance monthly refresh ────────────────────────
   # Virginia SBE posts new filing windows quarterly (Jan/Apr/Jul/Oct).
   # Running on the 1st of each month at 05:00 UTC picks up new filings
