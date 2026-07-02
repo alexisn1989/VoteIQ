@@ -121,7 +121,13 @@ def _connect(db_key: str) -> sqlite3.Connection | None:
     path = _resolve_db_path(db_key)
     if path is None:
         return None
-    conn = sqlite3.connect(str(path), timeout=30)
+    # Context builders never write, so open read-only: an ro connection can't
+    # take a write lock, never blocks the ingest writer, and can't corrupt the
+    # DB. Fall back to the old read-write open on any URI/permission edge case.
+    try:
+        conn = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True, timeout=30)
+    except sqlite3.OperationalError:
+        conn = sqlite3.connect(str(path), timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA busy_timeout=30000")
     if cache is not None:

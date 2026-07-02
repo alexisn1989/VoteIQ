@@ -767,7 +767,22 @@ def _congress_ingest_background() -> None:
     print("[congress] In-memory caches reloaded from persistent disk.")
 
 
+def _enable_wal_mode() -> None:
+    """Switch polls.db to WAL journal mode so readers (chat queries) and the
+    writer (ingest crons, runtime seeds) stop blocking each other.
+    journal_mode is persistent on the database file, so this is a no-op after
+    the first boot — including when the second gunicorn worker runs it."""
+    try:
+        conn = sqlite3.connect(_POLLS_DB, timeout=30)
+        mode = conn.execute("PRAGMA journal_mode=WAL").fetchone()[0]
+        conn.close()
+        logging.getLogger(__name__).info("polls.db journal_mode=%s", mode)
+    except Exception as exc:
+        logging.getLogger(__name__).warning("could not enable WAL on polls.db: %s", exc)
+
+
 async def _startup_ingest() -> None:
+    _enable_wal_mode()   # before the ingest threads open their connections
     try:
         _ensure_data_meta()   # create __data_meta table if not present
     except Exception as _exc:
