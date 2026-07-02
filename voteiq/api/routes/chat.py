@@ -38,6 +38,12 @@ from voteiq.services.database_context import (
     build_database_context,
     check_sponsorship_claims,
 )
+from voteiq.llm.reply import (
+    _claude_reply,
+    _friendly_claude_error,
+    _gemini_reply,
+    _graceful_truncate,
+)
 from voteiq.services.data_meta import freshness_lookup as _freshness_lookup
 from voteiq.services.truth import get_truth_debug, log_truth_event
 
@@ -875,7 +881,7 @@ def _run_admin_agent(
         elapsed = int((datetime.utcnow() - start).total_seconds() * 1000)
         _record_admin_agent_call(mode, False, elapsed)
         import main as _m
-        return _m._friendly_claude_error(exc)
+        return _friendly_claude_error(exc)
 
 
 class ChatMessage(BaseModel):
@@ -1822,7 +1828,7 @@ async def admin_chat(req: AdminChatRequest, _: None = Depends(require_admin_toke
     except Exception as e:
         logger.warning("suppressed exception: %s", e)
         import main as _m
-        return ChatResponse(reply=_m._friendly_claude_error(e))
+        return ChatResponse(reply=_friendly_claude_error(e))
 
 
 @router.post("/admin/chat")
@@ -5533,8 +5539,8 @@ When citing a vote, include the bill name and Yea/Nay. When citing donors or ind
         max_tokens = 1500
 
     try:
-        reply = _m._graceful_truncate(
-            _m._claude_reply(system_prompt, req.messages, max_tokens=max_tokens,
+        reply = _graceful_truncate(
+            _claude_reply(system_prompt, req.messages, max_tokens=max_tokens,
                              model=tier_model, cache_ttl=cache_ttl)
         )
         # Add sources footer if sources were used
@@ -5562,7 +5568,7 @@ When citing a vote, include the bill name and Yea/Nay. When citing donors or ind
         logger.warning("suppressed exception: %s", e)
         return _truth_chat_response(
             query=last_question,
-            reply=_m._friendly_claude_error(e),
+            reply=_friendly_claude_error(e),
             sql_queries=[
                 "build_database_context",
                 "_fetch_vote_context",
@@ -5645,7 +5651,7 @@ Additional rules:
 - Never tell people how to vote or express opinions on representatives."""
 
     try:
-        reply = _m._gemini_reply(system_prompt, req.messages, max_tokens=max_tokens)
+        reply = _gemini_reply(system_prompt, req.messages, max_tokens=max_tokens)
         reply = _with_source_line(reply)
         return ChatResponse(reply=reply)
     except Exception as e:
@@ -5688,7 +5694,7 @@ Answer questions about these results clearly and concisely (2-4 sentences). Be f
     cache_ttl = "1h" if session_type == "research" else "5m"
 
     try:
-        reply = _m._claude_reply(
+        reply = _claude_reply(
             system_prompt,
             req.messages,
             max_tokens=TIER_MAX_TOKENS.get(req.tier, TIER_MAX_TOKENS["free"]),
@@ -5697,7 +5703,7 @@ Answer questions about these results clearly and concisely (2-4 sentences). Be f
         return ChatResponse(reply=reply)
     except Exception as e:
         logger.warning("suppressed exception: %s", e)
-        return ChatResponse(reply=_m._friendly_claude_error(e))
+        return ChatResponse(reply=_friendly_claude_error(e))
 
 
 # ── /api/bills-chat ───────────────────────────────────────────────────────────
@@ -5740,7 +5746,7 @@ async def bills_chat(request: Request, req: BillsChatRequest):
         )
     except Exception as e:
         logger.warning("suppressed exception: %s", e)
-        return ChatResponse(reply=_m._friendly_claude_error(e))
+        return ChatResponse(reply=_friendly_claude_error(e))
     context = ctx_data["context"]
     exact_lookup_note = ctx_data["exact_lookup_note"]
     use_haiku = ctx_data["use_haiku"]
@@ -5834,8 +5840,8 @@ async def bills_chat(request: Request, req: BillsChatRequest):
     cache_ttl = "1h" if session_type == "research" else "5m"
 
     try:
-        reply = _m._graceful_truncate(
-            _m._claude_reply(system_prompt, req.messages, max_tokens=max_tokens, model=model, cache_ttl=cache_ttl)
+        reply = _graceful_truncate(
+            _claude_reply(system_prompt, req.messages, max_tokens=max_tokens, model=model, cache_ttl=cache_ttl)
         )
         reply = _with_source_line(reply, answer_type, _track_sources(context))
         if _ck:
@@ -5843,7 +5849,7 @@ async def bills_chat(request: Request, req: BillsChatRequest):
         return ChatResponse(reply=reply)
     except Exception as e:
         logger.warning("suppressed exception: %s", e)
-        return ChatResponse(reply=_m._friendly_claude_error(e))
+        return ChatResponse(reply=_friendly_claude_error(e))
 
 
 # ── /api/bills-chat-stream ────────────────────────────────────────────────────
@@ -5900,7 +5906,7 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
         )
     except Exception as _ctx_err:
         logger.warning("suppressed exception: %s", _ctx_err)
-        async def _err_gen(msg=_m._friendly_claude_error(_ctx_err)):
+        async def _err_gen(msg=_friendly_claude_error(_ctx_err)):
             yield f"data: {json.dumps({'error': msg})}\n\n"
             yield "data: [DONE]\n\n"
         return StreamingResponse(_err_gen(), media_type="text/event-stream")
@@ -6038,7 +6044,7 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
                 _m._set_cached_reply(_ck, full_reply)
         except Exception as e:
             logger.warning("suppressed exception: %s", e)
-            yield f"data: {json.dumps({'error': _m._friendly_claude_error(e)})}\n\n"
+            yield f"data: {json.dumps({'error': _friendly_claude_error(e)})}\n\n"
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(
@@ -6140,7 +6146,7 @@ async def analyst_chat(request: Request, req: BillsChatRequest):
         )
     except Exception as e:
         logger.warning("suppressed exception: %s", e)
-        return ChatResponse(reply=_m._friendly_claude_error(e))
+        return ChatResponse(reply=_friendly_claude_error(e))
 
     context = ctx_data["context"]
     sources_from_context = _track_sources(context)
@@ -6202,7 +6208,7 @@ Retrieved context:
     cache_ttl = "1h" if session_type == "research" else "5m"
 
     try:
-        reply = _m._claude_reply(analyst_system_prompt, req.messages, max_tokens=1200, cache_ttl=cache_ttl)
+        reply = _claude_reply(analyst_system_prompt, req.messages, max_tokens=1200, cache_ttl=cache_ttl)
 
         # Validate response sources and add warnings if blocked sources are mentioned
         validation = analyst_helper.validate_response_sources(reply, detected_scope, sources_used)
@@ -6222,7 +6228,7 @@ Retrieved context:
         return ChatResponse(reply=reply)
     except Exception as e:
         logger.warning("suppressed exception: %s", e)
-        return ChatResponse(reply=_m._friendly_claude_error(e))
+        return ChatResponse(reply=_friendly_claude_error(e))
 
 
 # ── /api/support-chat ─────────────────────────────────────────────────────────
@@ -6271,7 +6277,7 @@ TONE: Warm, concise, non-defensive, factual. One emoji max. Never blame user. Do
 DO NOT automatically send escalations. Draft them for human review."""
 
     try:
-        reply = _m._claude_reply(support_system_prompt, req.messages, max_tokens=800, cache_ttl="5m")
+        reply = _claude_reply(support_system_prompt, req.messages, max_tokens=800, cache_ttl="5m")
 
         # Check if reply mentions escalation needed (draft detection)
         escalation_triggers = ["escalation", "preparing", "human review", "internal review"]
@@ -6284,7 +6290,7 @@ DO NOT automatically send escalations. Draft them for human review."""
         return ChatResponse(reply=reply)
     except Exception as e:
         logger.warning("suppressed exception: %s", e)
-        return ChatResponse(reply=_m._friendly_claude_error(e))
+        return ChatResponse(reply=_friendly_claude_error(e))
 
 
 @router.post("/api/deep-researcher-chat", response_model=ChatResponse)
@@ -6332,11 +6338,11 @@ Available Database Context (SQL/Structured Records - Tier 1):
 {database_context if database_context else "No matching structured records found for this query."}"""
 
     try:
-        reply = _m._claude_reply(deep_researcher_prompt, req.messages, max_tokens=2000, cache_ttl="1h")
+        reply = _claude_reply(deep_researcher_prompt, req.messages, max_tokens=2000, cache_ttl="1h")
         return ChatResponse(reply=reply)
     except Exception as e:
         logger.warning("suppressed exception: %s", e)
-        return ChatResponse(reply=_m._friendly_claude_error(e))
+        return ChatResponse(reply=_friendly_claude_error(e))
 
 
 @router.post("/api/visual-explainer-chat", response_model=ChatResponse)
@@ -6387,11 +6393,11 @@ Available Database Context (Verified Records):
 {database_context if database_context else "No matching structured records found for this query."}"""
 
     try:
-        reply = _m._claude_reply(visual_explainer_prompt, req.messages, max_tokens=1500, cache_ttl="1h")
+        reply = _claude_reply(visual_explainer_prompt, req.messages, max_tokens=1500, cache_ttl="1h")
         return ChatResponse(reply=reply)
     except Exception as e:
         logger.warning("suppressed exception: %s", e)
-        return ChatResponse(reply=_m._friendly_claude_error(e))
+        return ChatResponse(reply=_friendly_claude_error(e))
 
 
 # ── /api/route-question ────────────────────────────────────────────────────────
