@@ -174,17 +174,15 @@ tests:
   # SOURCE FOOTER GATE: a Virginia-state-only energy query must not cite FEC or
   # Congress.gov. The answer must reference Virginia sources and must not abstain
   # (signed energy bills exist in va_bills + governor_actions for 2026).
-  # Calibrated 2026-07-01: KNOWN RETRIEVAL GAP — energy bills (SB249, HB590,
-  # SB382...) exist in the DB, but topical "what <sector> bills passed" queries
-  # don't surface them through bills-chat, so production abstains. Documenting
-  # honest-abstain as expected for now; flip expected_abstain back to false
-  # when topical bill search is fixed — that flip is the real regression test.
+  # Retrieval gap FIXED 2026-07-01: _bill_topic_terms strips generic words and
+  # expands policy topics into synonyms (energy -> electric/solar/utility...),
+  # so topical bill queries now surface real bills. This case is the
+  # regression guard for that fix.
   - query: "What energy bills passed in the Virginia General Assembly in 2026?"
     expected_entity: ""
     expected_sql_table: "va_bills"
     expected_answer_contains:
-      - "Virginia"
+      - "energy"
       - "2026"
-      - "signed"
-    expected_abstain: true
+    expected_abstain: false
     expected_hallucination_risk_max: 0.4

@@ -923,6 +923,75 @@ def _add_bill_context(blocks: list[str], bills: list[str], session: str, pro: bo
             )
 
 
+# Generic civic words that over-constrain the AND-semantics bill search:
+# "what energy bills passed in the Virginia General Assembly" produced terms
+# [energy, passed, virginia, general] — requiring ALL of them in a bill's
+# title/description filtered out every real energy bill (calibration run
+# 2026-07-01 found production abstaining on exactly this query shape).
+_BILL_SEARCH_GENERIC = frozenset({
+    "bill", "bills", "passed", "pass", "failed", "fail", "virginia", "general",
+    "assembly", "session", "legislation", "law", "laws", "what", "which",
+    "list", "show", "were", "have", "has", "did", "signed", "became", "become",
+    "this", "that", "year", "new", "the", "about",
+})
+
+# Policy topic -> title/description synonyms actually used in VA bill text.
+_BILL_TOPIC_ALIASES: dict[str, tuple[str, ...]] = {
+    "energy":         ("energy", "electric", "electricity", "utility", "utilities",
+                       "solar", "wind", "renewable", "grid"),
+    "education":      ("education", "school", "schools", "teacher", "teachers", "tuition"),
+    "health":         ("health", "hospital", "medicaid", "insurance"),
+    "healthcare":     ("health", "hospital", "medicaid", "insurance"),
+    "housing":        ("housing", "zoning", "rent", "eviction", "landlord", "tenant"),
+    "gun":            ("firearm", "firearms", "gun", "guns", "weapon"),
+    "guns":           ("firearm", "firearms", "gun", "guns", "weapon"),
+    "firearms":       ("firearm", "firearms", "gun", "guns", "weapon"),
+    "transportation": ("transportation", "highway", "transit", "toll", "road"),
+    "environment":    ("environment", "environmental", "pollution", "conservation",
+                       "chesapeake"),
+    "tax":            ("tax", "taxes", "taxation", "revenue"),
+    "taxes":          ("tax", "taxes", "taxation", "revenue"),
+    "cannabis":       ("cannabis", "marijuana"),
+    "marijuana":      ("cannabis", "marijuana"),
+    "abortion":       ("abortion", "reproductive"),
+}
+
+
+def _bill_topic_terms(terms: list[str], query: str = "") -> tuple[list[str], bool]:
+    """Prepare terms for the bill keyword searches.
+
+    Strips generic civic words; if a surviving term is a known policy topic,
+    expands it into its synonyms. Returns (search_terms, any_semantics):
+    any_semantics=True means the terms are OR-alternatives (topic synonyms)
+    rather than AND-required words. Falls back to the original terms when
+    stripping would leave nothing.
+
+    Also scans the raw query for topic words _keywords drops for being under
+    4 chars ("gun", "tax") — otherwise those topics could never expand.
+    """
+    topical = [t for t in terms if t.lower() not in _BILL_SEARCH_GENERIC]
+    if query:
+        seen = {t.lower() for t in topical}
+        for word in re.findall(r"\b[a-z]{3}\b", (query or "").lower()):
+            if word in _BILL_TOPIC_ALIASES and word not in seen:
+                topical.insert(0, word)
+                seen.add(word)
+    if not topical:
+        return terms, False
+    expanded: list[str] = []
+    has_alias = False
+    for t in topical[:2]:
+        aliases = _BILL_TOPIC_ALIASES.get(t.lower())
+        if aliases:
+            has_alias = True
+            expanded.extend(a for a in aliases if a not in expanded)
+        elif t.lower() not in expanded:
+            expanded.append(t.lower())
+    if has_alias:
+        return expanded, True
+    return topical, False
+
+
 def _add_keyword_context(blocks: list[str], query: str, terms: list[str], session: str) -> None:
     if not terms:
         return
@@ -977,10 +1046,13 @@ def _add_keyword_context(blocks: list[str], query: str, terms: list[str], sessio
     if is_finance and not any(term in q_lower for term in ("bill", "hb", "sb", "legislation", "veto", "signed")):
         return
 
+    bill_terms, bill_any = _bill_topic_terms(terms, query)
+
     conn = _connect("openstates")
     if conn:
         if _table_exists(conn, "bill_descriptions_fts"):
-            fts = " ".join(f'"{term}"' for term in terms[:5])
+            joiner = " OR " if bill_any else " "
+            fts = joiner.join(f'"{term}"' for term in bill_terms[:8])
             _query_rows(conn, """
                 SELECT bill_id, session, title, description
                 FROM bill_descriptions_fts
@@ -988,11 +1060,14 @@ def _add_keyword_context(blocks: list[str], query: str, terms: list[str], sessio
                   AND session=?
                 LIMIT 8
             """, (fts, session), "openstates.bill_descriptions_fts", blocks, limit=8)
-        clause, params = _like_clause(["title", "sponsors", "latest_action", "subjects"], terms[:4])
+        if bill_any:
+            clause, params = _like_any_clause(["title", "sponsors", "latest_action", "subjects"], bill_terms[:9])
+        else:
+            clause, params = _like_clause(["title", "sponsors", "latest_action", "subjects"], bill_terms[:4])
         _query_rows(conn, f"""
             SELECT bill_id, session, title, sponsors, latest_action, latest_date, result, openstates_url
             FROM bills
-            WHERE session=? AND {clause}
+            WHERE session=? AND ({clause})
             ORDER BY latest_date DESC
             LIMIT 8
         """, [session, *params], "openstates.bills keyword", blocks, limit=8)
@@ -1000,11 +1075,14 @@ def _add_keyword_context(blocks: list[str], query: str, terms: list[str], sessio
 
     conn = _connect("polls")
     if conn:
-        clause, params = _like_clause(["title", "description", "status"], terms[:4])
+        if bill_any:
+            clause, params = _like_any_clause(["title", "description", "status"], bill_terms[:9])
+        else:
+            clause, params = _like_clause(["title", "description", "status"], bill_terms[:4])
         _query_rows(conn, f"""
             SELECT bill_number, session, title, status, description
             FROM va_bills
-            WHERE session=? AND {clause}
+            WHERE session=? AND ({clause})
             LIMIT 8
         """, [session, *params], "polls.va_bills keyword", blocks, limit=8)
 
@@ -4857,6 +4935,23 @@ def _add_gatekeeper_context(blocks: list[str], query: str) -> None:
         conn.close()
 
 
+# Formal first names -> diminutives used in legislator_narratives rows.
+_NAME_DIMINUTIVES: dict[str, tuple[str, ...]] = {
+    "donald": ("don",), "william": ("will", "bill"), "robert": ("rob", "bob"),
+    "timothy": ("tim",), "thomas": ("tom",), "michael": ("mike",),
+    "christopher": ("chris",), "jennifer": ("jen",), "samuel": ("sam",),
+    "benjamin": ("ben",), "daniel": ("dan",), "patrick": ("pat",),
+    "edward": ("ed",), "james": ("jim",), "joseph": ("joe",),
+}
+
+# Name tokens that are also everyday civic-query words; matching one of these
+# alone must never inject a legislator profile ("how does a bill become law").
+_AMBIGUOUS_NAME_TOKENS = frozenset({
+    "bill", "will", "gene", "art", "sam", "may", "guy", "ben", "dan", "pat",
+    "rob", "tim", "tom", "don", "lee", "van", "jay", "mark", "chase", "grace",
+})
+
+
 def _add_legislator_narrative_context(blocks: list[str], query: str) -> None:
     """
     When a specific legislator name appears in the query, inject their
@@ -4885,6 +4980,14 @@ def _add_legislator_narrative_context(blocks: list[str], query: str) -> None:
         return
 
     _HONORIFICS = frozenset({"jr.", "jr", "sr.", "sr", "iii", "ii", "iv"})
+    # Whole-word matching only: the old substring check made the name token
+    # "bill" match "energy bills passed", injecting Bill DeSteph's finance
+    # profile into topical bill queries.
+    q_words = set(re.findall(r"[a-z][a-z'’.-]*", q_lower))
+    # Formal-name -> diminutive so "Donald Scott" still matches "Don Scott".
+    for formal, nicks in _NAME_DIMINUTIVES.items():
+        if formal in q_words:
+            q_words.update(nicks)
     matched = None
     matched_len = 0
     best_score = 0
@@ -4899,7 +5002,12 @@ def _add_legislator_narrative_context(blocks: list[str], query: str) -> None:
             t for t in name_tokens
             if len(t) >= 3 and not t.endswith(".") and t not in _HONORIFICS
         ]
-        score = sum(1 for t in sig_tokens if t in q_lower)
+        hit_tokens = [t for t in sig_tokens if t in q_words]
+        # First names that are also everyday words ("bill", "will", "gene")
+        # can support a match but never BE the match on their own.
+        if hit_tokens and all(t in _AMBIGUOUS_NAME_TOKENS for t in hit_tokens):
+            continue
+        score = len(hit_tokens)
         if score == 0:
             continue
         if score > best_score or (score == best_score and len(name) > matched_len):
