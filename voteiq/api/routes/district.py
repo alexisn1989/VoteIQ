@@ -13,7 +13,7 @@ router = APIRouter(tags=["district"])
 
 
 def _get_district_contexts():
-    from main import HOD_CONTEXT, SD_CONTEXT, DISTRICT_CONTEXT, _HOD_MEMBER_URL
+    from voteiq.config.districts import HOD_CONTEXT, SD_CONTEXT, DISTRICT_CONTEXT, _HOD_MEMBER_URL
     return HOD_CONTEXT, SD_CONTEXT, DISTRICT_CONTEXT, _HOD_MEMBER_URL
 
 _BASE_DIR     = Path(__file__).resolve().parents[3]

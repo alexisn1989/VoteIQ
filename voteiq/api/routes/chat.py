@@ -38,6 +38,17 @@ from voteiq.services.database_context import (
     build_database_context,
     check_sponsorship_claims,
 )
+from voteiq.config.districts import (
+    DISTRICT_CONTEXT,
+    HOD_CONTEXT,
+    SD_CONTEXT,
+)
+from voteiq.utils import _session_year
+from voteiq.services.reply_cache import (
+    _cache_key,
+    _get_cached_reply,
+    _set_cached_reply,
+)
 from voteiq.llm.reply import (
     _claude_reply,
     _friendly_claude_error,
@@ -1252,8 +1263,8 @@ def _build_bills_context(
         if _premium_analyst_enabled(req) and _is_money_q and _m._PAC_CACHE:
             _fec_bgids: list[str] = []
             _search_names: list[str] = [leg_name] if leg_name else []
-            if req.district and _m.DISTRICT_CONTEXT.get(req.district, {}).get("rep"):
-                _search_names.append(_m.DISTRICT_CONTEXT[req.district]["rep"])
+            if req.district and DISTRICT_CONTEXT.get(req.district, {}).get("rep"):
+                _search_names.append(DISTRICT_CONTEXT[req.district]["rep"])
             for bgid, mbr in _m._MEMBER_CACHE.items():
                 mname = mbr.get("name", "").lower()
                 if any(n and (n.lower() in mname or mname in n.lower()) for n in _search_names):
@@ -1286,7 +1297,7 @@ def _build_bills_context(
         if not fed_member and leg_name and leg_scope != "state":
             fed_member = _m._federal_member_by_name(leg_name)
         if not fed_member and req.district and _m._profile_question(user_query):
-            dist_rep_name = _m.DISTRICT_CONTEXT.get(req.district, {}).get("rep")
+            dist_rep_name = DISTRICT_CONTEXT.get(req.district, {}).get("rep")
             if dist_rep_name:
                 fed_member = _m._federal_member_by_name(dist_rep_name)
         _speech_kws = (
@@ -1401,9 +1412,9 @@ def _build_bills_context(
                     )
             else:
                 years_found = sorted({
-                    _m._session_year(meta.get("session"))
-                    or _m._session_year(meta.get("session_id"))
-                    or _m._session_year(doc)
+                    _session_year(meta.get("session"))
+                    or _session_year(meta.get("session_id"))
+                    or _session_year(doc)
                     for doc, meta in exact_docs
                 })
                 years_found = [y for y in years_found if y]
@@ -1449,9 +1460,9 @@ def _build_bills_context(
         for doc, meta in zip(results["documents"][0], results["metadatas"][0]):
             if session_year:
                 found_year = (
-                    _m._session_year(meta.get("session"))
-                    or _m._session_year(meta.get("session_id"))
-                    or _m._session_year(doc)
+                    _session_year(meta.get("session"))
+                    or _session_year(meta.get("session_id"))
+                    or _session_year(doc)
                 )
                 if found_year and found_year != session_year:
                     continue
@@ -1503,7 +1514,7 @@ def _local_bills_fallback_context(_m, req, user_query: str) -> str:
             pieces.append(full_profiles_fb)
 
         if req.district and req.district != "VA-00" and _m._profile_question(user_query):
-            dist_rep_name = _m.DISTRICT_CONTEXT.get(req.district, {}).get("rep")
+            dist_rep_name = DISTRICT_CONTEXT.get(req.district, {}).get("rep")
             fed_member = _m._federal_member_by_name(dist_rep_name or "")
             if fed_member:
                 fed_fb = _m._fetch_federal_context(fed_member)
@@ -5131,7 +5142,7 @@ async def chat(request: Request, req: ChatRequest):
 
     last_question = req.messages[-1].content if req.messages else ""
 
-    ctx = _m.DISTRICT_CONTEXT.get(req.district)
+    ctx = DISTRICT_CONTEXT.get(req.district)
     if not ctx:
         return _truth_chat_response(query=last_question, reply="Unknown district.")
 
@@ -5172,7 +5183,7 @@ async def chat(request: Request, req: ChatRequest):
         "The user has not yet looked up their specific district. Answer statewide questions."
     )
 
-    hod_info = _m.HOD_CONTEXT.get(req.hod_district) if req.hod_district else None
+    hod_info = HOD_CONTEXT.get(req.hod_district) if req.hod_district else None
     if hod_info:
         district_block += (
             f"\nVA HOUSE OF DELEGATES DISTRICT: {req.hod_district}\n"
@@ -5180,7 +5191,7 @@ async def chat(request: Request, req: ChatRequest):
             f"Locality: {hod_info['locality']}"
         )
 
-    sd_info = _m.SD_CONTEXT.get(req.sd_district) if req.sd_district else None
+    sd_info = SD_CONTEXT.get(req.sd_district) if req.sd_district else None
     if sd_info:
         district_block += (
             f"\nVA STATE SENATE DISTRICT: {req.sd_district}\n"
@@ -5323,7 +5334,7 @@ async def chat(request: Request, req: ChatRequest):
 
     foreign_ie_context = ""
     if bioguide_ids:
-        from main import VA_MEMBERS as _VA
+        from voteiq.config.districts import VA_MEMBERS as _VA
         for bgid in bioguide_ids:
             if bgid in _VA:
                 fec_cand_id = _VA[bgid][1]
@@ -5613,7 +5624,7 @@ async def gemini_chat(request: Request, req: ChatRequest):
     if direct_governor_reply:
         return ChatResponse(reply=direct_governor_reply)
 
-    ctx = _m.DISTRICT_CONTEXT.get(req.district)
+    ctx = DISTRICT_CONTEXT.get(req.district)
     if not ctx:
         return ChatResponse(reply="Unknown district.")
 
@@ -5628,7 +5639,7 @@ async def gemini_chat(request: Request, req: ChatRequest):
         f"{fec_context}"
     )
 
-    hod_info = _m.HOD_CONTEXT.get(req.hod_district) if req.hod_district else None
+    hod_info = HOD_CONTEXT.get(req.hod_district) if req.hod_district else None
     if hod_info:
         district_block += (
             f"\nVA HOUSE OF DELEGATES DISTRICT: {req.hod_district}\n"
@@ -5787,15 +5798,15 @@ async def bills_chat(request: Request, req: BillsChatRequest):
     if req.vb_commonwealths_attorney:       district_parts.append(f"VB Commonwealth's Attorney: {req.vb_commonwealths_attorney}")
     district_note = f"\nUSER'S DISTRICT CONTEXT: {', '.join(district_parts)}\n" if district_parts else ""
 
-    _ck = _m._cache_key(user_query, district_note) if len(req.messages) == 1 else None
+    _ck = _cache_key(user_query, district_note) if len(req.messages) == 1 else None
     _ck_fb = None
     if len(req.messages) == 1 and (req.hod_district or req.sd_district):
         _sp: list[str] = []
         if req.hod_district: _sp.append(f"HOD district: {req.hod_district}")
         if req.sd_district:  _sp.append(f"Senate district: {req.sd_district}")
-        _ck_fb = _m._cache_key(user_query, f"\nUSER'S DISTRICT CONTEXT: {', '.join(_sp)}\n")
+        _ck_fb = _cache_key(user_query, f"\nUSER'S DISTRICT CONTEXT: {', '.join(_sp)}\n")
     if _ck and not _governor_action_query(user_query):
-        cached = _m._get_cached_reply(_ck, _ck_fb)
+        cached = _get_cached_reply(_ck, _ck_fb)
         if cached:
             cached = _with_source_line(cached, _answer_type_from_context(context, chroma_error), _track_sources(context))
             return ChatResponse(reply=cached)
@@ -5845,7 +5856,7 @@ async def bills_chat(request: Request, req: BillsChatRequest):
         )
         reply = _with_source_line(reply, answer_type, _track_sources(context))
         if _ck:
-            _m._set_cached_reply(_ck, reply)
+            _set_cached_reply(_ck, reply)
         return ChatResponse(reply=reply)
     except Exception as e:
         logger.warning("suppressed exception: %s", e)
@@ -5958,15 +5969,15 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
         district_note = f"\nUSER'S DISTRICT CONTEXT: {', '.join(parts)}\n"
 
     # Pro responses are never cached — they contain personalised lobbying/chair blocks
-    _ck = _m._cache_key(user_query, district_note) if len(req.messages) == 1 and not _premium_analyst_enabled(req) else None
+    _ck = _cache_key(user_query, district_note) if len(req.messages) == 1 and not _premium_analyst_enabled(req) else None
     _ck_fb = None
     if len(req.messages) == 1 and not _premium_analyst_enabled(req) and (req.hod_district or req.sd_district):
         _sp: list[str] = []
         if req.hod_district: _sp.append(f"HOD district: {req.hod_district}")
         if req.sd_district:  _sp.append(f"Senate district: {req.sd_district}")
-        _ck_fb = _m._cache_key(user_query, f"\nUSER'S DISTRICT CONTEXT: {', '.join(_sp)}\n")
+        _ck_fb = _cache_key(user_query, f"\nUSER'S DISTRICT CONTEXT: {', '.join(_sp)}\n")
     if _ck and not _governor_action_query(user_query):
-        cached = _m._get_cached_reply(_ck, _ck_fb)
+        cached = _get_cached_reply(_ck, _ck_fb)
         if cached:
             cached = _with_source_line(cached, _answer_type_from_context(context, chroma_error), _track_sources(context))
             async def _cached_gen(text=cached):
@@ -6041,7 +6052,7 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
                 full_reply = full_reply.rstrip() + source_footer
                 yield f"data: {json.dumps({'token': source_footer})}\n\n"
             if _ck:
-                _m._set_cached_reply(_ck, full_reply)
+                _set_cached_reply(_ck, full_reply)
         except Exception as e:
             logger.warning("suppressed exception: %s", e)
             yield f"data: {json.dumps({'error': _friendly_claude_error(e)})}\n\n"

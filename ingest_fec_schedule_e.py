@@ -37,21 +37,8 @@ FEC_BASE = "https://api.open.fec.gov/v1"
 HEADERS  = {"User-Agent": "VoteIQ/1.0 (Virginia civic data; alexisnieuwenhuys89@gmail.com)"}
 
 # VA federal delegation: bioguide_id -> (display_name, fec_candidate_id)
-VA_MEMBERS = {
-    "W000804": ("Rob Wittman",        "H8VA01147"),
-    "K000399": ("Jennifer Kiggans",   "H2VA02064"),
-    "S000185": ("Bobby Scott",        "H6VA01117"),
-    "M001227": ("Jennifer McClellan", "H4VA04066"),
-    "M001239": ("John McGuire",       "H0VA07133"),
-    "C001118": ("Ben Cline",          "H8VA06104"),
-    "V000138": ("Eugene Vindman",     "H4VA07234"),
-    "B001292": ("Don Beyer",          "H4VA08224"),
-    "G000568": ("Morgan Griffith",    "H0VA09055"),
-    "S001230": ("Suhas Subramanyam",  "H4VA10279"),
-    "W000831": ("James Walkinshaw",   "H6VA11066"),
-    "W000805": ("Mark Warner",        "S6VA00093"),
-    "K000384": ("Tim Kaine",          "S2VA00142"),
-}
+# Canonical copy lives in voteiq/config/districts.py
+from voteiq.config.districts import VA_MEMBERS
 
 
 def setup_db(conn: sqlite3.Connection) -> None:

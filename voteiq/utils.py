@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -53,3 +54,14 @@ def _load_historical_results(year: str) -> dict:
         print(f"_load_historical_results {year}: {e}")
         _historical_data_cache[year] = {}
     return _historical_data_cache[year]
+
+
+# Extracted from root main.py (decomposition phase 2, 2026-07-01).
+# NOTE: distinct from voteiq.services.context._parsing._session_year, which
+# defaults to "2026" when no year is present — this one returns "".
+_SESSION_YEAR_RE = re.compile(r"\b(19|20)\d{2}\b")
+
+
+def _session_year(value) -> str:
+    match = _SESSION_YEAR_RE.search(str(value or ""))
+    return match.group(0) if match else ""
