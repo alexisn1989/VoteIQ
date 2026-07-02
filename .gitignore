@@ -58,3 +58,22 @@ node_modules/
 # ChromaDB local data
 chroma_data/
 *.db.gz
+
+# Scratch / session artifacts (repo-hygiene cleanup 2026-07-01)
+.omc/
+out.txt
+err.txt
+_ctx_debug.txt
+_tc_debug.txt
+tmp_prod_live.html
+backfill_log.txt
+truth_report.json
+truth_calibration*.json
+*.bak_*
+.pytest_cache/
+
+# Runtime caches / local data stores
+chroma_db/
+norfolk_council_cache/
+sbe_cache/
+Export_05_27_2026/
