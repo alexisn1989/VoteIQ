@@ -954,6 +954,42 @@ _BILL_TOPIC_ALIASES: dict[str, tuple[str, ...]] = {
     "cannabis":       ("cannabis", "marijuana"),
     "marijuana":      ("cannabis", "marijuana"),
     "abortion":       ("abortion", "reproductive"),
+    # Added 2026-07-02 — same expansion, grounded in real 2026 session titles
+    # (see tests/test_bill_topic_search.py for the query shapes checked).
+    "criminal":       ("criminal", "crime", "felony", "felonies", "misdemeanor", "prosecution"),
+    "crime":          ("criminal", "crime", "felony", "felonies", "misdemeanor", "prosecution"),
+    "election":       ("election", "elections", "voter", "voters", "ballot", "ballots"),
+    "elections":      ("election", "elections", "voter", "voters", "ballot", "ballots"),
+    "voting":         ("election", "elections", "voter", "voters", "ballot", "ballots"),
+    "labor":          ("labor", "employee", "employees", "employer", "employers",
+                       "employment", "wage", "wages", "workplace"),
+    "employment":     ("labor", "employee", "employees", "employer", "employers",
+                       "employment", "wage", "wages", "workplace"),
+    "agriculture":    ("agricultural", "agriculture", "farm", "farms", "farmer",
+                       "farmers", "farmland", "crop", "crops"),
+    "farm":           ("agricultural", "agriculture", "farm", "farms", "farmer",
+                       "farmers", "farmland", "crop", "crops"),
+    "farming":        ("agricultural", "agriculture", "farm", "farms", "farmer",
+                       "farmers", "farmland", "crop", "crops"),
+    "veteran":        ("veteran", "veterans", "servicemember", "servicemembers"),
+    "veterans":       ("veteran", "veterans", "servicemember", "servicemembers"),
+    "immigration":    ("immigration", "immigrant", "immigrants", "citizenship",
+                       "visa", "refugee", "refugees"),
+    "immigrant":      ("immigration", "immigrant", "immigrants", "citizenship",
+                       "visa", "refugee", "refugees"),
+    "immigrants":     ("immigration", "immigrant", "immigrants", "citizenship",
+                       "visa", "refugee", "refugees"),
+    "insurance":      ("insurance", "insurer", "insurers", "insured"),
+    "consumer":       ("consumer", "consumers", "predatory"),
+    "technology":     ("artificial", "intelligence", "cybersecurity", "cyber",
+                       "broadband", "privacy"),
+    "tech":           ("artificial", "intelligence", "cybersecurity", "cyber",
+                       "broadband", "privacy"),
+    "ai":             ("artificial", "intelligence"),
+    "privacy":        ("artificial", "intelligence", "cybersecurity", "cyber",
+                       "broadband", "privacy"),
+    "disability":     ("disability", "disabilities", "accessibility", "accessible"),
+    "disabilities":   ("disability", "disabilities", "accessibility", "accessible"),
 }
 
 
@@ -967,12 +1003,12 @@ def _bill_topic_terms(terms: list[str], query: str = "") -> tuple[list[str], boo
     stripping would leave nothing.
 
     Also scans the raw query for topic words _keywords drops for being under
-    4 chars ("gun", "tax") — otherwise those topics could never expand.
+    4 chars ("gun", "tax", "ai") — otherwise those topics could never expand.
     """
     topical = [t for t in terms if t.lower() not in _BILL_SEARCH_GENERIC]
     if query:
         seen = {t.lower() for t in topical}
-        for word in re.findall(r"\b[a-z]{3}\b", (query or "").lower()):
+        for word in re.findall(r"\b[a-z]{2,3}\b", (query or "").lower()):
             if word in _BILL_TOPIC_ALIASES and word not in seen:
                 topical.insert(0, word)
                 seen.add(word)

@@ -83,3 +83,83 @@ def test_real_name_query_still_matches_ambiguous_first_name(db):
     )
     ctx = dc.build_database_context("What is Bill DeSteph known for?")
     assert "Bill DeSteph is a Republican state senator" in ctx
+
+
+# ── Additional policy topics (added 2026-07-02) ───────────────────────────────
+# Same mechanism as the energy fix above, extended to topics grounded in real
+# 2026 session bill titles (verified against the local DB before adding).
+
+def test_criminal_justice_topic_expansion(db):
+    db.polls(
+        _VA_BILLS_DDL,
+        "INSERT INTO va_bills VALUES"
+        " ('HB1082', '2026', 'Crimes by gangs; definition of predicate criminal act, penalties.', 'Passed', ''),"
+        " ('HB999', '2026', 'Dog licensing; fees.', 'Passed', '')",
+    )
+    ctx = dc.build_database_context("What criminal justice bills passed in the Virginia General Assembly in 2026?")
+    assert "HB1082" in ctx
+    assert "HB999" not in ctx
+
+
+def test_election_topic_expansion(db):
+    db.polls(
+        _VA_BILLS_DDL,
+        "INSERT INTO va_bills VALUES"
+        " ('HB1056', '2026', 'Voter registration by political party affiliation.', 'Passed', ''),"
+        " ('HB999', '2026', 'Dog licensing; fees.', 'Passed', '')",
+    )
+    ctx = dc.build_database_context("What election bills passed in 2026?")
+    assert "HB1056" in ctx
+    assert "HB999" not in ctx
+
+
+def test_labor_topic_expansion(db):
+    db.polls(
+        _VA_BILLS_DDL,
+        "INSERT INTO va_bills VALUES"
+        " ('HB1', '2026', 'Minimum wage; increases incrementally to $15.00 per hour.', 'Passed', ''),"
+        " ('HB999', '2026', 'Dog licensing; fees.', 'Passed', '')",
+    )
+    ctx = dc.build_database_context("What labor bills passed in the Virginia General Assembly in 2026?")
+    assert "HB1" in ctx
+    assert "HB999" not in ctx
+
+
+def test_veterans_topic_expansion(db):
+    db.polls(
+        _VA_BILLS_DDL,
+        "INSERT INTO va_bills VALUES"
+        " ('HB108', '2026', 'Honor Guard Grant Program; Dept. of Veterans Services.', 'Passed', ''),"
+        " ('HB999', '2026', 'Dog licensing; fees.', 'Passed', '')",
+    )
+    ctx = dc.build_database_context("What veterans bills passed in 2026?")
+    assert "HB108" in ctx
+    assert "HB999" not in ctx
+
+
+def test_ai_short_token_topic_expansion(db):
+    """'AI' is 2 chars — below _keywords' 4-char floor — so this exercises the
+    widened \\b[a-z]{2,3}\\b scan in _bill_topic_terms, not the normal term list."""
+    db.polls(
+        _VA_BILLS_DDL,
+        "INSERT INTO va_bills VALUES"
+        " ('SB384', '2026', 'Artificial intelligence; framework for independent verification.', 'Passed', ''),"
+        " ('HB999', '2026', 'Dog licensing; fees.', 'Passed', '')",
+    )
+    ctx = dc.build_database_context("What AI bills passed in the Virginia General Assembly in 2026?")
+    assert "SB384" in ctx
+    assert "HB999" not in ctx
+
+
+def test_agriculture_and_insurance_topic_expansion(db):
+    db.polls(
+        _VA_BILLS_DDL,
+        "INSERT INTO va_bills VALUES"
+        " ('HB104', '2026', 'Virginia Historic Landmarks Register; bicentennial farms.', 'Passed', ''),"
+        " ('HB1064', '2026', 'Federal National Flood Insurance Program; guidance document.', 'Passed', ''),"
+        " ('HB999', '2026', 'Dog licensing; fees.', 'Passed', '')",
+    )
+    ctx_ag = dc.build_database_context("What agriculture bills passed in 2026?")
+    assert "HB104" in ctx_ag and "HB999" not in ctx_ag
+    ctx_ins = dc.build_database_context("What insurance bills passed in 2026?")
+    assert "HB1064" in ctx_ins and "HB999" not in ctx_ins
