@@ -1,0 +1,45 @@
+name: Truth suite (nightly, against production)
+
+# Runs the ground-truth Q&A regression suite against the live service so
+# answer-quality regressions surface as a red workflow + GitHub notification
+# before anyone (or the WHRO demo) hits them. HTTP mode needs no database,
+# no API keys, and no secrets — it exercises the real production pipeline.
+
+on:
+  schedule:
+    - cron: "30 9 * * *"   # daily 09:30 UTC (~4:30am ET), after overnight ingests
+  workflow_dispatch: {}     # manual runs from the Actions tab
+
+jobs:
+  truth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # HTTP mode only needs the YAML loader and fuzzy matcher — not the
+      # app's full requirements.txt.
+      - name: Install harness dependencies
+        run: pip install pyyaml rapidfuzz
+
+      # Threshold 0.85: with 16 LLM-nondeterministic cases, one flaky answer
+      # scores 0.9375 and two score 0.875 — 0.85 tolerates two flakes while
+      # still catching real regressions. Raise as the case count grows.
+      - name: Run truth suite against https://voteiq.io
+        run: |
+          python truth_test_suite.py \
+            --url https://voteiq.io \
+            --threshold 0.85 \
+            --output truth_report.json
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: truth-report
+          path: truth_report.json
