@@ -40,7 +40,8 @@ _ABSTAIN_SIGNALS = (
     "cannot find", "no records", "outside the scope", "not included",
     "not currently", "i cannot", "i'm unable", "no information",
     "couldn't find", "data not", "does not include", "do not contain",
-    "does not have", "do not have",
+    "does not have", "do not have", "doesn't have", "does not track",
+    "doesn't track",
 )
 
 

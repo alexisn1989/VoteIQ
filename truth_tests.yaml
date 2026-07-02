@@ -88,6 +88,19 @@ tests:
     expected_abstain: true
     expected_hallucination_risk_max: 0.2
 
+  # Fixed 2026-07-02: previously abstained on ALL polling questions because
+  # the trigger detector missed "how are Virginians polling on X" and a
+  # demonym ("Virginians") over-constrained the DB lookup, hiding real
+  # governor-race polling data that existed the whole time. Asserting "%"
+  # (not a candidate name) so this stays durable across candidate/poll churn.
+  - query: "How are Virginians polling on the governor race?"
+    expected_entity: ""
+    expected_sql_table: "poll_results"
+    expected_answer_contains:
+      - "%"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.3
+
   # ── Entity disambiguation — common name collision ──────────────────────────
 
   # Calibrated 2026-07-01: lobbyist registry data is not live in production

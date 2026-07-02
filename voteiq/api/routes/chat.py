@@ -212,18 +212,27 @@ def _with_source_line(
 
 
 def _is_public_opinion_polling_scope_limit_query(query: str) -> bool:
-    """Detect public-opinion/election polling asks, not polling-place questions."""
+    """Detect public-opinion/election polling asks, not polling-place questions.
+
+    Broadened 2026-07-02: previously required a second confirming word
+    (survey/approval/favorability/a named pollster/etc), which missed common
+    phrasings like "what do current polls show" or "how are polls looking on
+    the governor race" — production calibration found exactly this gap, and
+    it made the chat wrongly claim to have zero polling data. In reality
+    _external_polling_reply below already queries the real polls/
+    poll_results/poll_articles tables; it returns real data when available
+    and a clean, non-absolute fallback otherwise. So any poll/polls/polling
+    mention that isn't one of the excluded senses now routes here.
+    """
     q = (query or "").lower()
     if not any(term in q for term in ("poll", "polls", "polling", "approval rating", "favorability")):
         return False
-    if any(term in q for term in ("polling place", "polling location", "where do i vote", "precinct")):
+    if any(term in q for term in (
+        "polling place", "polling location", "where do i vote", "precinct",
+        "poll tax", "poll watcher", "poll worker",
+    )):
         return False
-    return any(term in q for term in (
-        "approval", "favorability", "favorability rating", "horse race",
-        "survey", "surveys", "public opinion", "vcu", "wilder", "wason",
-        "realclearpolitics", "fivethirtyeight", "538", "polling data",
-        "latest poll", "latest polls", "what do polls say",
-    ))
+    return True
 
 
 def _polling_office_filter(query: str) -> str | None:
@@ -242,7 +251,11 @@ def _polling_name_terms(query: str) -> list[str]:
     generic = {
         "what", "poll", "polls", "polling", "data", "latest", "approval",
         "rating", "ratings", "favorability", "survey", "surveys", "virginia",
-        "governor", "senate", "house", "race", "races", "about",
+        "virginians", "virginian", "governor", "senate", "house", "race",
+        "races", "about", "current", "currently", "recent", "recently",
+        "show", "shows", "showing", "say", "says", "saying", "think",
+        "thinks", "thinking", "voter", "voters", "voting", "views", "view",
+        "looking", "looks", "how", "are", "the", "and", "for", "with",
     }
     terms: list[str] = []
     seen: set[str] = set()
@@ -321,14 +334,24 @@ def _external_polling_reply(query: str) -> str | None:
 
         article_rows: list[sqlite3.Row] = []
         if _polling_articles_available(conn):
-            article_rows = conn.execute(
-                """
-                SELECT source, title, summary, published_at, url, matched_terms
-                FROM poll_articles
-                ORDER BY COALESCE(published_at, fetched_at) DESC
-                LIMIT 3
-                """
-            ).fetchall()
+            # Only attach "related" news when real poll data was found, or the
+            # ask was fully generic (no name_terms => nothing specific to be
+            # off-target about). matched_terms is a fixed ingestion watchlist
+            # hit (poll/approval/"new poll"/etc), not query-topic relevance,
+            # and a title/summary LIKE filter isn't reliable either — polling
+            # headlines almost always contain generic words like "voters", so
+            # a topic-specific but off-target ask (e.g. "polls on the state
+            # budget") would still attach loosely-matching but irrelevant
+            # articles (calibration run 2026-07-02 caught exactly this).
+            if rows or not name_terms:
+                article_rows = conn.execute(
+                    """
+                    SELECT source, title, summary, published_at, url, matched_terms
+                    FROM poll_articles
+                    ORDER BY COALESCE(published_at, fetched_at) DESC
+                    LIMIT 3
+                    """
+                ).fetchall()
         conn.close()
     except Exception as exc:
         logger.warning("suppressed exception: %s", exc)
@@ -391,7 +414,10 @@ def _scope_limit_polling_reply(query: str) -> str | None:
         return external_reply
 
     body = (
-        "VoteIQ does not currently have public-opinion polling data in its public-record dataset.\n\n"
+        "VoteIQ doesn't have polling data matching that question. VoteIQ's polling "
+        "coverage is limited to Virginia governor, U.S. Senate, U.S. House, and Attorney "
+        "General horse-race and approval polls — it does not track opinion surveys on "
+        "individual policy topics (e.g. the state budget, specific bills).\n\n"
         "External places to check: VCU Wilder School, CNU Wason Center, RealClearPolitics, FiveThirtyEight.\n\n"
         "Those are external suggestions, not VoteIQ sources for this answer.\n\n"
         "Is there something specific you're trying to understand about your representatives or a bill? "
