@@ -887,14 +887,19 @@ def _add_bill_context(blocks: list[str], bills: list[str], session: str, pro: bo
 
     conn = _connect("legislative_intelligence")
     if conn:
+        # Same schema fix as _add_person_vote_context: va_votes has no
+        # per-legislator column, only aggregate Y/N/A totals. Per-legislator
+        # votes live in va_vote_records, joined via vote_id. bill_id in this
+        # DB is "{bill_number}_{session}" (see migrate_legiscan_to_sql.py).
         for bill in bills:
             _query_rows(conn, """
-                SELECT bill_number, session, legislator_id, vote, vote_date
-                FROM va_votes
-                WHERE bill_number=? AND session=?
-                ORDER BY vote_date DESC
+                SELECT vr.legislator_name, vr.vote, v.bill_id, v.session, v.vote_date
+                FROM va_vote_records vr
+                JOIN va_votes v ON v.vote_id = vr.vote_id
+                WHERE v.bill_id=? AND v.session=?
+                ORDER BY v.vote_date DESC
                 LIMIT 40
-            """, (bill, session), f"legislative_intelligence.va_votes {bill}", blocks, limit=40)
+            """, (f"{bill}_{session}", session), f"legislative_intelligence.va_votes {bill}", blocks, limit=40)
         conn.close()
 
     conn = _connect("virginia_legislature")
@@ -1641,12 +1646,18 @@ def _add_person_vote_context(blocks: list[str], query: str, terms: list[str], se
 
     conn = _connect("legislative_intelligence")
     if conn:
-        clause, params = _like_any_clause(["legislator_id", "bill_number", "vote"], people[:4])
+        # va_votes holds aggregate per-bill Y/N/A totals only — no person data.
+        # The per-legislator vote lives in va_vote_records (legislator_id,
+        # legislator_name, vote), joined back to va_votes via vote_id for
+        # session/date/chamber/result context.
+        clause, params = _like_any_clause(["legislator_name"], people[:4])
         _query_rows(conn, f"""
-            SELECT bill_number, session, legislator_id, vote, vote_date
-            FROM va_votes
-            WHERE session=? AND ({clause})
-            ORDER BY vote_date DESC
+            SELECT vr.legislator_name, vr.vote, v.bill_id, v.session,
+                   v.vote_date, v.chamber, v.result
+            FROM va_vote_records vr
+            JOIN va_votes v ON v.vote_id = vr.vote_id
+            WHERE v.session=? AND ({clause})
+            ORDER BY v.vote_date DESC
             LIMIT 40
         """, [session, *params], "legislative_intelligence.va_votes person", blocks, limit=40)
         conn.close()

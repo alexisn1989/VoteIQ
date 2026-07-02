@@ -119,13 +119,27 @@ def test_known_federal_with_congressional_term_defers_to_federal_builder(db):
 
 
 def test_legislator_found_in_legislative_intelligence_va_votes(db):
+    """Real schema: va_votes holds aggregate Y/N/A totals per bill (no person
+    column); the per-legislator vote lives in va_vote_records, joined via
+    vote_id. The old fixture invented a single-table schema that matched the
+    (broken) production code but never matched production data — see
+    scripts/oneoffs/migrate_legiscan_to_sql.py for the real DDL."""
     db.legislative(
         """CREATE TABLE va_votes (
-            bill_number TEXT, session TEXT, legislator_id TEXT, vote TEXT, vote_date TEXT
+            vote_id TEXT, bill_id TEXT, session TEXT, vote_date TEXT,
+            chamber TEXT, result TEXT
         )""",
         """INSERT INTO va_votes VALUES
-           ('HB50', '2026', 'Dawn Adams', 'yes', '2026-02-20')""",
+           ('HB50_2026_vote_1', 'HB50', '2026', '2026-02-20', 'House', 'PASSED')""",
+        """CREATE TABLE va_vote_records (
+            id INTEGER PRIMARY KEY, vote_id TEXT, legislator_id TEXT,
+            legislator_name TEXT, vote TEXT
+        )""",
+        """INSERT INTO va_vote_records VALUES
+           (1, 'HB50_2026_vote_1', 'dawn-adams', 'Dawn Adams', 'yes')""",
     )
     db.openstates(_VOTES_DDL, _LEGISLATORS_DDL, _BILLS_DDL)
     context = dc.build_database_context("Dawn Adams voting record 2026")
     assert "legislative_intelligence.va_votes person" in context
+    assert "Dawn Adams" in context
+    assert "bill_id=HB50" in context

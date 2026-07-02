@@ -147,3 +147,28 @@ def test_multiple_bills_in_query_all_retrieved(db):
     context = dc.build_database_context("Compare HB1 and SB2")
     assert "openstates.bills HB1" in context
     assert "openstates.bills SB2" in context
+
+
+def test_legislative_intelligence_vote_records_joined_correctly(db):
+    """Real schema: va_votes has no per-legislator column (aggregate Y/N/A
+    totals only); per-legislator votes live in va_vote_records, joined via
+    vote_id. bill_id is '{bill_number}_{session}' (migrate_legiscan_to_sql.py).
+    Fixed 2026-07-02 alongside the identical bug in _add_person_vote_context —
+    see tests/test_person_vote_context.py::test_legislator_found_in_legislative_intelligence_va_votes."""
+    db.legislative(
+        """CREATE TABLE va_votes (
+            vote_id TEXT, bill_id TEXT, session TEXT, vote_date TEXT,
+            chamber TEXT, result TEXT
+        )""",
+        """INSERT INTO va_votes VALUES
+           ('HB50_2026_vote_1', 'HB50_2026', '2026', '2026-02-20', 'House', 'PASSED')""",
+        """CREATE TABLE va_vote_records (
+            id INTEGER PRIMARY KEY, vote_id TEXT, legislator_id TEXT,
+            legislator_name TEXT, vote TEXT
+        )""",
+        """INSERT INTO va_vote_records VALUES
+           (1, 'HB50_2026_vote_1', 'dawn-adams', 'Dawn Adams', 'yes')""",
+    )
+    context = dc.build_database_context("How did the House vote on HB50 in 2026?")
+    assert "legislative_intelligence.va_votes HB50" in context
+    assert "Dawn Adams" in context
