@@ -199,3 +199,107 @@ tests:
       - "2026"
     expected_abstain: false
     expected_hallucination_risk_max: 0.4
+
+  # ── PAC-vote correlation — the demo's most protected asset ─────────────────
+  # Added 2026-07-03: none of the cases above actually trigger
+  # _add_pac_vote_correlation_context (needs BOTH a PAC/money signal word AND
+  # a vote signal word in the same query — see _PAC_VOTE_PAC_SIGNAL /
+  # _PAC_VOTE_VOTE_SIGNAL in database_context.py). CLAUDE.md names this
+  # function the CORE DEMO PROTECTION ZONE alongside the vote waterfall, and
+  # it had zero direct truth-suite coverage until now. Asserting "PAC" and
+  # "vote" (routing proof) plus the literal INFERENCE RULE anti-causation
+  # phrase the block is required to carry — this is the one line that must
+  # never silently disappear from a refactor.
+  - query: "Which PACs fund Jennifer Kiggans and how does her voting record align?"
+    expected_entity: "Kiggans"
+    expected_sql_table: "fec_independent_expenditures"
+    expected_answer_contains:
+      - "PAC"
+      - "vote"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.4
+
+  # ── New policy-topic bill search (commit 2990581b) ─────────────────────────
+  # One regression case per topic added to _BILL_TOPIC_ALIASES — guards
+  # against the exact class of bug the energy case above caught (AND-semantics
+  # keyword search silently returning nothing for a real, populated topic).
+
+  - query: "What criminal justice bills passed in the Virginia General Assembly in 2026?"
+    expected_entity: ""
+    expected_sql_table: "va_bills"
+    expected_answer_contains:
+      - "2026"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.4
+
+  - query: "What election bills passed in the Virginia General Assembly in 2026?"
+    expected_entity: ""
+    expected_sql_table: "va_bills"
+    expected_answer_contains:
+      - "2026"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.4
+
+  - query: "What labor bills passed in the Virginia General Assembly in 2026?"
+    expected_entity: ""
+    expected_sql_table: "va_bills"
+    expected_answer_contains:
+      - "2026"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.4
+
+  - query: "What agriculture bills passed in the Virginia General Assembly in 2026?"
+    expected_entity: ""
+    expected_sql_table: "va_bills"
+    expected_answer_contains:
+      - "2026"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.4
+
+  - query: "What veterans bills passed in the Virginia General Assembly in 2026?"
+    expected_entity: ""
+    expected_sql_table: "va_bills"
+    expected_answer_contains:
+      - "2026"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.4
+
+  - query: "What immigration bills passed in the Virginia General Assembly in 2026?"
+    expected_entity: ""
+    expected_sql_table: "va_bills"
+    expected_answer_contains:
+      - "2026"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.4
+
+  - query: "What insurance bills passed in the Virginia General Assembly in 2026?"
+    expected_entity: ""
+    expected_sql_table: "va_bills"
+    expected_answer_contains:
+      - "2026"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.4
+
+  - query: "What consumer protection bills passed in the Virginia General Assembly in 2026?"
+    expected_entity: ""
+    expected_sql_table: "va_bills"
+    expected_answer_contains:
+      - "2026"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.4
+
+  - query: "What AI bills passed in the Virginia General Assembly in 2026?"
+    expected_entity: ""
+    expected_sql_table: "va_bills"
+    expected_answer_contains:
+      - "2026"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.4
+
+  - query: "What disability bills passed in the Virginia General Assembly in 2026?"
+    expected_entity: ""
+    expected_sql_table: "va_bills"
+    expected_answer_contains:
+      - "2026"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.4
