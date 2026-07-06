@@ -1923,6 +1923,10 @@ _VB_LASTNAMES_FUZZY = (
     "schulman", "rouse", "wilson", "dyer",
 )
 
+# Source link for an individual VB Council agenda item — the city's own
+# IQM2 portal page for that resolution (full text, staff report, full roll call).
+_VB_LEGIFILE_URL = "https://virginiabeachva.iqm2.com/Citizens/Detail_LegiFile.aspx?ID={}"
+
 
 def _vb_fuzzy_key_lookup(q_lower: str, keys) -> str | None:
     """Fuzzy-match query words against known VB council surnames/keys.
@@ -2161,15 +2165,16 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
 
                 # Show their No votes
                 no_rows = conn.execute("""
-                    SELECT meeting_date, title, vote_yes, vote_no
+                    SELECT meeting_date, title, vote_yes, vote_no, resolution_id
                     FROM vb_council_member_votes
                     WHERE member_name=? AND vote='No/Nay'
                     ORDER BY meeting_date DESC LIMIT 10
                 """, (matched_member,)).fetchall()
                 if no_rows:
                     lines.append(f"\n  Recent No/Nay votes ({len(no_rows)} shown):")
-                    for mdate, title, vy, vn in no_rows:
-                        lines.append(f"    {mdate}  [{vy}Y/{vn}N]  {title[:80]}")
+                    for mdate, title, vy, vn, res_id in no_rows:
+                        url = _VB_LEGIFILE_URL.format(res_id)
+                        lines.append(f"    {mdate}  [{vy}Y/{vn}N]  [{title[:80]}]({url})")
                 _vote_section_added = True
 
             elif search_terms:
@@ -2177,7 +2182,8 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
                 like = "%" + "%".join(search_terms[:3]) + "%"
                 item_rows = conn.execute("""
                     SELECT title, meeting_date, vote_yes, vote_no,
-                           GROUP_CONCAT(member_name || '=' || vote, ' | ') votes_detail
+                           GROUP_CONCAT(member_name || '=' || vote, ' | ') votes_detail,
+                           resolution_id
                     FROM vb_council_member_votes
                     WHERE title LIKE ?
                     GROUP BY resolution_id
@@ -2185,8 +2191,9 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
                 """, (like,)).fetchall()
                 if item_rows:
                     lines.append(f"\n#### VB Council — Vote Search: {' '.join(search_terms[:3])!r}")
-                    for title, mdate, vy, vn, detail in item_rows:
-                        lines.append(f"\n  {mdate}  [{vy}Y/{vn}N]  {title[:90]}")
+                    for title, mdate, vy, vn, detail, res_id in item_rows:
+                        url = _VB_LEGIFILE_URL.format(res_id)
+                        lines.append(f"\n  {mdate}  [{vy}Y/{vn}N]  [{title[:90]}]({url})")
                         if detail:
                             # Show No votes only
                             no_detail = [p for p in detail.split(" | ") if "No/Nay" in p]
@@ -2200,15 +2207,16 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
             # General summary — shown whenever no member/topic branch fired
             lines.append("\n#### VB Council — Most Contested Votes (most No votes)")
             contested = conn.execute("""
-                SELECT title, meeting_date, vote_yes, vote_no
+                SELECT title, meeting_date, vote_yes, vote_no, resolution_id
                 FROM vb_council_member_votes
                 GROUP BY resolution_id
                 HAVING SUM(CASE WHEN vote='No/Nay' THEN 1 ELSE 0 END) >= 3
                 ORDER BY SUM(CASE WHEN vote='No/Nay' THEN 1 ELSE 0 END) DESC
                 LIMIT 8
             """).fetchall()
-            for title, mdate, vy, vn in contested:
-                lines.append(f"  {mdate}  [{vy}Y/{vn}N]  {title[:80]}")
+            for title, mdate, vy, vn, res_id in contested:
+                url = _VB_LEGIFILE_URL.format(res_id)
+                lines.append(f"  {mdate}  [{vy}Y/{vn}N]  [{title[:80]}]({url})")
 
         # ── campaign finance ──────────────────────────────────────────────
         # (_VB_FINANCE_KEY_MAP / _ALL_VB_FINANCE defined at function top)
@@ -2427,7 +2435,7 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
                 for _sv_key in _named_vb_finance[:2]:
                     _sv_last = _sv_key.split()[-1]
                     _sv_rows = conn.execute("""
-                        SELECT meeting_date, topic, yes_count, no_count, no_voters, title
+                        SELECT meeting_date, topic, yes_count, no_count, no_voters, title, resolution_id
                         FROM vb_split_votes
                         WHERE no_voters LIKE ?
                         ORDER BY meeting_date DESC LIMIT 8
@@ -2441,29 +2449,32 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
                     _split_lines.append(
                         f"\n#### {_sv_key} — No votes on contested resolutions ({_sv_total} total)"
                     )
-                    for _dt, _tp, _yes, _no, _voters, _title in _sv_rows:
+                    for _dt, _tp, _yes, _no, _voters, _title, _res_id in _sv_rows:
                         _t = f"[{_tp}]" if _tp else "[other]"
+                        _url = _VB_LEGIFILE_URL.format(_res_id)
                         _split_lines.append(
-                            f"  {_dt}  {_t:18s}  {_yes}Y/{_no}N  ({_voters})  {_title[:72]}"
+                            f"  {_dt}  {_t:18s}  {_yes}Y/{_no}N  ({_voters})  [{_title[:72]}]({_url})"
                         )
             else:
                 _split_lines.append("\n#### Most contested votes (highest No count):")
-                for _dt, _tp, _yes, _no, _voters, _title in conn.execute("""
-                    SELECT meeting_date, topic, yes_count, no_count, no_voters, title
+                for _dt, _tp, _yes, _no, _voters, _title, _res_id in conn.execute("""
+                    SELECT meeting_date, topic, yes_count, no_count, no_voters, title, resolution_id
                     FROM vb_split_votes ORDER BY no_count DESC, meeting_date DESC LIMIT 8
                 """).fetchall():
                     _t = f"[{_tp}]" if _tp else "[other]"
+                    _url = _VB_LEGIFILE_URL.format(_res_id)
                     _split_lines.append(
-                        f"  {_dt}  {_t:18s}  {_yes}Y/{_no}N  ({_voters})  {_title[:72]}"
+                        f"  {_dt}  {_t:18s}  {_yes}Y/{_no}N  ({_voters})  [{_title[:72]}]({_url})"
                     )
                 _split_lines.append("\n#### Most recent split votes:")
-                for _dt, _tp, _yes, _no, _voters, _title in conn.execute("""
-                    SELECT meeting_date, topic, yes_count, no_count, no_voters, title
+                for _dt, _tp, _yes, _no, _voters, _title, _res_id in conn.execute("""
+                    SELECT meeting_date, topic, yes_count, no_count, no_voters, title, resolution_id
                     FROM vb_split_votes ORDER BY meeting_date DESC LIMIT 6
                 """).fetchall():
                     _t = f"[{_tp}]" if _tp else "[other]"
+                    _url = _VB_LEGIFILE_URL.format(_res_id)
                     _split_lines.append(
-                        f"  {_dt}  {_t:18s}  {_yes}Y/{_no}N  ({_voters})  {_title[:72]}"
+                        f"  {_dt}  {_t:18s}  {_yes}Y/{_no}N  ({_voters})  [{_title[:72]}]({_url})"
                     )
             if _split_lines:
                 lines += ["", "### VB Council — Split Votes (Specific Examples)"] + _split_lines
