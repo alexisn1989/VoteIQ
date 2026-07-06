@@ -6,6 +6,7 @@ the rest of the context system.
 """
 from __future__ import annotations
 
+import difflib
 import json
 import re
 import sqlite3
@@ -1914,11 +1915,33 @@ _VB_TRIGGER_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Bare surnames for typo-tolerant matching (e.g. "Berluchhi" -> "berlucchi").
+# Single-word only — hyphenated names (jackson-green, ross-hammond) are left to
+# the exact-match paths above since word-tokenizing would split them anyway.
+_VB_LASTNAMES_FUZZY = (
+    "berlucchi", "hutcheson", "cummings", "henley", "remick",
+    "schulman", "rouse", "wilson", "dyer",
+)
+
+
+def _vb_fuzzy_key_lookup(q_lower: str, keys) -> str | None:
+    """Fuzzy-match query words against known VB council surnames/keys.
+
+    Fallback only — exact substring checks should always run first.
+    """
+    words = re.findall(r"[a-z]{5,}", q_lower)
+    keys = list(keys)
+    for w in words:
+        match = difflib.get_close_matches(w, keys, n=1, cutoff=0.75)
+        if match:
+            return match[0]
+    return None
+
 
 def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> None:
     q_lower = query.lower()
 
-    if not _VB_TRIGGER_RE.search(query):
+    if not _VB_TRIGGER_RE.search(query) and not _vb_fuzzy_key_lookup(q_lower, _VB_LASTNAMES_FUZZY):
         return
 
     # Member key maps — defined up front because the council-agenda trigger
@@ -2101,6 +2124,16 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
                     if row:
                         matched_member = row[0]
                         break
+
+            if not matched_member:
+                fuzzy_key = _vb_fuzzy_key_lookup(q_lower, _vb_member_names.keys())
+                if fuzzy_key:
+                    row = conn.execute(
+                        "SELECT DISTINCT member_name, district FROM vb_council_member_votes "
+                        "WHERE member_name LIKE ?", (f"%{_vb_member_names[fuzzy_key]}%",)
+                    ).fetchone()
+                    if row:
+                        matched_member = row[0]
 
             # Title / subject keyword search
             _kw_excl = {"virginia", "beach", "council", "vote", "voted", "how", "did",
