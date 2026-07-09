@@ -6317,8 +6317,9 @@ def _build_database_context_inner(query: str, max_chars: int = 22000, pro: bool 
             "Do NOT infer or fabricate an answer from unrelated records. Tell the "
             "user this topic is not in the dataset yet — VoteIQ currently covers "
             "Virginia state legislators and their votes/bills, the governor's "
-            "actions, the federal delegation, campaign finance, and donor-vote "
-            "alignment — and suggest a question within that scope."
+            "actions, the federal delegation, campaign finance, donor-vote "
+            "alignment, and Norfolk / Virginia Beach city council votes and "
+            "members — and suggest a question within that scope."
         )
 
     # Enforce the 3-layer FACT/CONTEXT/ANALYSIS contract when any finance data is
