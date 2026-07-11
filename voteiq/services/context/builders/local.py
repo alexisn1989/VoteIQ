@@ -11,7 +11,7 @@ import json
 import re
 import sqlite3
 
-from voteiq.services.context._db import _connect, _table_exists
+from voteiq.services.context._db import BASE_DIR, _connect, _table_exists
 
 # ── City → district mapping for "who represents me in [city]" queries ─────────
 # Keyed by lowercase city name. state_reps = [(chamber, district), ...]
@@ -135,6 +135,65 @@ def _add_city_district_context(blocks: list[str], query: str) -> None:
         )
 
 
+# ── Local elected officials — Chesapeake/Hampton/Portsmouth/Suffolk/Newport News ──
+# voteiq_officials.json is a general roster (Mayor, Council, School Board, Sheriff,
+# Commonwealth's Attorney, etc.) covering 6 Hampton Roads localities. Norfolk and
+# Virginia Beach are deliberately excluded here — they already have deeper
+# dedicated builders (_add_norfolk_council_context / _add_vb_council_context) with
+# real vote data, and this roster-only block would be a shallower duplicate.
+_OFFICIALS_PATH = BASE_DIR / "voteiq_officials.json"
+_OFFICIALS_LOCALITIES = ("chesapeake", "hampton", "portsmouth", "suffolk", "newport news")
+
+_LOCAL_OFFICIALS_TRIGGER = re.compile(
+    r"(chesapeake|hampton|portsmouth|suffolk|newport\s+news)"
+    r".*(council|mayor|school\s*board|sheriff|commonwealth.s\s+attorney|"
+    r"treasurer|clerk|commissioner|elected|official)"
+    r"|(council|mayor|school\s*board|sheriff|elected|official)"
+    r".*(chesapeake|hampton|portsmouth|suffolk|newport\s+news)",
+    re.IGNORECASE,
+)
+
+_officials_cache: list[dict] | None = None
+
+
+def _load_officials() -> list[dict]:
+    global _officials_cache
+    if _officials_cache is None:
+        try:
+            with open(_OFFICIALS_PATH, encoding="utf-8") as f:
+                _officials_cache = json.load(f)
+        except Exception:
+            _officials_cache = []
+    return _officials_cache
+
+
+def _add_local_officials_context(blocks: list[str], query: str) -> None:
+    """Roster-only local officials (Mayor, Council, School Board, row offices)
+    for Hampton Roads localities that don't have a dedicated vote-data builder.
+    """
+    if not _LOCAL_OFFICIALS_TRIGGER.search(query or ""):
+        return
+    q_lower = (query or "").lower()
+    locality = next((loc for loc in _OFFICIALS_LOCALITIES if loc in q_lower), None)
+    if not locality:
+        return
+
+    officials = _load_officials()
+    matches = [o for o in officials if (o.get("jurisdiction") or "").lower() == locality]
+    if not matches:
+        return
+
+    lines = [f"[RETRIEVED RECORD - {locality.title()} Elected Officials]"]
+    for o in matches:
+        party = f" ({o['party']})" if o.get("party") else ""
+        lines.append(f"- {o.get('district', 'Unknown office')}: {o.get('name', '')}{party}")
+        if o.get("url"):
+            lines.append(f"  Source: {o['url']}")
+    lines.append(
+        "\nSource: VoteIQ local officials roster (scraped from official city sites). "
+        "This is a roster only — vote records are not available for this locality."
+    )
+    blocks.append("\n".join(lines))
 
 
 _NORFOLK_COUNCIL_TRIGGER = re.compile(
