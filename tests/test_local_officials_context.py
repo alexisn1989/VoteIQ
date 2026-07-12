@@ -40,9 +40,18 @@ def test_chesapeake_council_query_returns_roster(monkeypatch):
     local._add_local_officials_context(blocks, "Who is on the Chesapeake City Council?")
     assert len(blocks) == 1
     assert "Chesapeake Elected Officials" in blocks[0]
-    assert "Jane Doe" in blocks[0]
-    assert "John Smith" in blocks[0]
+    assert "Jane Doe" in blocks[0]  # Chesapeake Mayor — still roster-only
     assert "Pat Lee" not in blocks[0]  # different locality
+
+
+def test_chesapeake_council_rows_excluded_from_officials_roster(monkeypatch):
+    """Chesapeake Council rows are now covered by the dedicated
+    _add_chesapeake_council_context (real vote data) — this roster-only
+    builder must not also list them, to avoid a duplicate/shallower block."""
+    monkeypatch.setattr(local, "_officials_cache", _FIXTURE_OFFICIALS)
+    blocks: list[str] = []
+    local._add_local_officials_context(blocks, "Who is on the Chesapeake City Council?")
+    assert "John Smith" not in blocks[0]  # Chesapeake Council — excluded
 
 
 def test_no_trigger_words_no_block(monkeypatch):
