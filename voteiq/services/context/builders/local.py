@@ -167,14 +167,40 @@ def _load_officials() -> list[dict]:
     return _officials_cache
 
 
+def _chesapeake_vote_data_available() -> bool:
+    """True when the dedicated Chesapeake vote builder has data to serve.
+
+    Deployment-state guard: the vote tables exist in the locally-scraped
+    polls.db but ship to production via the version-gated seed — a production
+    disk seeded before the scrape has no chesapeake_council_* tables. In that
+    state the roster fallback must keep listing council members, or Chesapeake
+    council queries would return officials with no council at all.
+    """
+    try:
+        conn = _connect("polls")
+        if conn is None:
+            return False
+        try:
+            if not _table_exists(conn, "chesapeake_council_members"):
+                return False
+            return conn.execute(
+                "SELECT COUNT(*) FROM chesapeake_council_members"
+            ).fetchone()[0] > 0
+        finally:
+            conn.close()
+    except Exception:
+        return False
+
+
 def _add_local_officials_context(blocks: list[str], query: str) -> None:
     """Roster-only local officials (Mayor, Council, School Board, row offices)
     for Hampton Roads localities that don't have a dedicated vote-data builder.
 
-    Chesapeake Council rows are excluded here — _add_chesapeake_council_context
-    covers Council with real vote data from chesapeake_council_member_votes.
-    This still serves Chesapeake's other offices (Mayor, Sheriff, School Board,
-    etc.) since that dedicated builder only covers Council.
+    Chesapeake Council rows are excluded here only when the dedicated
+    _add_chesapeake_council_context has real data to serve (see
+    _chesapeake_vote_data_available). This still serves Chesapeake's other
+    offices (Mayor, Sheriff, School Board, etc.) either way, since the
+    dedicated builder only covers Council.
     """
     if not _LOCAL_OFFICIALS_TRIGGER.search(query or ""):
         return
@@ -185,7 +211,8 @@ def _add_local_officials_context(blocks: list[str], query: str) -> None:
 
     officials = _load_officials()
     matches = [o for o in officials if (o.get("jurisdiction") or "").lower() == locality]
-    if locality == "chesapeake":
+    ches_votes_live = locality == "chesapeake" and _chesapeake_vote_data_available()
+    if ches_votes_live:
         matches = [o for o in matches if o.get("district") != "Chesapeake Council"]
     if not matches:
         return
@@ -199,7 +226,7 @@ def _add_local_officials_context(blocks: list[str], query: str) -> None:
     no_votes_note = (
         "This is a roster only — Council vote records are available separately; "
         "vote records for other offices on this list are not tracked."
-        if locality == "chesapeake" else
+        if ches_votes_live else
         "This is a roster only — vote records are not available for this locality."
     )
     lines.append(

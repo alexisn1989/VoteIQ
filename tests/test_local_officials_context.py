@@ -44,14 +44,37 @@ def test_chesapeake_council_query_returns_roster(monkeypatch):
     assert "Pat Lee" not in blocks[0]  # different locality
 
 
-def test_chesapeake_council_rows_excluded_from_officials_roster(monkeypatch):
-    """Chesapeake Council rows are now covered by the dedicated
-    _add_chesapeake_council_context (real vote data) — this roster-only
-    builder must not also list them, to avoid a duplicate/shallower block."""
+def test_chesapeake_council_rows_excluded_when_vote_data_present(monkeypatch, db):
+    """When the dedicated vote builder has data, this roster-only builder must
+    not also list Council members — avoids a duplicate/shallower block."""
+    db.polls(
+        """CREATE TABLE chesapeake_council_members (
+            id INTEGER PRIMARY KEY, name TEXT, district TEXT, district_num INTEGER,
+            email TEXT, jurisdiction TEXT, scraped_date TEXT
+        )""",
+        "INSERT INTO chesapeake_council_members VALUES"
+        " (1, 'Real Member', 'Council Member (At-Large)', 1, '', 'Chesapeake', '2026-06-01')",
+    )
     monkeypatch.setattr(local, "_officials_cache", _FIXTURE_OFFICIALS)
     blocks: list[str] = []
     local._add_local_officials_context(blocks, "Who is on the Chesapeake City Council?")
     assert "John Smith" not in blocks[0]  # Chesapeake Council — excluded
+    assert "Jane Doe" in blocks[0]        # Mayor — still served here
+
+
+def test_chesapeake_council_rows_kept_when_vote_data_absent(monkeypatch, db):
+    """Deployment-state guard: production's polls.db is seeded via a
+    version-gated snapshot that can predate the Chesapeake vote scrape. When
+    the vote tables are missing, the roster fallback must keep listing
+    Council members — otherwise Chesapeake council queries would return
+    officials with no council at all (worse than before the vote builder
+    existed)."""
+    # db fixture points at empty temp DBs — no chesapeake tables at all
+    monkeypatch.setattr(local, "_officials_cache", _FIXTURE_OFFICIALS)
+    blocks: list[str] = []
+    local._add_local_officials_context(blocks, "Who is on the Chesapeake City Council?")
+    assert "John Smith" in blocks[0]  # Chesapeake Council — kept
+    assert "vote records are not available" in blocks[0]
 
 
 def test_no_trigger_words_no_block(monkeypatch):
