@@ -196,11 +196,11 @@ def _add_local_officials_context(blocks: list[str], query: str) -> None:
     """Roster-only local officials (Mayor, Council, School Board, row offices)
     for Hampton Roads localities that don't have a dedicated vote-data builder.
 
-    Chesapeake Council rows are excluded here only when the dedicated
-    _add_chesapeake_council_context has real data to serve (see
-    _chesapeake_vote_data_available). This still serves Chesapeake's other
-    offices (Mayor, Sheriff, School Board, etc.) either way, since the
-    dedicated builder only covers Council.
+    Council rows for cities with a dedicated scraped-vote builder (Chesapeake,
+    Portsmouth) are excluded here only when that builder has real data to
+    serve (see _council_vote_data_available). This still serves those cities'
+    other offices (Mayor, Sheriff, School Board, etc.) either way, since the
+    dedicated builders only cover Council.
     """
     if not _LOCAL_OFFICIALS_TRIGGER.search(query or ""):
         return
@@ -211,9 +211,12 @@ def _add_local_officials_context(blocks: list[str], query: str) -> None:
 
     officials = _load_officials()
     matches = [o for o in officials if (o.get("jurisdiction") or "").lower() == locality]
-    ches_votes_live = locality == "chesapeake" and _chesapeake_vote_data_available()
-    if ches_votes_live:
-        matches = [o for o in matches if o.get("district") != "Chesapeake Council"]
+    council_votes_live = (
+        locality in ("chesapeake", "portsmouth")
+        and _council_vote_data_available(locality)
+    )
+    if council_votes_live:
+        matches = [o for o in matches if o.get("district") != f"{locality.title()} Council"]
     if not matches:
         return
 
@@ -226,7 +229,7 @@ def _add_local_officials_context(blocks: list[str], query: str) -> None:
     no_votes_note = (
         "This is a roster only — Council vote records are available separately; "
         "vote records for other offices on this list are not tracked."
-        if ches_votes_live else
+        if council_votes_live else
         "This is a roster only — vote records are not available for this locality."
     )
     lines.append(
@@ -2585,17 +2588,24 @@ def _add_vb_council_context(blocks: list[str], query: str, terms: list[str]) -> 
         pass
 
 
-# ── Chesapeake City Council context ──────────────────────────────────────────
-# Real per-member vote data (chesapeake_council_votes / _member_votes),
-# scraped via scrape_chesapeake_council.py from Chesapeake's Granicus archive
-# (Chesapeake has no IQM2 portal like Norfolk/VB). Found fully populated in
-# polls.db with zero code consumers — this replaces the roster-only fallback
-# _add_local_officials_context served for Chesapeake with real vote history.
+# ── Scraped city-council contexts (Chesapeake, Portsmouth) ───────────────────
+# Real per-member vote data scraped from each city's own records portal —
+# neither city runs IQM2 like Norfolk/VB, so each has a dedicated scraper:
+#   Chesapeake: scrape_chesapeake_council.py — Granicus ViewPublisher archive
+#   Portsmouth: scrape_portsmouth_council.py — City Clerk Laserfiche WebLink
+#     (scanned minutes read multimodally by Gemini; no text layer)
+# Both write identically-shaped tables ({city}_council_members / _votes /
+# _member_votes), so one config-driven builder serves both.
 #
-# Requires "chesapeake" in the query (no bare-surname fuzzy matching like VB's
-# _VB_LASTNAMES_FUZZY) — several current members (Smith, Ward, King, Bunn) are
-# common English words/surnames that would produce false-positive triggers on
-# unrelated queries without that context requirement.
+# Trigger design: requires the city name in the query (no bare-surname fuzzy
+# matching like VB's) — members like Smith, Ward, King, Thomas, Bryant are
+# common English words/first names that would false-positive without that
+# context requirement.
+#
+# No chronological claims anywhere: Chesapeake meeting_date is free text with
+# literal "unknown" values (~10% of rows); Portsmouth is MM/DD/YYYY, which
+# text-sorts wrong across years. Labels avoid "recent"/"period" accordingly.
+
 _CHESAPEAKE_TRIGGER_RE = re.compile(
     r"chesapeake.*(council|member|district|mayor|vote|voted|votes|voting|"
     r"agenda|meeting|ordinance|resolution|profile|background)"
@@ -2603,96 +2613,158 @@ _CHESAPEAKE_TRIGGER_RE = re.compile(
     re.IGNORECASE,
 )
 
-# lowercase surname -> exact member_name in chesapeake_council_member_votes
-_CHESAPEAKE_MEMBER_MAP = {
-    "west": "West", "ritter": "Ritter", "bunn": "Bunn", "jefferies": "Jefferies",
-    "king": "King", "newins": "Newins", "smith": "Smith", "ward": "Ward",
-    "whitaker": "Whitaker",
+_PORTSMOUTH_TRIGGER_RE = re.compile(
+    r"portsmouth.*(council|member|district|mayor|vote|voted|votes|voting|"
+    r"agenda|meeting|ordinance|resolution|profile|background)"
+    r"|(council|member|mayor|vote|voted|votes|agenda).*portsmouth",
+    re.IGNORECASE,
+)
+
+_COUNCIL_SCRAPE_CFGS: dict[str, dict] = {
+    "chesapeake": {
+        "display": "Chesapeake",
+        "trigger": _CHESAPEAKE_TRIGGER_RE,
+        # lowercase surname -> exact member_name in {prefix}_council_member_votes
+        "member_map": {
+            "west": "West", "ritter": "Ritter", "bunn": "Bunn",
+            "jefferies": "Jefferies", "king": "King", "newins": "Newins",
+            "smith": "Smith", "ward": "Ward", "whitaker": "Whitaker",
+        },
+        "source_note": (
+            "Source: Chesapeake City Council meeting minutes, "
+            "https://chesapeake.granicus.com/ViewPublisher.php?view_id=29"
+        ),
+    },
+    "portsmouth": {
+        "display": "Portsmouth",
+        "trigger": _PORTSMOUTH_TRIGGER_RE,
+        "member_map": {
+            "glover": "Glover", "moody": "Moody", "hugel": "Hugel",
+            "tillage": "Tillage", "bryant": "Bryant", "dodson": "Dodson",
+            "thomas": "Thomas", "barnes": "Barnes", "lucas-burke": "Lucas-Burke",
+            "lucas burke": "Lucas-Burke", "whitaker": "Whitaker",
+        },
+        "source_note": (
+            "Source: Portsmouth City Council meeting minutes, City Clerk "
+            "Laserfiche archive, https://www2.portsmouthva.gov/weblink7CCMinutes/"
+        ),
+    },
 }
 
-_CHESAPEAKE_ARCHIVE_URL = "https://chesapeake.granicus.com/ViewPublisher.php?view_id=29"
+_COUNCIL_KW_EXCL_BASE = {
+    "council", "vote", "voted", "votes", "voting", "how", "did",
+    "what", "the", "on", "at", "in", "of", "is", "are", "was", "city",
+    "who", "list", "roster", "member", "members", "mayor", "does", "show",
+}
 
 
-def _add_chesapeake_council_context(blocks: list[str], query: str, terms: list[str]) -> None:
+def _council_vote_data_available(prefix: str) -> bool:
+    """True when a scraped-council builder has data to serve.
+
+    Deployment-state guard: these tables exist in the locally-scraped
+    polls.db but ship to production via the version-gated seed — a production
+    disk seeded before the scrape has none of them. In that state the roster
+    fallback must keep listing council members.
+    """
+    try:
+        conn = _connect("polls")
+        if conn is None:
+            return False
+        try:
+            table = f"{prefix}_council_members"
+            if not _table_exists(conn, table):
+                return False
+            return conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] > 0
+        finally:
+            conn.close()
+    except Exception:
+        return False
+
+
+# Kept under the old name — callers/tests reference it directly.
+def _chesapeake_vote_data_available() -> bool:
+    return _council_vote_data_available("chesapeake")
+
+
+def _add_scraped_council_context(
+    blocks: list[str], query: str, terms: list[str], prefix: str
+) -> None:
+    cfg = _COUNCIL_SCRAPE_CFGS[prefix]
     q_lower = (query or "").lower()
-    if not _CHESAPEAKE_TRIGGER_RE.search(query or ""):
+    if not cfg["trigger"].search(query or ""):
         return
+
+    display = cfg["display"]
+    t_members = f"{prefix}_council_members"
+    t_votes = f"{prefix}_council_votes"
+    t_member_votes = f"{prefix}_council_member_votes"
 
     try:
         conn = _connect("polls")
         if conn is None:
             return
-        lines: list[str] = ["## Chesapeake City Council"]
-        has_votes = _table_exists(conn, "chesapeake_council_member_votes")
+        lines: list[str] = [f"## {display} City Council"]
+        has_votes = _table_exists(conn, t_member_votes)
 
         # ── member roster ──────────────────────────────────────────────────
         member_trigger = any(w in q_lower for w in (
             "member", "council", "who", "roster", "list", "all", "mayor", "contact", "email",
         ))
-        if member_trigger and _table_exists(conn, "chesapeake_council_members"):
-            members = conn.execute("""
-                SELECT name, district, email FROM chesapeake_council_members
+        if member_trigger and _table_exists(conn, t_members):
+            members = conn.execute(f"""
+                SELECT name, district, email FROM {t_members}
                 ORDER BY district_num
             """).fetchall()
             if members:
-                lines.append("\n#### Chesapeake City Council — Member Roster")
+                lines.append(f"\n#### {display} City Council — Member Roster")
                 for name, district, email in members:
                     e_str = f"  ({email})" if email else ""
                     lines.append(f"  {district:<28}  {name}{e_str}")
 
         # ── named-member vote summary ──────────────────────────────────────
         matched_member = next(
-            (full for key, full in _CHESAPEAKE_MEMBER_MAP.items() if key in q_lower), None
+            (full for key, full in cfg["member_map"].items() if key in q_lower), None
         )
         _vote_section_added = False
 
         if matched_member and has_votes:
-            # No MIN/MAX(meeting_date) here: meeting_date is free text (e.g.
-            # "May 19, 2026"), not ISO-sortable, and ~10% of rows are the
-            # literal string "unknown" — which sorts after real month names
-            # alphabetically, corrupting MAX. Total count is reliable; a
-            # date range from this column would not be.
-            stats = conn.execute("""
+            stats = conn.execute(f"""
                 SELECT COUNT(*), SUM(vote='yes'), SUM(vote='no'), SUM(vote='absent')
-                FROM chesapeake_council_member_votes WHERE member_name=?
+                FROM {t_member_votes} WHERE member_name=?
             """, (matched_member,)).fetchone()
             if stats and stats[0]:
                 total_v, yes_v, no_v, absent = stats
-                lines.append(f"\n#### Chesapeake Council — {matched_member} Vote Summary")
+                lines.append(f"\n#### {display} Council — {matched_member} Vote Summary")
                 lines.append(f"  {total_v} recorded votes")
                 lines.append(f"  Yes: {yes_v or 0}   No: {no_v or 0}   Absent: {absent or 0}")
 
-            # Not claiming "recent" — meeting_date's free-text/"unknown" mix
-            # (see note above) means this ordering isn't reliably chronological.
-            no_rows = conn.execute("""
-                SELECT meeting_date, title, result FROM chesapeake_council_member_votes
-                WHERE member_name=? AND vote='no' ORDER BY meeting_date DESC LIMIT 10
-            """, (matched_member,)).fetchall()
-            if no_rows:
-                lines.append(f"\n  No votes on record ({len(no_rows)} of {no_v or 0} shown):")
-                for mdate, title, result in no_rows:
-                    lines.append(f"    {mdate}  [{result}]  {title[:90]}")
-            _vote_section_added = True
+                no_rows = conn.execute(f"""
+                    SELECT meeting_date, title, result FROM {t_member_votes}
+                    WHERE member_name=? AND vote='no' ORDER BY meeting_date DESC LIMIT 10
+                """, (matched_member,)).fetchall()
+                if no_rows:
+                    lines.append(f"\n  No votes on record ({len(no_rows)} of {no_v or 0} shown):")
+                    for mdate, title, result in no_rows:
+                        lines.append(f"    {mdate}  [{result}]  {title[:90]}")
+                _vote_section_added = True
 
         # ── topic search ────────────────────────────────────────────────────
-        _kw_excl = {"chesapeake", "council", "vote", "voted", "votes", "voting", "how", "did",
-                    "what", "the", "on", "at", "in", "of", "is", "are", "was", "city",
-                    "who", "list", "roster", "member", "members", "mayor", "does", "show"}
+        _kw_excl = _COUNCIL_KW_EXCL_BASE | {prefix}
         search_terms = [t for t in terms if t.lower() not in _kw_excl and len(t) > 3]
 
         if not matched_member and search_terms and has_votes:
             like = "%" + "%".join(search_terms[:3]) + "%"
-            item_rows = conn.execute("""
+            item_rows = conn.execute(f"""
                 SELECT DISTINCT cv.meeting_date, cv.title, cv.vote_count, cv.result, cv.id
-                FROM chesapeake_council_votes cv
+                FROM {t_votes} cv
                 WHERE cv.title LIKE ? ORDER BY cv.meeting_date DESC LIMIT 5
             """, (like,)).fetchall()
             if item_rows:
-                lines.append(f"\n#### Chesapeake Council — Vote Search: {' '.join(search_terms[:3])!r}")
+                lines.append(f"\n#### {display} Council — Vote Search: {' '.join(search_terms[:3])!r}")
                 for mdate, title, vcount, result, vid in item_rows:
                     lines.append(f"\n  {mdate}  [{vcount}, {result}]  {title[:100]}")
-                    no_voters = conn.execute("""
-                        SELECT member_name FROM chesapeake_council_member_votes
+                    no_voters = conn.execute(f"""
+                        SELECT member_name FROM {t_member_votes}
                         WHERE vote_id=? AND vote='no'
                     """, (vid,)).fetchall()
                     if no_voters:
@@ -2701,25 +2773,33 @@ def _add_chesapeake_council_context(blocks: list[str], query: str, terms: list[s
 
         # ── most contested votes (default when no member/topic matched) ────
         if has_votes and not _vote_section_added:
-            contested = conn.execute("""
+            contested = conn.execute(f"""
                 SELECT cv.meeting_date, cv.title, cv.vote_count, cv.result,
                        SUM(mv.vote='no') AS no_count
-                FROM chesapeake_council_votes cv
-                JOIN chesapeake_council_member_votes mv ON mv.vote_id = cv.id
+                FROM {t_votes} cv
+                JOIN {t_member_votes} mv ON mv.vote_id = cv.id
                 GROUP BY cv.id
                 HAVING no_count >= 2
                 ORDER BY no_count DESC, cv.meeting_date DESC
                 LIMIT 8
             """).fetchall()
             if contested:
-                lines.append("\n#### Chesapeake Council — Most Contested Votes (most No votes)")
+                lines.append(f"\n#### {display} Council — Most Contested Votes (most No votes)")
                 for mdate, title, vcount, result, no_count in contested:
                     lines.append(f"  {mdate}  [{vcount}, {result}]  {title[:90]}")
 
         conn.close()
         if len(lines) > 1:
-            lines.append(f"\nSource: Chesapeake City Council meeting minutes, {_CHESAPEAKE_ARCHIVE_URL}")
+            lines.append(f"\n{cfg['source_note']}")
             blocks.append("\n".join(lines))
 
     except Exception:
         pass
+
+
+def _add_chesapeake_council_context(blocks: list[str], query: str, terms: list[str]) -> None:
+    _add_scraped_council_context(blocks, query, terms, "chesapeake")
+
+
+def _add_portsmouth_council_context(blocks: list[str], query: str, terms: list[str]) -> None:
+    _add_scraped_council_context(blocks, query, terms, "portsmouth")

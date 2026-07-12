@@ -47,6 +47,7 @@ from voteiq.services.context.builders.local import (
     _add_city_district_context,
     _add_local_officials_context,
     _add_norfolk_council_context,
+    _add_portsmouth_council_context,
     _add_vb_council_context,
 )
 
@@ -6209,6 +6210,7 @@ def _build_database_context_inner(query: str, max_chars: int = 22000, pro: bool 
     _add_norfolk_council_context(blocks, q, terms)
     _add_vb_council_context(blocks, q, terms)
     _add_chesapeake_council_context(blocks, q, terms)
+    _add_portsmouth_council_context(blocks, q, terms)
     _add_local_officials_context(blocks, q)
     blocks.set_priority(PriorityBlockList.HIGH)
     _add_election_results_context(blocks, q)
