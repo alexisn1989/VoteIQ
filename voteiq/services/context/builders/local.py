@@ -167,31 +167,6 @@ def _load_officials() -> list[dict]:
     return _officials_cache
 
 
-def _chesapeake_vote_data_available() -> bool:
-    """True when the dedicated Chesapeake vote builder has data to serve.
-
-    Deployment-state guard: the vote tables exist in the locally-scraped
-    polls.db but ship to production via the version-gated seed — a production
-    disk seeded before the scrape has no chesapeake_council_* tables. In that
-    state the roster fallback must keep listing council members, or Chesapeake
-    council queries would return officials with no council at all.
-    """
-    try:
-        conn = _connect("polls")
-        if conn is None:
-            return False
-        try:
-            if not _table_exists(conn, "chesapeake_council_members"):
-                return False
-            return conn.execute(
-                "SELECT COUNT(*) FROM chesapeake_council_members"
-            ).fetchone()[0] > 0
-        finally:
-            conn.close()
-    except Exception:
-        return False
-
-
 def _add_local_officials_context(blocks: list[str], query: str) -> None:
     """Roster-only local officials (Mayor, Council, School Board, row offices)
     for Hampton Roads localities that don't have a dedicated vote-data builder.
@@ -211,12 +186,16 @@ def _add_local_officials_context(blocks: list[str], query: str) -> None:
 
     officials = _load_officials()
     matches = [o for o in officials if (o.get("jurisdiction") or "").lower() == locality]
+    scrape_prefix = locality.replace(" ", "_")  # "newport news" -> "newport_news"
     council_votes_live = (
-        locality in ("chesapeake", "portsmouth")
-        and _council_vote_data_available(locality)
+        locality in ("chesapeake", "portsmouth", "newport news")
+        and _council_vote_data_available(scrape_prefix)
     )
     if council_votes_live:
-        matches = [o for o in matches if o.get("district") != f"{locality.title()} Council"]
+        # startswith, not ==: Newport News uses ward-suffixed labels
+        # ("Newport News Council 1/2/3"), not a flat "{City} Council".
+        council_prefix = f"{locality.title()} Council"
+        matches = [o for o in matches if not (o.get("district") or "").startswith(council_prefix)]
     if not matches:
         return
 
@@ -2620,6 +2599,13 @@ _PORTSMOUTH_TRIGGER_RE = re.compile(
     re.IGNORECASE,
 )
 
+_NEWPORT_NEWS_TRIGGER_RE = re.compile(
+    r"newport\s+news.*(council|member|district|mayor|vote|voted|votes|voting|"
+    r"agenda|meeting|ordinance|resolution|profile|background)"
+    r"|(council|member|mayor|vote|voted|votes|agenda).*newport\s+news",
+    re.IGNORECASE,
+)
+
 _COUNCIL_SCRAPE_CFGS: dict[str, dict] = {
     "chesapeake": {
         "display": "Chesapeake",
@@ -2647,6 +2633,26 @@ _COUNCIL_SCRAPE_CFGS: dict[str, dict] = {
         "source_note": (
             "Source: Portsmouth City Council meeting minutes, City Clerk "
             "Laserfiche archive, https://www2.portsmouthva.gov/weblink7CCMinutes/"
+        ),
+    },
+    "newport_news": {
+        "display": "Newport News",
+        "trigger": _NEWPORT_NEWS_TRIGGER_RE,
+        # Unlike Chesapeake/Portsmouth, newport_news_council_member_votes
+        # stores each member's FULL display name (scrape_newport_news_council.py
+        # MEMBERS dict), not a bare surname — CivicWeb's Voting Records search
+        # is member-scoped per full name, so that's what got captured.
+        "member_map": {
+            "long": "Cleon M. Long, P.E.", "bethany": "Curtis D. Bethany III",
+            "jenkins": "David H. Jenkins", "woodbury": "Dr. Patricia P. Woodbury",
+            "eley": "John R. Eley III", "harris": "Marcellus L. Harris III, D. Div.",
+            "price": "McKinley L. Price, DDS", "jones": "Phillip Jones",
+            "coleman": "Robert Coleman", "cherry": "Saundra N. Cherry, D. Min.",
+            "scott": "Sharon P. Scott, MPA", "vick": "Tina L. Vick",
+        },
+        "source_note": (
+            "Source: Newport News City Council Attendance & Voting Records, "
+            "https://nngov.civicweb.net/Portal/VotingRecords.aspx"
         ),
     },
 }
@@ -2749,7 +2755,10 @@ def _add_scraped_council_context(
                 _vote_section_added = True
 
         # ── topic search ────────────────────────────────────────────────────
-        _kw_excl = _COUNCIL_KW_EXCL_BASE | {prefix}
+        # Exclude every word of the display name ("newport news" -> both
+        # "newport" and "news"), not just the underscored table prefix —
+        # _keywords() tokenizes the query into separate words.
+        _kw_excl = _COUNCIL_KW_EXCL_BASE | set(display.lower().split()) | {prefix}
         search_terms = [t for t in terms if t.lower() not in _kw_excl and len(t) > 3]
 
         if not matched_member and search_terms and has_votes:
@@ -2803,3 +2812,7 @@ def _add_chesapeake_council_context(blocks: list[str], query: str, terms: list[s
 
 def _add_portsmouth_council_context(blocks: list[str], query: str, terms: list[str]) -> None:
     _add_scraped_council_context(blocks, query, terms, "portsmouth")
+
+
+def _add_newport_news_council_context(blocks: list[str], query: str, terms: list[str]) -> None:
+    _add_scraped_council_context(blocks, query, terms, "newport_news")
