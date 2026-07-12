@@ -188,7 +188,7 @@ def _add_local_officials_context(blocks: list[str], query: str) -> None:
     matches = [o for o in officials if (o.get("jurisdiction") or "").lower() == locality]
     scrape_prefix = locality.replace(" ", "_")  # "newport news" -> "newport_news"
     council_votes_live = (
-        locality in ("chesapeake", "portsmouth", "newport news")
+        locality in ("chesapeake", "portsmouth", "newport news", "hampton")
         and _council_vote_data_available(scrape_prefix)
     )
     if council_votes_live:
@@ -2606,6 +2606,13 @@ _NEWPORT_NEWS_TRIGGER_RE = re.compile(
     re.IGNORECASE,
 )
 
+_HAMPTON_TRIGGER_RE = re.compile(
+    r"hampton.*(council|member|district|mayor|vote|voted|votes|voting|"
+    r"agenda|meeting|ordinance|resolution|profile|background)"
+    r"|(council|member|mayor|vote|voted|votes|agenda).*hampton",
+    re.IGNORECASE,
+)
+
 _COUNCIL_SCRAPE_CFGS: dict[str, dict] = {
     "chesapeake": {
         "display": "Chesapeake",
@@ -2653,6 +2660,24 @@ _COUNCIL_SCRAPE_CFGS: dict[str, dict] = {
         "source_note": (
             "Source: Newport News City Council Attendance & Voting Records, "
             "https://nngov.civicweb.net/Portal/VotingRecords.aspx"
+        ),
+    },
+    "hampton": {
+        "display": "Hampton",
+        "trigger": _HAMPTON_TRIGGER_RE,
+        # Bare surnames, matching Chesapeake/Portsmouth — Gemini extraction
+        # was prompted to key votes by last name only (scrape_hampton_council.py).
+        # Includes historical members (Tuck, Hobbs) alongside the current
+        # roster (Gray, Brown, Bowman, Campbell, Ferebee, Harper, Mugler) —
+        # council membership changed between the scraped 2023 data and today.
+        "member_map": {
+            "gray": "Gray", "brown": "Brown", "bowman": "Bowman",
+            "campbell": "Campbell", "ferebee": "Ferebee", "harper": "Harper",
+            "mugler": "Mugler", "tuck": "Tuck", "hobbs": "Hobbs",
+        },
+        "source_note": (
+            "Source: Hampton City Council Notice of Action meeting minutes, "
+            "https://hampton.legistar.com/Calendar.aspx"
         ),
     },
 }
@@ -2816,3 +2841,7 @@ def _add_portsmouth_council_context(blocks: list[str], query: str, terms: list[s
 
 def _add_newport_news_council_context(blocks: list[str], query: str, terms: list[str]) -> None:
     _add_scraped_council_context(blocks, query, terms, "newport_news")
+
+
+def _add_hampton_council_context(blocks: list[str], query: str, terms: list[str]) -> None:
+    _add_scraped_council_context(blocks, query, terms, "hampton")
