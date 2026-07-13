@@ -303,3 +303,48 @@ tests:
       - "2026"
     expected_abstain: false
     expected_hallucination_risk_max: 0.4
+
+  # ── Hampton Roads council rosters (added 2026-07-12) ────────────────────────
+  # One case per scraped-council city (Chesapeake/Portsmouth/Newport News/
+  # Hampton — commits ea6be28d..c3fc385a). Asserted names appear in BOTH the
+  # deployed voteiq_officials.json roster fallback (what production serves
+  # today) AND the {city}_council_members vote-builder rosters (what it serves
+  # after the polls.db seed redeploy) — so these cases pass in either
+  # deployment state and verify the seed deploy automatically when it lands.
+  # Names chosen for distinctiveness (no common-word surnames like Smith/Ward).
+
+  - query: "Who is on the Chesapeake City Council?"
+    expected_entity: ""
+    expected_sql_table: "chesapeake_council_members"
+    expected_answer_contains:
+      - "Newins"
+      - "Whitaker"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.4
+
+  - query: "Who is on the Portsmouth City Council?"
+    expected_entity: ""
+    expected_sql_table: "portsmouth_council_members"
+    expected_answer_contains:
+      - "Hugel"
+      - "Tillage"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.4
+
+  - query: "Who is on the Newport News City Council?"
+    expected_entity: ""
+    expected_sql_table: "newport_news_council_members"
+    expected_answer_contains:
+      - "Vick"
+      - "Eley"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.4
+
+  - query: "Who is on the Hampton City Council?"
+    expected_entity: ""
+    expected_sql_table: "hampton_council_members"
+    expected_answer_contains:
+      - "Ferebee"
+      - "Mugler"
+    expected_abstain: false
+    expected_hallucination_risk_max: 0.4
