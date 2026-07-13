@@ -23,9 +23,7 @@ services:
       - key: FEC_API_KEY
         sync: false   # set in dashboard — without it FEC ingest falls back to
                       # DEMO_KEY (40 req/hr) and can never finish in 30 min
-    health:
-      path: /health
-      pollIntervalSeconds: 30
+    healthCheckPath: /health
     autoDeploy: true
 
   # ── Weekly congress roll-call vote ingestion ────────────────────────────────
