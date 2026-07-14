@@ -25,7 +25,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH  = BASE_DIR / "polls.db"
+# DATA_DIR-aware, matching ingest_fec_2026.py / build_federal_vote_alignment.py /
+# ingest_party_breakdown.py. Without this, the script silently wrote to (and
+# compared its sanity-check baseline against) an ephemeral copy of polls.db in
+# the deployed source checkout, not the persistent /var/data disk — every
+# production run was writing data nobody ever read, then aborting against a
+# stale baseline stamped from an earlier accidental run against that same
+# wrong path.
+DB_PATH  = Path(os.getenv("DATA_DIR", str(BASE_DIR))) / "polls.db"
 
 try:
     from dotenv import load_dotenv as _load_dotenv
