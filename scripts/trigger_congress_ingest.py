@@ -39,7 +39,7 @@ if ADMIN_TOKEN:
 req = urllib.request.Request(url, data=b"", headers=headers, method="POST")
 
 try:
-    with urllib.request.urlopen(req, timeout=660) as resp:
+    with urllib.request.urlopen(req, timeout=1260) as resp:
         body = resp.read().decode("utf-8", errors="replace")
         data = json.loads(body)
         print(f"Status: {resp.status}")
