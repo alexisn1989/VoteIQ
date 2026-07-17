@@ -77,3 +77,36 @@ chroma_db/
 norfolk_council_cache/
 sbe_cache/
 Export_05_27_2026/
+*_council_cache/
+
+# Repo-hygiene cleanup 2026-07-16 -- raw/generated data, never source
+raw/
+VA/
+Virginia_Election_Api/
+*.jsonl
+*.progress
+*.geojson
+*.zip
+*.shp
+*.shx
+*.dbf
+*.prj
+*.sbn
+*.sbx
+*.cpg
+*.shp.xml
+HB7_2026.json
+HB10_2026.json
+va_members_2026.json
+health_baseline.json
+test_payload*.json
+tests/harness_out.txt
+
+# .claude/ -- commit only shared dev-server config, ignore machine-local state
+.claude/*
+!.claude/launch.json
+
+# SCV redistricting data dump -- keep the scraper/processing scripts, ignore the data
+SCV Final 2021 Redistricting Plans/*
+!SCV Final 2021 Redistricting Plans/*.py
+!SCV Final 2021 Redistricting Plans/*.js

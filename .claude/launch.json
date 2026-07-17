@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "cityiq",
+      "runtimeExecutable": "C:\\Users\\Alexis\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+      "runtimeArgs": ["-m", "http.server", "8046", "--directory", "C:\\Users\\Alexis\\OneDrive\\Desktop\\cityiq"],
+      "port": 8046
+    },
+    {
+      "name": "flood-map",
+      "runtimeExecutable": "C:\\Users\\Alexis\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+      "runtimeArgs": ["C:\\Users\\Alexis\\OneDrive\\Desktop\\Hampton_Roads_Flood_Map\\server.py", "--port", "8642"],
+      "port": 8642
+    },
+    {
+      "name": "assetiq",
+      "runtimeExecutable": "C:\\Users\\Alexis\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+      "runtimeArgs": ["-m", "uvicorn", "app:app", "--app-dir", "C:\\Users\\Alexis\\OneDrive\\Desktop\\assetiq", "--port", "8031"],
+      "port": 8031
+    },
+    {
+      "name": "syncboard",
+      "runtimeExecutable": "npm.cmd",
+      "runtimeArgs": ["--prefix", "C:\\Users\\Alexis\\OneDrive\\Desktop\\syncboard", "run", "dev"],
+      "port": 5173
+    }
+  ]
+}
