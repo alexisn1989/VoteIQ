@@ -8,7 +8,10 @@ services:
     disk:
       name: data
       mountPath: /var/data
-      sizeGB: 5  # local polls.db is 2.2GB; 1GB blocked syncing the full dataset
+      sizeGB: 10  # polls.db (2.4GB) + siblings (~550MB) + chroma_db steady-state
+                  # needs ~2x polls.db headroom during seed swap (old+new
+                  # coexist before atomic replace) -- 5GB caused "No space
+                  # left on device" mid-download, silently keeping stale data
     envVars:
       - key: FLASK_ENV
         value: production
