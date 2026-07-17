@@ -455,6 +455,9 @@ _safe_include("voteiq.api.routes.export",              prefix="/api")
 _safe_include("voteiq.api.routes.watchlist",           prefix="/api")
 _safe_include("voteiq.api.routes.donor_trend",         prefix="/api")
 _safe_include("voteiq.api.routes.disclosures",         prefix="/api")
+_safe_include("voteiq.api.routes.local_council")
+_safe_include("voteiq.api.routes.prediction")
+_safe_include("voteiq.api.routes.floor")
 
 from config.db import POLLS_DB as _POLLS_DB_PATH
 _POLLS_DB = str(_POLLS_DB_PATH)
