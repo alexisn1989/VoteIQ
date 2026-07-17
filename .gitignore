@@ -102,9 +102,8 @@ health_baseline.json
 test_payload*.json
 tests/harness_out.txt
 
-# .claude/ -- commit only shared dev-server config, ignore machine-local state
-.claude/*
-!.claude/launch.json
+# .claude/ -- personal cross-project tooling config, not VoteIQ-specific
+.claude/
 
 # SCV redistricting data dump -- keep the scraper/processing scripts, ignore the data
 SCV Final 2021 Redistricting Plans/*
