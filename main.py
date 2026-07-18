@@ -160,8 +160,18 @@ app.add_middleware(SlowAPIMiddleware)
 
 @app.get("/health")
 def health_check():
-    """Render health check — must return 200 or the service is marked unhealthy."""
-    return {"status": "ok"}
+    """Render health check — must return 200 or the service is marked unhealthy.
+
+    Always returns 200 regardless of seed state -- a stale/failed seed is a
+    data-freshness problem, not a liveness problem, and must never cause
+    Render to restart-loop the service. seed/disk fields just surface what
+    used to require grepping boot logs for a print statement.
+    """
+    return {
+        "status": "ok",
+        "seed": runtime_seed.SEED_STATUS,
+        "disk": runtime_seed.DISK_STATUS,
+    }
 
 
 @app.get("/api/data-freshness")

@@ -40,6 +40,12 @@ _EXTRA_DBS = (
     "virginia_legislature.db",
 )
 
+# Populated by seed_dbs_from_url() -- read by GET /health so seed state is
+# visible in one request instead of grepping boot logs for a print
+# statement that only appears once, at import time.
+SEED_STATUS: dict[str, dict] = {}
+DISK_STATUS: dict = {}
+
 
 def _table_count(db_path: str) -> int:
     """Return the number of tables, or -1 if the db can't be opened/validated.
@@ -73,6 +79,41 @@ def _remove_sidecars(db_path: str) -> None:
             pass
 
 
+def _read_marker(marker: str) -> str | None:
+    try:
+        with open(marker, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except Exception:
+        return None
+
+
+def _check_disk_space(db_path: str, data_dir: str) -> tuple[bool, str]:
+    """Estimate whether there's enough free space for a safe old+new swap.
+
+    The swap needs the existing db AND a full new copy on disk at the same
+    time (os.replace() below only happens after the download completes) --
+    a disk that's merely big enough to hold one copy isn't big enough for
+    the swap. This is a preflight estimate, not a guarantee: it compares
+    against the *existing* file's size as a proxy for the incoming one.
+    """
+    try:
+        free = shutil.disk_usage(data_dir).free
+    except Exception:
+        return True, "disk_usage check unavailable -- proceeding"
+
+    existing_size = os.path.getsize(db_path) if os.path.isfile(db_path) else 0
+    # No existing file (first-ever boot on a fresh disk) -- we can't know
+    # the new size in advance, so assume a modest floor.
+    estimated_new_size = existing_size if existing_size > 0 else 500 * 1024 * 1024
+    margin = 200 * 1024 * 1024  # sidecar files, other DBs downloading concurrently
+    needed = existing_size + estimated_new_size + margin
+
+    msg = (f"free={free / 1_048_576:,.0f}MB needed=~{needed / 1_048_576:,.0f}MB "
+           f"(existing={existing_size / 1_048_576:,.0f}MB + "
+           f"new~={estimated_new_size / 1_048_576:,.0f}MB + margin)")
+    return free >= needed, msg
+
+
 def _seed_one(url: str, db_path: str, marker: str, version: str,
               min_tables: int, optional: bool) -> None:
     name = os.path.basename(db_path)
@@ -85,8 +126,24 @@ def _seed_one(url: str, db_path: str, marker: str, version: str,
     if marker_matches:
         if _table_count(db_path) >= min_tables:
             print(f"[seed] {name} seed version {version} already applied -- skipping")
+            SEED_STATUS[name] = {
+                "status": "up_to_date",
+                "version_wanted": version,
+                "version_applied": version,
+            }
             return
         print(f"[seed] marker matches but {name} fails schema probe -- re-seeding")
+
+    space_ok, space_msg = _check_disk_space(db_path, os.path.dirname(db_path))
+    if not space_ok:
+        print(f"[seed] WARN {name} seed skipped -- insufficient disk space ({space_msg})")
+        SEED_STATUS[name] = {
+            "status": "failed_preflight_space",
+            "version_wanted": version,
+            "version_applied": _read_marker(marker),
+            "error": space_msg,
+        }
+        return
 
     new_db = db_path + ".new"
     try:
@@ -115,14 +172,38 @@ def _seed_one(url: str, db_path: str, marker: str, version: str,
             f.write(version)
         size_mb = os.path.getsize(db_path) / 1_048_576
         print(f"[seed] OK {name} seeded: {n_after} tables, {size_mb:,.0f} MB")
+        SEED_STATUS[name] = {
+            "status": "downloaded",
+            "version_wanted": version,
+            "version_applied": version,
+            "tables": n_after,
+            "size_mb": round(size_mb, 1),
+        }
     except urllib.error.HTTPError as exc:
         if optional and exc.code == 404:
             print(f"[seed] {name} seed asset not on release (404) -- skipping")
+            SEED_STATUS[name] = {
+                "status": "not_on_release",
+                "version_wanted": version,
+                "version_applied": _read_marker(marker),
+            }
         else:
             print(f"[seed] WARN {name} seed failed ({exc}) -- keeping existing db")
+            SEED_STATUS[name] = {
+                "status": "failed",
+                "version_wanted": version,
+                "version_applied": _read_marker(marker),
+                "error": str(exc),
+            }
         _cleanup(new_db)
     except Exception as exc:
         print(f"[seed] WARN {name} seed failed ({exc}) -- keeping existing db")
+        SEED_STATUS[name] = {
+            "status": "failed",
+            "version_wanted": version,
+            "version_applied": _read_marker(marker),
+            "error": str(exc),
+        }
         _cleanup(new_db)
 
 
@@ -141,6 +222,13 @@ def seed_dbs_from_url() -> None:
     data_dir_raw = os.getenv("DATA_DIR", BASE_DIR)
     data_dir = data_dir_raw if os.path.isdir(data_dir_raw) else BASE_DIR
     version = os.getenv("POLLS_DB_SEED_VERSION", "1")
+
+    try:
+        usage = shutil.disk_usage(data_dir)
+        DISK_STATUS["free_gb"] = round(usage.free / 1_073_741_824, 2)
+        DISK_STATUS["total_gb"] = round(usage.total / 1_073_741_824, 2)
+    except Exception as exc:
+        DISK_STATUS["error"] = str(exc)
 
     _seed_one(
         url,
