@@ -80,6 +80,19 @@ def _preflight_gh() -> None:
     if version.returncode != 0:
         print("ERROR: gh CLI not found. Install from https://cli.github.com/", file=sys.stderr)
         sys.exit(1)
+
+    # gh's keyring-backed credential lookup can fail when gh is invoked as a
+    # subprocess grandchild (shell -> python -> gh) rather than a shell's
+    # direct child -- observed on Windows even from a session where `gh auth
+    # status` succeeds when run directly. GH_TOKEN bypasses keyring lookup
+    # entirely (gh's documented mechanism for scripting/CI use), so extract
+    # the token once here from whatever auth method already works in this
+    # shell and pin it in the environment for every subsequent gh call this
+    # script makes.
+    token = _run(["gh", "auth", "token"])
+    if token.returncode == 0 and token.stdout.strip():
+        os.environ["GH_TOKEN"] = token.stdout.strip()
+
     auth = _run(["gh", "auth", "status"])
     if auth.returncode != 0:
         print("ERROR: gh is not authenticated. Run `gh auth login` first.", file=sys.stderr)
@@ -147,10 +160,19 @@ def _ensure_release_exists(tag: str, version: str) -> None:
         sys.exit(1)
 
 
-def _gzip_safely(src: Path, compresslevel: int) -> Path:
-    """Gzip src to a .gz.tmp, verify it round-trips, then atomically rename."""
-    tmp = src.with_suffix(src.suffix + ".gz.tmp")
-    final = src.with_suffix(src.suffix + ".gz")
+def _gzip_safely(src: Path, dest_name: str, compresslevel: int) -> Path:
+    """Gzip src to dest_name (in src's directory) via a .tmp scratch file,
+    verify it round-trips, then atomically rename.
+
+    dest_name MUST be the exact final asset filename (e.g. "polls_seed.db.gz"),
+    not derived from src's own name -- `gh release upload`'s `#label` syntax
+    only sets a cosmetic label, it does NOT rename the uploaded asset. The
+    asset's real name on GitHub comes from the local file's basename, so the
+    local file has to be named correctly before it's ever uploaded.
+    """
+    dest_dir = src.parent
+    final = dest_dir / dest_name
+    tmp = dest_dir / f"{dest_name}.tmp"
 
     with open(src, "rb") as fin, gzip.open(tmp, "wb", compresslevel=compresslevel) as fout:
         shutil.copyfileobj(fin, fout, length=1024 * 1024)
@@ -173,13 +195,15 @@ def _gzip_safely(src: Path, compresslevel: int) -> Path:
     return final
 
 
-def _upload_asset(tag: str, gz_path: Path, asset_name: str, retries: int = 3) -> bool:
-    spec = f"{gz_path}#{asset_name}"
+def _upload_asset(tag: str, gz_path: Path, retries: int = 3) -> bool:
+    # gz_path.name is already the exact intended asset name (see
+    # _gzip_safely) -- no `#label` needed, and deliberately not used, since
+    # that syntax only sets a cosmetic label rather than renaming the asset.
     for attempt in range(1, retries + 1):
-        result = _run(["gh", "release", "upload", tag, spec, "--clobber"])
+        result = _run(["gh", "release", "upload", tag, str(gz_path), "--clobber"])
         if result.returncode == 0:
             return True
-        print(f"[publish] upload attempt {attempt}/{retries} failed for {asset_name}: "
+        print(f"[publish] upload attempt {attempt}/{retries} failed for {gz_path.name}: "
               f"{result.stderr.strip()}")
         if attempt < retries:
             time.sleep(5 * attempt)
@@ -261,12 +285,12 @@ def main(argv: list[str] | None = None) -> int:
     # ── Step 2: gzip safely ────────────────────────────────────────────────
     gz_files: list[tuple[Path, str]] = []  # (gz_path, asset_name)
     for db_name, db_path, asset_name, _ in to_publish:
-        gz_path = db_dir / f"{db_name}.gz"
+        gz_path = db_dir / asset_name
         if args.keep_gz and gz_path.is_file():
             print(f"[publish] reusing existing {gz_path.name} (--keep-gz)")
         else:
-            print(f"[publish] gzipping {db_name}...")
-            gz_path = _gzip_safely(db_path, args.compresslevel)
+            print(f"[publish] gzipping {db_name} -> {asset_name}...")
+            gz_path = _gzip_safely(db_path, asset_name, args.compresslevel)
 
         size = gz_path.stat().st_size
         if size > _MAX_ASSET_BYTES:
@@ -292,7 +316,7 @@ def main(argv: list[str] | None = None) -> int:
     uploaded, failed = [], []
     for gz_path, asset_name in gz_files:
         print(f"[publish] uploading {asset_name}...")
-        if _upload_asset(tag, gz_path, asset_name):
+        if _upload_asset(tag, gz_path):
             uploaded.append(asset_name)
         else:
             failed.append(asset_name)
