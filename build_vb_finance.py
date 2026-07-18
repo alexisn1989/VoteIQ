@@ -185,6 +185,11 @@ def classify_sector(employer: str, occupation: str) -> str:
 
 def fetch_member_contributions(conn: sqlite3.Connection, member: str) -> list[dict]:
     f = MEMBER_SBE_FILTERS[member]
+    # Excludes self-donations (the candidate contributing to their own committee) --
+    # those aren't donor-influence signal, they inflate whichever sector the
+    # candidate's own employer/occupation happens to classify as. Found via the
+    # Hampton Roads cross-city analysis: Henley's "Real Estate 55%" figure was
+    # ~$83K of her own farm-income self-funding, not real donor concentration.
     rows = conn.execute("""
         SELECT contributor_first, contributor_last, employer, occupation,
                amount, transaction_date, election_cycle
@@ -194,10 +199,13 @@ def fetch_member_contributions(conn: sqlite3.Connection, member: str) -> list[di
           AND LOWER(candidate_name) LIKE LOWER(?)
           AND LOWER(office_sought) LIKE LOWER(?)
           AND amount > 0
+          AND NOT (LOWER(contributor_first) LIKE LOWER(?) AND LOWER(contributor_last) LIKE LOWER(?))
     """, (
         f"%{f['first']}%",
         f"%{f['last']}%",
         f"%{f['office_substr']}%",
+        f"%{f['first']}%",
+        f"%{f['last']}%",
     )).fetchall()
     return [
         {

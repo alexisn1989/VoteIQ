@@ -86,6 +86,12 @@ def classify_sector(employer: str, occupation: str) -> str:
 
 def fetch_member_contributions(conn: sqlite3.Connection, member: str) -> list[dict]:
     f = MEMBER_SBE_FILTERS[member]
+    # Excludes self-donations (the candidate contributing to their own committee) --
+    # those aren't donor-influence signal, they inflate whichever sector the
+    # candidate's own employer/occupation happens to classify as. Found via the
+    # Hampton Roads cross-city analysis: McGee's "Tech 33%, $50,550" figure was
+    # 100% his own self-funding (employer "Radiant Digital" matched the Tech
+    # keyword "digital"), not real donor concentration.
     rows = conn.execute("""
         SELECT contributor_first, contributor_last, employer, occupation,
                amount, transaction_date, election_cycle
@@ -95,10 +101,13 @@ def fetch_member_contributions(conn: sqlite3.Connection, member: str) -> list[di
           AND LOWER(candidate_name) LIKE LOWER(?)
           AND LOWER(office_sought) LIKE LOWER(?)
           AND amount > 0
+          AND NOT (LOWER(contributor_first) LIKE LOWER(?) AND LOWER(contributor_last) LIKE LOWER(?))
     """, (
         f"%{f['first']}%",
         f"%{f['last']}%",
         f"%{f['office_substr']}%",
+        f"%{f['first']}%",
+        f"%{f['last']}%",
     )).fetchall()
     return [
         {
