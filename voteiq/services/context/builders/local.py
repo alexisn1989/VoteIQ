@@ -13,6 +13,7 @@ import sqlite3
 from datetime import datetime
 
 from voteiq.services.context._db import BASE_DIR, _connect, _table_exists
+from voteiq.services.geo_lite import extract_address, geocode_lite, haversine_miles
 
 # ── City → district mapping for "who represents me in [city]" queries ─────────
 # Keyed by lowercase city name. state_reps = [(chamber, district), ...]
@@ -2846,6 +2847,50 @@ def _add_scraped_council_context(
                     f"\n  No upcoming agenda items posted yet for {display} — "
                     "agendas typically appear 1-2 weeks before each meeting."
                 )
+
+        # ── "what's proposed near me?" ──────────────────────────────────────
+        # Only fires when the query both reads as a proximity question AND
+        # contains a numbered street address -- extract_address() refuses a
+        # bare street name (no house number) since that geocodes to an
+        # arbitrary point along the road, not the resident's actual parcel.
+        _near_trigger = any(w in q_lower for w in (
+            "near me", "near my", "close to me", "close to my", "next to my",
+            "by my house", "by my home", "affect my neighborhood", "around my",
+            "near ",
+        ))
+        user_addr = extract_address(query) if _near_trigger else None
+        if user_addr and _table_exists(conn, t_agenda):
+            geocoded = geocode_lite(f"{user_addr}, {display}, VA")
+            if geocoded and display.lower() in (geocoded["matched_address"] or "").lower():
+                nearby_rows = conn.execute(f"""
+                    SELECT meeting_date, item_ref, title, category, lat, lng
+                    FROM {t_agenda} WHERE lat IS NOT NULL
+                """).fetchall()
+                within: list[tuple[float, tuple]] = []
+                for mdate, ref, title, category, ilat, ilng in nearby_rows:
+                    dist = haversine_miles(geocoded["lat"], geocoded["lng"], ilat, ilng)
+                    if dist <= 3.0:
+                        within.append((dist, (mdate, ref, title, category)))
+                within.sort(key=lambda x: x[0])
+
+                lines.append(f"\n#### {display} City Council — Proposed Near {user_addr}")
+                lines.append(f"  (matched to {geocoded['matched_address']})")
+                if within:
+                    for dist, (mdate, ref, title, category) in within[:10]:
+                        short_title = title[:100] + ("…" if len(title) > 100 else "")
+                        lines.append(f"  {dist:.1f} mi  {mdate}  {ref:<6} [{category}]  {short_title}")
+                else:
+                    lines.append(
+                        "  Nothing with a geocoded address found within 3 miles in the "
+                        "agenda items currently on record for this city."
+                    )
+            elif geocoded:
+                lines.append(
+                    f"\n  Couldn't confirm {user_addr!r} is in {display} "
+                    f"(geocoded to {geocoded['matched_address']!r}) — skipping the nearby-items lookup."
+                )
+            else:
+                lines.append(f"\n  Couldn't geocode {user_addr!r} — skipping the nearby-items lookup.")
 
         # ── named-member vote summary ──────────────────────────────────────
         matched_member = next(

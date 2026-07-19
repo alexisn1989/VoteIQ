@@ -333,3 +333,20 @@ services:
         value: https://voteiq.io
       - key: ADMIN_TOKEN
         sync: false
+
+  # ── Agenda item address geocoding ("what's proposed near me?") ────────────
+  # Backfills lat/lng on upcoming-agenda CUP/rezoning items with a numbered
+  # street address. Runs after the 5 agenda scrapers above finish (09:00 UTC)
+  # so it picks up whatever they just posted.
+  - type: cron
+    name: voteiq-agenda-geocoding
+    runtime: python
+    plan: starter
+    schedule: "15 9 * * 1,3,5"   # Mon, Wed, Fri at 09:15 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_agenda_geocoding.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false

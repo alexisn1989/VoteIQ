@@ -323,6 +323,18 @@ def admin_ingest_portsmouth_agenda(
     return {"ok": result.get("ok"), "scripts": {"scrape_portsmouth_agenda.py": result}}
 
 
+@router.post("/ingest-agenda-geocoding")
+def admin_ingest_agenda_geocoding(
+    city: str | None = None,
+    _: None = Depends(require_admin_token),
+):
+    """Backfill lat/lng on upcoming-agenda items with a numbered street
+    address (CUP/rezoning items) so chat can answer 'what's near me?'."""
+    args = ["--city", city] if city else []
+    result = _run_script("scripts/geocode_agenda_addresses.py", args, timeout=180)
+    return {"ok": result.get("ok"), "scripts": {"geocode_agenda_addresses.py": result}}
+
+
 @router.post("/build-vb-blocs")
 def admin_build_vb_blocs(
     reset: bool = False,
