@@ -318,6 +318,22 @@ services:
       - key: ADMIN_TOKEN
         sync: false
 
+  # ── Newport News Planning Commission upcoming agenda scraper ──────────────
+  # Rezoning/CUP cases are decided here in substance, typically a month
+  # before City Council's own vote on the Commission's recommendation.
+  - type: cron
+    name: voteiq-newport-news-pc-agenda
+    runtime: python
+    plan: starter
+    schedule: "50 8 * * 1,3,5"   # Mon, Wed, Fri at 08:50 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_newport_news_pc_agenda.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
   # ── Portsmouth upcoming agenda scraper ─────────────────────────────────────
   # Granicus; agendas typically posted a short time before each meeting.
   # Calls /api/admin/ingest-portsmouth-agenda on the web service.

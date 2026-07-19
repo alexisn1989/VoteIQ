@@ -1,46 +1,40 @@
 """
-Scrape the upcoming Newport News City Council agenda and store it in
-newport_news_upcoming_agenda for chat context injection.
+Scrape the upcoming Newport News Planning Commission agenda and store it in
+newport_news_pc_upcoming_agenda for chat context injection.
 
-Newport News runs CivicWeb (iCompass/Diligent), same platform as
-scrape_newport_news_council.py's historical vote scraper -- but that
-one uses the site's separate VotingRecords.aspx tool, which only covers
-already-recorded votes. This script instead works off individual
-MeetingInformation.aspx?Org=Cal&Id=N pages.
+Rezoning and conditional-use-permit fights are typically decided in
+substance at Planning Commission -- City Council later votes on the
+Commission's recommendation, often a full month afterward (confirmed on a
+real July 15, 2026 PC agenda: three separate items each note "(To be heard
+by City Council on August 11, 2026)"). Surfacing PC agendas gives residents
+a month's more notice on rezoning/CUP cases near them than waiting for the
+Council agenda alone.
 
-Confirmed via live reconnaissance (2026-07-18/19) that CivicWeb's own
-"UPCOMING MEETINGS" sidebar widget (present on every meeting detail
-page) is plain text with NO links or IDs -- e.g. it names "City Council
-Regular Meeting - Aug 11, 2026" but gives no way to reach that meeting's
-page directly. However, meeting IDs for City Council Regular
-Meeting/Work Session pairs increment in lockstep with chronological
-order (confirmed: Jun 09 2026 = ids 4229/4230, Jun 23 = 4231/4232,
-Jul 14 = 4233/4234) and the *next* pair's IDs already resolve to real
-pages before their agenda is posted (confirmed: id 4236 -> "CITY
-COUNCIL REGULAR MEETING", Aug 11 2026, with no Agenda document link
-yet). So this reads the target date off the UPCOMING MEETINGS widget
-(the site's own authoritative text, not a guessed formula), then probes
-a small forward range of IDs past the last known linked meeting until
-one's own heading matches both "CITY COUNCIL REGULAR MEETING" and that
-date.
+Same CivicWeb platform and same ID-probing mechanism as
+scrape_newport_news_agenda.py (see that file's docstring for the full
+mechanism writeup) -- confirmed live that Planning Commission meeting pages
+follow the identical MeetingInformation.aspx?Org=Cal&Id=N / Agenda-document-
+link pattern. The one difference: PC meeting IDs are NOT in as tight a
+chronological lockstep as City Council Regular Meeting/Work Session pairs,
+since other meeting types (Council, special sessions) get interspersed IDs
+between PC meetings (confirmed: PC ids 4257-4264 for Apr-Jul 2026, but id
+4283 -- numerically much higher -- belongs to a Mar 18 2026 PC Work Session
+created out of sequence). So this uses a wider forward probe window than
+the Council scraper.
 
-As of today, Newport News hasn't posted the Aug 11 2026 agenda yet
-(same "posted a short time before the meeting" pattern confirmed for
-Suffolk and Hampton) -- this script handles that as a clean no-op, same
-as those two.
-
-Confirmed against a real past Agenda PDF (document 285422, Jul 14
-2026 meeting, used only to verify extraction logic): the structure is
-lettered top-level sections (A. Call to Order, B. Invocation, ... E.
-Public Hearings, F. Consent Agenda, G. Other City Council Actions, ...)
-with numbered items carrying an "Agenda Item #26-087" reference and a
-page-range footer to ignore. No "how to speak" boilerplate appears
-anywhere in the document (unlike Chesapeake/Hampton), so
-how_to_participate is always stored NULL here, same as Suffolk.
+Confirmed against a real PC agenda (document 285398, Jul 15 2026 meeting,
+used only to verify extraction logic): lettered top-level sections (A. Call
+to Order ... E. Minutes, F. Public Hearing) with lettered sub-items (a),
+(b), (c) under Public Hearing, each carrying a real case number (e.g.
+"CU-2026-0005", "ZT-2026-0001"), a property address, and often an explicit
+"(To be heard by City Council on <date>)" cross-reference -- captured here
+as council_hearing_date since it's genuinely useful ("this gets decided
+next month, here's when"). No "how to speak" boilerplate anywhere in the
+document (same as the Council agenda), so how_to_participate is NULL.
 
 Usage:
-    python scrape_newport_news_agenda.py
-    python scrape_newport_news_agenda.py --meeting-id 4234 --meeting-date 2026-07-14 --dry-run
+    python scrape_newport_news_pc_agenda.py
+    python scrape_newport_news_pc_agenda.py --meeting-id 4264 --meeting-date 2026-07-15 --dry-run
 """
 from __future__ import annotations
 
@@ -76,7 +70,7 @@ BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = Path(os.getenv("DATA_DIR", str(BASE_DIR))) / "polls.db"
 CIVICWEB_BASE = "https://nngov.civicweb.net"
 GEMINI_MODEL = "gemini-2.5-flash"
-_PROBE_RANGE = 16  # small forward window past the last known meeting id
+_PROBE_RANGE = 40  # wider than the Council scraper -- PC ids interleave with other meeting types
 
 
 def _parse_date(raw: str) -> str | None:
@@ -89,9 +83,21 @@ def _parse_date(raw: str) -> str | None:
     return None
 
 
+def target_date_str_in_text(txt: str, iso_date: str) -> bool:
+    d = datetime.strptime(iso_date, "%Y-%m-%d")
+    # Confirmed live: Newport News formats Council dates WITH a comma
+    # ("AUG 11, 2026") but Planning Commission dates WITHOUT one
+    # ("AUG 05 2026") -- check both so neither meeting type false-negatives.
+    for fmt in ("%b %d, %Y", "%B %d, %Y", "%b %d %Y", "%B %d %Y"):
+        needle = d.strftime(fmt).upper()
+        if needle in txt.upper():
+            return True
+    return False
+
+
 def find_upcoming_meeting() -> dict | None:
-    """Return {meeting_id, meeting_date} for the next City Council Regular
-    Meeting, or None if Newport News hasn't posted its agenda yet."""
+    """Return {meeting_id, meeting_date} for the next Newport News Planning
+    Commission meeting (excluding Work Sessions), or None if not posted yet."""
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
@@ -103,7 +109,7 @@ def find_upcoming_meeting() -> dict | None:
         last_id = 0
         for a in page.query_selector_all('a[href*="MeetingInformation"]'):
             t = (a.inner_text() or "").strip()
-            if not t.startswith("City Council Regular Meeting"):
+            if not t.startswith("Newport News Planning Commission") or "Work Session" in t:
                 continue
             href = a.get_attribute("href") or ""
             m = re.search(r"[Ii]d=(\d+)", href)
@@ -116,7 +122,7 @@ def find_upcoming_meeting() -> dict | None:
         body_text = page.inner_text("body")
         target_date = None
         m = re.search(
-            r"UPCOMING MEETINGS\s*\n(?:.*\n)*?City Council Regular Meeting - ([A-Za-z]+ \d{1,2},? \d{4})",
+            r"UPCOMING MEETINGS\s*\n(?:.*\n)*?Newport News Planning Commission - ([A-Za-z]+ \d{1,2},? \d{4})",
             body_text,
         )
         if m:
@@ -146,7 +152,7 @@ def find_upcoming_meeting() -> dict | None:
                     continue
             if txt is None:
                 continue
-            if "CITY COUNCIL REGULAR MEETING" not in txt:
+            if "NEWPORT NEWS PLANNING COMMISSION" not in txt:
                 continue
             if target_date_str_in_text(txt, target_date):
                 found_id = candidate
@@ -156,18 +162,6 @@ def find_upcoming_meeting() -> dict | None:
     if not found_id:
         return None
     return {"meeting_id": found_id, "meeting_date": target_date}
-
-
-def target_date_str_in_text(txt: str, iso_date: str) -> bool:
-    d = datetime.strptime(iso_date, "%Y-%m-%d")
-    # Confirmed live: Newport News formats Council dates WITH a comma
-    # ("AUG 11, 2026") but Planning Commission dates WITHOUT one
-    # ("AUG 05 2026") -- check both so this stays robust either way.
-    for fmt in ("%b %d, %Y", "%B %d, %Y", "%b %d %Y", "%B %d %Y"):
-        needle = d.strftime(fmt).upper()
-        if needle in txt.upper():
-            return True
-    return False
 
 
 def find_agenda_document(meeting_id: int) -> tuple[str, str] | None:
@@ -214,35 +208,43 @@ def extract_pdf_text(pdf_bytes: bytes, max_pages: int = 20) -> str:
     return "\n".join(pages)
 
 
-EXTRACT_PROMPT = """You are parsing an upcoming Newport News, Virginia City
-Council meeting AGENDA (not yet held).
+EXTRACT_PROMPT = """You are parsing an upcoming Newport News, Virginia
+Planning Commission meeting AGENDA (not yet held).
 
 The document has lettered top-level sections (A. Call to Order, B.
-Invocation, C. Pledge of Allegiance, D. Presentations, E. Public
-Hearings, F. Consent Agenda, G. Other City Council Actions, H. Citizen
-Comments, I. Old Business/New Business, J. Adjourn, etc.) with numbered
-items under some of them. Each substantive item usually carries a
-reference line like "Agenda Item #26-087 - Pdf" and a page-range
-footer like "4 - 15" -- ignore the page range, it is not content.
+Planning Commission Creed and Approval of the Agenda, C. Invocation,
+D. Pledge of Allegiance, E. Minutes, F. Public Hearing, G. Executive
+Secretary Report, H. Committee Reports, I. Unfinished Business, J. New
+Business, K. Adjourn) with lettered sub-items (a), (b), (c) under some
+of them, most substantively under Public Hearing. Each Public Hearing
+item usually names a case type (CONDITIONAL USE PERMIT, REZONING,
+ZONING TEXT AMENDMENT, COMPREHENSIVE PLAN AMENDMENT, etc.), a case
+number (e.g. "CU-2026-0005", "ZT-2026-0001"), an applicant, a property
+address if it's a site-specific case, and often ends with
+"(To be heard by City Council on <date>)".
 
 Return a JSON array. Each object:
 {
-  "item_ref": "string -- the agenda item number, e.g. '26-087', or the
-              section letter + number (e.g. 'D.1') if there's no
-              Agenda Item # reference",
+  "item_ref": "string -- the case number if present (e.g. 'CU-2026-0005'),
+              otherwise the section letter + sub-item (e.g. 'F.c')",
   "section": "string -- the enclosing lettered section's name, e.g.
-              'Public Hearings', 'Consent Agenda', 'Other City Council
-              Actions'",
-  "title": "string -- short description (max 150 chars)",
-  "category": "one of: public-hearing, ordinance, resolution, consent,
-               presentation, appointment, procedural, other"
+              'Public Hearing', 'Minutes', 'New Business'",
+  "title": "string -- short description (max 150 chars) -- include the
+            case type and property address/location if present (e.g.
+            'CUP for Recovery Home at 7 Darlene Lane')",
+  "category": "one of: public-hearing, rezoning, conditional-use-permit,
+               comprehensive-plan, procedural, other",
+  "council_hearing_date": "string YYYY-MM-DD if the item states a
+              'to be heard by City Council on <date>' cross-reference,
+              otherwise null -- do not guess this, only use it if the
+              document actually states it"
 }
 
 Rules:
 - Skip purely procedural entries with no substantive content (Call to
-  Order, Invocation, Pledge of Allegiance, Citizen Comments, Old
-  Business/New Business/Councilmember Comments roll call, Adjourn)
-  unless they are the only content.
+  Order, Creed and Approval of the Agenda, Invocation, Pledge of
+  Allegiance, Executive Secretary Report if empty, Adjourn) unless they
+  are the only content.
 - Return ONLY a valid JSON array -- no markdown fences, no explanation.
 - If nothing parses, return [].
 """
@@ -276,17 +278,21 @@ def extract_items_gemini(agenda_text: str, api_key: str) -> list[dict]:
 
 def ensure_table(conn: sqlite3.Connection) -> None:
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS newport_news_upcoming_agenda (
-            id                 INTEGER PRIMARY KEY AUTOINCREMENT,
-            event_id           INTEGER NOT NULL,
-            meeting_date       TEXT NOT NULL,
-            item_ref           TEXT,
-            section            TEXT,
-            title              TEXT,
-            category           TEXT,
-            agenda_url         TEXT,
-            how_to_participate TEXT,
-            scraped_at         TEXT DEFAULT (datetime('now')),
+        CREATE TABLE IF NOT EXISTS newport_news_pc_upcoming_agenda (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_id            INTEGER NOT NULL,
+            meeting_date        TEXT NOT NULL,
+            item_ref            TEXT,
+            section             TEXT,
+            title               TEXT,
+            category            TEXT,
+            agenda_url          TEXT,
+            how_to_participate  TEXT,
+            council_hearing_date TEXT,
+            lat                 REAL,
+            lng                 REAL,
+            geocoded_address    TEXT,
+            scraped_at          TEXT DEFAULT (datetime('now')),
             UNIQUE(event_id, item_ref)
         )
     """)
@@ -294,7 +300,7 @@ def ensure_table(conn: sqlite3.Connection) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Scrape the upcoming Newport News council agenda")
+    parser = argparse.ArgumentParser(description="Scrape the upcoming Newport News Planning Commission agenda")
     parser.add_argument("--meeting-id", type=int, default=None, help="Process a single meeting (for testing)")
     parser.add_argument("--meeting-date", default=None, help="YYYY-MM-DD, required with --meeting-id")
     parser.add_argument("--dry-run", action="store_true")
@@ -309,14 +315,15 @@ def main() -> None:
     ensure_table(conn)
 
     if args.reset:
-        conn.execute("DELETE FROM newport_news_upcoming_agenda")
+        conn.execute("DELETE FROM newport_news_pc_upcoming_agenda")
         conn.commit()
         print("Cleared existing upcoming-agenda rows.")
 
-    # 45-day retention on past meetings -- builders/local.py links agenda
-    # items to recorded outcomes, so keep the rows past meeting day.
+    # 45-day retention on past meetings -- same reasoning as the Council
+    # scraper: builders/local.py can link agenda items to their eventual
+    # City Council hearing outcome.
     n_removed = conn.execute(
-        "DELETE FROM newport_news_upcoming_agenda WHERE meeting_date < date('now','-45 days')"
+        "DELETE FROM newport_news_pc_upcoming_agenda WHERE meeting_date < date('now','-45 days')"
     ).rowcount
     conn.commit()
     if n_removed:
@@ -327,7 +334,7 @@ def main() -> None:
             raise SystemExit("--meeting-date YYYY-MM-DD required with --meeting-id")
         mtg = {"meeting_id": args.meeting_id, "meeting_date": args.meeting_date}
     else:
-        print("Looking for the next Newport News City Council meeting...")
+        print("Looking for the next Newport News Planning Commission meeting...")
         mtg = find_upcoming_meeting()
         if not mtg:
             print("No upcoming meeting found (or not yet resolvable) -- nothing to do.")
@@ -364,17 +371,18 @@ def main() -> None:
 
     for it in items:
         conn.execute("""
-            INSERT INTO newport_news_upcoming_agenda
+            INSERT INTO newport_news_pc_upcoming_agenda
                 (event_id, meeting_date, item_ref, section, title, category,
-                 agenda_url, how_to_participate)
-            VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
+                 agenda_url, how_to_participate, council_hearing_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?)
             ON CONFLICT(event_id, item_ref) DO UPDATE SET
                 section = excluded.section, title = excluded.title,
-                category = excluded.category
+                category = excluded.category,
+                council_hearing_date = excluded.council_hearing_date
         """, (
             mtg["meeting_id"], mtg["meeting_date"], it.get("item_ref", ""),
             it.get("section", ""), it.get("title", ""), it.get("category", "other"),
-            meeting_url,
+            meeting_url, it.get("council_hearing_date"),
         ))
     conn.commit()
     time.sleep(1)

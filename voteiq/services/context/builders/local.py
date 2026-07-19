@@ -3090,3 +3090,126 @@ def _add_suffolk_council_context(
     user_lat: float | None = None, user_lng: float | None = None,
 ) -> None:
     _add_scraped_council_context(blocks, query, terms, "suffolk", user_lat, user_lng)
+
+
+_NN_PC_TRIGGER_RE = re.compile(
+    r"newport\s+news.*(planning\s+commission|rezon|cup\b|conditional\s+use|zoning)"
+    r"|(planning\s+commission|rezon|cup\b|conditional\s+use).*newport\s+news",
+    re.IGNORECASE,
+)
+
+
+def _add_newport_news_pc_context(
+    blocks: list[str], query: str, terms: list[str],
+    user_lat: float | None = None, user_lng: float | None = None,
+) -> None:
+    """Newport News Planning Commission agenda -- rezoning/CUP cases are
+    decided here in substance, typically a month before City Council's own
+    vote on the Commission's recommendation. Not part of the generic
+    _COUNCIL_SCRAPE_CFGS system since PC has no member roster or vote
+    history, just upcoming agenda items."""
+    if not _NN_PC_TRIGGER_RE.search(query or ""):
+        return
+
+    q_lower = (query or "").lower()
+    t_agenda = "newport_news_pc_upcoming_agenda"
+
+    try:
+        conn = _connect("polls")
+        if conn is None or not _table_exists(conn, t_agenda):
+            return
+        lines: list[str] = ["## Newport News Planning Commission"]
+
+        agenda_trigger = any(w in q_lower for w in (
+            "upcoming", "next meeting", "agenda", "coming up", "scheduled",
+            "rezon", "cup", "conditional use", "hearing",
+        ))
+        if agenda_trigger:
+            ag_rows = conn.execute(f"""
+                SELECT meeting_date, item_ref, title, category, agenda_url, council_hearing_date
+                FROM {t_agenda}
+                WHERE meeting_date >= date('now') AND category != 'procedural'
+                ORDER BY meeting_date, item_ref
+                LIMIT 30
+            """).fetchall()
+            if ag_rows:
+                lines.append("\n#### Newport News Planning Commission — Upcoming Agenda Items")
+                cur_date, agenda_url = "", None
+                for mdate, ref, title, category, url, hearing_date in ag_rows:
+                    if mdate != cur_date:
+                        cur_date = mdate
+                        agenda_url = url
+                        lines.append(f"\n  {mdate}")
+                    short_title = title[:100] + ("…" if len(title) > 100 else "")
+                    tag = f"  [to Council: {hearing_date}]" if hearing_date else ""
+                    lines.append(f"    {ref:<14} [{category}] {short_title}{tag}")
+                if agenda_url:
+                    lines.append(f"\n  [Full agenda PDF]({agenda_url})")
+                lines.append(
+                    "\n  Note: Planning Commission makes a recommendation; City Council casts "
+                    "the final vote, typically about a month later, on the date shown above "
+                    "when stated."
+                )
+            else:
+                lines.append(
+                    "\n  No upcoming Planning Commission agenda items posted yet — "
+                    "agendas typically appear 1-2 weeks before each meeting."
+                )
+
+        # ── "what's proposed near me?" (same pattern as the council builders) ─
+        near_trigger = any(w in q_lower for w in (
+            "near me", "near my", "close to me", "close to my", "next to my",
+            "by my house", "by my home", "affect my neighborhood", "around my",
+            "near ",
+        ))
+        user_addr = extract_address(query) if near_trigger else None
+        near_lat = near_lng = None
+        near_label = None
+        if user_addr:
+            geocoded = geocode_lite(f"{user_addr}, Newport News, VA")
+            if geocoded and "newport news" in (geocoded["matched_address"] or "").lower():
+                near_lat, near_lng, near_label = geocoded["lat"], geocoded["lng"], user_addr
+            elif geocoded:
+                lines.append(
+                    f"\n  Couldn't confirm {user_addr!r} is in Newport News "
+                    f"(geocoded to {geocoded['matched_address']!r}) — skipping the nearby-items lookup."
+                )
+            else:
+                lines.append(f"\n  Couldn't geocode {user_addr!r} — skipping the nearby-items lookup.")
+        elif near_trigger and user_lat is not None and user_lng is not None:
+            near_lat, near_lng, near_label = user_lat, user_lng, "your saved address"
+
+        if near_lat is not None:
+            nearby_rows = conn.execute(f"""
+                SELECT meeting_date, item_ref, title, category, council_hearing_date, lat, lng
+                FROM {t_agenda} WHERE lat IS NOT NULL
+            """).fetchall()
+            within: list[tuple[float, tuple]] = []
+            for mdate, ref, title, category, hearing_date, ilat, ilng in nearby_rows:
+                dist = haversine_miles(near_lat, near_lng, ilat, ilng)
+                if dist <= 3.0:
+                    within.append((dist, (mdate, ref, title, category, hearing_date)))
+            within.sort(key=lambda x: x[0])
+
+            lines.append(f"\n#### Newport News Planning Commission — Proposed Near {near_label}")
+            if within:
+                for dist, (mdate, ref, title, category, hearing_date) in within[:10]:
+                    short_title = title[:100] + ("…" if len(title) > 100 else "")
+                    tag = f"  [to Council: {hearing_date}]" if hearing_date else ""
+                    lines.append(f"  {dist:.1f} mi  {mdate}  {ref:<14} [{category}]  {short_title}{tag}")
+            else:
+                lines.append(
+                    "  Nothing with a geocoded address found within 3 miles in the "
+                    "Planning Commission items currently on record."
+                )
+
+        conn.close()
+        if len(lines) > 1:
+            lines.append(
+                "\nSource: Newport News Planning Commission agenda documents, "
+                "https://nngov.civicweb.net/Portal/MeetingTypeList.aspx"
+            )
+            blocks.append("\n".join(lines))
+
+    except Exception:
+        pass

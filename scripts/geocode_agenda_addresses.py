@@ -42,15 +42,15 @@ from voteiq.services.geo_lite import extract_address, geocode_lite  # noqa: E402
 
 DB_PATH = Path(os.getenv("DATA_DIR", str(BASE_DIR))) / "polls.db"
 
-# table prefix -> (display city name, locality name expected in the geocode
-# result, used both as an "is this even worth trying" filter and a
-# post-geocode sanity check)
-CITIES = {
-    "chesapeake": "Chesapeake",
-    "suffolk": "Suffolk",
-    "hampton": "Hampton",
-    "newport_news": "Newport News",
-    "portsmouth": "Portsmouth",
+# short --city key -> (table name, display city name used both as the
+# geocode query's locality hint and a post-geocode sanity check)
+TABLES = {
+    "chesapeake": ("chesapeake_upcoming_agenda", "Chesapeake"),
+    "suffolk": ("suffolk_upcoming_agenda", "Suffolk"),
+    "hampton": ("hampton_upcoming_agenda", "Hampton"),
+    "newport_news": ("newport_news_upcoming_agenda", "Newport News"),
+    "portsmouth": ("portsmouth_upcoming_agenda", "Portsmouth"),
+    "newport_news_pc": ("newport_news_pc_upcoming_agenda", "Newport News"),
 }
 
 def _locality_matches(matched_address: str, city_display: str) -> bool:
@@ -65,9 +65,8 @@ def ensure_columns(conn: sqlite3.Connection, table: str) -> None:
     conn.commit()
 
 
-def geocode_table(conn: sqlite3.Connection, prefix: str, city_display: str,
+def geocode_table(conn: sqlite3.Connection, table: str, city_display: str,
                    limit: int | None, dry_run: bool) -> tuple[int, int]:
-    table = f"{prefix}_upcoming_agenda"
     ensure_columns(conn, table)
 
     rows = conn.execute(f"""
@@ -113,21 +112,21 @@ def geocode_table(conn: sqlite3.Connection, prefix: str, city_display: str,
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Geocode addresses in upcoming-agenda item titles")
-    parser.add_argument("--city", choices=list(CITIES), default=None,
-                        help="Only process one city (default: all 5)")
+    parser.add_argument("--city", choices=list(TABLES), default=None,
+                        help="Only process one table (default: all)")
     parser.add_argument("--limit", type=int, default=None,
-                        help="Max addresses to attempt per city this run")
+                        help="Max addresses to attempt per table this run")
     parser.add_argument("--dry-run", action="store_true",
                         help="Show what would be geocoded without calling the geocoder or writing")
     args = parser.parse_args()
 
     conn = sqlite3.connect(DB_PATH)
-    targets = {args.city: CITIES[args.city]} if args.city else CITIES
+    targets = {args.city: TABLES[args.city]} if args.city else TABLES
 
     total_attempted = total_geocoded = 0
-    for prefix, display in targets.items():
-        print(f"\n{display}:")
-        attempted, geocoded = geocode_table(conn, prefix, display, args.limit, args.dry_run)
+    for key, (table, display) in targets.items():
+        print(f"\n{display} ({table}):")
+        attempted, geocoded = geocode_table(conn, table, display, args.limit, args.dry_run)
         total_attempted += attempted
         total_geocoded += geocoded
         print(f"  {attempted} address(es) attempted, {geocoded} geocoded")

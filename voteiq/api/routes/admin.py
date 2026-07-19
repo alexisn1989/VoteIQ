@@ -313,6 +313,19 @@ def admin_ingest_newport_news_agenda(
     return {"ok": result.get("ok"), "scripts": {"scrape_newport_news_agenda.py": result}}
 
 
+@router.post("/ingest-newport-news-pc-agenda")
+def admin_ingest_newport_news_pc_agenda(
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Scrape CivicWeb for the upcoming Newport News Planning Commission
+    agenda into newport_news_pc_upcoming_agenda -- rezoning/CUP cases are
+    decided here, typically a month before City Council's own vote."""
+    args = ["--reset"] if reset else []
+    result = _run_script("scrape_newport_news_pc_agenda.py", args, timeout=180)
+    return {"ok": result.get("ok"), "scripts": {"scrape_newport_news_pc_agenda.py": result}}
+
+
 @router.post("/ingest-portsmouth-agenda")
 def admin_ingest_portsmouth_agenda(
     reset: bool = False,

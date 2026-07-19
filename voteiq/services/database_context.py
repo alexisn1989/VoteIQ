@@ -48,6 +48,7 @@ from voteiq.services.context.builders.local import (
     _add_hampton_council_context,
     _add_local_officials_context,
     _add_newport_news_council_context,
+    _add_newport_news_pc_context,
     _add_norfolk_council_context,
     _add_portsmouth_council_context,
     _add_suffolk_council_context,
@@ -6221,6 +6222,7 @@ def _build_database_context_inner(
     _add_chesapeake_council_context(blocks, q, terms, user_lat, user_lng)
     _add_portsmouth_council_context(blocks, q, terms, user_lat, user_lng)
     _add_newport_news_council_context(blocks, q, terms, user_lat, user_lng)
+    _add_newport_news_pc_context(blocks, q, terms, user_lat, user_lng)
     _add_hampton_council_context(blocks, q, terms, user_lat, user_lng)
     _add_suffolk_council_context(blocks, q, terms, user_lat, user_lng)
     _add_local_officials_context(blocks, q)
