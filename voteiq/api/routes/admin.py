@@ -268,6 +268,61 @@ def admin_ingest_vb_agenda(
     return {"ok": result.get("ok"), "scripts": {"scrape_vb_agenda.py": result}}
 
 
+@router.post("/ingest-chesapeake-agenda")
+def admin_ingest_chesapeake_agenda(
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Scrape Granicus for the upcoming Chesapeake council agenda into chesapeake_upcoming_agenda."""
+    args = ["--reset"] if reset else []
+    result = _run_script("scrape_chesapeake_agenda.py", args, timeout=120)
+    return {"ok": result.get("ok"), "scripts": {"scrape_chesapeake_agenda.py": result}}
+
+
+@router.post("/ingest-suffolk-agenda")
+def admin_ingest_suffolk_agenda(
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Scrape AgendaCenter for the upcoming Suffolk council agenda into suffolk_upcoming_agenda."""
+    args = ["--reset"] if reset else []
+    result = _run_script("scrape_suffolk_agenda.py", args, timeout=120)
+    return {"ok": result.get("ok"), "scripts": {"scrape_suffolk_agenda.py": result}}
+
+
+@router.post("/ingest-hampton-agenda")
+def admin_ingest_hampton_agenda(
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Scrape Legistar for the upcoming Hampton council agenda into hampton_upcoming_agenda."""
+    args = ["--reset"] if reset else []
+    result = _run_script("scrape_hampton_agenda.py", args, timeout=180)
+    return {"ok": result.get("ok"), "scripts": {"scrape_hampton_agenda.py": result}}
+
+
+@router.post("/ingest-newport-news-agenda")
+def admin_ingest_newport_news_agenda(
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Scrape CivicWeb for the upcoming Newport News council agenda into newport_news_upcoming_agenda."""
+    args = ["--reset"] if reset else []
+    result = _run_script("scrape_newport_news_agenda.py", args, timeout=180)
+    return {"ok": result.get("ok"), "scripts": {"scrape_newport_news_agenda.py": result}}
+
+
+@router.post("/ingest-portsmouth-agenda")
+def admin_ingest_portsmouth_agenda(
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Scrape Granicus for the upcoming Portsmouth council agenda into portsmouth_upcoming_agenda."""
+    args = ["--reset"] if reset else []
+    result = _run_script("scrape_portsmouth_agenda.py", args, timeout=120)
+    return {"ok": result.get("ok"), "scripts": {"scrape_portsmouth_agenda.py": result}}
+
+
 @router.post("/build-vb-blocs")
 def admin_build_vb_blocs(
     reset: bool = False,

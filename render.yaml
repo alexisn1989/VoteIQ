@@ -253,3 +253,83 @@ services:
         value: https://voteiq.io
       - key: ADMIN_TOKEN
         sync: false
+
+  # ── Chesapeake upcoming agenda scraper ─────────────────────────────────────
+  # Granicus archive; agendas typically posted ~1 week before meeting.
+  # Calls /api/admin/ingest-chesapeake-agenda on the web service.
+  - type: cron
+    name: voteiq-chesapeake-agenda
+    runtime: python
+    plan: starter
+    schedule: "0 8 * * 1,3,5"   # Mon, Wed, Fri at 08:00 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_chesapeake_agenda.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
+  # ── Suffolk upcoming agenda scraper ────────────────────────────────────────
+  # AgendaCenter; agendas typically posted a short time before each meeting.
+  # Calls /api/admin/ingest-suffolk-agenda on the web service.
+  - type: cron
+    name: voteiq-suffolk-agenda
+    runtime: python
+    plan: starter
+    schedule: "15 8 * * 1,3,5"   # Mon, Wed, Fri at 08:15 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_suffolk_agenda.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
+  # ── Hampton upcoming agenda scraper ────────────────────────────────────────
+  # Legistar; agendas typically posted a short time before each meeting.
+  # Calls /api/admin/ingest-hampton-agenda on the web service.
+  - type: cron
+    name: voteiq-hampton-agenda
+    runtime: python
+    plan: starter
+    schedule: "30 8 * * 1,3,5"   # Mon, Wed, Fri at 08:30 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_hampton_agenda.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
+  # ── Newport News upcoming agenda scraper ───────────────────────────────────
+  # CivicWeb; agendas typically posted a short time before each meeting.
+  # Calls /api/admin/ingest-newport-news-agenda on the web service.
+  - type: cron
+    name: voteiq-newport-news-agenda
+    runtime: python
+    plan: starter
+    schedule: "45 8 * * 1,3,5"   # Mon, Wed, Fri at 08:45 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_newport_news_agenda.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
+  # ── Portsmouth upcoming agenda scraper ─────────────────────────────────────
+  # Granicus; agendas typically posted a short time before each meeting.
+  # Calls /api/admin/ingest-portsmouth-agenda on the web service.
+  - type: cron
+    name: voteiq-portsmouth-agenda
+    runtime: python
+    plan: starter
+    schedule: "0 9 * * 1,3,5"   # Mon, Wed, Fri at 09:00 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_portsmouth_agenda.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
