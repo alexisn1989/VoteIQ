@@ -2771,7 +2771,8 @@ def _vote_date_spellings(iso_date: str) -> list[str]:
 
 
 def _add_scraped_council_context(
-    blocks: list[str], query: str, terms: list[str], prefix: str
+    blocks: list[str], query: str, terms: list[str], prefix: str,
+    user_lat: float | None = None, user_lng: float | None = None,
 ) -> None:
     cfg = _COUNCIL_SCRAPE_CFGS[prefix]
     q_lower = (query or "").lower()
@@ -2850,40 +2851,26 @@ def _add_scraped_council_context(
 
         # ── "what's proposed near me?" ──────────────────────────────────────
         # Only fires when the query both reads as a proximity question AND
-        # contains a numbered street address -- extract_address() refuses a
-        # bare street name (no house number) since that geocodes to an
-        # arbitrary point along the road, not the resident's actual parcel.
+        # either names a numbered street address in the query text, or the
+        # caller passed the user's own on-file address (resolved once via
+        # /api/find-district at page load, threaded through as user_lat/
+        # user_lng) -- extract_address() refuses a bare street name (no
+        # house number) since that geocodes to an arbitrary point along the
+        # road, not the resident's actual parcel. An address typed in the
+        # query always wins over the on-file location (covers "near my old
+        # place at X" style overrides).
         _near_trigger = any(w in q_lower for w in (
             "near me", "near my", "close to me", "close to my", "next to my",
             "by my house", "by my home", "affect my neighborhood", "around my",
             "near ",
         ))
         user_addr = extract_address(query) if _near_trigger else None
-        if user_addr and _table_exists(conn, t_agenda):
+        near_lat = near_lng = None
+        near_label = None
+        if user_addr:
             geocoded = geocode_lite(f"{user_addr}, {display}, VA")
             if geocoded and display.lower() in (geocoded["matched_address"] or "").lower():
-                nearby_rows = conn.execute(f"""
-                    SELECT meeting_date, item_ref, title, category, lat, lng
-                    FROM {t_agenda} WHERE lat IS NOT NULL
-                """).fetchall()
-                within: list[tuple[float, tuple]] = []
-                for mdate, ref, title, category, ilat, ilng in nearby_rows:
-                    dist = haversine_miles(geocoded["lat"], geocoded["lng"], ilat, ilng)
-                    if dist <= 3.0:
-                        within.append((dist, (mdate, ref, title, category)))
-                within.sort(key=lambda x: x[0])
-
-                lines.append(f"\n#### {display} City Council — Proposed Near {user_addr}")
-                lines.append(f"  (matched to {geocoded['matched_address']})")
-                if within:
-                    for dist, (mdate, ref, title, category) in within[:10]:
-                        short_title = title[:100] + ("…" if len(title) > 100 else "")
-                        lines.append(f"  {dist:.1f} mi  {mdate}  {ref:<6} [{category}]  {short_title}")
-                else:
-                    lines.append(
-                        "  Nothing with a geocoded address found within 3 miles in the "
-                        "agenda items currently on record for this city."
-                    )
+                near_lat, near_lng, near_label = geocoded["lat"], geocoded["lng"], user_addr
             elif geocoded:
                 lines.append(
                     f"\n  Couldn't confirm {user_addr!r} is in {display} "
@@ -2891,6 +2878,31 @@ def _add_scraped_council_context(
                 )
             else:
                 lines.append(f"\n  Couldn't geocode {user_addr!r} — skipping the nearby-items lookup.")
+        elif _near_trigger and user_lat is not None and user_lng is not None:
+            near_lat, near_lng, near_label = user_lat, user_lng, "your saved address"
+
+        if near_lat is not None and _table_exists(conn, t_agenda):
+            nearby_rows = conn.execute(f"""
+                SELECT meeting_date, item_ref, title, category, lat, lng
+                FROM {t_agenda} WHERE lat IS NOT NULL
+            """).fetchall()
+            within: list[tuple[float, tuple]] = []
+            for mdate, ref, title, category, ilat, ilng in nearby_rows:
+                dist = haversine_miles(near_lat, near_lng, ilat, ilng)
+                if dist <= 3.0:
+                    within.append((dist, (mdate, ref, title, category)))
+            within.sort(key=lambda x: x[0])
+
+            lines.append(f"\n#### {display} City Council — Proposed Near {near_label}")
+            if within:
+                for dist, (mdate, ref, title, category) in within[:10]:
+                    short_title = title[:100] + ("…" if len(title) > 100 else "")
+                    lines.append(f"  {dist:.1f} mi  {mdate}  {ref:<6} [{category}]  {short_title}")
+            else:
+                lines.append(
+                    "  Nothing with a geocoded address found within 3 miles in the "
+                    "agenda items currently on record for this city."
+                )
 
         # ── named-member vote summary ──────────────────────────────────────
         matched_member = next(
@@ -3045,21 +3057,36 @@ def _add_scraped_council_context(
         pass
 
 
-def _add_chesapeake_council_context(blocks: list[str], query: str, terms: list[str]) -> None:
-    _add_scraped_council_context(blocks, query, terms, "chesapeake")
+def _add_chesapeake_council_context(
+    blocks: list[str], query: str, terms: list[str],
+    user_lat: float | None = None, user_lng: float | None = None,
+) -> None:
+    _add_scraped_council_context(blocks, query, terms, "chesapeake", user_lat, user_lng)
 
 
-def _add_portsmouth_council_context(blocks: list[str], query: str, terms: list[str]) -> None:
-    _add_scraped_council_context(blocks, query, terms, "portsmouth")
+def _add_portsmouth_council_context(
+    blocks: list[str], query: str, terms: list[str],
+    user_lat: float | None = None, user_lng: float | None = None,
+) -> None:
+    _add_scraped_council_context(blocks, query, terms, "portsmouth", user_lat, user_lng)
 
 
-def _add_newport_news_council_context(blocks: list[str], query: str, terms: list[str]) -> None:
-    _add_scraped_council_context(blocks, query, terms, "newport_news")
+def _add_newport_news_council_context(
+    blocks: list[str], query: str, terms: list[str],
+    user_lat: float | None = None, user_lng: float | None = None,
+) -> None:
+    _add_scraped_council_context(blocks, query, terms, "newport_news", user_lat, user_lng)
 
 
-def _add_hampton_council_context(blocks: list[str], query: str, terms: list[str]) -> None:
-    _add_scraped_council_context(blocks, query, terms, "hampton")
+def _add_hampton_council_context(
+    blocks: list[str], query: str, terms: list[str],
+    user_lat: float | None = None, user_lng: float | None = None,
+) -> None:
+    _add_scraped_council_context(blocks, query, terms, "hampton", user_lat, user_lng)
 
 
-def _add_suffolk_council_context(blocks: list[str], query: str, terms: list[str]) -> None:
-    _add_scraped_council_context(blocks, query, terms, "suffolk")
+def _add_suffolk_council_context(
+    blocks: list[str], query: str, terms: list[str],
+    user_lat: float | None = None, user_lng: float | None = None,
+) -> None:
+    _add_scraped_council_context(blocks, query, terms, "suffolk", user_lat, user_lng)

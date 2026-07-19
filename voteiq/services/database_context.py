@@ -6144,12 +6144,18 @@ def _add_election_results_context(blocks: PriorityBlockList, query: str) -> None
     blocks.append("\n".join(out))
 
 
-def build_database_context(query: str, max_chars: int = 22000, pro: bool = False) -> str:
+def build_database_context(
+    query: str, max_chars: int = 22000, pro: bool = False,
+    user_lat: float | None = None, user_lng: float | None = None,
+) -> str:
     with _request_connection_cache():
-        return _build_database_context_inner(query, max_chars, pro)
+        return _build_database_context_inner(query, max_chars, pro, user_lat, user_lng)
 
 
-def _build_database_context_inner(query: str, max_chars: int = 22000, pro: bool = False) -> str:
+def _build_database_context_inner(
+    query: str, max_chars: int = 22000, pro: bool = False,
+    user_lat: float | None = None, user_lng: float | None = None,
+) -> str:
     q = query or ""
     blocks = PriorityBlockList()
     q_lower = q.lower()
@@ -6212,11 +6218,11 @@ def _build_database_context_inner(query: str, max_chars: int = 22000, pro: bool 
     _add_donor_vote_alignment_context(blocks, q, terms)
     _add_norfolk_council_context(blocks, q, terms)
     _add_vb_council_context(blocks, q, terms)
-    _add_chesapeake_council_context(blocks, q, terms)
-    _add_portsmouth_council_context(blocks, q, terms)
-    _add_newport_news_council_context(blocks, q, terms)
-    _add_hampton_council_context(blocks, q, terms)
-    _add_suffolk_council_context(blocks, q, terms)
+    _add_chesapeake_council_context(blocks, q, terms, user_lat, user_lng)
+    _add_portsmouth_council_context(blocks, q, terms, user_lat, user_lng)
+    _add_newport_news_council_context(blocks, q, terms, user_lat, user_lng)
+    _add_hampton_council_context(blocks, q, terms, user_lat, user_lng)
+    _add_suffolk_council_context(blocks, q, terms, user_lat, user_lng)
     _add_local_officials_context(blocks, q)
     blocks.set_priority(PriorityBlockList.HIGH)
     _add_election_results_context(blocks, q)

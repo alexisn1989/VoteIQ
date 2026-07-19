@@ -936,6 +936,8 @@ class ChatRequest(BaseModel):
     locality: str = ""
     hod_district:       int | None = None
     sd_district:        int | None = None
+    user_lat: float | None = None  # resident's on-file address, resolved once via /api/find-district
+    user_lng: float | None = None
     vb_council_district:      int | None = None
     vb_council_member:        str | None = None
     vb_school_board_member:   str | None = None
@@ -968,6 +970,8 @@ class BillsChatRequest(BaseModel):
     locality:     str = ""
     hod_district: int | None = None
     sd_district:  int | None = None
+    user_lat: float | None = None  # resident's on-file address, resolved once via /api/find-district
+    user_lng: float | None = None
     vb_council_district:       int | None = None
     vb_council_member:         str | None = None
     vb_school_board_member:    str | None = None
@@ -5354,7 +5358,10 @@ async def chat(request: Request, req: ChatRequest):
         donor_trend_context = ""
     governor_context = _m._fetch_governor_action_context(last_question)
     governor_eo_context = _m._fetch_governor_eo_context(last_question)
-    database_context = build_database_context(last_question, pro=_premium_analyst_enabled(req))
+    database_context = build_database_context(
+        last_question, pro=_premium_analyst_enabled(req),
+        user_lat=req.user_lat, user_lng=req.user_lng,
+    )
     state_member_context = _m._fetch_va_state_member_context(last_question, hod_info=hod_info, sd_info=sd_info)
     ie_context = _m._fetch_ie_context(bioguide_ids, last_question)
 
@@ -5940,6 +5947,8 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
             hod_district= req.hod_district,
             sd_district = req.sd_district,
             locality    = req.locality    or "",
+            user_lat    = req.user_lat,
+            user_lng    = req.user_lng,
         )
     except Exception as _ctx_err:
         logger.warning("suppressed exception: %s", _ctx_err)
@@ -5957,7 +5966,7 @@ async def bills_chat_stream(request: Request, req: BillsChatRequest):
 
     # ── pro: inject lobbying + committee chair context ────────────────────────
     if _premium_analyst_enabled(req):
-        _db_ctx = build_database_context(user_query, pro=True)
+        _db_ctx = build_database_context(user_query, pro=True, user_lat=req.user_lat, user_lng=req.user_lng)
         if _db_ctx:
             context = (context + "\n\n" + _db_ctx) if context else _db_ctx
             ctx_data = {**ctx_data, "context": context}

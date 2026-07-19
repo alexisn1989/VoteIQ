@@ -193,9 +193,11 @@ def _get_governor_action_money(query: str) -> str:
     return _m._fetch_governor_action_money_analyst_context(query)
 
 
-def _get_database_context(query: str) -> str:
+def _get_database_context(
+    query: str, user_lat: float | None = None, user_lng: float | None = None,
+) -> str:
     from voteiq.services.database_context import build_database_context
-    return build_database_context(query)
+    return build_database_context(query, user_lat=user_lat, user_lng=user_lng)
 
 
 def _get_news(query: str, pol_names: list[str]) -> str:
@@ -377,6 +379,8 @@ async def build_bills_context_parallel(
     hod_district: int | None = None,
     sd_district: int | None = None,
     locality: str = "",
+    user_lat: float | None = None,
+    user_lng: float | None = None,
 ) -> Dict[str, Any]:
     """
     Drop-in parallel replacement for _build_bills_context.
@@ -449,7 +453,7 @@ async def build_bills_context_parallel(
     # SQL is the primary retrieval layer. Chroma/RAG is only a fallback when
     # direct SQLite search does not return usable context for the question.
     _t_sql = time.perf_counter()
-    database_context = await asyncio.to_thread(_get_database_context, query)
+    database_context = await asyncio.to_thread(_get_database_context, query, user_lat, user_lng)
     log.debug(
         "sql database context %.3fs  chars=%d",
         time.perf_counter() - _t_sql,
