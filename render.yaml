@@ -350,3 +350,74 @@ services:
         value: https://voteiq.io
       - key: ADMIN_TOKEN
         sync: false
+
+  # ── Historical council-vote weekly refresh (Chesapeake/Suffolk/Hampton/ ────
+  # Newport News/Portsmouth) ──────────────────────────────────────────────────
+  # Each scraper only looks at a short recent window per run (already-scraped
+  # meetings are skipped cheaply), so weekly is enough to stay caught up.
+  # Staggered Sunday nights, ahead of the existing voteiq-vb-votes (02:00 UTC)
+  # and voteiq-congress-weekly (03:00 UTC) jobs.
+  - type: cron
+    name: voteiq-chesapeake-votes
+    runtime: python
+    plan: starter
+    schedule: "30 3 * * 0"   # Sunday at 03:30 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_chesapeake_votes.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
+  - type: cron
+    name: voteiq-suffolk-votes
+    runtime: python
+    plan: starter
+    schedule: "45 3 * * 0"   # Sunday at 03:45 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_suffolk_votes.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
+  - type: cron
+    name: voteiq-hampton-votes
+    runtime: python
+    plan: starter
+    schedule: "0 4 * * 0"   # Sunday at 04:00 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_hampton_votes.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
+  - type: cron
+    name: voteiq-newport-news-votes
+    runtime: python
+    plan: starter
+    schedule: "20 4 * * 0"   # Sunday at 04:20 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_newport_news_votes.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
+  - type: cron
+    name: voteiq-portsmouth-votes
+    runtime: python
+    plan: starter
+    schedule: "45 4 * * 0"   # Sunday at 04:45 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_portsmouth_votes.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false

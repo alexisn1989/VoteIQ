@@ -23,6 +23,18 @@ if [ $? -ne 0 ]; then
 fi
 echo "✓ Dependencies installed"
 
+# ── STEP 1a: Playwright Chromium (soft-fail — only the browser-driven council
+# scrapers need it; the core app must still come up without it) ──────────────
+echo ""
+echo "[STEP 1a] Installing Playwright Chromium..."
+if playwright install --with-deps chromium; then
+    echo "✓ Playwright Chromium installed"
+else
+    echo "⚠ Playwright Chromium install failed — Hampton/Newport News council"
+    echo "  scraper cron jobs will fail until this is fixed, but the core app"
+    echo "  is unaffected (they run as separate cron subprocesses, not at boot)"
+fi
+
 # ── STEP 1b: Optional full-DB seed from URL ───────────────────────────────────
 # Replaces the cached polls.db wholesale with a gzipped copy downloaded from
 # POLLS_DB_SEED_URL. Bump POLLS_DB_SEED_VERSION in the Render dashboard to

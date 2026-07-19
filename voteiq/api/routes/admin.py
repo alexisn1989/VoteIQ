@@ -8,6 +8,7 @@ import sqlite3
 import subprocess
 import sys
 from collections import defaultdict
+from datetime import date, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
@@ -333,6 +334,77 @@ def admin_ingest_agenda_geocoding(
     args = ["--city", city] if city else []
     result = _run_script("scripts/geocode_agenda_addresses.py", args, timeout=180)
     return {"ok": result.get("ok"), "scripts": {"geocode_agenda_addresses.py": result}}
+
+
+# ── Historical council-vote refresh (weekly) ────────────────────────────────
+# Each scraper already skips meetings it has already recorded (already_scraped
+# checks / insert-if-not-exists), so these only need to look at a short recent
+# window each run rather than re-walking full history -- keeps runtime bounded
+# and avoids hammering each city's site every week.
+
+@router.post("/ingest-chesapeake-votes")
+def admin_ingest_chesapeake_votes(
+    limit: int = 8,
+    _: None = Depends(require_admin_token),
+):
+    """Scrape the N most recent Chesapeake council meetings for recorded votes."""
+    result = _run_script("scrape_chesapeake_council.py", ["--limit", str(limit)], timeout=200)
+    return {"ok": result.get("ok"), "scripts": {"scrape_chesapeake_council.py": result}}
+
+
+@router.post("/ingest-suffolk-votes")
+def admin_ingest_suffolk_votes(
+    start_year: int | None = None,
+    _: None = Depends(require_admin_token),
+):
+    """Scrape Suffolk AgendaCenter documents from start_year (default: this
+    year) forward for recorded votes."""
+    year = start_year or date.today().year
+    args = ["--start-year", str(year), "--end-year", str(date.today().year)]
+    # Suffolk re-sends every meeting in range through Gemini every run (no
+    # per-meeting already-scraped short-circuit like the other 4 cities have,
+    # just per-vote-item dedup on insert) -- confirmed a real run against the
+    # full current year takes several minutes with occasional Gemini 504s.
+    result = _run_script("scrape_suffolk_council.py", args, timeout=320)
+    return {"ok": result.get("ok"), "scripts": {"scrape_suffolk_council.py": result}}
+
+
+@router.post("/ingest-hampton-votes")
+def admin_ingest_hampton_votes(
+    start_year: int | None = None,
+    _: None = Depends(require_admin_token),
+):
+    """Scrape Hampton Legistar meetings from start_year (default: this year)
+    forward for recorded votes."""
+    year = start_year or date.today().year
+    args = ["--start-year", str(year), "--end-year", str(date.today().year)]
+    result = _run_script("scrape_hampton_council.py", args, timeout=320)
+    return {"ok": result.get("ok"), "scripts": {"scrape_hampton_council.py": result}}
+
+
+@router.post("/ingest-newport-news-votes")
+def admin_ingest_newport_news_votes(
+    days: int = 60,
+    _: None = Depends(require_admin_token),
+):
+    """Scrape Newport News CivicWeb voting records for all 12 members over
+    the last `days` days (default 60)."""
+    _start_d = date.today() - timedelta(days=days)
+    start = f"{_start_d.strftime('%b')} {_start_d.day} {_start_d.year}"  # e.g. "Jun 5 2026", matching --start-date's expected format
+    result = _run_script("scrape_newport_news_council.py", ["--start-date", start], timeout=420)
+    return {"ok": result.get("ok"), "scripts": {"scrape_newport_news_council.py": result}}
+
+
+@router.post("/ingest-portsmouth-votes")
+def admin_ingest_portsmouth_votes(
+    year: int | None = None,
+    _: None = Depends(require_admin_token),
+):
+    """Scrape Portsmouth WebLink minutes for the given year (default: this
+    year) for recorded votes."""
+    y = year or date.today().year
+    result = _run_script("scrape_portsmouth_council.py", ["--years", str(y)], timeout=320)
+    return {"ok": result.get("ok"), "scripts": {"scrape_portsmouth_council.py": result}}
 
 
 @router.post("/build-vb-blocs")
