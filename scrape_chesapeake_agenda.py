@@ -273,10 +273,12 @@ def main() -> None:
         conn.commit()
         print("Cleared existing upcoming-agenda rows.")
 
-    # Drop meetings that are now in the past -- keep the table forward-looking only
-    today_str = date.today().isoformat()
+    # Keep past meetings for 45 days so builders/local.py can link agenda
+    # items to their recorded outcomes ("what happened with that rezoning?")
+    # before they age out -- deleting at meeting_date lost the link exactly
+    # when it became useful.
     n_removed = conn.execute(
-        "DELETE FROM chesapeake_upcoming_agenda WHERE meeting_date < ?", (today_str,)
+        "DELETE FROM chesapeake_upcoming_agenda WHERE meeting_date < date('now','-45 days')"
     ).rowcount
     conn.commit()
     if n_removed:

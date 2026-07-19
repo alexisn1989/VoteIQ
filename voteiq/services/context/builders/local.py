@@ -10,6 +10,7 @@ import difflib
 import json
 import re
 import sqlite3
+from datetime import datetime
 
 from voteiq.services.context._db import BASE_DIR, _connect, _table_exists
 
@@ -2747,6 +2748,27 @@ def _chesapeake_vote_data_available() -> bool:
     return _council_vote_data_available("chesapeake")
 
 
+def _vote_date_spellings(iso_date: str) -> list[str]:
+    """The five scraped cities' vote tables store meeting_date in whatever
+    format their source used ('Jun 13, 2023' Chesapeake, '8/14/2024' Hampton,
+    'Jan 14 2020' Newport News, '06/09/2026' Portsmouth, ISO Suffolk).
+    Given an ISO date from an *_upcoming_agenda table, return every spelling
+    to try when joining against a vote table."""
+    try:
+        d = datetime.strptime(iso_date, "%Y-%m-%d")
+    except (ValueError, TypeError):
+        return [iso_date]
+    mon_abbr = d.strftime("%b")
+    mon_full = d.strftime("%B")
+    return list({
+        iso_date,
+        f"{mon_abbr} {d.day:02d}, {d.year}", f"{mon_abbr} {d.day}, {d.year}",
+        f"{mon_full} {d.day:02d}, {d.year}", f"{mon_full} {d.day}, {d.year}",
+        f"{mon_abbr} {d.day:02d} {d.year}", f"{mon_abbr} {d.day} {d.year}",
+        f"{d.month:02d}/{d.day:02d}/{d.year}", f"{d.month}/{d.day}/{d.year}",
+    })
+
+
 def _add_scraped_council_context(
     blocks: list[str], query: str, terms: list[str], prefix: str
 ) -> None:
@@ -2851,6 +2873,80 @@ def _add_scraped_council_context(
                     for mdate, title, result in no_rows:
                         lines.append(f"    {mdate}  [{result}]  {title[:90]}")
                 _vote_section_added = True
+
+        # ── recent meeting outcomes (agenda → recorded-vote link) ──────────
+        # Agenda rows are retained 45 days past the meeting so "what happened
+        # with that rezoning?" can be answered by joining them to the vote
+        # tables. Exact item_ref match first (Suffolk/Hampton share ref
+        # spaces with their vote tables), then fuzzy title match (Chesapeake/
+        # NN/Portsmouth use different item labels across sources).
+        outcome_trigger = any(w in q_lower for w in (
+            "what happened", "happened", "outcome", "outcomes", "result",
+            "results", "passed", "failed", "last meeting", "recent meeting",
+            "previous meeting", "recap", "did the council", "did council",
+            "approved", "denied",
+        ))
+        if outcome_trigger and has_votes and _table_exists(conn, t_agenda):
+            o_date_row = conn.execute(f"""
+                SELECT MAX(meeting_date) FROM {t_agenda}
+                WHERE meeting_date < date('now')
+            """).fetchone()
+            o_date = o_date_row[0] if o_date_row else None
+            if o_date:
+                o_items = conn.execute(f"""
+                    SELECT item_ref, title, category FROM {t_agenda}
+                    WHERE meeting_date = ? AND category != 'procedural'
+                    ORDER BY CAST(item_ref AS INTEGER), item_ref LIMIT 18
+                """, (o_date,)).fetchall()
+                spellings = _vote_date_spellings(o_date)
+                ph = ",".join("?" for _ in spellings)
+                v_rows = conn.execute(f"""
+                    SELECT id, agenda_item, title, result, vote_count
+                    FROM {t_votes} WHERE meeting_date IN ({ph})
+                """, spellings).fetchall()
+                if o_items:
+                    lines.append(f"\n#### {display} Council — {o_date} Meeting: What Happened")
+                    if not v_rows:
+                        lines.append(
+                            "  Recorded votes for this meeting are not in the database "
+                            "yet (vote records typically lag the meeting). Agenda items were:"
+                        )
+                    used_vote_ids: set[int] = set()
+                    for a_ref, a_title, a_cat in o_items:
+                        match = None
+                        for vid, v_item, v_title, v_result, v_count in v_rows:
+                            if vid not in used_vote_ids and \
+                                    (v_item or "").strip().lower() == (a_ref or "").strip().lower():
+                                match = (vid, v_result, v_count)
+                                break
+                        if match is None and v_rows:
+                            best_ratio, best_cand = 0.0, None
+                            for vid, v_item, v_title, v_result, v_count in v_rows:
+                                if vid in used_vote_ids:
+                                    continue
+                                r = difflib.SequenceMatcher(
+                                    None, (a_title or "").lower()[:120],
+                                    (v_title or "").lower()[:120],
+                                ).ratio()
+                                if r > best_ratio:
+                                    best_ratio, best_cand = r, (vid, v_result, v_count)
+                            if best_ratio >= 0.55:
+                                match = best_cand
+                        short_t = a_title[:90] + ("…" if len(a_title) > 90 else "")
+                        if match:
+                            vid, v_result, v_count = match
+                            used_vote_ids.add(vid)
+                            lines.append(f"  {a_ref:<8} [{v_count}, {v_result}]  {short_t}")
+                            no_voters = conn.execute(f"""
+                                SELECT member_name FROM {t_member_votes}
+                                WHERE vote_id=? AND vote='no'
+                            """, (vid,)).fetchall()
+                            if no_voters:
+                                lines.append(f"           Dissent: {', '.join(r[0] for r in no_voters)}")
+                        else:
+                            tag = "  (no recorded outcome found)" if v_rows else ""
+                            lines.append(f"  {a_ref:<8} {short_t}{tag}")
+                    _vote_section_added = True
 
         # ── topic search ────────────────────────────────────────────────────
         # Exclude every word of the display name ("newport news" -> both

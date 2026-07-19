@@ -257,9 +257,10 @@ def main() -> None:
         conn.commit()
         print("Cleared existing upcoming-agenda rows.")
 
-    today_str = date.today().isoformat()
+    # 45-day retention on past meetings -- builders/local.py links agenda
+    # items to recorded outcomes, so keep the rows past meeting day.
     n_removed = conn.execute(
-        "DELETE FROM hampton_upcoming_agenda WHERE meeting_date < ?", (today_str,)
+        "DELETE FROM hampton_upcoming_agenda WHERE meeting_date < date('now','-45 days')"
     ).rowcount
     conn.commit()
     if n_removed:
