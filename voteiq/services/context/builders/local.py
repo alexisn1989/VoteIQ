@@ -2782,6 +2782,49 @@ def _add_scraped_council_context(
                     e_str = f"  ({email})" if email else ""
                     lines.append(f"  {district:<28}  {name}{e_str}")
 
+        # ── upcoming agenda ─────────────────────────────────────────────────
+        t_agenda = f"{prefix}_upcoming_agenda"
+        agenda_trigger = any(w in q_lower for w in (
+            "upcoming", "next meeting", "next council", "agenda",
+            "coming up", "scheduled", "how do i speak", "speak at",
+            "public comment", "sign up", "participate",
+        ))
+        if agenda_trigger and _table_exists(conn, t_agenda):
+            ag_rows = conn.execute(f"""
+                SELECT meeting_date, item_ref, title, category, agenda_url
+                FROM {t_agenda}
+                WHERE meeting_date >= date('now')
+                ORDER BY meeting_date, item_ref
+                LIMIT 30
+            """).fetchall()
+            if ag_rows:
+                lines.append(f"\n#### {display} City Council — Upcoming Agenda Items")
+                cur_date, agenda_url = "", None
+                for mdate, ref, title, category, url in ag_rows:
+                    if mdate != cur_date:
+                        cur_date = mdate
+                        agenda_url = url
+                        lines.append(f"\n  {mdate}")
+                    short_title = title[:100] + ("…" if len(title) > 100 else "")
+                    lines.append(f"    {ref:<6}  [{category}] {short_title}")
+                if agenda_url:
+                    lines.append(f"\n  [Full agenda PDF]({agenda_url})")
+                try:
+                    how_to = conn.execute(f"""
+                        SELECT how_to_participate FROM {t_agenda}
+                        WHERE meeting_date >= date('now') AND how_to_participate IS NOT NULL
+                        ORDER BY meeting_date LIMIT 1
+                    """).fetchone()
+                    if how_to and how_to[0]:
+                        lines.append(f"\n  How to participate: {how_to[0]}")
+                except sqlite3.OperationalError:
+                    pass
+            else:
+                lines.append(
+                    f"\n  No upcoming agenda items posted yet for {display} — "
+                    "agendas typically appear 1-2 weeks before each meeting."
+                )
+
         # ── named-member vote summary ──────────────────────────────────────
         matched_member = next(
             (full for key, full in cfg["member_map"].items() if key in q_lower), None
