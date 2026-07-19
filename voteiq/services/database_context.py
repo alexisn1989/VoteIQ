@@ -44,14 +44,18 @@ from voteiq.services.context._db import (  # noqa: F401
 )
 from voteiq.services.context.builders.local import (
     _add_chesapeake_council_context,
+    _add_chesapeake_pc_context,
     _add_city_district_context,
     _add_hampton_council_context,
+    _add_hampton_pc_context,
     _add_local_officials_context,
     _add_newport_news_council_context,
     _add_newport_news_pc_context,
     _add_norfolk_council_context,
     _add_portsmouth_council_context,
+    _add_portsmouth_pc_context,
     _add_suffolk_council_context,
+    _add_suffolk_pc_context,
     _add_vb_council_context,
 )
 
@@ -6220,11 +6224,15 @@ def _build_database_context_inner(
     _add_norfolk_council_context(blocks, q, terms)
     _add_vb_council_context(blocks, q, terms)
     _add_chesapeake_council_context(blocks, q, terms, user_lat, user_lng)
+    _add_chesapeake_pc_context(blocks, q, terms, user_lat, user_lng)
     _add_portsmouth_council_context(blocks, q, terms, user_lat, user_lng)
+    _add_portsmouth_pc_context(blocks, q, terms, user_lat, user_lng)
     _add_newport_news_council_context(blocks, q, terms, user_lat, user_lng)
     _add_newport_news_pc_context(blocks, q, terms, user_lat, user_lng)
     _add_hampton_council_context(blocks, q, terms, user_lat, user_lng)
+    _add_hampton_pc_context(blocks, q, terms, user_lat, user_lng)
     _add_suffolk_council_context(blocks, q, terms, user_lat, user_lng)
+    _add_suffolk_pc_context(blocks, q, terms, user_lat, user_lng)
     _add_local_officials_context(blocks, q)
     blocks.set_priority(PriorityBlockList.HIGH)
     _add_election_results_context(blocks, q)

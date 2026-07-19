@@ -326,6 +326,54 @@ def admin_ingest_newport_news_pc_agenda(
     return {"ok": result.get("ok"), "scripts": {"scrape_newport_news_pc_agenda.py": result}}
 
 
+@router.post("/ingest-chesapeake-pc-agenda")
+def admin_ingest_chesapeake_pc_agenda(
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Scrape Granicus for upcoming Chesapeake Planning Commission agendas
+    into chesapeake_pc_upcoming_agenda."""
+    args = ["--reset"] if reset else []
+    result = _run_script("scrape_chesapeake_pc_agenda.py", args, timeout=180)
+    return {"ok": result.get("ok"), "scripts": {"scrape_chesapeake_pc_agenda.py": result}}
+
+
+@router.post("/ingest-suffolk-pc-agenda")
+def admin_ingest_suffolk_pc_agenda(
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Scrape AgendaCenter for the upcoming Suffolk Planning Commission
+    agenda into suffolk_pc_upcoming_agenda."""
+    args = ["--reset"] if reset else []
+    result = _run_script("scrape_suffolk_pc_agenda.py", args, timeout=180)
+    return {"ok": result.get("ok"), "scripts": {"scrape_suffolk_pc_agenda.py": result}}
+
+
+@router.post("/ingest-hampton-pc-agenda")
+def admin_ingest_hampton_pc_agenda(
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Scrape Legistar for the upcoming Hampton Planning Commission agenda
+    into hampton_pc_upcoming_agenda."""
+    args = ["--reset"] if reset else []
+    result = _run_script("scrape_hampton_pc_agenda.py", args, timeout=200)
+    return {"ok": result.get("ok"), "scripts": {"scrape_hampton_pc_agenda.py": result}}
+
+
+@router.post("/ingest-portsmouth-pc-agenda")
+def admin_ingest_portsmouth_pc_agenda(
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Scrape the Portsmouth Planning Commission department page for the
+    upcoming agenda into portsmouth_pc_upcoming_agenda."""
+    args = ["--reset"] if reset else []
+    result = _run_script("scrape_portsmouth_pc_agenda.py", args, timeout=180)
+    return {"ok": result.get("ok"), "scripts": {"scrape_portsmouth_pc_agenda.py": result}}
+
+
 @router.post("/ingest-portsmouth-agenda")
 def admin_ingest_portsmouth_agenda(
     reset: bool = False,

@@ -270,6 +270,22 @@ services:
       - key: ADMIN_TOKEN
         sync: false
 
+  # ── Chesapeake Planning Commission upcoming agenda scraper ────────────────
+  # Rezoning/CUP cases are decided here in substance, typically weeks to a
+  # month before City Council's own vote on the Commission's recommendation.
+  - type: cron
+    name: voteiq-chesapeake-pc-agenda
+    runtime: python
+    plan: starter
+    schedule: "5 8 * * 1,3,5"   # Mon, Wed, Fri at 08:05 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_chesapeake_pc_agenda.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
   # ── Suffolk upcoming agenda scraper ────────────────────────────────────────
   # AgendaCenter; agendas typically posted a short time before each meeting.
   # Calls /api/admin/ingest-suffolk-agenda on the web service.
@@ -286,6 +302,22 @@ services:
       - key: ADMIN_TOKEN
         sync: false
 
+  # ── Suffolk Planning Commission upcoming agenda scraper ───────────────────
+  # Rezoning/CUP cases are decided here in substance, typically weeks to a
+  # month before City Council's own vote on the Commission's recommendation.
+  - type: cron
+    name: voteiq-suffolk-pc-agenda
+    runtime: python
+    plan: starter
+    schedule: "20 8 * * 1,3,5"   # Mon, Wed, Fri at 08:20 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_suffolk_pc_agenda.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
   # ── Hampton upcoming agenda scraper ────────────────────────────────────────
   # Legistar; agendas typically posted a short time before each meeting.
   # Calls /api/admin/ingest-hampton-agenda on the web service.
@@ -296,6 +328,22 @@ services:
     schedule: "30 8 * * 1,3,5"   # Mon, Wed, Fri at 08:30 UTC
     buildCommand: echo "no build"
     startCommand: python scripts/trigger_hampton_agenda.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
+  # ── Hampton Planning Commission upcoming agenda scraper ───────────────────
+  # Rezoning/use-permit cases are decided here in substance, typically weeks
+  # to a month before City Council's own vote on the Commission's recommendation.
+  - type: cron
+    name: voteiq-hampton-pc-agenda
+    runtime: python
+    plan: starter
+    schedule: "35 8 * * 1,3,5"   # Mon, Wed, Fri at 08:35 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_hampton_pc_agenda.py
     envVars:
       - key: VOTEIQ_SERVICE_URL
         value: https://voteiq.io
@@ -350,15 +398,31 @@ services:
       - key: ADMIN_TOKEN
         sync: false
 
+  # ── Portsmouth Planning Commission upcoming agenda scraper ────────────────
+  # Rezoning/use-permit cases are decided here in substance, typically weeks
+  # to a month before City Council's own vote on the Commission's recommendation.
+  - type: cron
+    name: voteiq-portsmouth-pc-agenda
+    runtime: python
+    plan: starter
+    schedule: "5 9 * * 1,3,5"   # Mon, Wed, Fri at 09:05 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_portsmouth_pc_agenda.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
   # ── Agenda item address geocoding ("what's proposed near me?") ────────────
   # Backfills lat/lng on upcoming-agenda CUP/rezoning items with a numbered
-  # street address. Runs after the 5 agenda scrapers above finish (09:00 UTC)
-  # so it picks up whatever they just posted.
+  # street address. Runs after all 9 agenda scrapers above finish so it
+  # picks up whatever they just posted.
   - type: cron
     name: voteiq-agenda-geocoding
     runtime: python
     plan: starter
-    schedule: "15 9 * * 1,3,5"   # Mon, Wed, Fri at 09:15 UTC
+    schedule: "30 9 * * 1,3,5"   # Mon, Wed, Fri at 09:30 UTC
     buildCommand: echo "no build"
     startCommand: python scripts/trigger_agenda_geocoding.py
     envVars:
