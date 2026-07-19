@@ -2613,6 +2613,13 @@ _HAMPTON_TRIGGER_RE = re.compile(
     re.IGNORECASE,
 )
 
+_SUFFOLK_TRIGGER_RE = re.compile(
+    r"suffolk.*(council|member|district|mayor|vote|voted|votes|voting|"
+    r"agenda|meeting|ordinance|resolution|profile|background)"
+    r"|(council|member|mayor|vote|voted|votes|agenda).*suffolk",
+    re.IGNORECASE,
+)
+
 _COUNCIL_SCRAPE_CFGS: dict[str, dict] = {
     "chesapeake": {
         "display": "Chesapeake",
@@ -2678,6 +2685,29 @@ _COUNCIL_SCRAPE_CFGS: dict[str, dict] = {
         "source_note": (
             "Source: Hampton City Council Notice of Action meeting minutes, "
             "https://hampton.legistar.com/Calendar.aspx"
+        ),
+    },
+    "suffolk": {
+        "display": "Suffolk",
+        "trigger": _SUFFOLK_TRIGGER_RE,
+        # Bare surnames as extracted by scrape_suffolk_council.py. Includes
+        # historical members (Fawcett, Goldberg, Milteer) alongside the
+        # current roster — the scraped range spans 2020-2026.
+        "member_map": {
+            "johnson": "Johnson", "bennett": "Bennett", "williams": "Williams",
+            "fawcett": "Fawcett", "ward": "Ward", "duman": "Duman",
+            "goldberg": "Goldberg", "wright": "Wright", "milteer": "Milteer",
+            "butler barlow": "Butler Barlow", "butler-barlow": "Butler Barlow",
+            "barlow": "Butler Barlow",
+        },
+        "source_note": (
+            "Source: Suffolk City Council agenda documents, "
+            "https://www.suffolkva.us/AgendaCenter. "
+            "Note: Suffolk's documents only name individual members on split "
+            "votes; unanimous outcomes are recorded at the tally level (e.g. "
+            "'Approved 8-0') with no per-member attribution, so per-member "
+            "counts here reflect only explicitly named votes (mostly dissents "
+            "and abstentions), NOT a member's full voting record."
         ),
     },
 }
@@ -2845,3 +2875,7 @@ def _add_newport_news_council_context(blocks: list[str], query: str, terms: list
 
 def _add_hampton_council_context(blocks: list[str], query: str, terms: list[str]) -> None:
     _add_scraped_council_context(blocks, query, terms, "hampton")
+
+
+def _add_suffolk_council_context(blocks: list[str], query: str, terms: list[str]) -> None:
+    _add_scraped_council_context(blocks, query, terms, "suffolk")
