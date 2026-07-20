@@ -3328,6 +3328,65 @@ def _add_pc_agenda_context(
                     "agendas typically appear a short time before each meeting."
                 )
 
+        # ── PC → Council outcome chain ──────────────────────────────────────
+        # Only Portsmouth and Newport News PC agendas state a real "to be
+        # heard by City Council on <date>" cross-reference in the source
+        # document (confirmed live for both; the other 5 cities' real
+        # agendas never mentioned one, so this section is inert for them --
+        # has_hearing_col gates it rather than guessing a date).
+        outcome_trigger = any(w in q_lower for w in (
+            "what happened", "happened", "outcome", "did council",
+            "council approve", "council vote", "council decide", "recommend",
+            "approved", "denied", "passed", "failed",
+        ))
+        t_council_votes = f"{prefix}_council_votes"
+        if outcome_trigger and has_hearing_col and _table_exists(conn, t_council_votes):
+            pc_rows = conn.execute(f"""
+                SELECT meeting_date, item_ref, title, category, council_hearing_date
+                FROM {t_agenda}
+                WHERE council_hearing_date IS NOT NULL
+                  AND council_hearing_date < date('now')
+                ORDER BY council_hearing_date DESC
+                LIMIT 15
+            """).fetchall()
+            if pc_rows:
+                lines.append(f"\n#### {display} — Planning Commission Recommendation → City Council Outcome")
+                for pc_date, ref, title, category, hearing_date in pc_rows:
+                    spellings = _vote_date_spellings(hearing_date)
+                    ph = ",".join("?" for _ in spellings)
+                    v_rows = conn.execute(f"""
+                        SELECT title, result, vote_count FROM {t_council_votes}
+                        WHERE meeting_date IN ({ph})
+                    """, spellings).fetchall()
+                    short_title = title[:90] + ("…" if len(title) > 90 else "")
+                    match = None
+                    if v_rows:
+                        best_ratio, best_cand = 0.0, None
+                        for v_title, v_result, v_count in v_rows:
+                            r = difflib.SequenceMatcher(
+                                None, (title or "").lower()[:120], (v_title or "").lower()[:120],
+                            ).ratio()
+                            if r > best_ratio:
+                                best_ratio, best_cand = r, (v_result, v_count)
+                        if best_ratio >= 0.4:
+                            match = best_cand
+                    if match:
+                        v_result, v_count = match
+                        lines.append(
+                            f"  {ref:<16} PC recommended {pc_date} → Council [{v_count}, {v_result}] "
+                            f"on {hearing_date}  {short_title}"
+                        )
+                    elif v_rows:
+                        lines.append(
+                            f"  {ref:<16} PC recommended {pc_date} → Council met {hearing_date} but no "
+                            f"matching vote record found  {short_title}"
+                        )
+                    else:
+                        lines.append(
+                            f"  {ref:<16} PC recommended {pc_date} → scheduled for Council {hearing_date}, "
+                            f"no vote recorded yet (may not have been scraped, or was deferred)  {short_title}"
+                        )
+
         near_trigger = any(w in q_lower for w in (
             "near me", "near my", "close to me", "close to my", "next to my",
             "by my house", "by my home", "affect my neighborhood", "around my",
