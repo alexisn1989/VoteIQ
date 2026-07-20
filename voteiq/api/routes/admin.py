@@ -374,6 +374,30 @@ def admin_ingest_portsmouth_pc_agenda(
     return {"ok": result.get("ok"), "scripts": {"scrape_portsmouth_pc_agenda.py": result}}
 
 
+@router.post("/ingest-norfolk-pc-agenda")
+def admin_ingest_norfolk_pc_agenda(
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Scrape IQM2 for the upcoming Norfolk Planning Commission Public
+    Hearing agenda into norfolk_pc_upcoming_agenda."""
+    args = ["--reset"] if reset else []
+    result = _run_script("scrape_norfolk_pc_agenda.py", args, timeout=180)
+    return {"ok": result.get("ok"), "scripts": {"scrape_norfolk_pc_agenda.py": result}}
+
+
+@router.post("/ingest-vb-pc-agenda")
+def admin_ingest_vb_pc_agenda(
+    reset: bool = False,
+    _: None = Depends(require_admin_token),
+):
+    """Scrape IQM2 for the upcoming Virginia Beach Planning Commission
+    Formal Hearing agenda into vb_pc_upcoming_agenda."""
+    args = ["--reset"] if reset else []
+    result = _run_script("scrape_vb_pc_agenda.py", args, timeout=180)
+    return {"ok": result.get("ok"), "scripts": {"scrape_vb_pc_agenda.py": result}}
+
+
 @router.post("/ingest-portsmouth-agenda")
 def admin_ingest_portsmouth_agenda(
     reset: bool = False,

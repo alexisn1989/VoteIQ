@@ -3245,16 +3245,29 @@ _PC_TRIGGER_RES = {
         r"|(planning\s+commission|rezon|use\s+permit).*portsmouth",
         re.IGNORECASE,
     ),
+    "norfolk": re.compile(
+        r"norfolk.*(planning\s+commission|rezon|cup\b|conditional\s+use|zoning)"
+        r"|(planning\s+commission|rezon|cup\b|conditional\s+use).*norfolk",
+        re.IGNORECASE,
+    ),
+    "vb": re.compile(
+        r"virginia\s+beach.*(planning\s+commission|rezon|cup\b|conditional\s+use|zoning)"
+        r"|(planning\s+commission|rezon|cup\b|conditional\s+use).*virginia\s+beach",
+        re.IGNORECASE,
+    ),
 }
 _PC_DISPLAY = {
     "chesapeake": "Chesapeake", "suffolk": "Suffolk",
     "hampton": "Hampton", "portsmouth": "Portsmouth",
+    "norfolk": "Norfolk", "vb": "Virginia Beach",
 }
 _PC_SOURCE = {
     "chesapeake": "Chesapeake Planning Commission agenda documents, https://chesapeake.granicus.com/ViewPublisher.php?view_id=35",
     "suffolk": "Suffolk Planning Commission agenda documents, https://www.suffolkva.us/AgendaCenter",
     "hampton": "Hampton Planning Commission agenda documents, https://hampton.legistar.com/Calendar.aspx",
     "portsmouth": "Portsmouth Planning Commission agenda documents, https://www.portsmouthva.gov/planning-commission-agendas-minutes",
+    "norfolk": "Norfolk Planning Commission agenda documents, https://norfolkcityva.iqm2.com/Citizens/calendar.aspx",
+    "vb": "Virginia Beach Planning Commission agenda documents, https://virginiabeachva.iqm2.com/Citizens/calendar.aspx",
 }
 
 
@@ -3396,3 +3409,17 @@ def _add_portsmouth_pc_context(
     user_lat: float | None = None, user_lng: float | None = None,
 ) -> None:
     _add_pc_agenda_context(blocks, query, terms, "portsmouth", user_lat, user_lng)
+
+
+def _add_norfolk_pc_context(
+    blocks: list[str], query: str, terms: list[str],
+    user_lat: float | None = None, user_lng: float | None = None,
+) -> None:
+    _add_pc_agenda_context(blocks, query, terms, "norfolk", user_lat, user_lng)
+
+
+def _add_vb_pc_context(
+    blocks: list[str], query: str, terms: list[str],
+    user_lat: float | None = None, user_lng: float | None = None,
+) -> None:
+    _add_pc_agenda_context(blocks, query, terms, "vb", user_lat, user_lng)

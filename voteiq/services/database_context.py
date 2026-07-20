@@ -52,11 +52,13 @@ from voteiq.services.context.builders.local import (
     _add_newport_news_council_context,
     _add_newport_news_pc_context,
     _add_norfolk_council_context,
+    _add_norfolk_pc_context,
     _add_portsmouth_council_context,
     _add_portsmouth_pc_context,
     _add_suffolk_council_context,
     _add_suffolk_pc_context,
     _add_vb_council_context,
+    _add_vb_pc_context,
 )
 
 DATA_DIR_ENV_VARS = ("DATA_DIR", "VOTEIQ_DATA_DIR", "RENDER_DISK_MOUNT_PATH")
@@ -6222,7 +6224,9 @@ def _build_database_context_inner(
     # Structured access to analytically rich tables the generic scan serves poorly
     _add_donor_vote_alignment_context(blocks, q, terms)
     _add_norfolk_council_context(blocks, q, terms)
+    _add_norfolk_pc_context(blocks, q, terms, user_lat, user_lng)
     _add_vb_council_context(blocks, q, terms)
+    _add_vb_pc_context(blocks, q, terms, user_lat, user_lng)
     _add_chesapeake_council_context(blocks, q, terms, user_lat, user_lng)
     _add_chesapeake_pc_context(blocks, q, terms, user_lat, user_lng)
     _add_portsmouth_council_context(blocks, q, terms, user_lat, user_lng)

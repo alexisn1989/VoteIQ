@@ -55,6 +55,8 @@ TABLES = {
     "suffolk_pc": ("suffolk_pc_upcoming_agenda", "Suffolk"),
     "hampton_pc": ("hampton_pc_upcoming_agenda", "Hampton"),
     "portsmouth_pc": ("portsmouth_pc_upcoming_agenda", "Portsmouth"),
+    "norfolk_pc": ("norfolk_pc_upcoming_agenda", "Norfolk"),
+    "vb_pc": ("vb_pc_upcoming_agenda", "Virginia Beach"),
 }
 
 def _locality_matches(matched_address: str, city_display: str) -> bool:
