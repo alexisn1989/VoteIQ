@@ -7,6 +7,7 @@ import re
 import sqlite3
 import subprocess
 import sys
+import tempfile
 from collections import defaultdict
 from datetime import date, timedelta
 from pathlib import Path
@@ -752,18 +753,36 @@ def admin_ingest_polls(
         cmd += ["--source", s]
     if use_gemini and os.getenv("GEMINI_API_KEY"):
         cmd.append("--use-gemini")
-    try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=480)
-        return {
-            "ok": r.returncode == 0,
-            "returncode": r.returncode,
-            "stdout": r.stdout[-2000:],
-            "stderr": r.stderr[-1000:],
-        }
-    except subprocess.TimeoutExpired:
-        return {"ok": False, "error": "ingestion timed out after 480s"}
-    except Exception as exc:
-        return {"ok": False, "error": str(exc)}
+    # Redirect to a real file (not pipes) and force unbuffered output so that
+    # if this times out and the child is killed, whatever it already printed
+    # (e.g. "Fetching FiveThirtyEight ...") survives to tell us where it hung
+    # -- subprocess.run's capture_output does not reliably preserve partial
+    # output across a TimeoutExpired kill.
+    env = {**os.environ, "PYTHONUNBUFFERED": "1"}
+    with tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace") as tmp_out:
+        try:
+            r = subprocess.run(
+                cmd, stdout=tmp_out, stderr=subprocess.STDOUT,
+                text=True, timeout=480, env=env,
+            )
+            tmp_out.seek(0)
+            output = tmp_out.read()
+            return {
+                "ok": r.returncode == 0,
+                "returncode": r.returncode,
+                "stdout": output[-2000:],
+                "stderr": "",
+            }
+        except subprocess.TimeoutExpired:
+            tmp_out.seek(0)
+            output = tmp_out.read()
+            return {
+                "ok": False,
+                "error": "ingestion timed out after 480s",
+                "stdout": output[-2000:],
+            }
+        except Exception as exc:
+            return {"ok": False, "error": str(exc)}
 
 
 @router.post("/reload-votes")

@@ -40,6 +40,9 @@ try:
         data = json.loads(body)
         print(f"Status: {resp.status}")
         print(f"ok={data.get('ok')}  message={data.get('message') or data.get('error')}")
+        out = (data.get("stdout") or "")[-2000:]
+        if out:
+            print(f"stdout: {out}")
         sys.exit(0 if data.get("ok") else 1)
 
 except urllib.error.HTTPError as exc:
