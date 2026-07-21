@@ -183,6 +183,12 @@ Return a JSON array. Each object:
             project name, request type, and property address",
   "category": "one of: use-permit, rezoning, subdivision,
                comprehensive-plan, procedural, other",
+  "applicant_name": "string -- the person or company who 'requests' the
+              permit/rezoning (e.g. 'Pro-Home Builders, LLC', 'M. Venable'),
+              exactly as written, or empty string if not stated",
+  "property_owner": "string -- who the text says the property 'is owned
+              by', exactly as written, or empty string if not stated or
+              same as the applicant",
   "council_hearing_date": "string YYYY-MM-DD if the document states a
               City Council hearing date for this item, otherwise null --
               do not guess this, only use it if genuinely stated"
@@ -243,6 +249,11 @@ def ensure_table(conn: sqlite3.Connection) -> None:
             UNIQUE(event_id, item_ref)
         )
     """)
+    # Additive migration -- this table already shipped without these columns.
+    existing_cols = {row[1] for row in conn.execute("PRAGMA table_info(portsmouth_pc_upcoming_agenda)")}
+    for col in ("applicant_name", "property_owner"):
+        if col not in existing_cols:
+            conn.execute(f"ALTER TABLE portsmouth_pc_upcoming_agenda ADD COLUMN {col} TEXT")
     conn.commit()
 
 
@@ -317,16 +328,20 @@ def main() -> None:
         conn.execute("""
             INSERT INTO portsmouth_pc_upcoming_agenda
                 (event_id, meeting_date, item_ref, section, title, category,
-                 agenda_url, how_to_participate, council_hearing_date)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 agenda_url, how_to_participate, council_hearing_date,
+                 applicant_name, property_owner)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(event_id, item_ref) DO UPDATE SET
                 section = excluded.section, title = excluded.title,
                 category = excluded.category,
-                council_hearing_date = excluded.council_hearing_date
+                council_hearing_date = excluded.council_hearing_date,
+                applicant_name = excluded.applicant_name,
+                property_owner = excluded.property_owner
         """, (
             event_id, mtg["meeting_date"], it.get("item_ref", ""),
             it.get("section", ""), it.get("title", ""), it.get("category", "other"),
             mtg["agenda_url"], HOW_TO_PARTICIPATE, it.get("council_hearing_date"),
+            it.get("applicant_name", ""), it.get("property_owner", ""),
         ))
     conn.commit()
     time.sleep(1)

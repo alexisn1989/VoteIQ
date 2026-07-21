@@ -234,6 +234,11 @@ Return a JSON array. Each object:
             'CUP for Recovery Home at 7 Darlene Lane')",
   "category": "one of: public-hearing, rezoning, conditional-use-permit,
                comprehensive-plan, procedural, other",
+  "applicant_name": "string -- the applicant/requester named right after
+              the case number (e.g. 'PC VIRGINIA HOMES LLC and OXFORD
+              HOUSE' from 'CU-2026-0005, PC VIRGINIA HOMES LLC and OXFORD
+              HOUSE  Request a conditional use permit...'), exactly as
+              written, or empty string if not stated",
   "council_hearing_date": "string YYYY-MM-DD if the item states a
               'to be heard by City Council on <date>' cross-reference,
               otherwise null -- do not guess this, only use it if the
@@ -296,6 +301,10 @@ def ensure_table(conn: sqlite3.Connection) -> None:
             UNIQUE(event_id, item_ref)
         )
     """)
+    # Additive migration -- this table already shipped without this column.
+    existing_cols = {row[1] for row in conn.execute("PRAGMA table_info(newport_news_pc_upcoming_agenda)")}
+    if "applicant_name" not in existing_cols:
+        conn.execute("ALTER TABLE newport_news_pc_upcoming_agenda ADD COLUMN applicant_name TEXT")
     conn.commit()
 
 
@@ -373,16 +382,17 @@ def main() -> None:
         conn.execute("""
             INSERT INTO newport_news_pc_upcoming_agenda
                 (event_id, meeting_date, item_ref, section, title, category,
-                 agenda_url, how_to_participate, council_hearing_date)
-            VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?)
+                 agenda_url, how_to_participate, council_hearing_date, applicant_name)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
             ON CONFLICT(event_id, item_ref) DO UPDATE SET
                 section = excluded.section, title = excluded.title,
                 category = excluded.category,
-                council_hearing_date = excluded.council_hearing_date
+                council_hearing_date = excluded.council_hearing_date,
+                applicant_name = excluded.applicant_name
         """, (
             mtg["meeting_id"], mtg["meeting_date"], it.get("item_ref", ""),
             it.get("section", ""), it.get("title", ""), it.get("category", "other"),
-            meeting_url, it.get("council_hearing_date"),
+            meeting_url, it.get("council_hearing_date"), it.get("applicant_name", ""),
         ))
     conn.commit()
     time.sleep(1)
