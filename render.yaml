@@ -66,6 +66,22 @@ services:
       - key: ADMIN_TOKEN
         sync: false
 
+  # ── Norfolk Planning Commission upcoming agenda scraper ────────────────────
+  # Public Hearing agenda items (rezoning/CUP/ARB); no council_hearing_date
+  # column for Norfolk, so no PC→Council outcome chain yet, just the agenda.
+  - type: cron
+    name: voteiq-norfolk-pc-agenda
+    runtime: python
+    plan: starter
+    schedule: "5 6 * * 1,3,5"   # Mon, Wed, Fri at 06:05 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_norfolk_pc_agenda.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
   # ── Virginia Beach vote history ingestion ─────────────────────────────────
   # Runs weekly Sunday nights — pulls full vote history for all 11 council
   # members from the Accela IQM2 public API (~11,500 records, ~3 min runtime).
@@ -376,6 +392,22 @@ services:
     schedule: "50 8 * * 1,3,5"   # Mon, Wed, Fri at 08:50 UTC
     buildCommand: echo "no build"
     startCommand: python scripts/trigger_newport_news_pc_agenda.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
+  # ── Virginia Beach Planning Commission upcoming agenda scraper ────────────
+  # Thinnest agenda PDFs of all 7 cities (no case number/proposal type); IQM2
+  # archive lags, so this checks the specific upcoming meeting's own page.
+  - type: cron
+    name: voteiq-vb-pc-agenda
+    runtime: python
+    plan: starter
+    schedule: "5 7 * * 1,4"   # Mon, Thu at 07:05 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_vb_pc_agenda.py
     envVars:
       - key: VOTEIQ_SERVICE_URL
         value: https://voteiq.io
