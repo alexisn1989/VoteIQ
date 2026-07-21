@@ -753,7 +753,7 @@ def admin_ingest_polls(
     if use_gemini and os.getenv("GEMINI_API_KEY"):
         cmd.append("--use-gemini")
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=480)
         return {
             "ok": r.returncode == 0,
             "returncode": r.returncode,
@@ -761,7 +761,7 @@ def admin_ingest_polls(
             "stderr": r.stderr[-1000:],
         }
     except subprocess.TimeoutExpired:
-        return {"ok": False, "error": "ingestion timed out after 180s"}
+        return {"ok": False, "error": "ingestion timed out after 480s"}
     except Exception as exc:
         return {"ok": False, "error": str(exc)}
 
