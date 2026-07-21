@@ -463,6 +463,23 @@ services:
       - key: ADMIN_TOKEN
         sync: false
 
+  # ── Agenda alert digest ─────────────────────────────────────────────────────
+  # Emails confirmed agenda_alert_subscriptions with any new matching Council/
+  # PC agenda items. Saturday morning, after the Mon/Wed/Fri agenda scrapers
+  # and Mon/Wed/Fri geocoding backfill have all had a chance to run that week.
+  - type: cron
+    name: voteiq-agenda-digest
+    runtime: python
+    plan: starter
+    schedule: "0 12 * * 6"   # Saturday at 12:00 UTC
+    buildCommand: echo "no build"
+    startCommand: python scripts/trigger_agenda_digest.py
+    envVars:
+      - key: VOTEIQ_SERVICE_URL
+        value: https://voteiq.io
+      - key: ADMIN_TOKEN
+        sync: false
+
   # ── Historical council-vote weekly refresh (Chesapeake/Suffolk/Hampton/ ────
   # Newport News/Portsmouth) ──────────────────────────────────────────────────
   # Each scraper only looks at a short recent window per run (already-scraped
