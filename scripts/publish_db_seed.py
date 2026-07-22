@@ -202,6 +202,8 @@ def _upload_asset(tag: str, gz_path: Path, retries: int = 3) -> bool:
     for attempt in range(1, retries + 1):
         result = _run(["gh", "release", "upload", tag, str(gz_path), "--clobber"])
         if result.returncode == 0:
+            if attempt > 1:
+                print(f"[publish] {gz_path.name} uploaded OK on attempt {attempt}/{retries}")
             return True
         print(f"[publish] upload attempt {attempt}/{retries} failed for {gz_path.name}: "
               f"{result.stderr.strip()}")
