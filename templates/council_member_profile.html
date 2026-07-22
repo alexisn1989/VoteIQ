@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Council Member — VoteIQ</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{--navy:#0d1b2a;--red:#c8102e;--green:#1c7a4d;--light:#f4f1eb;--mid:#ddd8cc;--muted:#7a7468;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--light);color:var(--navy);font-family:'Barlow',sans-serif;min-height:100vh;}
+
+.topbar{background:var(--navy);color:var(--mid);font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;text-align:center;padding:7px 16px;}
+.topbar span{color:var(--red);margin:0 6px;}
+
+header{border-bottom:3px double var(--navy);padding:22px 48px 18px;display:flex;align-items:center;justify-content:space-between;background:var(--light);}
+.logo-wrap{display:flex;align-items:center;gap:16px;text-decoration:none;}
+.logo-text{font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:900;color:var(--navy);letter-spacing:-0.03em;}
+.logo-text em{color:var(--red);font-style:normal;}
+.header-nav{display:flex;gap:24px;align-items:center;}
+.header-nav a{font-family:'Barlow Condensed',sans-serif;font-size:0.82rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--navy);text-decoration:none;}
+.header-nav a:hover{color:var(--red);}
+
+.crumb{max-width:900px;margin:20px auto 0;padding:0 32px;font-family:'Barlow Condensed',sans-serif;font-size:0.78rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);}
+.crumb a{color:var(--muted);text-decoration:none;}
+.crumb a:hover{color:var(--navy);}
+
+.hero{max-width:900px;margin:0 auto;padding:20px 32px 28px;display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;}
+.avatar{width:84px;height:84px;border-radius:50%;background:var(--navy);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:900;color:white;}
+.hero-info{flex:1;min-width:240px;}
+.eyebrow{font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--red);margin-bottom:8px;}
+.hero h1{font-family:'Playfair Display',serif;font-size:clamp(1.7rem,4vw,2.4rem);font-weight:900;color:var(--navy);letter-spacing:-0.02em;margin-bottom:14px;}
+.hero-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.btn{display:inline-flex;align-items:center;gap:7px;font-family:'Barlow Condensed',sans-serif;font-size:0.74rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:9px 18px;text-decoration:none;border:2px solid var(--navy);transition:all 0.18s;}
+.btn-fill{background:var(--navy);color:white;}
+.btn-fill:hover{background:#162539;}
+.btn-line{background:white;color:var(--navy);}
+.btn-line:hover{background:var(--navy);color:white;}
+
+.section{max-width:900px;margin:0 auto;padding:0 32px 36px;}
+.section-label{font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--muted);margin-bottom:16px;display:flex;align-items:center;gap:12px;}
+.section-label::after{content:'';flex:1;height:1px;background:var(--mid);}
+
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:14px;}
+.stat-card{background:white;border:1px solid var(--mid);padding:16px;text-align:center;}
+.stat-num{font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:900;color:var(--navy);}
+.stat-num.yes{color:var(--green);}
+.stat-num.no{color:var(--red);}
+.stat-label{font-family:'Barlow Condensed',sans-serif;font-size:0.68rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-top:4px;}
+
+table{width:100%;border-collapse:collapse;background:white;}
+th{text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:0.66rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);padding:10px 12px;border-bottom:2px solid var(--navy);}
+td{padding:10px 12px;border-bottom:1px solid var(--mid);font-size:0.86rem;vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+.vote-pill{display:inline-block;padding:2px 9px;font-family:'Barlow Condensed',sans-serif;font-size:0.66rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border-radius:3px;}
+.vote-pill.yes{background:#e3f3ea;color:var(--green);}
+.vote-pill.no{background:#fbe6e9;color:var(--red);}
+.vote-pill.abstain,.vote-pill.absent,.vote-pill.unknown{background:var(--mid);color:var(--muted);}
+
+.bloc-list{display:flex;flex-direction:column;gap:8px;}
+.bloc-row{display:flex;justify-content:space-between;align-items:center;background:white;border:1px solid var(--mid);padding:10px 16px;font-size:0.86rem;}
+.bloc-pct{font-family:'Playfair Display',serif;font-weight:900;color:var(--navy);}
+
+.sector-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--mid);font-size:0.86rem;}
+.sector-row:last-child{border-bottom:none;}
+
+.state-msg{text-align:center;padding:60px 20px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:0.9rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;}
+.spinner{display:inline-block;width:32px;height:32px;border:3px solid var(--mid);border-top-color:var(--navy);border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:14px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.muted-note{color:var(--muted);font-size:0.84rem;padding:14px 0;}
+
+@media(max-width:640px){
+  header{padding:18px 20px;}
+  .section,.hero,.crumb{padding-left:16px;padding-right:16px;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">VoteIQ<span>·</span>Hampton Roads Civic Intelligence</div>
+
+<header>
+  <a href="/" class="logo-wrap" style="text-decoration:none;">
+    <div class="logo-text">Vote<em>IQ</em></div>
+  </a>
+  <nav class="header-nav">
+    <a href="/">Home</a>
+    <a href="/chat">Chat</a>
+  </nav>
+</header>
+
+<div class="crumb"><a href="/" id="crumbHome">Home</a> &nbsp;/&nbsp; <a href="#" id="crumbCity">City Council</a> &nbsp;/&nbsp; <span id="crumbName">Member</span></div>
+
+<div class="hero" id="hero">
+  <div class="state-msg" style="width:100%;"><div class="spinner"></div><p>Loading</p></div>
+</div>
+
+<div class="section" id="statsSection" style="display:none;">
+  <div class="section-label"><span>Voting Record</span></div>
+  <div class="stat-grid" id="statGrid"></div>
+</div>
+
+<div class="section" id="blocsSection" style="display:none;">
+  <div class="section-label"><span>Frequent Voting Agreement</span></div>
+  <div class="bloc-list" id="blocList"></div>
+</div>
+
+<div class="section" id="financeSection" style="display:none;">
+  <div class="section-label"><span>Campaign Finance</span></div>
+  <div id="financeBody"></div>
+</div>
+
+<div class="section" id="votesSection" style="display:none;">
+  <div class="section-label"><span>Recent Votes</span></div>
+  <table>
+    <thead><tr><th>Date</th><th>Item</th><th>Vote</th><th>Result</th></tr></thead>
+    <tbody id="votesBody"></tbody>
+  </table>
+</div>
+
+<script>
+(function(){
+  const parts = window.location.pathname.replace(/\/+$/,'').split('/');
+  const memberSlug = parts.pop();
+  const citySlug = parts.pop();
+
+  function initials(name){
+    return name.replace(/["()]/g,'').split(/\s+/).filter(w=>/^[A-Z]/.test(w)).slice(0,2).map(w=>w[0]).join('');
+  }
+
+  function votePillClass(v){
+    return ['yes','no','abstain','absent'].includes(v) ? v : 'unknown';
+  }
+
+  function renderStats(s){
+    const total = s.total || 0;
+    const pct = (n) => total ? Math.round(n/total*100) + '%' : '—';
+    document.getElementById('statGrid').innerHTML = `
+      <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">Total Votes</div></div>
+      <div class="stat-card"><div class="stat-num yes">${s.yes}</div><div class="stat-label">Yes (${pct(s.yes)})</div></div>
+      <div class="stat-card"><div class="stat-num no">${s.no}</div><div class="stat-label">No (${pct(s.no)})</div></div>
+      <div class="stat-card"><div class="stat-num">${s.abstain}</div><div class="stat-label">Abstain</div></div>
+      <div class="stat-card"><div class="stat-num">${s.absent}</div><div class="stat-label">Absent</div></div>
+    `;
+    document.getElementById('statsSection').style.display = total ? 'block' : 'none';
+    if(!total){
+      document.getElementById('statsSection').style.display = 'block';
+      document.getElementById('statGrid').innerHTML = '<p class="muted-note">No recorded votes yet for this member — they may be newly elected, or votes for this meeting range haven\'t been scraped yet.</p>';
+    }
+  }
+
+  function renderBlocs(blocs){
+    if(!blocs || !blocs.length) return;
+    document.getElementById('blocsSection').style.display = 'block';
+    document.getElementById('blocList').innerHTML = blocs.map(b => `
+      <div class="bloc-row"><span>${b.member}</span><span class="bloc-pct">${b.agreement_pct}%</span></div>
+    `).join('');
+  }
+
+  function renderFinance(f){
+    if(!f) return;
+    document.getElementById('financeSection').style.display = 'block';
+    const sectors = (f.sectors || []).map(s => `
+      <div class="sector-row"><span>${s.sector}</span><span>$${Math.round(s.total_amount).toLocaleString()} (${s.pct_of_total}%)</span></div>
+    `).join('');
+    document.getElementById('financeBody').innerHTML = `
+      <p style="margin-bottom:14px;font-size:0.95rem;">Total raised: <strong>$${Math.round(f.total_raised).toLocaleString()}</strong></p>
+      ${sectors}
+    `;
+  }
+
+  function renderVotes(votes){
+    if(!votes || !votes.length) return;
+    document.getElementById('votesSection').style.display = 'block';
+    document.getElementById('votesBody').innerHTML = votes.map(v => `
+      <tr>
+        <td style="white-space:nowrap;">${v.meeting_date}</td>
+        <td>${v.title || ''}</td>
+        <td><span class="vote-pill ${votePillClass(v.vote)}">${v.vote}</span></td>
+        <td>${v.result || ''}</td>
+      </tr>
+    `).join('');
+  }
+
+  async function load(){
+    try {
+      const res = await fetch(`/api/council/${citySlug}/${memberSlug}`);
+      if(!res.ok) throw new Error('not found');
+      const d = await res.json();
+
+      document.title = `${d.name} — ${d.city_display} City Council — VoteIQ`;
+      document.getElementById('crumbCity').textContent = `${d.city_display} City Council`;
+      document.getElementById('crumbCity').href = `/council/${citySlug}`;
+      document.getElementById('crumbName').textContent = d.name;
+
+      document.getElementById('hero').innerHTML = `
+        <div class="avatar">${initials(d.name)}</div>
+        <div class="hero-info">
+          <div class="eyebrow">${d.role} · ${d.city_display}</div>
+          <h1>${d.name}</h1>
+          <div class="hero-actions">
+            ${d.email ? `<a class="btn btn-fill" href="mailto:${d.email}">✉ Email</a>` : ''}
+            ${d.url ? `<a class="btn btn-line" href="${d.url}" target="_blank" rel="noopener">Official Page ↗</a>` : ''}
+          </div>
+        </div>
+      `;
+
+      renderStats(d.vote_summary || {});
+      renderBlocs(d.voting_blocs);
+      renderFinance(d.finance);
+      renderVotes(d.recent_votes);
+    } catch(e){
+      document.getElementById('hero').innerHTML = '<div class="state-msg" style="width:100%;">Member not found</div>';
+    }
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>

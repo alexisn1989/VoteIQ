@@ -878,9 +878,51 @@
       };
       marked.setOptions({ renderer: _renderer, breaks: true });
     }
+    // ── Council member link detection ──────────────────────────────────────
+    // Wraps a recognized council member's name in a markdown link to their
+    // profile page (/council/{city}/{member}) before marked.js renders the
+    // reply, so any chat answer that mentions a council member becomes
+    // clickable -- purely a presentation-layer pass over the LLM's own text,
+    // never touches the reply-generation backend.
+    let _viqCouncilRoster = null;
+    let _viqCouncilRosterPromise = null;
+    function viqLoadCouncilRoster() {
+      if (_viqCouncilRosterPromise) return _viqCouncilRosterPromise;
+      _viqCouncilRosterPromise = fetch('/api/council-roster/all')
+        .then(r => r.ok ? r.json() : [])
+        .then(data => {
+          // Longest name first so a fuller name (e.g. "Ella P. Ward") gets
+          // first crack at matching before a shorter one (e.g. "Ward").
+          _viqCouncilRoster = (data || []).filter(m => m.name && m.name.length >= 5)
+            .sort((a, b) => b.name.length - a.name.length);
+          return _viqCouncilRoster;
+        })
+        .catch(() => { _viqCouncilRoster = []; return _viqCouncilRoster; });
+      return _viqCouncilRosterPromise;
+    }
+    viqLoadCouncilRoster();
+
+    function _viqEscapeRegExp(s) {
+      return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function viqLinkifyCouncilMembers(text) {
+      if (!_viqCouncilRoster || !_viqCouncilRoster.length || !text) return text;
+      let out = text;
+      for (const m of _viqCouncilRoster) {
+        const escaped = _viqEscapeRegExp(m.name);
+        // Skip a name already inside a markdown link, e.g. "[David Hutcheson](...)".
+        const re = new RegExp(`(?<!\\[)\\b${escaped}\\b(?!\\]\\()`, 'g');
+        if (re.test(out)) {
+          out = out.replace(re, `[${m.name}](/council/${m.city_slug}/${m.slug})`);
+        }
+      }
+      return out;
+    }
+
     function viqRenderMarkdown(text) {
       if (typeof marked === 'undefined') return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-      return marked.parse(text);
+      return marked.parse(viqLinkifyCouncilMembers(text));
     }
 
     function renderList(items) {
